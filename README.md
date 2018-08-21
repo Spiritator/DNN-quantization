@@ -1,2 +1,3 @@
 # DNN-quantization
-DNN quantization and evaluation
+
+DNN quantize conversion and accuracy loss evaluation

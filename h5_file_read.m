@@ -3,7 +3,7 @@ close all;
 
 model_attr = h5readatt('navigation_droneNet_v2_140x140.h5','/','layer_names');
 % attr = H5A.read(attr_id);
-h5disp('navigation_droneNet_v2_140x140.h5','/');
+h5disp('../navigation_droneNet_v2_140x140.h5','/');
 % h5disp('navigation_droneNet_v2_140x140.h5','/conv2d_1');
 % h5disp('navigation_droneNet_v2_140x140.h5','/conv2d_1/conv2d_1');
 % h5disp('navigation_droneNet_v2_140x140.h5','/conv2d_1/conv2d_1/kernel:0');

@@ -136,6 +136,6 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_class = 10, data_
             class_mode='categorical',
             shuffle=False)
     else:
-        print("wrong dataset given")
+        print("wrong dataset given.\nChoose between \'mnist\' or \'cifar10\' or \'ImageDataGenerator\'\n")
 
     return x_train, x_test, y_train, y_test, datagen, input_shape

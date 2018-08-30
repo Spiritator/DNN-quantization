@@ -11,14 +11,14 @@ from keras import regularizers
 from keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda, Dropout
 from keras.regularizers import l2
 from keras import metrics
-#from metrics import top2_acc
 import numpy as np
+import h5py
 
 from layers.quantized_layers import QuantizedConv2D,QuantizedDense
 from layers.quantized_ops import quantized_relu as quantize_op
 
 
-def qunatized_lenet5(nbits=8, input_shape=(28,28,1), num_classes=10):
+def quantized_lenet5(nbits=8, input_shape=(28,28,1), num_classes=10):
     
     model = Sequential()
     model.add(QuantizedConv2D(filters=16,
@@ -110,32 +110,11 @@ def quantized_4C2F(nbits=8, input_shape=(32,32,3), num_classes=10):
 
     return model
 
-def load_weights(model, weight_reader):
-    weight_reader.reset()
+def load_orginal_weights_on_quantized_model(model, original_weight_name):
 
-    for i in range(len(model.layers)):
-        if 'conv' in model.layers[i].name:
-            if 'batch' in model.layers[i + 1].name:
-                norm_layer = model.layers[i + 1]
-                size = np.prod(norm_layer.get_weights()[0].shape)
-
-                beta = weight_reader.read_bytes(size)
-                gamma = weight_reader.read_bytes(size)
-                mean = weight_reader.read_bytes(size)
-                var = weight_reader.read_bytes(size)
-
-                weights = norm_layer.set_weights([gamma, beta, mean, var])
-
-            conv_layer = model.layers[i]
-            if len(conv_layer.get_weights()) > 1:
-                bias = weight_reader.read_bytes(np.prod(conv_layer.get_weights()[1].shape))
-                kernel = weight_reader.read_bytes(np.prod(conv_layer.get_weights()[0].shape))
-                kernel = kernel.reshape(list(reversed(conv_layer.get_weights()[0].shape)))
-                kernel = kernel.transpose([2, 3, 1, 0])
-                conv_layer.set_weights([kernel, bias])
-            else:
-                kernel = weight_reader.read_bytes(np.prod(conv_layer.get_weights()[0].shape))
-                kernel = kernel.reshape(list(reversed(conv_layer.get_weights()[0].shape)))
-                kernel = kernel.transpose([2, 3, 1, 0])
-                conv_layer.set_weights([kernel])
+    o_weight_f = h5py.File(original_weight_name,'r')
+    q_weight_f = h5py.File('quantized_'+original_weight_name,'w')
+    ###################################################################################
+    o_weight_f.close()
+    q_weight_f.close()
     return model

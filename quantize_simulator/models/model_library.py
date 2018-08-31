@@ -110,11 +110,11 @@ def quantized_4C2F(nbits=8, input_shape=(32,32,3), num_classes=10):
 
     return model
 
-def load_orginal_weights_on_quantized_model(model, original_weight_name):
+def convert_original_weight_layer_name(original_weight_name,quantized_weight_name=None):
 
     o_weight_f = h5py.File(original_weight_name,'r')
     q_weight_f = h5py.File('quantized_'+original_weight_name,'w')
-    ###################################################################################
+    o_weight_f.attrs
     o_weight_f.close()
     q_weight_f.close()
-    return model
+    return quantized_weight_name

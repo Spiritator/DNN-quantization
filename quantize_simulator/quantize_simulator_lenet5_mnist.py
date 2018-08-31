@@ -14,7 +14,7 @@ import numpy as np
 import keras.backend as K
 
 
-from models.model_library import quantized_lenet5, load_orginal_weights_on_quantized_model
+from models.model_library import quantized_lenet5, convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from metrics.topk_metrics import top2_acc
 
@@ -25,4 +25,4 @@ weight_name='something'
 # model setup
 model=quantized_lenet5()
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
-model=load_orginal_weights_on_quantized_model(model,weight_name)
+weight_name=convert_original_weight_layer_name(weight_name)

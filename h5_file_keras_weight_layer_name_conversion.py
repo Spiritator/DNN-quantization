@@ -6,6 +6,7 @@ Created on Fri Aug 31 16:35:46 2018
 """
 
 import h5py
+import numpy as np
 
 original_weight_name='../droneNetV2_140_w.h5'
 quantized_weight_name=None
@@ -57,12 +58,37 @@ else:
 
 layer_names = load_attributes_from_hdf5_group(o_weight_f, 'layer_names')
 filtered_layer_names = []
-for name in layer_names:
-    g = o_weight_f[name]
-    weight_names = load_attributes_from_hdf5_group(g, 'weight_names')
+for layer_name in layer_names:
+    o_group = o_weight_f[layer_name]
+    weight_names = load_attributes_from_hdf5_group(o_group, 'weight_names')
     if weight_names:
-        filtered_layer_names.append(name)
-layer_names = filtered_layer_names
+        filtered_layer_names.append(layer_name)
+        
+quantized_layer_names = []
+for layer in layer_names:
+    if layer in filtered_layer_names:
+        quantized_layer_names.append('quantized_'+layer)
+    else:
+        quantized_layer_names.append(layer)
+        
+q_weight_f.attrs.create('layer_names',[temp.encode('utf8') for temp in quantized_layer_names])
+q_weight_f.attrs.create('backend',original_backend.encode('utf8'))
+q_weight_f.attrs.create('keras_version',original_keras_version.encode('utf8'))
+
+for layer_iter, layer_name in enumerate(layer_names):
+    o_group = o_weight_f[layer_name]
+    weight_names = load_attributes_from_hdf5_group(o_group, 'weight_names')
+    weight_values = [np.asarray(o_group[weight_name]) for weight_name in weight_names]
+    quantized_layer = q_weight_f.create_group(quantized_layer_names[layer_iter])
+    if layer_name in filtered_layer_names:
+        quantized_layer.attrs.create('weight_names',[('quantized_'+temp).encode('utf8') for temp in weight_names])
+    else:
+        quantized_layer.attrs.create('weight_names',[temp.encode('utf8') for temp in weight_names])
+    quantized_sublayer = quantized_layer.create_group(quantized_layer_names[layer_iter])
+    
+    for weight_iter, weight_name in enumerate(weight_names):
+        quantized_sublayer.create_dataset(weight_name[len(layer_name)+1:],weight_values[weight_iter].shape,weight_values[weight_iter].dtype,weight_values[weight_iter])
+    
     
 o_weight_f.close()
 q_weight_f.close()

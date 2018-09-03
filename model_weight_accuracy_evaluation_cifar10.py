@@ -39,8 +39,8 @@ img_rows, img_cols = 28, 28
 def top2_acc(y_true,y_pred):
     return metrics.top_k_categorical_accuracy(y_true,y_pred,k=2)
 
-model=load_model('../cifar10_5C2F_model.h5',custom_objects={'top2_acc':top2_acc})
-model.load_weights('../cifar10_5C2F_weight_quantized_8B3I4F.h5')
+model=load_model('../cifar10_4C2F_model.h5',custom_objects={'top2_acc':top2_acc})
+model.load_weights('../cifar10_4C2F_weight_quantized_8B3I4F.h5')
 
 model.summary()
 

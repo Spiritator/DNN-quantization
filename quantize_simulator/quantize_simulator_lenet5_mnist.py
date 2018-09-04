@@ -25,7 +25,7 @@ from metrics.topk_metrics import top2_acc
 weight_name='../../mnist_lenet5_weight.h5'
 
 # model setup
-model=quantized_lenet5()
+model=quantized_lenet5(nbits=4)
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)

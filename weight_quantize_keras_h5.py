@@ -16,7 +16,7 @@ original_weight_name = '../cifar10_4C2F_weight.h5'
 # specify the filename for quantized weight, if not type "None"
 weight_bit_width = 8
 weight_factorial_bit = 4
-rounding_type = 'nearest'
+rounding_method = 'nearest'
 # choose between 'nearest' , 'zero' , 'down' , 'stochastic'
 
 
@@ -50,10 +50,10 @@ def load_attributes_from_hdf5_group(group, name):
     return data
 
 
-def quantize_weight(original_weight_name, weight_bit_width, weight_factorial_bit, quantized_weight_name=None, rounding_type='nearest'):
+def quantize_weight(original_weight_name, weight_bit_width, weight_factorial_bit, quantized_weight_name=None, rounding_method='nearest'):
     o_weight_f = h5py.File(original_weight_name,'r')
     if quantized_weight_name is None:
-        quantized_weight_name=original_weight_name[:-3]+('_quantized_%s_rounding_%dB%dI%dF.h5' % (rounding_type,weight_bit_width, weight_bit_width-weight_factorial_bit-1, weight_factorial_bit))
+        quantized_weight_name=original_weight_name[:-3]+('_quantized_%s_rounding_%dB%dI%dF.h5' % (rounding_method,weight_bit_width, weight_bit_width-weight_factorial_bit-1, weight_factorial_bit))
         q_weight_f = h5py.File(quantized_weight_name,'w')
     else:
         q_weight_f = h5py.File(quantized_weight_name,'w')
@@ -94,13 +94,13 @@ def quantize_weight(original_weight_name, weight_bit_width, weight_factorial_bit
             m = np.power(2,weight_factorial_bit)
             quantized_weight_value = weight_values[weight_iter] * m
             
-            if rounding_type == 'nearest':
+            if rounding_method == 'nearest':
                 quantized_weight_value = np.round(quantized_weight_value)
-            elif rounding_type == 'zero':
+            elif rounding_method == 'zero':
                 quantized_weight_value = np.trunc(quantized_weight_value)
-            elif rounding_type == 'down':
+            elif rounding_method == 'down':
                 quantized_weight_value = np.floor(quantized_weight_value)
-            elif rounding_type == 'stochastic':
+            elif rounding_method == 'stochastic':
                 if np.average(quantized_weight_value-np.floor(quantized_weight_value)) > 0.5:
                     quantized_weight_value = np.ceil(quantized_weight_value)
                 else:
@@ -122,5 +122,5 @@ def quantize_weight(original_weight_name, weight_bit_width, weight_factorial_bit
     
 # main
     
-quantized_weight_name = quantize_weight(original_weight_name=original_weight_name,weight_bit_width=weight_bit_width,weight_factorial_bit=weight_factorial_bit,rounding_type=rounding_type)
+quantized_weight_name = quantize_weight(original_weight_name=original_weight_name,weight_bit_width=weight_bit_width,weight_factorial_bit=weight_factorial_bit,rounding_method=rounding_method)
 print('quantized weight file \'%s\' is produced'%quantized_weight_name)

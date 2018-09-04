@@ -43,10 +43,12 @@ class QuantizedDense(Dense):
     References: 
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
-    def __init__(self, units, H=1., nb=16, kernel_lr_multiplier='Glorot', bias_lr_multiplier=None, **kwargs):
+    def __init__(self, units, H=1., nb=16, fb=8, rounding_method='nearest', kernel_lr_multiplier='Glorot', bias_lr_multiplier=None, **kwargs):
         super(QuantizedDense, self).__init__(units, **kwargs)
         self.H = H
         self.nb = nb
+        self.fb = fb
+        self.rounding_method = rounding_method
         self.kernel_lr_multiplier = kernel_lr_multiplier
         self.bias_lr_multiplier = bias_lr_multiplier
         super(QuantizedDense, self).__init__(units, **kwargs)
@@ -86,7 +88,8 @@ class QuantizedDense(Dense):
 
 
     def call(self, inputs):
-        quantized_kernel = quantize(self.kernel, nb=self.nb)
+        quantized_kernel = quantize(self.kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        inputs = quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
         output = K.dot(inputs, quantized_kernel)
         if self.use_bias:
             output = K.bias_add(output, self.bias)
@@ -111,10 +114,12 @@ class QuantizedConv2D(Conv2D):
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
     def __init__(self, filters, kernel_regularizer=None,activity_regularizer=None, kernel_lr_multiplier='Glorot',
-                 bias_lr_multiplier=None, H=1., nb=16,  **kwargs):
+                 bias_lr_multiplier=None, H=1., nb=16, fb=8, rounding_method='nearest',  **kwargs):
         super(QuantizedConv2D, self).__init__(filters, **kwargs)
         self.H = H
         self.nb = nb
+        self.fb = fb
+        self.rounding_method = rounding_method
         self.kernel_lr_multiplier = kernel_lr_multiplier
         self.bias_lr_multiplier = bias_lr_multiplier
         self.activity_regularizer =activity_regularizer
@@ -171,7 +176,8 @@ class QuantizedConv2D(Conv2D):
         self.built = True
 
     def call(self, inputs):
-        quantized_kernel = quantize(self.kernel, nb=self.nb)
+        quantized_kernel = quantize(self.kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        inputs = quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
 
         inverse_kernel_lr_multiplier = 1./self.kernel_lr_multiplier
         inputs_qnn_gradient = (inputs - (1. - 1./inverse_kernel_lr_multiplier) * K.stop_gradient(inputs))\

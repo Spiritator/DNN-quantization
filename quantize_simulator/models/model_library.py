@@ -20,6 +20,8 @@ from layers.quantized_ops import quantized_relu as quantize_op
 
 def quantized_lenet5(nbits=8, input_shape=(28,28,1), num_classes=10):
     
+    print('Building model : Quantized Lenet 5')
+    
     model = Sequential()
     model.add(QuantizedConv2D(filters=16,
                               H=1,
@@ -56,6 +58,9 @@ def quantized_lenet5(nbits=8, input_shape=(28,28,1), num_classes=10):
     return model
 
 def quantized_4C2F(nbits=8, input_shape=(32,32,3), num_classes=10):
+    
+    print('Building model : Quantized 4C2F CNN')
+    
     model = Sequential()
     model.add(QuantizedConv2D(filters=32,
                               H=1,
@@ -111,9 +116,6 @@ def quantized_4C2F(nbits=8, input_shape=(32,32,3), num_classes=10):
     return model
 
 def convert_original_weight_layer_name(original_weight_name,quantized_weight_name=None):
-
-    original_weight_name='../droneNetV2_140_w.h5'
-    quantized_weight_name=None
     
     def load_attributes_from_hdf5_group(group, name):
         """Loads attributes of the specified name from the HDF5 group.

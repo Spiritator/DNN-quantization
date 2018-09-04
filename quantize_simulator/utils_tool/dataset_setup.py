@@ -120,14 +120,24 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_class = 10, data_
         # convert class vectors to binary class matrices
         y_train = keras.utils.to_categorical(y_train, num_classes)
         y_test = keras.utils.to_categorical(y_test, num_classes)
+        
+        datagen=None
 
     elif (dataset == "ImageDataGenerator"):
+        
+        if data_dir is None:
+            raise NameError('Please specify the ImageDataGenerator directory')
         
         print('Setup ImageDataGenerator custom dataset at %s ...' % data_dir)
         
         num_classes = num_classes
         # input image dimensions
-        img_rows, img_cols = img_rows, img_cols
+        
+        if K.image_data_format() == 'channels_first':
+            input_shape = (3, img_cols, img_rows)
+        else:
+            input_shape = (img_cols, img_rows, 3)
+        
         
         evaluation_datagen = ImageDataGenerator(rescale=1. / 255)
         datagen = evaluation_datagen.flow_from_directory(
@@ -135,6 +145,12 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_class = 10, data_
             target_size=(img_rows, img_cols),
             class_mode='categorical',
             shuffle=False)
+        
+        x_train=None
+        x_test=None
+        y_train=None
+        y_test=None
+        
     else:
         print("wrong dataset given.\nChoose between \'mnist\' or \'cifar10\' or \'ImageDataGenerator\'\n")
 

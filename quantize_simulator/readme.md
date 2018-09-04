@@ -12,9 +12,17 @@ Use the digital circuit algorithm simulation method to simulate qunatized DNN by
 -   CiFar10
 - ImageDataGenerator
 
+### quantization
+- you can specify weight word length and factorial bits
+- nearest rounding
+- zero rounding
+- down rounding
+- stochastic rounding
+
 ## future work
-- support specify weight word length and factorial bits
 - support batch normalization layer
+- support depthwise Conv2D layer
+- support pointwise Conv2D layer
 
 ## reference:
 

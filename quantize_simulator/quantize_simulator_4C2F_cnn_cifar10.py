@@ -26,7 +26,7 @@ from metrics.topk_metrics import top2_acc
 weight_name='../../cifar10_4C2F_weight.h5'
 
 # model setup
-model=quantized_4C2F(nbits=8,fbits=7,rounding_method='nearest')
+model=quantized_4C2F(nbits=10,fbits=5,rounding_method='nearest')
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)

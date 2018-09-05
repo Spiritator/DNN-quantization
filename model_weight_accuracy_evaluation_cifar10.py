@@ -21,6 +21,7 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras import metrics
 import functools
 import numpy as np
+import time
 import pandas as pd
 
 batch_size = 32
@@ -40,7 +41,7 @@ def top2_acc(y_true,y_pred):
     return metrics.top_k_categorical_accuracy(y_true,y_pred,k=2)
 
 model=load_model('../cifar10_4C2F_model.h5',custom_objects={'top2_acc':top2_acc})
-model.load_weights('../cifar10_4C2F_weight_quantized_8B3I4F.h5')
+model.load_weights('../cifar10_4C2F_weight.h5')
 
 model.summary()
 
@@ -100,12 +101,18 @@ else:
     # Compute quantities required for feature-wise normalization
     # (std, mean, and principal components if ZCA whitening is applied).
     datagen.fit(x_train)
+    
+    
+t = time.time()
 
 test_result = model.evaluate(x_test, y_test, verbose=0)
+
+t = time.time()-t
 
 prediction = model.predict(x_test, verbose=0)
 prediction = np.argmax(prediction, axis=1)
         
+print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])

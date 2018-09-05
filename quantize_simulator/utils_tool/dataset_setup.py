@@ -52,6 +52,7 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_class = 10, data_
         
         if not data_augmentation:
             print('Not using data augmentation.')
+            datagen=None
             
         else:
             print('Using real-time data augmentation.')

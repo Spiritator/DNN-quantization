@@ -96,6 +96,7 @@ class QuantizedDense(Dense):
             quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
             output = K.bias_add(output, quantized_bias)
         if self.activation is not None:
+            output = quantize(output, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
             output = self.activation(output)
 
 
@@ -209,6 +210,7 @@ class QuantizedConv2D(Conv2D):
                 data_format=self.data_format)
 
         if self.activation is not None:
+            outputs = quantize(outputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
             return self.activation(outputs)
 
         return outputs

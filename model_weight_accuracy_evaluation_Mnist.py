@@ -21,6 +21,7 @@ from keras import metrics
 from keras.datasets import mnist
 import functools
 import numpy as np
+import time
 import pandas as pd
 
 batch_size = 128
@@ -33,8 +34,8 @@ img_rows, img_cols = 28, 28
 #%%
 # model setup
 
-model=load_model('mnist_lenet5_model.h5')
-model.load_weights('mnist_lenet5_weight_quantized_8B3I4F.h5')
+model=load_model('../mnist_lenet5_model.h5')
+model.load_weights('../mnist_lenet5_weight.h5')
 
 model.summary()
 
@@ -65,11 +66,16 @@ print(x_test.shape[0], 'test samples')
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
+t = time.time()
+
 test_result = model.evaluate(x_test, y_test, verbose=0)
+
+t = time.time()-t
 
 prediction = model.predict(x_test, verbose=0)
 prediction = np.argmax(prediction, axis=1)
         
+print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])
 print('Test accuracy:', test_result[1])
 

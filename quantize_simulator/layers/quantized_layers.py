@@ -91,8 +91,10 @@ class QuantizedDense(Dense):
         quantized_kernel = quantize(self.kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
         inputs = quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
         output = K.dot(inputs, quantized_kernel)
+        output = quantize(output, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
         if self.use_bias:
-            output = K.bias_add(output, self.bias)
+            quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            output = K.bias_add(output, quantized_bias)
         if self.activation is not None:
             output = self.activation(output)
 
@@ -190,6 +192,8 @@ class QuantizedConv2D(Conv2D):
             padding=self.padding,
             data_format=self.data_format,
             dilation_rate=self.dilation_rate)
+        
+        outputs_qnn_gradient = quantize(outputs_qnn_gradient, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
 
         outputs = (outputs_qnn_gradient - (1. - 1./self.kernel_lr_multiplier) * K.stop_gradient(outputs_qnn_gradient))\
                   * self.kernel_lr_multiplier
@@ -198,9 +202,10 @@ class QuantizedConv2D(Conv2D):
         #outputs = outputs*K.mean(K.abs(self.kernel))
 
         if self.use_bias:
+            quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
             outputs = K.bias_add(
                 outputs,
-                self.bias,
+                quantized_bias,
                 data_format=self.data_format)
 
         if self.activation is not None:

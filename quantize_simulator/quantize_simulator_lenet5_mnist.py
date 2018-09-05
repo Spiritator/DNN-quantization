@@ -12,6 +12,7 @@ evaluate quantized testing result with custom Keras quantize layer
 import keras
 import numpy as np
 import keras.backend as K
+import time
 import pandas as pd
 
 
@@ -25,7 +26,7 @@ from metrics.topk_metrics import top2_acc
 weight_name='../../mnist_lenet5_weight.h5'
 
 # model setup
-model=quantized_lenet5(nbits=4,fbits=2,rounding_method='nearest')
+model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest')
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
@@ -33,7 +34,11 @@ print('orginal weight loaded')
 
 x_train, x_test, y_train, y_test, datagen, input_shape = dataset_setup('mnist')
 
+t = time.time()
+
 test_result = model.evaluate(x_test, y_test, verbose=0)
+
+print('\nruntime: %f s'%(time.time()-t))
 
 prediction = model.predict(x_test, verbose=0)
 prediction = np.argmax(prediction, axis=1)

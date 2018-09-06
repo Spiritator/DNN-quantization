@@ -12,7 +12,7 @@ import numpy as np
 
 from keras import backend as K
 
-from keras.layers import InputSpec, Layer, Dense, Conv2D
+from keras.layers import InputSpec, Layer, Dense, Conv2D, BatchNormalization, DepthwiseConv2D
 from keras import constraints
 from keras import initializers
 
@@ -39,7 +39,7 @@ class Clip(constraints.Constraint):
 
 
 class QuantizedDense(Dense):
-    ''' Binarized Dense layer
+    ''' Quantized Dense layer
     References: 
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
@@ -106,13 +106,17 @@ class QuantizedDense(Dense):
     def get_config(self):
         config = {'H': self.H,
                   'kernel_lr_multiplier': self.kernel_lr_multiplier,
-                  'bias_lr_multiplier': self.bias_lr_multiplier}
+                  'bias_lr_multiplier': self.bias_lr_multiplier,
+                  'nb': self.nb,
+                  'fb': self.fb,
+                  'rounding_method': self.rounding_method
+                  }
         base_config = super(QuantizedDense, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 
 class QuantizedConv2D(Conv2D):
-    '''Binarized Convolution2D layer
+    '''Quantized Convolution2D layer
     References: 
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
@@ -218,7 +222,11 @@ class QuantizedConv2D(Conv2D):
     def get_config(self):
         config = {'H': self.H,
                   'kernel_lr_multiplier': self.kernel_lr_multiplier,
-                  'bias_lr_multiplier': self.bias_lr_multiplier}
+                  'bias_lr_multiplier': self.bias_lr_multiplier,
+                  'nb': self.nb,
+                  'fb': self.fb,
+                  'rounding_method': self.rounding_method
+                  }
         base_config = super(QuantizedConv2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
@@ -226,3 +234,247 @@ class QuantizedConv2D(Conv2D):
 # Aliases
 
 QuantizedConvolution2D = QuantizedConv2D
+
+
+class QuantizedBatchNormalization(BatchNormalization):
+    ''' Quantized BatchNormalization layer
+    References: 
+    "Pytorch Playground: Base pretrained models and datasets in pytorch." [https://github.com/aaron-xichen/pytorch-playground]
+    '''
+    def __init__(self,
+                 H=1, nb=16, fb=8, rounding_method='nearest', **kwargs):
+        super(QuantizedBatchNormalization, self).__init__(**kwargs)
+        self.H = H
+        self.nb = nb
+        self.fb = fb
+        self.rounding_method = rounding_method
+
+    def build(self, input_shape):
+        dim = input_shape[self.axis]
+        if dim is None:
+            raise ValueError('Axis ' + str(self.axis) + ' of '
+                             'input tensor should have a defined dimension '
+                             'but the layer received an input with shape ' +
+                             str(input_shape) + '.')
+        self.input_spec = InputSpec(ndim=len(input_shape),
+                                    axes={self.axis: dim})
+        shape = (dim,)
+
+        if self.scale:
+            self.gamma = self.add_weight(shape=shape,
+                                         name='gamma',
+                                         initializer=self.gamma_initializer,
+                                         regularizer=self.gamma_regularizer,
+                                         constraint=self.gamma_constraint)
+        else:
+            self.gamma = None
+        if self.center:
+            self.beta = self.add_weight(shape=shape,
+                                        name='beta',
+                                        initializer=self.beta_initializer,
+                                        regularizer=self.beta_regularizer,
+                                        constraint=self.beta_constraint)
+        else:
+            self.beta = None
+        self.moving_mean = self.add_weight(
+            shape=shape,
+            name='moving_mean',
+            initializer=self.moving_mean_initializer,
+            trainable=False)
+        self.moving_variance = self.add_weight(
+            shape=shape,
+            name='moving_variance',
+            initializer=self.moving_variance_initializer,
+            trainable=False)
+        self.built = True
+
+    def call(self, inputs, training=None):
+        input_shape = K.int_shape(inputs)
+        # Prepare broadcasting shape.
+        ndim = len(input_shape)
+        reduction_axes = list(range(len(input_shape)))
+        del reduction_axes[self.axis]
+        broadcast_shape = [1] * len(input_shape)
+        broadcast_shape[self.axis] = input_shape[self.axis]
+
+        # Determines whether broadcasting is needed.
+        needs_broadcasting = (sorted(reduction_axes) != list(range(ndim))[:-1])
+
+        def normalize_inference():
+            if needs_broadcasting:
+                # In this case we must explicitly broadcast all parameters.
+                broadcast_moving_mean = K.reshape(self.moving_mean,
+                                                  broadcast_shape)
+                broadcast_moving_variance = K.reshape(self.moving_variance,
+                                                      broadcast_shape)
+                if self.center:
+                    broadcast_beta = K.reshape(self.beta, broadcast_shape)
+                else:
+                    broadcast_beta = None
+                if self.scale:
+                    broadcast_gamma = K.reshape(self.gamma,
+                                                broadcast_shape)
+                else:
+                    broadcast_gamma = None
+                    
+                broadcast_moving_mean = quantize(broadcast_moving_mean, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                broadcast_moving_variance = quantize(broadcast_moving_variance, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                broadcast_beta = quantize(broadcast_beta, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                broadcast_gamma = quantize(broadcast_gamma, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                    
+                return K.batch_normalization(
+                    quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method),
+                    broadcast_moving_mean,
+                    broadcast_moving_variance,
+                    broadcast_beta,
+                    broadcast_gamma,
+                    axis=self.axis,
+                    epsilon=self.epsilon)
+            else:
+                moving_mean = quantize(self.moving_mean, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                moving_variance = quantize(self.moving_variance, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                beta = quantize(self.beta, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                gamma = quantize(self.gamma, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                
+                return K.batch_normalization(
+                    quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method),
+                    moving_mean,
+                    moving_variance,
+                    beta,
+                    gamma,
+                    axis=self.axis,
+                    epsilon=self.epsilon)
+
+        # If the learning phase is *static* and set to inference:
+        if training in {0, False}:
+            return quantize(normalize_inference(), nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+
+        # If the learning is either dynamic, or set to training:
+        normed_training, mean, variance = K.normalize_batch_in_training(
+            inputs, self.gamma, self.beta, reduction_axes,
+            epsilon=self.epsilon)
+
+        if K.backend() != 'cntk':
+            sample_size = K.prod([K.shape(inputs)[axis]
+                                  for axis in reduction_axes])
+            sample_size = K.cast(sample_size, dtype=K.dtype(inputs))
+
+            # sample variance - unbiased estimator of population variance
+            variance *= sample_size / (sample_size - (1.0 + self.epsilon))
+
+        self.add_update([K.moving_average_update(self.moving_mean,
+                                                 mean,
+                                                 self.momentum),
+                         K.moving_average_update(self.moving_variance,
+                                                 variance,
+                                                 self.momentum)],
+                        inputs)
+
+        # Pick the normalized form corresponding to the training phase.
+        return K.in_train_phase(normed_training,
+                                normalize_inference,
+                                training=training)
+
+    def get_config(self):
+        config = {'H': self.H,
+                  'nb': self.nb,
+                  'fb': self.fb,
+                  'rounding_method': self.rounding_method
+                  }
+        base_config = super(QuantizedBatchNormalization, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
+
+class QuantizedDepthwiseConv2D(DepthwiseConv2D):
+    '''Quantized DepthwiseConv2D layer
+    References: 
+    "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
+    '''
+    def __init__(self,
+                 kernel_size,
+                 H=1.,
+                 nb=16,
+                 fb=8,
+                 rounding_method='nearest',
+                 **kwargs):
+        super(QuantizedDepthwiseConv2D, self).__init__(filters=None, **kwargs)
+        self.H = H
+        self.nb = nb
+        self.fb = fb
+        self.rounding_method = rounding_method
+
+    def build(self, input_shape):
+        if len(input_shape) < 4:
+            raise ValueError('Inputs to `DepthwiseConv2D` should have rank 4. '
+                             'Received input shape:', str(input_shape))
+        if self.data_format == 'channels_first':
+            channel_axis = 1
+        else:
+            channel_axis = 3
+        if input_shape[channel_axis] is None:
+            raise ValueError('The channel dimension of the inputs to '
+                             '`DepthwiseConv2D` '
+                             'should be defined. Found `None`.')
+        input_dim = int(input_shape[channel_axis])
+        depthwise_kernel_shape = (self.kernel_size[0],
+                                  self.kernel_size[1],
+                                  input_dim,
+                                  self.depth_multiplier)
+
+        self.depthwise_kernel = self.add_weight(
+            shape=depthwise_kernel_shape,
+            initializer=self.depthwise_initializer,
+            name='depthwise_kernel',
+            regularizer=self.depthwise_regularizer,
+            constraint=self.depthwise_constraint)
+
+        if self.use_bias:
+            self.bias = self.add_weight(shape=(input_dim * self.depth_multiplier,),
+                                        initializer=self.bias_initializer,
+                                        name='bias',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint)
+        else:
+            self.bias = None
+        # Set input spec.
+        self.input_spec = InputSpec(ndim=4, axes={channel_axis: input_dim})
+        self.built = True
+
+    def call(self, inputs, training=None):
+        inputs=quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        quantized_depthwise_kernel=quantize(self.depthwise_kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        
+        outputs = K.depthwise_conv2d(
+            inputs,
+            quantized_depthwise_kernel,
+            strides=self.strides,
+            padding=self.padding,
+            dilation_rate=self.dilation_rate,
+            data_format=self.data_format)
+                
+        if self.bias:
+            outputs = quantize(outputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            outputs = K.bias_add(
+                outputs,
+                quantized_bias,
+                data_format=self.data_format)
+
+        if self.activation is not None:
+            outputs=quantize(outputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            return self.activation(outputs)
+
+        return outputs
+
+    def get_config(self):
+        config = {'H': self.H,
+                  'nb': self.nb,
+                  'fb': self.fb,
+                  'rounding_method': self.rounding_method
+                  }
+        base_config = super(QuantizedBatchNormalization, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
+    

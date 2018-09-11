@@ -75,7 +75,6 @@ def show_confusion_matrix(y_test,y_pred,class_names,title,normalize=False):
     np.set_printoptions(precision=2)
     
     plt.figure()
-    plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=normalize,
-                          title=title)
+    plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=normalize,title=title)
     
     plt.show()

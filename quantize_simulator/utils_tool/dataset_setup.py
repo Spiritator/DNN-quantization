@@ -89,6 +89,8 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, dat
             # Compute quantities required for feature-wise normalization
             # (std, mean, and principal components if ZCA whitening is applied).
             datagen.fit(x_train)
+        
+        class_indices=['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck']
 
     elif (dataset == "mnist"):
 
@@ -123,6 +125,7 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, dat
         y_test = keras.utils.to_categorical(y_test, num_classes)
         
         datagen=None
+        class_indices=np.arange(0,10)
 
     elif (dataset == "ImageDataGenerator"):
         
@@ -158,8 +161,9 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, dat
         x_test=None
         y_train=None
         y_test=None
+        class_indices=datagen.class_indices
         
     else:
         print("wrong dataset given.\nChoose between \'mnist\' or \'cifar10\' or \'ImageDataGenerator\'\n")
 
-    return x_train, x_test, y_train, y_test, datagen, input_shape
+    return x_train, x_test, y_train, y_test, class_indices, datagen, input_shape

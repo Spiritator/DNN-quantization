@@ -28,8 +28,6 @@ class_number=4
 
 weight_name='../../navigation_droneNet_v2_250x140_weight.h5'
 dataset_dir='../../navigation_dataset/validation'
-nb_validation_samples = 1450
-batch_size = 50
 
 if K.image_data_format() == 'channels_first':
     input_shape = Input(shape=(3, img_width, img_height))
@@ -49,11 +47,11 @@ x_train, x_test, y_train, y_test, datagen, input_shape = dataset_setup('ImageDat
 
 t = time.time()
 
-test_result = model.evaluate_generator(datagen, steps=nb_validation_samples//batch_size)
+test_result = model.evaluate_generator(datagen)
 
 t = time.time()-t
 
-prediction = model.predict_generator(datagen,nb_validation_samples//batch_size)
+prediction = model.predict_generator(datagen)
 prediction = np.argmax(prediction, axis=1)
         
 print('\nTest loss:', test_result[0])

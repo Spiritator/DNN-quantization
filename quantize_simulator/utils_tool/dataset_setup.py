@@ -26,7 +26,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras import backend as K
 
 
-def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_class = 10, data_augmentation = False, data_dir = None):
+def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, data_augmentation = False, data_dir = None):
     if (dataset == "cifar10"):
 
         print('Setup CIFAR-10 dataset...')
@@ -131,7 +131,6 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_class = 10, data_
         
         print('Setup ImageDataGenerator custom dataset at %s ...' % data_dir)
         
-        num_classes = num_classes
         # input image dimensions
         
         if K.image_data_format() == 'channels_first':
@@ -139,8 +138,16 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_class = 10, data_
         else:
             input_shape = (img_cols, img_rows, 3)
         
-        
-        evaluation_datagen = ImageDataGenerator(rescale=1. / 255)
+        if data_augmentation:
+            evaluation_datagen = ImageDataGenerator(
+            rescale=1. / 255,
+            shear_range=0.2,
+            zoom_range=0.2,
+            horizontal_flip=True)
+        else:
+            evaluation_datagen = ImageDataGenerator(rescale=1. / 255)
+            
+            
         datagen = evaluation_datagen.flow_from_directory(
             data_dir,
             target_size=(img_rows, img_cols),

@@ -11,10 +11,11 @@ from keras import regularizers
 from keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda, Dropout
 from keras.regularizers import l2
 from keras import metrics
+from keras import backend as K
 import numpy as np
 import h5py
 
-from layers.quantized_layers import QuantizedConv2D,QuantizedDense
+from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization
 from layers.quantized_ops import quantized_relu as quantize_op
 
 
@@ -134,6 +135,97 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
     model.summary()
 
     return model
+
+def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=10, BN_fbits=5, rounding_method='nearest', inputs=None,  include_top=True, classes=10, *args, **kwargs):
+    if inputs is None :
+        if K.image_data_format() == 'channels_first':
+            input_shape = Input(shape=(3, 224, 224))
+        else:
+            input_shape = Input(shape=(224, 224, 3))
+    else:
+        input_shape=inputs
+        
+    print('Building model : Quantized DroneNet V%d at input shape'%version,end=' ')
+    print(input_shape.shape)
+
+    outputs = []
+
+    x = QuantizedConv2D(filters=32,
+                        H=1,
+                        nb=nbits,
+                        fb=fbits,
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        use_bias=False)(input_shape)
+    x = QuantizedBatchNormalization(H=1,
+                                    nb=BN_nbits,
+                                    fb=BN_fbits,
+                                    rounding_method=rounding_method)(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    outputs.append(x)
+
+    for i in range(3):
+        x = QuantizedConv2D(filters=64*(2**i),
+                            H=1,
+                            nb=nbits,
+                            fb=fbits,
+                            rounding_method=rounding_method,
+                            kernel_size=(3, 3),
+                            strides=(1, 1),
+                            use_bias=False)(x)
+        x = QuantizedBatchNormalization(H=1,
+                                        nb=BN_nbits,
+                                        fb=BN_fbits,
+                                        rounding_method=rounding_method)(x)
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(2, 2))(x)
+        outputs.append(x)
+
+    x = QuantizedConv2D(filters=256,
+                        H=1,
+                        nb=nbits,
+                        fb=fbits,
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        use_bias=False)(x)
+    x = QuantizedBatchNormalization(H=1,
+                           nb=BN_nbits,
+                           fb=BN_fbits,
+                           rounding_method=rounding_method)(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Dropout(0.5)(x)
+    outputs.append(x)
+    
+
+    if include_top:
+        x = Flatten()(x)
+        if version == 1:
+            x = QuantizedDense(1024,
+                               H=1,
+                               nb=nbits,
+                               fb=fbits,
+                               rounding_method=rounding_method,
+                               activation='sigmoid')(x)
+            x = QuantizedBatchNormalization(H=1,
+                                            nb=BN_nbits,
+                                            fb=BN_fbits,
+                                            rounding_method=rounding_method)(x)
+            x = Activation('relu')(x)
+            x = Dropout(0.5)(x)
+        x = QuantizedDense(classes,
+                           H=1,
+                           nb=nbits,
+                           fb=fbits,
+                           rounding_method=rounding_method,
+                           activation='sigmoid')(x)
+        return Model(inputs=input_shape, outputs=x, *args, **kwargs)
+    else:
+        return Model(inputs=input_shape, outputs=outputs, *args, **kwargs)
+    
 
 def convert_original_weight_layer_name(original_weight_name,quantized_weight_name=None):
     

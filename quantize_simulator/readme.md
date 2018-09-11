@@ -6,6 +6,7 @@ Use the digital circuit algorithm simulation method to simulate qunatized DNN by
 ### quantized layer
 -   Conv2D
 -   Dense
+-   BatchNormalization
 
 ### dataset
 -   Mnist
@@ -20,7 +21,6 @@ Use the digital circuit algorithm simulation method to simulate qunatized DNN by
 - stochastic rounding
 
 ## future work
-- support batch normalization layer
 - support depthwise Conv2D layer
 - support pointwise Conv2D layer
 

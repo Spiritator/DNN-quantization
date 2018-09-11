@@ -14,11 +14,11 @@ import numpy as np
 from keras.layers import Input
 import keras.backend as K
 import time
-import pandas as pd
 
 
 from models.model_library import quantized_droneNet, convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
+from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
 
 # dimensions of our images.
@@ -43,7 +43,7 @@ weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
-x_train, x_test, y_train, y_test, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = dataset_dir)
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = dataset_dir)
 
 t = time.time()
 
@@ -58,8 +58,6 @@ print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
 
-print(datagen.class_indices)
-pd.crosstab(datagen.classes,prediction,
-            rownames=['label'],colnames=['predict'])
+show_confusion_matrix(datagen.classes,prediction,class_indices,'Confusion Matrix',normalize=False)
 
 

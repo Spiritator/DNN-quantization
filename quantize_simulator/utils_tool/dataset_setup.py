@@ -161,7 +161,7 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, dat
         x_test=None
         y_train=None
         y_test=None
-        class_indices=datagen.class_indices
+        class_indices=list(datagen.class_indices.keys())
         
     else:
         print("wrong dataset given.\nChoose between \'mnist\' or \'cifar10\' or \'ImageDataGenerator\'\n")

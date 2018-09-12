@@ -26,8 +26,8 @@ img_width, img_height = 250, 140
 class_number=4
 
 
-train_data_dir = 'navigation_dataset/train'
-validation_data_dir = 'navigation_dataset/validation'
+train_data_dir = '../navigation_dataset/train'
+validation_data_dir = '../navigation_dataset/validation'
 nb_train_samples = 4200
 nb_validation_samples = 1450
 
@@ -40,8 +40,8 @@ batch_size = 50
 def top2_acc(y_true,y_pred):
     return metrics.top_k_categorical_accuracy(y_true,y_pred,k=2)
 
-model=load_model('navigation_droneNet_v1_250x140_model.h5',custom_objects={'top2_acc':top2_acc})
-model.load_weights('navigation_droneNet_v1_250x140_quantized_8B3I4F.h5')
+model=load_model('../navigation_droneNet_v1_250x140_model.h5',custom_objects={'top2_acc':top2_acc})
+model.load_weights('../navigation_droneNet_v1_250x140_weight.h5')
 
 model.summary()
 

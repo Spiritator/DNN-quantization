@@ -18,20 +18,32 @@ def round_through(x,rounding_method):
     '''Element-wise rounding to the closest integer with full gradient propagation.
     A trick from [Sergey Ioffe](http://stackoverflow.com/a/36480182)
     '''
-    
     if rounding_method == 'nearest':
-        rounded = K.round(x)
+        rounded = tf.round(x)
     elif rounding_method == 'zero':
-        rounded = np.trunc(x)
+        rounded = tf.trunc(x)
     elif rounding_method == 'down':
-        rounded = np.floor(x)
+        rounded = tf.floor(x)
     elif rounding_method == 'stochastic':
-        if np.average(x-np.floor(x)) > 0.5:
-            rounded = np.ceil(x)
+        if tf.average(x-tf.floor(x)).eval() > 0.5:
+            rounded = tf.ceil(x)
         else:
-            rounded = np.floor(x)
+            rounded = tf.floor(x)
     else:
         print('Wrong Rounding Type\nChoose between \'nearest\' , \'zero\' , \'down\'')
+        
+    '''older version of non parallel computing version'''            
+#    if rounding_method == 'nearest':
+#        rounded = K.round(x)
+#    elif rounding_method == 'zero':
+#        rounded = np.trunc(x)
+#    elif rounding_method == 'down':
+#        rounded = np.floor(x)
+#    elif rounding_method == 'stochastic':
+#        if np.average(x-np.floor(x)) > 0.5:
+#            rounded = np.ceil(x)
+#        else:
+#            rounded = np.floor(x)
     rounded_through = x + K.stop_gradient(rounded - x)
     return rounded_through
 
@@ -73,18 +85,31 @@ def quantize(W, nb = 16, fb = 8, rounding_method = 'nearest', clip_through=False
     - [QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
 
     '''
-
+    
+    #sess = tf.InteractiveSession()
     non_sign_bits = nb-fb-1
-    m = pow(2,fb)
-    Wq = W*m
-    #W = tf.Print(W,[W],summarize=20)
+    m = K.pow(2.,fb)
+    #W = tf.constant(W)
+    Wq = tf.multiply(W,m)
     if clip_through:
-        Wq = clip_through(round_through(Wq,rounding_method)/m,-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
-        
+        Wq = clip_through(tf.divide(round_through(Wq,rounding_method),m),-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))    
     else:
-        Wq = K.clip(round_through(Wq,rounding_method)/m,-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
-    #Wq = tf.Print(Wq,[Wq],summarize=20)
+        Wq = K.clip(tf.divide(round_through(Wq,rounding_method),m),-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
+        
     return Wq
+    
+'''Older version of non parallel computing code'''
+#    non_sign_bits = nb-fb-1
+#    m = pow(2,fb)
+#    Wq = W*m
+#    #W = tf.Print(W,[W],summarize=20)
+#    if clip_through:
+#        Wq = clip_through(round_through(Wq,rounding_method)/m,-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
+#        
+#    else:
+#        Wq = K.clip(round_through(Wq,rounding_method)/m,-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
+#    #Wq = tf.Print(Wq,[Wq],summarize=20)
+#    return Wq
 
 
 def quantized_relu(W, nb=16):

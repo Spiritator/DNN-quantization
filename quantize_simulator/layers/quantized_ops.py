@@ -98,18 +98,56 @@ def quantize(W, nb = 16, fb = 8, rounding_method = 'nearest', clip_through=False
         
     return Wq
     
-'''Older version of non parallel computing code'''
-#    non_sign_bits = nb-fb-1
-#    m = pow(2,fb)
-#    Wq = W*m
-#    #W = tf.Print(W,[W],summarize=20)
-#    if clip_through:
-#        Wq = clip_through(round_through(Wq,rounding_method)/m,-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
-#        
-#    else:
-#        Wq = K.clip(round_through(Wq,rounding_method)/m,-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
-#    #Wq = tf.Print(Wq,[Wq],summarize=20)
-#    return Wq
+    '''Older version of non parallel computing code'''
+    #    non_sign_bits = nb-fb-1
+    #    m = pow(2,fb)
+    #    Wq = W*m
+    #    #W = tf.Print(W,[W],summarize=20)
+    #    if clip_through:
+    #        Wq = clip_through(round_through(Wq,rounding_method)/m,-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
+    #        
+    #    else:
+    #        Wq = K.clip(round_through(Wq,rounding_method)/m,-np.power(2,non_sign_bits), np.power(2,non_sign_bits)-np.power(0.5,fb))
+    #    #Wq = tf.Print(Wq,[Wq],summarize=20)
+    #    return Wq
+    
+def quantize_1half(W, nb = 16, fb = 8, rounding_method = 'nearest', clip_through=False):
+
+    '''The weights' binarization function, 
+
+    # Reference:
+    - [QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
+
+    '''
+    
+    #sess = tf.InteractiveSession()
+    non_sign_bits = nb-fb-1
+    m = pow(2.,fb)
+    #W = tf.constant(W)
+    Wq = tf.multiply(W.astype(float),m)
+    if clip_through:
+        Wq = clip_through(round_through(Wq,rounding_method),-np.power(2,non_sign_bits)*m, (np.power(2,non_sign_bits)-np.power(0.5,fb))*m)    
+    else:
+        Wq = K.clip(round_through(Wq,rounding_method),-np.power(2,non_sign_bits)*m, (np.power(2,non_sign_bits)-np.power(0.5,fb))*m)
+    sess = tf.InteractiveSession()
+    Wq = Wq.eval()
+    sess.close()
+    return Wq
+
+def quantize_2half(W, nb = 16, fb = 8):
+
+    '''The weights' binarization function, 
+
+    # Reference:
+    - [QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
+
+    '''
+    
+    #sess = tf.InteractiveSession()
+    m = pow(2.,fb)
+    #W = tf.constant(W)
+    Wq = W/m       
+    return Wq
 
 
 def quantized_relu(W, nb=16):

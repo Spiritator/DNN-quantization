@@ -42,6 +42,9 @@ t = time.time()-t
 
 prediction = model.predict(x_test, verbose=0)
 prediction = np.argmax(prediction, axis=1)
+
+#%%
+# view test result
         
 print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])

@@ -69,12 +69,12 @@ def plot_confusion_matrix(cm, classes,
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
 
-def show_confusion_matrix(y_test,y_pred,class_names,title,normalize=False):
+def show_confusion_matrix(y_test,y_pred,class_names,title,figsize=None,normalize=False):
     # Compute confusion matrix
     cnf_matrix = confusion_matrix(y_test, y_pred)
     np.set_printoptions(precision=2)
     
-    plt.figure()
+    plt.figure(figsize=figsize)
     plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=normalize,title=title)
     
     plt.show()

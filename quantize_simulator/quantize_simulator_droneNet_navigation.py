@@ -53,6 +53,9 @@ t = time.time()-t
 
 prediction = model.predict_generator(datagen)
 prediction = np.argmax(prediction, axis=1)
+
+#%%
+# view test result
         
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])

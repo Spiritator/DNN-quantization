@@ -18,6 +18,7 @@ from keras.layers.normalization import BatchNormalization
 from keras import backend as K
 from keras import metrics
 import functools
+import time
 import numpy as np
 
 # dimensions of our images.
@@ -56,11 +57,16 @@ evaluation_generator = evaluation_datagen.flow_from_directory(
     class_mode='categorical',
     shuffle=False)
 
+t = time.time()
+
 test_result = model.evaluate_generator(evaluation_generator, steps=nb_validation_samples//batch_size)
+
+t = time.time()-t
 
 prediction = model.predict_generator(evaluation_generator,nb_validation_samples//batch_size)
 prediction = np.argmax(prediction, axis=1)
-        
+
+print('\nruntime: %f s'%t)        
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])

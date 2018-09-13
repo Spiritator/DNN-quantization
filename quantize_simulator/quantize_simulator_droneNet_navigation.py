@@ -37,7 +37,7 @@ else:
 #%%
 # model setup
 
-model=quantized_droneNet(2, nbits=8, fbits=4, BN_nbits=10, BN_fbits=5, rounding_method='nearest', inputs=input_shape,  include_top=True, classes=class_number)
+model=quantized_droneNet(2, nbits=8, fbits=4, BN_nbits=8, BN_fbits=4, rounding_method='nearest', inputs=input_shape,  include_top=True, classes=class_number)
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
@@ -56,7 +56,8 @@ prediction = np.argmax(prediction, axis=1)
 
 #%%
 # view test result
-        
+
+print('\nruntime: %f s'%t)        
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])

@@ -129,9 +129,6 @@ def quantize_1half(W, nb = 16, fb = 8, rounding_method = 'nearest', clip_through
         Wq = clip_through(round_through(Wq,rounding_method),-np.power(2,non_sign_bits)*m, (np.power(2,non_sign_bits)-np.power(0.5,fb))*m)    
     else:
         Wq = K.clip(round_through(Wq,rounding_method),-np.power(2,non_sign_bits)*m, (np.power(2,non_sign_bits)-np.power(0.5,fb))*m)
-    sess = tf.InteractiveSession()
-    Wq = Wq.eval()
-    sess.close()
     return Wq
 
 def quantize_2half(W, nb = 16, fb = 8):
@@ -146,7 +143,7 @@ def quantize_2half(W, nb = 16, fb = 8):
     #sess = tf.InteractiveSession()
     m = pow(2.,fb)
     #W = tf.constant(W)
-    Wq = W/m       
+    Wq = tf.div(W,m)       
     return Wq
 
 

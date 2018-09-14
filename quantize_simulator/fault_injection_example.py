@@ -10,7 +10,7 @@ fault injection test
 import numpy as np
 from testing.fault_injection import generate_single_stuck_at_fault
 
-original_weihgt=np.arange(1,10)
+original_weihgt=np.arange(1,100)
 
-fault_weight=generate_single_stuck_at_fault(original_weihgt,8,4,4,'0')
+fault_weight=generate_single_stuck_at_fault(original_weihgt,10,3,3,'1')
 

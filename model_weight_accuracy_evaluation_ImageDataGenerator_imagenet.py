@@ -8,8 +8,6 @@ evaluate accuracy of model weight on imagenet validation set
 """
 
 
-#setup
-
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential, Model, load_model
 from keras import backend as K
@@ -25,7 +23,7 @@ img_width, img_height = 224, 224
 
 class_number=1000
 
-validation_data_dir = '../../../imagenet/imagenet_val_imagedatagenerator'
+validation_data_dir = '../../dataset/imagenet_val_imagedatagenerator'
 nb_validation_samples = 50000
 
 epochs = 20
@@ -36,6 +34,8 @@ batch_size = 50
 
 def top5_acc(y_true,y_pred):
     return metrics.top_k_categorical_accuracy(y_true,y_pred,k=5)
+
+print('Building model...')
 
 model = MobileNet(weights='../mobilenet_1_0_224_tf.h5')
 model.compile(loss='categorical_crossentropy',
@@ -59,6 +59,8 @@ model.summary()
 #%%
 # evaluate model
 
+print('preparing dataset...')
+
 evaluation_datagen = ImageDataGenerator(rescale=1. / 255)
 evaluation_generator = evaluation_datagen.flow_from_directory(
     validation_data_dir,
@@ -66,6 +68,8 @@ evaluation_generator = evaluation_datagen.flow_from_directory(
     batch_size=batch_size,
     class_mode='categorical',
     shuffle=False)
+
+print('dataset ready')
 
 t = time.time()
 
@@ -85,4 +89,3 @@ print(evaluation_generator.class_indices)
 import pandas as pd
 pd.crosstab(evaluation_generator.classes,prediction,
             rownames=['label'],colnames=['predict'])
-

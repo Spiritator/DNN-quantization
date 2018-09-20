@@ -7,6 +7,7 @@ Created on Thu Aug 16 10:31:37 2018
 evaluate accuracy of model weight on imagenet validation set
 """
 
+#setup
 
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential, Model, load_model
@@ -72,18 +73,21 @@ evaluation_generator = evaluation_datagen.flow_from_directory(
 print('dataset ready')
 
 t = time.time()
+print('evaluating...')
 
 test_result = model.evaluate_generator(evaluation_generator, steps=nb_validation_samples//batch_size)
 
 t = time.time()-t
-
-prediction = model.predict_generator(evaluation_generator,nb_validation_samples//batch_size)
-prediction = np.argmax(prediction, axis=1)
-
+print('evaluate done')
 print('\nruntime: %f s'%t)        
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
+
+#%%
+
+prediction = model.predict_generator(evaluation_generator,nb_validation_samples//batch_size)
+prediction = np.argmax(prediction, axis=1)
 
 print(evaluation_generator.class_indices)
 import pandas as pd

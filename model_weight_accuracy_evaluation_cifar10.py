@@ -19,10 +19,9 @@ from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras import metrics
-import functools
+from quantize_simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import numpy as np
 import time
-import pandas as pd
 
 batch_size = 32
 num_classes = 10
@@ -117,6 +116,5 @@ print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
 
-pd.crosstab(np.argmax(y_test, axis=1),prediction,
-            rownames=['label'],colnames=['predict'])
+show_confusion_matrix(np.argmax(y_test, axis=1),prediction,['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck'],'Confusion Matrix',figsize=(8,6),normalize=False)
 

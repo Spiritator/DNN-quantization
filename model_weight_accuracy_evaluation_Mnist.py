@@ -19,10 +19,9 @@ from keras.layers.normalization import BatchNormalization
 from keras import backend as K
 from keras import metrics
 from keras.datasets import mnist
-import functools
+from quantize_simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import numpy as np
 import time
-import pandas as pd
 
 batch_size = 128
 num_classes = 10
@@ -79,6 +78,5 @@ print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])
 print('Test accuracy:', test_result[1])
 
-pd.crosstab(np.argmax(y_test, axis=1),prediction,
-            rownames=['label'],colnames=['predict'])
+show_confusion_matrix(np.argmax(y_test, axis=1),prediction,np.arange(0,10),'Confusion Matrix',normalize=False)
 

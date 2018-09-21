@@ -17,7 +17,7 @@ from keras.layers import Activation, Dropout, Flatten, Dense, Input
 from keras.layers.normalization import BatchNormalization
 from keras import backend as K
 from keras import metrics
-import functools
+from quantize_simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import time
 import numpy as np
 
@@ -71,8 +71,5 @@ print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
 
-print(evaluation_generator.class_indices)
-import pandas as pd
-pd.crosstab(evaluation_generator.classes,prediction,
-            rownames=['label'],colnames=['predict'])
+show_confusion_matrix(evaluation_generator.classes,prediction,evaluation_generator.class_indices.keys(),'Confusion Matrix',normalize=False)
 

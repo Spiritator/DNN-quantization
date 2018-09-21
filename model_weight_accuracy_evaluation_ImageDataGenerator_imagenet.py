@@ -7,6 +7,7 @@ Created on Thu Aug 16 10:31:37 2018
 evaluate accuracy of model weight on imagenet validation set
 """
 
+
 #setup
 
 from keras.preprocessing.image import ImageDataGenerator
@@ -16,6 +17,7 @@ from keras import metrics
 from keras.applications.mobilenet import MobileNet
 from keras.preprocessing import image
 from keras.applications.mobilenet import preprocess_input, decode_predictions
+from quantize_simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import time
 import numpy as np
 
@@ -82,14 +84,13 @@ print('evaluate done')
 print('\nruntime: %f s'%t)        
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
-print('Test top2 accuracy:', test_result[2])
+print('Test top5 accuracy:', test_result[2])
 
 #%%
 
 prediction = model.predict_generator(evaluation_generator,nb_validation_samples//batch_size)
 prediction = np.argmax(prediction, axis=1)
 
-print(evaluation_generator.class_indices)
-import pandas as pd
-pd.crosstab(evaluation_generator.classes,prediction,
-            rownames=['label'],colnames=['predict'])
+show_confusion_matrix(evaluation_generator.classes,prediction,evaluation_generator.class_indices.keys(),'Confusion Matrix',normalize=False)
+
+

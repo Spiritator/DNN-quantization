@@ -91,6 +91,6 @@ print('Test top5 accuracy:', test_result[2])
 prediction = model.predict_generator(evaluation_generator,nb_validation_samples//batch_size)
 prediction = np.argmax(prediction, axis=1)
 
-#show_confusion_matrix(evaluation_generator.classes,prediction,evaluation_generator.class_indices.keys(),'Confusion Matrix',normalize=False)
+show_confusion_matrix(evaluation_generator.classes,prediction,evaluation_generator.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)
 
 

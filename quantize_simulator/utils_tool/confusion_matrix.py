@@ -37,7 +37,8 @@ from sklearn.metrics import confusion_matrix
 def plot_confusion_matrix(cm, classes,
                           normalize=False,
                           title='Confusion matrix',
-                          cmap=plt.cm.Blues):
+                          cmap=plt.cm.Blues,
+                          big_matrix=False):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -54,27 +55,30 @@ def plot_confusion_matrix(cm, classes,
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
+    
+    if not big_matrix:
+        tick_marks = np.arange(len(classes))
+        plt.xticks(tick_marks, classes, rotation=45)
+        plt.yticks(tick_marks, classes)
 
     fmt = '.2f' if normalize else 'd'
     thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
+    if not big_matrix:
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            plt.text(j, i, format(cm[i, j], fmt),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
 
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
 
-def show_confusion_matrix(y_test,y_pred,class_names,title,figsize=None,normalize=False):
+def show_confusion_matrix(y_test,y_pred,class_names,title,figsize=None,normalize=False,big_matrix=False):
     # Compute confusion matrix
     cnf_matrix = confusion_matrix(y_test, y_pred)
     np.set_printoptions(precision=2)
     
     plt.figure(figsize=figsize)
-    plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=normalize,title=title)
+    plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=normalize,title=title,big_matrix=big_matrix)
     
     plt.show()

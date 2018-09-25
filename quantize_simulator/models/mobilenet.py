@@ -63,7 +63,7 @@ from __future__ import division
 import os
 import warnings
 
-from . import get_keras_submodule
+from keras_applications import  get_keras_submodule
 
 backend = get_keras_submodule('backend')
 engine = get_keras_submodule('engine')
@@ -71,10 +71,7 @@ layers = get_keras_submodule('layers')
 models = get_keras_submodule('models')
 keras_utils = get_keras_submodule('utils')
 
-from . import imagenet_utils
-from .imagenet_utils import decode_predictions
-from .imagenet_utils import _obtain_input_shape
-
+from keras_applications.imagenet_utils import decode_predictions, _obtain_input_shape
 
 from layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
 
@@ -300,7 +297,8 @@ def QuantizedMobileNetV1(input_shape=None,
         x = layers.GlobalAveragePooling2D()(x)
         x = layers.Reshape(shape, name='reshape_1')(x)
         x = layers.Dropout(dropout, name='dropout')(x)
-        x = QuantizedConv2D(classes, (1, 1),
+        x = QuantizedConv2D(classes, 
+                            kernel_size=(1, 1),
                             H=1,
                             nb=nbits,
                             fb=fbits, 
@@ -413,7 +411,8 @@ def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
     channel_axis = 1 if backend.image_data_format() == 'channels_first' else -1
     filters = int(filters * alpha)
     x = layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
-    x = QuantizedConv2D(filters, kernel,
+    x = QuantizedConv2D(filters, 
+                        kernel_size=kernel,
                         H=1,
                         nb=nbits,
                         fb=fbits, 
@@ -489,7 +488,7 @@ def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
     pointwise_conv_filters = int(pointwise_conv_filters * alpha)
 
     x = layers.ZeroPadding2D((1, 1), name='conv_pad_%d' % block_id)(inputs)
-    x = QuantizedDepthwiseConv2D((3, 3),
+    x = QuantizedDepthwiseConv2D(kernel_size=(3, 3),
                                  H=1,
                                  nb=nbits,
                                  fb=fbits, 
@@ -507,7 +506,8 @@ def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
                                     name='conv_dw_%d_bn' % block_id)(x)
     x = layers.Activation(relu6, name='conv_dw_%d_relu' % block_id)(x)
 
-    x = QuantizedConv2D(pointwise_conv_filters, (1, 1),
+    x = QuantizedConv2D(pointwise_conv_filters, 
+                        kernel_size=(1, 1),
                         H=1,
                         nb=nbits,
                         fb=fbits, 

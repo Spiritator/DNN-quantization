@@ -398,7 +398,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                  fb=8,
                  rounding_method='nearest',
                  **kwargs):
-        super(QuantizedDepthwiseConv2D, self).__init__(filters=None, **kwargs)
+        super(QuantizedDepthwiseConv2D, self).__init__(kernel_size, **kwargs)
         self.H = H
         self.nb = nb
         self.fb = fb

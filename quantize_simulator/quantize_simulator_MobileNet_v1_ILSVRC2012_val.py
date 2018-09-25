@@ -7,6 +7,7 @@ Created on Tue Sep 25 14:32:50 2018
 evaluate quantized testing result with custom Keras quantize layer 
 """
 
+import keras
 from models.mobilenet import QuantizedMobileNetV1
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
@@ -20,18 +21,15 @@ img_width, img_height = 224, 224
 
 class_number=1000
 
-validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator'
+validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_2'
 nb_validation_samples = 50000
-
-epochs = 20
-batch_size = 50
 
 #%%
 # model setup
 
 print('Building model...')
 
-model = QuantizedMobileNetV1(weights='../mobilenet_1_0_224_tf.h5', 
+model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5', 
                              nbits=16,
                              fbits=8, 
                              BN_nbits=16, 
@@ -56,7 +54,7 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-test_result = model.evaluate_generator(datagen, steps=nb_validation_samples//batch_size)
+test_result = model.evaluate_generator(datagen)
 
 t = time.time()-t
 print('evaluate done')
@@ -68,7 +66,7 @@ print('Test top5 accuracy:', test_result[2])
 #%%
 # draw confusion matrix
 
-prediction = model.predict_generator(datagen,nb_validation_samples//batch_size)
+prediction = model.predict_generator(datagen)
 prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)

@@ -29,9 +29,6 @@ class_number=1000
 validation_data_dir = '../../dataset/imagenet_val_imagedatagenerator'
 nb_validation_samples = 50000
 
-epochs = 20
-batch_size = 50
-
 #%%
 # model setup
 
@@ -68,7 +65,6 @@ evaluation_datagen = ImageDataGenerator(rescale=1. / 255)
 evaluation_generator = evaluation_datagen.flow_from_directory(
     validation_data_dir,
     target_size=(img_width, img_height),
-    batch_size=batch_size,
     class_mode='categorical',
     shuffle=False)
 
@@ -77,7 +73,7 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-test_result = model.evaluate_generator(evaluation_generator, steps=nb_validation_samples//batch_size)
+test_result = model.evaluate_generator(evaluation_generator)
 
 t = time.time()-t
 print('evaluate done')
@@ -88,7 +84,7 @@ print('Test top5 accuracy:', test_result[2])
 
 #%%
 
-prediction = model.predict_generator(evaluation_generator,nb_validation_samples//batch_size)
+prediction = model.predict_generator(evaluation_generator)
 prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(evaluation_generator.classes,prediction,evaluation_generator.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)

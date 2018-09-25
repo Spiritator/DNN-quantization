@@ -15,7 +15,8 @@ import keras.backend as K
 import time
 
 
-from models.model_library import quantized_lenet5, convert_original_weight_layer_name
+from models.model_library import quantized_lenet5
+from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc

@@ -1,0 +1,75 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Sep 25 14:32:50 2018
+
+@author: Yung-Yu Tsai
+
+evaluate quantized testing result with custom Keras quantize layer 
+"""
+
+from models.mobilenet import QuantizedMobileNetV1
+from utils_tool.dataset_setup import dataset_setup
+from utils_tool.confusion_matrix import show_confusion_matrix
+from metrics.topk_metrics import top5_acc
+import time
+import numpy as np
+
+
+# dimensions of our images.
+img_width, img_height = 224, 224
+
+class_number=1000
+
+validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator'
+nb_validation_samples = 50000
+
+epochs = 20
+batch_size = 50
+
+#%%
+# model setup
+
+print('Building model...')
+
+model = QuantizedMobileNetV1(weights='../mobilenet_1_0_224_tf.h5', 
+                             nbits=16,
+                             fbits=8, 
+                             BN_nbits=16, 
+                             BN_fbits=8,
+                             rounding_method='nearest')
+model.compile(loss='categorical_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy', top5_acc])
+model.summary()
+
+#%%
+#dataset setup
+
+print('preparing dataset...')
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = validation_data_dir)
+print('dataset ready')
+
+
+#%%
+# test
+
+t = time.time()
+print('evaluating...')
+
+test_result = model.evaluate_generator(datagen, steps=nb_validation_samples//batch_size)
+
+t = time.time()-t
+print('evaluate done')
+print('\nruntime: %f s'%t)        
+print('\nTest loss:', test_result[0])
+print('Test top1 accuracy:', test_result[1])
+print('Test top5 accuracy:', test_result[2])
+
+#%%
+# draw confusion matrix
+
+prediction = model.predict_generator(datagen,nb_validation_samples//batch_size)
+prediction = np.argmax(prediction, axis=1)
+
+show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)
+

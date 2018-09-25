@@ -8,9 +8,11 @@ fault injection test
 """
 
 import numpy as np
-from testing.fault_injection import generate_single_stuck_at_fault
+from testing.fault_injection import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
 
-original_weihgt=np.arange(1,100)
+original_weight=np.arange(1,100)
 
-fault_weight=generate_single_stuck_at_fault(original_weihgt,10,3,3,'1')
+single_fault_weight=generate_single_stuck_at_fault(original_weight,10,3,3,'1')
+
+multiple_fault_weight=generate_multiple_stuck_at_fault(original_weight,10,3,[3,2],['1','1'])
 

@@ -13,7 +13,7 @@ Use the digital circuit algorithm simulation method to simulate qunatized DNN by
 -   Mnist
 -   CiFar10
 - ImageDataGenerator
-- ISLVRC2012 validation set in ImageDataGenerator format available [https://drive.google.com/open?id=1FW1N4AfYS8dKdqCYCo29dJl_W6fb2r2b]
+- ISLVRC2012 validation set in ImageDataGenerator format available [Download Link](https://drive.google.com/open?id=1FW1N4AfYS8dKdqCYCo29dJl_W6fb2r2b)
 
 ### quantization
 - you can specify weight word length and factorial bits

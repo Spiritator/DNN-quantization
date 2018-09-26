@@ -43,7 +43,8 @@ class QuantizedDense(Dense):
     References: 
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
-    def __init__(self, units, H=1., nb=16, fb=8, rounding_method='nearest', kernel_lr_multiplier='Glorot', bias_lr_multiplier=None, **kwargs):
+    def __init__(self, units, H=1., nb=16, fb=8, rounding_method='nearest', kernel_lr_multiplier='Glorot', bias_lr_multiplier=None,
+                 weight_sa_fault_injection=None, ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, **kwargs):
         super(QuantizedDense, self).__init__(units, **kwargs)
         self.H = H
         self.nb = nb
@@ -51,6 +52,9 @@ class QuantizedDense(Dense):
         self.rounding_method = rounding_method
         self.kernel_lr_multiplier = kernel_lr_multiplier
         self.bias_lr_multiplier = bias_lr_multiplier
+        self.weight_sa_fault_injection=weight_sa_fault_injection
+        self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
+        self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
         super(QuantizedDense, self).__init__(units, **kwargs)
     
     def build(self, input_shape):
@@ -89,6 +93,8 @@ class QuantizedDense(Dense):
 
     def call(self, inputs):
         quantized_kernel = quantize(self.kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+#        if self.weight_sa_fault_injection is not None:
+#            quantized_kernel = 
         inputs = quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
         output = K.dot(inputs, quantized_kernel)
         output = quantize(output, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)

@@ -124,7 +124,7 @@ def quantize_1half(W, nb = 16, fb = 8, rounding_method = 'nearest', clip_through
     non_sign_bits = nb-fb-1
     m = pow(2.,fb)
     #W = tf.constant(W)
-    Wq = tf.multiply(W.astype(float),m)
+    Wq = tf.multiply(W,m)
     if clip_through:
         Wq = clip_through(round_through(Wq,rounding_method),-np.power(2,non_sign_bits)*m, (np.power(2,non_sign_bits)-np.power(0.5,fb))*m)    
     else:

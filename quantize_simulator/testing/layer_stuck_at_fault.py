@@ -10,42 +10,23 @@ inject stuck at fault during model build phase
 
 from testing.fault_injection import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
 
-def check_fault_dict(self,data,fault_dict):
+def check_fault_dict(data, fault_dict):
     for key in fault_dict.keys():
-        if len(fault_dict[key])!=len(data.shpae):
-            raise ValueError('fault location %s has different length with data index %s'%(fault_dict[key],data.shape))
+        if len(key)!=len(data.shape):
+            raise ValueError('fault location %s has different length with data shape %s'%(key,data.shape))
             
-        if any([fault_dict[key][i]>=data.shape[i] for i in range(len(fault_dict[key]))]):
-            raise ValueError('fault location %s is out of data index %s'%(fault_dict[key],data.shape))
+        if any([key[i]>=data.shape[i] for i in range(len(key))]):
+            raise ValueError('fault location %s is out of data index with shape %s'%(key,data.shape))
+            
+#        if len(fault_dict[key]['fault_type'])!=len(fault_dict[key]['fault_bit']):
+#            raise ValueError('fault location %s has different number of fault types and fault bits'%key)
 
-class inject_sa_fault_QuantizedDense():
-    def __init__(self):
-        pass        
-        
-    def weight(self, data, fault_dict):
-        for key in fault_dict.keys():
-            if len(fault_dict[key])>1:
-                data=generate_multiple_stuck_at_fault()
-            else:
-                data=generate_single_stuck_at_fault()
-        
-        return data
-    
-    def ifmap(self, data, fault_dict):
-        for key in fault_dict.keys():
-            if len(fault_dict[key])>1:
-                data=generate_multiple_stuck_at_fault()
-            else:
-                data=generate_single_stuck_at_fault()
-        
-        return data
-    
-    def ofmap(self, data, fault_dict):
-        for key in fault_dict.keys():
-            if len(fault_dict[key])>1:
-                data=generate_multiple_stuck_at_fault()
-            else:
-                data=generate_single_stuck_at_fault()
-        
-        return data
+def inject_layer_sa_fault(data, fault_dict, word_width, factorial_bit, rounding='nearest'):
+    check_fault_dict(data,fault_dict)
+    for key in fault_dict.keys():
+        if not isinstance(fault_dict[key]['fault_bit'],list):
+            data[key]=generate_single_stuck_at_fault(data[key],word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'],rounding=rounding)
+        else:
+            data[key]=generate_multiple_stuck_at_fault(data[key],word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'],rounding=rounding)    
             
+    return data

@@ -17,7 +17,7 @@ from keras import constraints
 from keras import initializers
 
 from layers.quantized_ops import quantize, clip_through
-from testing.layer_stuck_at_fault import inject_layer_sa_fault
+from testing.layer_stuck_at_fault import inject_layer_sa_fault_tensor
 
 
 class Clip(constraints.Constraint):
@@ -96,20 +96,20 @@ class QuantizedDense(Dense):
         quantized_kernel = quantize(self.kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
         
         if self.weight_sa_fault_injection[0] is not None:
-            quantized_kernel = inject_layer_sa_fault(quantized_kernel, self.weight_sa_fault_injection, self.nb, self.fb, rounding_method=self.rounding_method)
+            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], self.nb, self.fb, rounding_method=self.rounding_method)
             
         inputs = quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
         
         if self.ifmap_sa_fault_injection is not None:
-            inputs = inject_layer_sa_fault(inputs, self.ifmap_sa_fault_injection, self.nb, self.fb, rounding_method=self.rounding_method)
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, self.nb, self.fb, rounding_method=self.rounding_method)
         
         output = K.dot(inputs, quantized_kernel)
         output = quantize(output, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
         if self.use_bias:
             quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
             
-            if self.ifmap_sa_fault_injection is not None:
-                quantized_bias = inject_layer_sa_fault(self.bias, self.weight_sa_fault_injection[1], self.nb, self.fb, rounding_method=self.rounding_method)
+            if self.ifmap_sa_fault_injection[1] is not None:
+                quantized_bias = inject_layer_sa_fault_tensor(self.bias, self.weight_sa_fault_injection[1], self.nb, self.fb, rounding_method=self.rounding_method)
 
             output = K.bias_add(output, quantized_bias)
         if self.activation is not None:
@@ -117,7 +117,7 @@ class QuantizedDense(Dense):
             output = self.activation(output)
             
         if self.ofmap_sa_fault_injection is not None:
-            output = inject_layer_sa_fault(output, self.ofmap_sa_fault_injection, self.nb, self.fb, rounding_method=self.rounding_method)
+            output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, self.nb, self.fb, rounding_method=self.rounding_method)
 
 
 
@@ -142,7 +142,8 @@ class QuantizedConv2D(Conv2D):
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
     def __init__(self, filters, kernel_regularizer=None,activity_regularizer=None, kernel_lr_multiplier='Glorot',
-                 bias_lr_multiplier=None, H=1., nb=16, fb=8, rounding_method='nearest',  **kwargs):
+                 bias_lr_multiplier=None, H=1., nb=16, fb=8, rounding_method='nearest',
+                 weight_sa_fault_injection=[None, None], ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None,**kwargs):
         super(QuantizedConv2D, self).__init__(filters, **kwargs)
         self.H = H
         self.nb = nb
@@ -152,6 +153,9 @@ class QuantizedConv2D(Conv2D):
         self.bias_lr_multiplier = bias_lr_multiplier
         self.activity_regularizer =activity_regularizer
         self.kernel_regularizer = kernel_regularizer
+        self.weight_sa_fault_injection=weight_sa_fault_injection
+        self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
+        self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
         
     def build(self, input_shape):
         if self.data_format == 'channels_first':
@@ -205,7 +209,16 @@ class QuantizedConv2D(Conv2D):
 
     def call(self, inputs):
         quantized_kernel = quantize(self.kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        
+        if self.weight_sa_fault_injection[0] is not None:
+            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], self.nb, self.fb, rounding_method=self.rounding_method)
+
+        
         inputs = quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        
+        if self.ifmap_sa_fault_injection is not None:
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, self.nb, self.fb, rounding_method=self.rounding_method)
+
 
         inverse_kernel_lr_multiplier = 1./self.kernel_lr_multiplier
         inputs_qnn_gradient = (inputs - (1. - 1./inverse_kernel_lr_multiplier) * K.stop_gradient(inputs))\
@@ -229,6 +242,11 @@ class QuantizedConv2D(Conv2D):
 
         if self.use_bias:
             quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            
+            if self.ifmap_sa_fault_injection[1] is not None:
+                quantized_bias = inject_layer_sa_fault_tensor(self.bias, self.weight_sa_fault_injection[1], self.nb, self.fb, rounding_method=self.rounding_method)
+
+            
             outputs = K.bias_add(
                 outputs,
                 quantized_bias,
@@ -237,6 +255,10 @@ class QuantizedConv2D(Conv2D):
         if self.activation is not None:
             outputs = quantize(outputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
             return self.activation(outputs)
+        
+        if self.ofmap_sa_fault_injection is not None:
+            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, self.nb, self.fb, rounding_method=self.rounding_method)
+
 
         return outputs
         

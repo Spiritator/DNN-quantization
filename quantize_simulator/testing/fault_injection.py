@@ -11,7 +11,7 @@ import tensorflow as tf
 import keras.backend as K
 from layers.quantized_ops import quantize_1half,quantize_2half
 
-def generate_single_stuck_at_fault(original_value,word_width,factorial_bits,fault_bit,stuck_at,rounding='nearest'):
+def generate_single_stuck_at_fault(original_value,word_width,factorial_bits,fault_bit,stuck_at,rounding='nearest',tensor_return=True):
     if word_width<=factorial_bits-1:
         raise ValueError('Not enough word width %d for factorial bits %d'%(word_width,factorial_bits))
     
@@ -37,9 +37,12 @@ def generate_single_stuck_at_fault(original_value,word_width,factorial_bits,faul
     fault_value=tf.cast(fault_value,tf.float32)    
     fault_value=quantize_2half(fault_value, nb = word_width, fb = factorial_bits)
     
-    return K.eval(fault_value)
+    if tensor_return:
+        return fault_value
+    else:
+        return K.eval(fault_value)
 
-def generate_multiple_stuck_at_fault(original_value,word_width,factorial_bits,fault_bit,stuck_at,rounding='nearest'):
+def generate_multiple_stuck_at_fault(original_value,word_width,factorial_bits,fault_bit,stuck_at,rounding='nearest',tensor_return=True):
     if word_width<=factorial_bits-1:
         raise ValueError('Not enough word width %d for factorial bits %d'%(word_width,factorial_bits))
     
@@ -70,5 +73,7 @@ def generate_multiple_stuck_at_fault(original_value,word_width,factorial_bits,fa
     fault_value=tf.cast(fault_value,tf.float32)    
     fault_value=quantize_2half(fault_value, nb = word_width, fb = factorial_bits)
     
-    return K.eval(fault_value)
-    
+    if tensor_return:
+        return fault_value
+    else:
+        return K.eval(fault_value)    

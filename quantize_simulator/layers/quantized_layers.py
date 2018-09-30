@@ -243,7 +243,7 @@ class QuantizedConv2D(Conv2D):
         if self.use_bias:
             quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
             
-            if self.ifmap_sa_fault_injection[1] is not None:
+            if self.weight_sa_fault_injection[1] is not None:
                 quantized_bias = inject_layer_sa_fault_tensor(self.bias, self.weight_sa_fault_injection[1], self.nb, self.fb, rounding_method=self.rounding_method)
 
             

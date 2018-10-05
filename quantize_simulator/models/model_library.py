@@ -21,42 +21,43 @@ from layers.quantized_ops import quantized_relu as quantize_op
 def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10):
     
     print('Building model : Quantized Lenet 5')
+    input_shape = Input(shape=input_shape)
+    x = QuantizedConv2D(filters=16,
+                        H=1,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(5,5),
+                        padding='same',
+                        strides=(1, 1),                              
+                        activation='relu')(input_shape)
+    x = MaxPooling2D(pool_size=(2,2))(x)
+    x = QuantizedConv2D(filters=36,
+                        H=1,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(5,5),
+                        padding='same',
+                        strides=(1, 1),
+                        activation='relu')(x)
+    x = MaxPooling2D(pool_size=(2,2))(x)
+    x = Flatten()(x)
+    x = QuantizedDense(128,
+                       H=1,
+                       nb=nbits,
+                       fb=fbits, 
+                       rounding_method=rounding_method,
+                       activation='relu')(x)
+    x = QuantizedDense(num_classes,
+                       H=1,
+                       nb=nbits,
+                       fb=fbits, 
+                       rounding_method=rounding_method,
+                       activation='softmax')(x)
+
+    model=Model(inputs=input_shape, outputs=x)
     
-    model = Sequential()
-    model.add(QuantizedConv2D(filters=16,
-                              H=1,
-                              nb=nbits,
-                              fb=fbits, 
-                              rounding_method=rounding_method,
-                              kernel_size=(5,5),
-                              padding='same',
-                              strides=(1, 1),
-                              input_shape=input_shape,
-                              activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
-    model.add(QuantizedConv2D(filters=36,
-                              H=1,
-                              nb=nbits,
-                              fb=fbits, 
-                              rounding_method=rounding_method,
-                              kernel_size=(5,5),
-                              padding='same',
-                              strides=(1, 1),
-                              activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
-    model.add(Flatten())
-    model.add(QuantizedDense(128,
-                             H=1,
-                             nb=nbits,
-                              fb=fbits, 
-                              rounding_method=rounding_method,
-                             activation='relu'))
-    model.add(QuantizedDense(num_classes,
-                             H=1,
-                             nb=nbits,
-                             fb=fbits, 
-                             rounding_method=rounding_method,
-                             activation='softmax'))
 #    model.summary()
 #    model.compile(loss='categorical_crossentropy',
 #    			  optimizer='adam',metrics=['accuracy'])
@@ -69,63 +70,64 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
     
     print('Building model : Quantized 4C2F CNN')
     
-    model = Sequential()
-    model.add(QuantizedConv2D(filters=32,
-                              H=1,
-                              nb=nbits,
-                              fb=fbits, 
-                              rounding_method=rounding_method,
-                              kernel_size=(3, 3),
-                              padding='same',
-                              strides=(1, 1),
-                              input_shape=input_shape,
-                              activation='relu'))
-    model.add(QuantizedConv2D(filters=32,
-                              H=1,
-                              nb=nbits,
-                              fb=fbits, 
-                              rounding_method=rounding_method,
-                              kernel_size=(3, 3),
-                              strides=(1, 1),
-                              activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
+    input_shape = Input(shape=input_shape)
+    x = QuantizedConv2D(filters=32,
+                        H=1,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        padding='same',
+                        strides=(1, 1),
+                        activation='relu')(input_shape)
+    x = QuantizedConv2D(filters=32,
+                        H=1,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        activation='relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Dropout(0.25)(x)
     
-    model.add(QuantizedConv2D(filters=64,
-                              H=1,
-                              nb=nbits,
-                              fb=fbits, 
-                              rounding_method=rounding_method,
-                              kernel_size=(3, 3),
-                              padding='same',
-                              strides=(1, 1),
-                              activation='relu'))
-    model.add(QuantizedConv2D(filters=64,
-                              H=1,
-                              nb=nbits,
-                              fb=fbits, 
-                              rounding_method=rounding_method,
-                              kernel_size=(3, 3),
-                              strides=(1, 1),
-                              activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
+    x = QuantizedConv2D(filters=64,
+                        H=1,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        padding='same',
+                        strides=(1, 1),
+                        activation='relu')(x)
+    x = QuantizedConv2D(filters=64,
+                        H=1,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        activation='relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Dropout(0.25)(x)
     
-    model.add(Flatten())
-    model.add(QuantizedDense(512,
-                             H=1,
-                             nb=nbits,
-                             fb=fbits, 
-                             rounding_method=rounding_method,
-                             activation='relu'))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
-    model.add(QuantizedDense(num_classes,
-                             H=1,
-                             nb=nbits,
-                             fb=fbits, 
-                             rounding_method=rounding_method,
-                             activation='softmax'))
+    x = Flatten()(x)
+    x = QuantizedDense(512,
+                       H=1,
+                       nb=nbits,
+                       fb=fbits, 
+                       rounding_method=rounding_method,
+                       activation='relu')(x)
+    x = Activation('relu')(x)
+    x = Dropout(0.5)(x)
+    x = QuantizedDense(num_classes,
+                       H=1,
+                       nb=nbits,
+                       fb=fbits, 
+                       rounding_method=rounding_method,
+                       activation='softmax')(x)
+    
+    model=Model(inputs=input_shape, outputs=x)
     
 #    model.compile(loss='categorical_crossentropy',
 #                  optimizer='adam',

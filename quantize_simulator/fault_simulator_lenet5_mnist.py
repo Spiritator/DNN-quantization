@@ -13,6 +13,7 @@ import keras
 import numpy as np
 import keras.backend as K
 import time
+import scipy
 
 
 from models.model_library import quantized_lenet5
@@ -22,14 +23,29 @@ from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
 
 #%%
-# model setup
+# setting parameter
 
 weight_name='../../mnist_lenet5_weight.h5'
+model_word_length=16
+model_factorial_bit=8
+rounding_method='nearest'
 
-# model setup
-model=quantized_lenet5(nbits=16,fbits=8,rounding_method='nearest')
-model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
+#%%
+# fault generation
+model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method)
 weight_name=convert_original_weight_layer_name(weight_name)
+model.load_weights(weight_name)
+model_depth=len(model.layers)
+for layer_num in range(1,model_depth):
+    layer_input_shape=model.layers[layer_num].input_shape
+    layer_output_shape=model.layers[layer_num].output_shape
+    layer_weight_shape=[weight_shape.shape for weight_shape in model.layers[layer_num].get_weights()]
+
+
+#%%
+# model setup
+model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method)
+model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 model.load_weights(weight_name)
 print('orginal weight loaded')
 

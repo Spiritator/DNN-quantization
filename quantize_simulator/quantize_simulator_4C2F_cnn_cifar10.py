@@ -33,24 +33,31 @@ weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
+#%%
+#dataset setup
+
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('cifar10')
-
-t = time.time()
-
-test_result = model.evaluate(x_test, y_test, verbose=0)
-
-t = time.time()-t
-
-prediction = model.predict(x_test, verbose=0)
-prediction = np.argmax(prediction, axis=1)
 
 #%%
 # view test result
-        
+
+t = time.time()
+
+test_result = model.evaluate(x_test, y_test, verbose=1)
+
+t = time.time()-t
+
 print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
+
+#%%
+# draw confusion matrix
+
+print('\n')
+prediction = model.predict(x_test, verbose=1)
+prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',figsize=(8,6),normalize=False)
 

@@ -44,24 +44,31 @@ weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
+#%%
+#dataset setup
+
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = dataset_dir)
-
-t = time.time()
-
-test_result = model.evaluate_generator(datagen)
-
-t = time.time()-t
-
-prediction = model.predict_generator(datagen)
-prediction = np.argmax(prediction, axis=1)
 
 #%%
 # view test result
+
+t = time.time()
+
+test_result = model.evaluate_generator(datagen, verbose=1)
+
+t = time.time()-t
 
 print('\nruntime: %f s'%t)        
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
+
+#%%
+# draw confusion matrix
+
+print('\n')
+prediction = model.predict_generator(datagen, verbose=1)
+prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(datagen.classes,prediction,class_indices,'Confusion Matrix',normalize=False)
 

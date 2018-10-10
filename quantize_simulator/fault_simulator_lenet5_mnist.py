@@ -26,9 +26,10 @@ from metrics.topk_metrics import top2_acc
 # setting parameter
 
 weight_name='../../mnist_lenet5_weight.h5'
-model_word_length=16
-model_factorial_bit=8
+model_word_length=8
+model_factorial_bit=4
 rounding_method='nearest'
+batch_size=32
 
 #%%
 # fault generation
@@ -49,24 +50,31 @@ model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accurac
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
+#%%
+#dataset setup
+
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('mnist')
-
-t = time.time()
-
-test_result = model.evaluate(x_test, y_test, verbose=0)
-
-t = time.time()-t
-
-prediction = model.predict(x_test, verbose=0)
-prediction = np.argmax(prediction, axis=1)
 
 #%%
 # view test result
-        
+
+t = time.time()
+
+test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+
+t = time.time()-t
+  
 print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
+
+#%%
+# draw confusion matrix
+
+print('\n')
+prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
+prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)
 

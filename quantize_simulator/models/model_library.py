@@ -18,7 +18,7 @@ from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBa
 from layers.quantized_ops import quantized_relu as quantize_op
 
 
-def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None):
+def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None):
     
     print('Building model : Quantized Lenet 5')
     
@@ -35,7 +35,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     else:
         print('Inject weight fault')
         
-    input_shape = Input(shape=input_shape)
+    input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
     x = QuantizedConv2D(filters=16,
                         H=1,
                         nb=nbits,
@@ -137,7 +137,8 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
     x = MaxPooling2D(pool_size=(2, 2))(x)
     x = Dropout(0.25)(x)
     
-    x = Flatten()(x)
+    #x = Flatten()(x)
+    x = Reshape((-1,))(x)
     x = QuantizedDense(512,
                        H=1,
                        nb=nbits,

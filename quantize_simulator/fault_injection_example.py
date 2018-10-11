@@ -27,8 +27,17 @@ layer_original_input=tf.Variable(layer_original_weight)
 fault_dict={(1,6):\
             {'fault_type':'1',
              'fault_bit':2},
+            (1,4):\
+            {'fault_type':'0',
+             'fault_bit':3},
             (0,1):\
-            {'fault_type':['1','1'],
+            {'fault_type':['1','flip'],
+             'fault_bit':[3,2]},
+            (0,5):\
+            {'fault_type':['1','flip'],
+             'fault_bit':[3,2]},
+            (0,8):\
+            {'fault_type':['0','flip'],
              'fault_bit':[3,2]}
             }
             

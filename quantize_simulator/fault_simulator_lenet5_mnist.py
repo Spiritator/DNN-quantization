@@ -31,7 +31,7 @@ model_word_length=8
 model_factorial_bit=4
 rounding_method='nearest'
 batch_size=32
-fault_rate=0.02
+fault_rate=0.01
 
 #%%
 # fault generation
@@ -44,8 +44,11 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
 
 #%%
 # model setup
-model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method,ifmap_fault_dict_list=model_ifmap_fault_dict_list,ofmap_fault_dict_list=model_ofmap_fault_dict_list,weight_fault_dict_list=model_weight_fault_dict_list)
+
+model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method,batch_size=batch_size,ifmap_fault_dict_list=model_ifmap_fault_dict_list,ofmap_fault_dict_list=model_ofmap_fault_dict_list,weight_fault_dict_list=model_weight_fault_dict_list)
+print('Model compiling...')
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
+print('Model compiled !')
 model.load_weights(weight_name)
 print('orginal weight loaded')
 

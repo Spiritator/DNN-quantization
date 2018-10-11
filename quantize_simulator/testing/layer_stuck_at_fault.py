@@ -10,7 +10,8 @@ inject stuck at fault during model build phase
 
 import tensorflow as tf
 import numpy as np
-from testing.fault_injection import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
+from testing.fault_injection import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_stuck_at_fault_modulator
+from layers.quantized_ops import quantize_1half,quantize_2half
 
 def check_fault_dict(data, fault_dict):
     for key in fault_dict.keys():
@@ -36,24 +37,35 @@ def inject_layer_sa_fault_nparray(data, fault_dict, word_width, factorial_bit, r
 
 def inject_layer_sa_fault_tensor(data, fault_dict, word_width, factorial_bit, rounding='nearest'):
     check_fault_dict(data,fault_dict)
-    fault_indices=np.zeros((1,len(data.shape)),dtype=int)
-    fault_values=tf.constant([0],dtype='float32')
-    for key in fault_dict.keys():
-        if not isinstance(fault_dict[key]['fault_bit'],list):
-            fault_indices=np.append(fault_indices,[key],axis=0)
-            fault_value=generate_single_stuck_at_fault(tf.gather_nd(data,[key]),word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'],rounding=rounding)
-            fault_values=tf.concat([fault_values,fault_value],0)
-            #data[key]=generate_single_stuck_at_fault(data[key],word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'],rounding=rounding)
-        else:
-            fault_indices=np.append(fault_indices,[key],axis=0)
-            fault_value=generate_multiple_stuck_at_fault(tf.gather_nd(data,[key]),word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'],rounding=rounding)
-            fault_values=tf.concat([fault_values,fault_value],0)
-            #data[key]=generate_multiple_stuck_at_fault(data[key],word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'],rounding=rounding)    
-            
+    fault_indices=[np.zeros((1,len(data.shape)),dtype=int) for i in range(3)]
+    fault_modulators=[tf.constant([0],dtype='int32') for i in range(3)]
     
-    fault_indices=fault_indices[1:]
-    fault_values=tf.slice(fault_values,[1],[len(fault_indices)])
-    fault_indices=tf.constant(fault_indices,dtype='int32')
-    data=tf.scatter_nd_update(data,fault_indices,fault_values)
+    for key in fault_dict.keys():
+        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'])
+        if modulator0 is not None:
+            fault_indices[0]=np.append(fault_indices[0],[key],axis=0)
+            fault_modulators[0]=tf.concat([fault_modulators[0],[modulator0]],0)
+        if modulator1 is not None:
+            fault_indices[1]=np.append(fault_indices[1],[key],axis=0)
+            fault_modulators[1]=tf.concat([fault_modulators[1],[modulator1]],0)
+        if modulatorF is not None:
+            fault_indices[2]=np.append(fault_indices[2],[key],axis=0)
+            fault_modulators[2]=tf.concat([fault_modulators[2],[modulatorF]],0)
+            
+    modulater_tensor=[tf.Variable(np.ones(data.shape,dtype=int)*(2**word_width-1),dtype='int32'),tf.Variable(np.zeros(data.shape,dtype=int)),tf.Variable(np.zeros(data.shape,dtype=int))]
+    
+    for i in range(3):
+        fault_indices[i]=fault_indices[i][1:]
+        fault_modulators[i]=tf.slice(fault_modulators[i],[1],[len(fault_indices[i])])
+        fault_indices[i]=tf.constant(fault_indices[i],dtype='int32')
+        modulater_tensor[i]=tf.scatter_nd_update(modulater_tensor[i],fault_indices[i],fault_modulators[i])
+        
+    data=quantize_1half(data, nb = word_width, fb = factorial_bit, rounding_method = rounding)
+    data=tf.cast(data,tf.int32)
+    data=tf.bitwise.bitwise_and(data,modulater_tensor[0])
+    data=tf.bitwise.bitwise_or(data,modulater_tensor[1])
+    data=tf.bitwise.bitwise_xor(data,modulater_tensor[2])
+    data=tf.cast(data,tf.float32)    
+    data=quantize_2half(data, nb = word_width, fb = factorial_bit)
     
     return data

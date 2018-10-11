@@ -18,9 +18,23 @@ from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBa
 from layers.quantized_ops import quantized_relu as quantize_op
 
 
-def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10):
+def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None):
     
     print('Building model : Quantized Lenet 5')
+    
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None,None,None,None,None,None,None,None]
+    else:
+        print('Inject input fault')
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None,None,None,None,None,None,None,None]
+    else:
+        print('Inject output fault')
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None]]
+    else:
+        print('Inject weight fault')
+        
     input_shape = Input(shape=input_shape)
     x = QuantizedConv2D(filters=16,
                         H=1,
@@ -30,7 +44,10 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         kernel_size=(5,5),
                         padding='same',
                         strides=(1, 1),                              
-                        activation='relu')(input_shape)
+                        activation='relu',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
+                        weight_sa_fault_injection=weight_fault_dict_list[1])(input_shape)
     x = MaxPooling2D(pool_size=(2,2))(x)
     x = QuantizedConv2D(filters=36,
                         H=1,
@@ -40,7 +57,10 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         kernel_size=(5,5),
                         padding='same',
                         strides=(1, 1),
-                        activation='relu')(x)
+                        activation='relu',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
+                        weight_sa_fault_injection=weight_fault_dict_list[3])(x)
     x = MaxPooling2D(pool_size=(2,2))(x)
     x = Flatten()(x)
     x = QuantizedDense(128,
@@ -48,13 +68,19 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        nb=nbits,
                        fb=fbits, 
                        rounding_method=rounding_method,
-                       activation='relu')(x)
+                       activation='relu',
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
+                       weight_sa_fault_injection=weight_fault_dict_list[6])(x)
     x = QuantizedDense(num_classes,
                        H=1,
                        nb=nbits,
                        fb=fbits, 
                        rounding_method=rounding_method,
-                       activation='softmax')(x)
+                       activation='softmax',
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[7],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[7],
+                       weight_sa_fault_injection=weight_fault_dict_list[7])(x)
 
     model=Model(inputs=input_shape, outputs=x)
     

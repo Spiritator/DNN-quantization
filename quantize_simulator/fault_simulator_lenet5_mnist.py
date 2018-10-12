@@ -30,7 +30,7 @@ weight_name='../../mnist_lenet5_weight.h5'
 model_word_length=8
 model_factorial_bit=4
 rounding_method='nearest'
-batch_size=32
+batch_size=20
 fault_rate=0.01
 
 #%%
@@ -40,12 +40,19 @@ weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length)
-
+model_ifmap_fault_dict_list[6]=None
+model_ifmap_fault_dict_list[7]=None
+model_ofmap_fault_dict_list[6]=None
+model_ofmap_fault_dict_list[7]=None
 
 #%%
 # model setup
 
+t = time.time()
 model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method,batch_size=batch_size,ifmap_fault_dict_list=model_ifmap_fault_dict_list,ofmap_fault_dict_list=model_ofmap_fault_dict_list,weight_fault_dict_list=model_weight_fault_dict_list)
+t = time.time()-t
+print('\nModel build time: %f s'%t)
+
 print('Model compiling...')
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 print('Model compiled !')

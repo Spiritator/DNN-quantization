@@ -68,7 +68,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     print('Building Layer 4')
     x = MaxPooling2D(pool_size=(2,2))(x)
     print('Building Layer 5')
-    x = Flatten()(x)
+    x = Reshape((-1,))(x)
     print('Building Layer 6')
     x = QuantizedDense(128,
                        H=1,

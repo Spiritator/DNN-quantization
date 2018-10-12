@@ -52,7 +52,10 @@ def inject_layer_sa_fault_tensor(data, fault_dict, word_width, factorial_bit, ro
             fault_indices[2]=np.append(fault_indices[2],[key],axis=0)
             fault_modulators[2]=tf.concat([fault_modulators[2],[modulatorF]],0)
             
-    modulater_tensor=[tf.Variable(np.ones(data.shape,dtype=int)*(2**word_width-1),dtype='int32'),tf.Variable(np.zeros(data.shape,dtype=int)),tf.Variable(np.zeros(data.shape,dtype=int))]
+    if len(fault_indices[0]>1)
+    modulater_tensor0=tf.Variable(np.ones(data.shape,dtype=int)*(2**word_width-1),dtype='int32')
+    modulater_tensor1=tf.Variable(np.zeros(data.shape,dtype=int))
+    modulater_tensorF=tf.Variable(np.zeros(data.shape,dtype=int))
     
     for i in range(3):
         fault_indices[i]=fault_indices[i][1:]

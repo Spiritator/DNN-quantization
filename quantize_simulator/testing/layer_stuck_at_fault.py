@@ -51,23 +51,29 @@ def inject_layer_sa_fault_tensor(data, fault_dict, word_width, factorial_bit, ro
         if modulatorF is not None:
             fault_indices[2]=np.append(fault_indices[2],[key],axis=0)
             fault_modulators[2]=tf.concat([fault_modulators[2],[modulatorF]],0)
-            
-    if len(fault_indices[0]>1)
-    modulater_tensor0=tf.Variable(np.ones(data.shape,dtype=int)*(2**word_width-1),dtype='int32')
-    modulater_tensor1=tf.Variable(np.zeros(data.shape,dtype=int))
-    modulater_tensorF=tf.Variable(np.zeros(data.shape,dtype=int))
     
     for i in range(3):
         fault_indices[i]=fault_indices[i][1:]
         fault_modulators[i]=tf.slice(fault_modulators[i],[1],[len(fault_indices[i])])
         fault_indices[i]=tf.constant(fault_indices[i],dtype='int32')
-        modulater_tensor[i]=tf.scatter_nd_update(modulater_tensor[i],fault_indices[i],fault_modulators[i])
+        
         
     data=quantize_1half(data, nb = word_width, fb = factorial_bit, rounding_method = rounding)
     data=tf.cast(data,tf.int32)
-    data=tf.bitwise.bitwise_and(data,modulater_tensor[0])
-    data=tf.bitwise.bitwise_or(data,modulater_tensor[1])
-    data=tf.bitwise.bitwise_xor(data,modulater_tensor[2])
+    
+    if fault_indices[0].shape[0]>0:
+        modulater_tensor0=tf.Variable(np.ones(data.shape,dtype=int)*(2**word_width-1),dtype='int32')
+        modulater_tensor0=tf.scatter_nd_update(modulater_tensor0,fault_indices[0],fault_modulators[0])
+        data=tf.bitwise.bitwise_and(data,modulater_tensor0)
+    if fault_indices[1].shape[0]>0:
+        modulater_tensor1=tf.Variable(np.zeros(data.shape,dtype=int))
+        modulater_tensor1=tf.scatter_nd_update(modulater_tensor1,fault_indices[1],fault_modulators[1])
+        data=tf.bitwise.bitwise_or(data,modulater_tensor1)
+    if fault_indices[2].shape[0]>0:
+        modulater_tensorF=tf.Variable(np.zeros(data.shape,dtype=int))
+        modulater_tensorF=tf.scatter_nd_update(modulater_tensorF,fault_indices[2],fault_modulators[2])
+        data=tf.bitwise.bitwise_xor(data,modulater_tensorF)        
+
     data=tf.cast(data,tf.float32)    
     data=quantize_2half(data, nb = word_width, fb = factorial_bit)
     

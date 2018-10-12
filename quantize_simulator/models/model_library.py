@@ -35,7 +35,9 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     else:
         print('Inject weight fault')
         
+    print('Building Layer 0')
     input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+    print('Building Layer 1')
     x = QuantizedConv2D(filters=16,
                         H=1,
                         nb=nbits,
@@ -48,7 +50,9 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1])(input_shape)
+    print('Building Layer 2')
     x = MaxPooling2D(pool_size=(2,2))(x)
+    print('Building Layer 3')
     x = QuantizedConv2D(filters=36,
                         H=1,
                         nb=nbits,
@@ -61,8 +65,11 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
                         weight_sa_fault_injection=weight_fault_dict_list[3])(x)
+    print('Building Layer 4')
     x = MaxPooling2D(pool_size=(2,2))(x)
+    print('Building Layer 5')
     x = Flatten()(x)
+    print('Building Layer 6')
     x = QuantizedDense(128,
                        H=1,
                        nb=nbits,
@@ -72,6 +79,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                        weight_sa_fault_injection=weight_fault_dict_list[6])(x)
+    print('Building Layer 7')
     x = QuantizedDense(num_classes,
                        H=1,
                        nb=nbits,

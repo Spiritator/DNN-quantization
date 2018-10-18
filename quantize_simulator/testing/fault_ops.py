@@ -35,9 +35,9 @@ def inject_layer_sa_fault_nparray(data, fault_dict, word_width, factorial_bit, r
             
     return data
 
-def inject_layer_sa_fault_tensor(data, data_shape, fault_dict, word_width, factorial_bit, rounding='nearest'):
+def inject_layer_sa_fault_tensor(data, fault_dict, word_width, factorial_bit, rounding='nearest'):
     check_fault_dict(data,fault_dict)
-    fault_indices=[np.zeros((1,len(data_shape)),dtype=int) for i in range(3)]
+    fault_indices=[np.zeros((1,len(data.shape)),dtype=int) for i in range(3)]
     fault_modulators=[tf.constant([0],dtype='int32') for i in range(3)]
     
     for key in fault_dict.keys():
@@ -62,15 +62,15 @@ def inject_layer_sa_fault_tensor(data, data_shape, fault_dict, word_width, facto
     data=tf.cast(data,tf.int32)
     
     if fault_indices[0].shape[0]>0:
-        modulater_tensor0=tf.Variable(np.ones(data_shape,dtype=int)*(2**word_width-1),dtype='int32')
+        modulater_tensor0=tf.Variable(np.ones(data.shape,dtype=int)*(2**word_width-1),dtype='int32')
         modulater_tensor0=tf.scatter_nd_update(modulater_tensor0,fault_indices[0],fault_modulators[0])
         data=tf.bitwise.bitwise_and(data,modulater_tensor0)
     if fault_indices[1].shape[0]>0:
-        modulater_tensor1=tf.Variable(np.zeros(data_shape,dtype=int))
+        modulater_tensor1=tf.Variable(np.zeros(data.shape,dtype=int))
         modulater_tensor1=tf.scatter_nd_update(modulater_tensor1,fault_indices[1],fault_modulators[1])
         data=tf.bitwise.bitwise_or(data,modulater_tensor1)
     if fault_indices[2].shape[0]>0:
-        modulater_tensorF=tf.Variable(np.zeros(data_shape,dtype=int))
+        modulater_tensorF=tf.Variable(np.zeros(data.shape,dtype=int))
         modulater_tensorF=tf.scatter_nd_update(modulater_tensorF,fault_indices[2],fault_modulators[2])
         data=tf.bitwise.bitwise_xor(data,modulater_tensorF)        
 

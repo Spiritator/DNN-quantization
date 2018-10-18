@@ -17,7 +17,7 @@ from keras import constraints
 from keras import initializers
 
 from layers.quantized_ops import quantize, clip_through
-from testing.layer_stuck_at_fault import inject_layer_sa_fault_tensor
+from testing.fault_ops import inject_layer_sa_fault_tensor
 
 
 class Clip(constraints.Constraint):

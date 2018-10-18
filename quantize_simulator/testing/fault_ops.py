@@ -10,7 +10,7 @@ inject stuck at fault during model build phase
 
 import tensorflow as tf
 import numpy as np
-from testing.fault_injection import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_stuck_at_fault_modulator
+from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_stuck_at_fault_modulator
 from layers.quantized_ops import quantize_1half,quantize_2half
 
 def check_fault_dict(data, fault_dict):

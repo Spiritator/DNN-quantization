@@ -10,8 +10,8 @@ fault injection test
 import tensorflow as tf
 import keras.backend as K
 import numpy as np
-from testing.fault_injection import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
-from testing.layer_stuck_at_fault import inject_layer_sa_fault_tensor, inject_layer_sa_fault_nparray
+from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
+from testing.fault_ops import inject_layer_sa_fault_tensor, inject_layer_sa_fault_nparray
 
 original_weight=np.arange(1,100,dtype='float32')
 

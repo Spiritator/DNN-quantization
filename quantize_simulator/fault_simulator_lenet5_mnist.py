@@ -40,10 +40,11 @@ weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length)
-model_ifmap_fault_dict_list[6]=[model_ifmap_fault_dict_list[6],model.layers[6].input_shape]
-model_ifmap_fault_dict_list[7]=[model_ifmap_fault_dict_list[7],model.layers[7].output_shape]
-model_ofmap_fault_dict_list[6]=[model_ofmap_fault_dict_list[6],model.layers[6].input_shape]
-model_ofmap_fault_dict_list[7]=[model_ofmap_fault_dict_list[7],model.layers[7].output_shape]
+
+model_ifmap_fault_dict_list[6]=[model_ifmap_fault_dict_list[6],(batch_size,)+model.layers[6].input_shape[1:]]
+model_ifmap_fault_dict_list[7]=[model_ifmap_fault_dict_list[7],(batch_size,)+model.layers[7].input_shape[1:]]
+model_ofmap_fault_dict_list[6]=[model_ofmap_fault_dict_list[6],(batch_size,)+model.layers[6].output_shape[1:]]
+model_ofmap_fault_dict_list[7]=[model_ofmap_fault_dict_list[7],(batch_size,)+model.layers[7].output_shape[1:]]
 
 #%%
 # model setup

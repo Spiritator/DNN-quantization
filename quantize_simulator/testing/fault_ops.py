@@ -36,11 +36,11 @@ def inject_layer_sa_fault_nparray(data, fault_dict, word_width, factorial_bit, r
     return data
 
 def inject_layer_sa_fault_tensor(data, fault_dict, word_width, factorial_bit, rounding='nearest'):
-    if isinstance(data,dict):
+    if isinstance(fault_dict,dict):
         shape=data.shape
-    elif isinstance(data,list):
-        shape=data[1]
-        data=data[0]
+    elif isinstance(fault_dict,list):
+        shape=fault_dict[1]
+        fault_dict=fault_dict[0]
     else:
         raise TypeError('wrong type of fault list being injected. The fault list is either dict (normal injection) or list (index 0 fault list, index 1 being injected data shape.)')
 

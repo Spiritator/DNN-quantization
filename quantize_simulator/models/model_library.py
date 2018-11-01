@@ -172,7 +172,13 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
 
     return model
 
-def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=10, BN_fbits=5, rounding_method='nearest', inputs=None,  include_top=True, classes=10, *args, **kwargs):
+def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', inputs=None,  include_top=True, classes=10, *args, **kwargs):
+    if BN_nbits is None:
+        BN_nbits=nbits
+
+    if BN_fbits is None:
+        BN_fbits=fbits
+
     if inputs is None :
         if K.image_data_format() == 'channels_first':
             input_shape = Input(shape=(3, 224, 224))

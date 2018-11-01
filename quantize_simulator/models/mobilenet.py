@@ -107,8 +107,8 @@ def QuantizedMobileNetV1(input_shape=None,
               classes=1000,
               nbits=16,
               fbits=8, 
-              BN_nbits=16, 
-              BN_fbits=8,
+              BN_nbits=None, 
+              BN_fbits=None,
               rounding_method='nearest'):
     """Instantiates the MobileNet architecture.
 
@@ -170,6 +170,12 @@ def QuantizedMobileNetV1(input_shape=None,
         RuntimeError: If attempting to run this model with a
             backend that does not support separable convolutions.
     """
+
+    if BN_nbits is None:
+        BN_nbits=nbits
+
+    if BN_fbits is None:
+        BN_fbits=fbits
 
     if not (weights in {'imagenet', None} or os.path.exists(weights)):
         raise ValueError('The `weights` argument should be either '

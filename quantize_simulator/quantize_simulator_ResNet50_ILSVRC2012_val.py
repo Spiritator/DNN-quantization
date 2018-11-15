@@ -8,7 +8,7 @@ evaluate quantized testing result with custom Keras quantize layer
 """
 
 import keras
-from models.mobilenet import QuantizedMobileNetV1
+from models.resnet50 import QuantizedResNet50
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top5_acc
@@ -31,12 +31,12 @@ print('Building model...')
 
 t = time.time()
 
-model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5', 
-                             nbits=16,
-                             fbits=8, 
-                             BN_nbits=16, 
-                             BN_fbits=8,
-                             rounding_method='nearest')
+model = QuantizedResNet50(weights='../../resnet50_weights_tf_dim_ordering_tf_kernels.h5', 
+                          nbits=16,
+                          fbits=8, 
+                          BN_nbits=16, 
+                          BN_fbits=8,
+                          rounding_method='nearest')
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy', top5_acc])

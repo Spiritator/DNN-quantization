@@ -72,7 +72,7 @@ models = get_keras_submodule('models')
 keras_utils = get_keras_submodule('utils')
 
 from keras_applications import imagenet_utils
-from imagenet_utils import decode_predictions, _obtain_input_shape
+from keras_applications.imagenet_utils import decode_predictions, _obtain_input_shape
 
 from layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
 
@@ -171,6 +171,7 @@ def QuantizedMobileNetV1(input_shape=None,
         RuntimeError: If attempting to run this model with a
             backend that does not support separable convolutions.
     """
+    print('Building model : Quantized MobileNet V1')
 
     if BN_nbits is None:
         BN_nbits=nbits

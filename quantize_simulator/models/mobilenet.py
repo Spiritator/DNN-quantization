@@ -71,7 +71,8 @@ layers = get_keras_submodule('layers')
 models = get_keras_submodule('models')
 keras_utils = get_keras_submodule('utils')
 
-from keras_applications.imagenet_utils import decode_predictions, _obtain_input_shape
+from keras_applications import imagenet_utils
+from imagenet_utils import decode_predictions, _obtain_input_shape
 
 from layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
 

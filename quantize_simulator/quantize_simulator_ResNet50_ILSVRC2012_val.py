@@ -8,7 +8,7 @@ evaluate quantized testing result with custom Keras quantize layer
 """
 
 import keras
-from models.resnet50 import QuantizedResNet50
+from models.resnet50 import QuantizedResNet50, preprocess_input
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top5_acc
@@ -32,10 +32,10 @@ print('Building model...')
 t = time.time()
 
 model = QuantizedResNet50(weights='../../resnet50_weights_tf_dim_ordering_tf_kernels.h5', 
-                          nbits=16,
-                          fbits=8, 
-                          BN_nbits=16, 
-                          BN_fbits=8,
+                          nbits=28,
+                          fbits=10, 
+                          BN_nbits=28, 
+                          BN_fbits=10,
                           rounding_method='nearest')
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
@@ -43,7 +43,7 @@ model.compile(loss='categorical_crossentropy',
 
 t = time.time()-t
 
-model.summary()
+#model.summary()
 
 print('model build time: %f s'%t)
 
@@ -51,7 +51,7 @@ print('model build time: %f s'%t)
 #dataset setup
 
 print('preparing dataset...')
-x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = validation_data_dir)
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = validation_data_dir, preprocessing_function = preprocess_input)
 print('dataset ready')
 
 
@@ -73,9 +73,9 @@ print('Test top5 accuracy:', test_result[2])
 #%%
 # draw confusion matrix
 
-print('\n')
-prediction = model.predict_generator(datagen, verbose=1)
-prediction = np.argmax(prediction, axis=1)
-
-show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)
+#print('\n')
+#prediction = model.predict_generator(datagen, verbose=1)
+#prediction = np.argmax(prediction, axis=1)
+#
+#show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)
 

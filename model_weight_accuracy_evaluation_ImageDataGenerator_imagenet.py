@@ -14,9 +14,11 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential, Model, load_model
 from keras import backend as K
 from keras import metrics
-from keras.applications.mobilenet import MobileNet
+from keras.applications.resnet50 import ResNet50
+#from keras.applications.mobilenet import MobileNet
 from keras.preprocessing import image
-from keras.applications.mobilenet import preprocess_input, decode_predictions
+from keras.applications.resnet50 import preprocess_input, decode_predictions
+#from keras.applications.mobilenet import preprocess_input, decode_predictions
 from quantize_simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import time
 import numpy as np
@@ -26,7 +28,7 @@ img_width, img_height = 224, 224
 
 class_number=1000
 
-validation_data_dir = '../../dataset/imagenet_val_imagedatagenerator'
+validation_data_dir = '../../dataset/imagenet_val_imagedatagenerator_setsize'
 nb_validation_samples = 50000
 
 #%%
@@ -36,16 +38,21 @@ def top5_acc(y_true,y_pred):
     return metrics.top_k_categorical_accuracy(y_true,y_pred,k=5)
 
 print('Building model...')
-
-model = MobileNet(weights='../mobilenet_1_0_224_tf.h5')
+t = time.time()
+model = ResNet50(weights='../resnet50_weights_tf_dim_ordering_tf_kernels.h5')
+#model = MobileNet(weights='../mobilenet_1_0_224_tf.h5')
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy', top5_acc])
-model.summary()
+
+t = time.time()-t
+#model.summary()
+
+print('model build time: %f s'%t)
 
 #%%
 
-#img_path = '../test_images/cars.jpg'
+#img_path = '../test_images/football.jpg'
 #img = image.load_img(img_path, target_size=(224, 224))
 #x = image.img_to_array(img)
 #x = np.expand_dims(x, axis=0)
@@ -61,7 +68,8 @@ model.summary()
 
 print('preparing dataset...')
 
-evaluation_datagen = ImageDataGenerator(rescale=1. / 255)
+#evaluation_datagen = ImageDataGenerator(rescale=1. / 255)
+evaluation_datagen = ImageDataGenerator(preprocessing_function=preprocess_input)
 evaluation_generator = evaluation_datagen.flow_from_directory(
     validation_data_dir,
     target_size=(img_width, img_height),
@@ -73,7 +81,7 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-test_result = model.evaluate_generator(evaluation_generator)
+test_result = model.evaluate_generator(evaluation_generator, verbose=1)
 
 t = time.time()-t
 print('evaluate done')
@@ -84,7 +92,7 @@ print('Test top5 accuracy:', test_result[2])
 
 #%%
 
-prediction = model.predict_generator(evaluation_generator)
+prediction = model.predict_generator(evaluation_generator, verbose=1)
 prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(evaluation_generator.classes,prediction,evaluation_generator.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)

@@ -93,31 +93,46 @@ class QuantizedDense(Dense):
 
 
     def call(self, inputs):
-        quantized_kernel = quantize(self.kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
+            nb_input =self.nb[0]
+            fb_input =self.fb[0]
+            nb_weight=self.nb[1]
+            fb_weight=self.fb[1]
+            nb_output=self.nb[2]
+            fb_output=self.fb[2]
+        else:
+            nb_input =self.nb
+            fb_input =self.fb
+            nb_weight=self.nb
+            fb_weight=self.fb
+            nb_output=self.nb
+            fb_output=self.fb
+            
+        quantized_kernel = quantize(self.kernel, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
         
         if self.weight_sa_fault_injection[0] is not None:
-            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], self.nb, self.fb, rounding=self.rounding_method)
+            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=self.rounding_method)
             
-        inputs = quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method)
         
         if self.ifmap_sa_fault_injection is not None:
-            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, self.nb, self.fb, rounding=self.rounding_method)
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=self.rounding_method)
         
         output = K.dot(inputs, quantized_kernel)
-        output = quantize(output, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
         if self.use_bias:
-            quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
             
             if self.weight_sa_fault_injection[1] is not None:
-                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], self.nb, self.fb, rounding=self.rounding_method)
+                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=self.rounding_method)
 
             output = K.bias_add(output, quantized_bias)
         if self.activation is not None:
-            output = quantize(output, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
             output = self.activation(output)
             
         if self.ofmap_sa_fault_injection is not None:
-            output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, self.nb, self.fb, rounding=self.rounding_method)
+            output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, nb_output, fb_output, rounding=self.rounding_method)
 
 
 
@@ -208,16 +223,31 @@ class QuantizedConv2D(Conv2D):
         self.built = True
 
     def call(self, inputs):
-        quantized_kernel = quantize(self.kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
+            nb_input =self.nb[0]
+            fb_input =self.fb[0]
+            nb_weight=self.nb[1]
+            fb_weight=self.fb[1]
+            nb_output=self.nb[2]
+            fb_output=self.fb[2]
+        else:
+            nb_input =self.nb
+            fb_input =self.fb
+            nb_weight=self.nb
+            fb_weight=self.fb
+            nb_output=self.nb
+            fb_output=self.fb
+        
+        quantized_kernel = quantize(self.kernel, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
         
         if self.weight_sa_fault_injection[0] is not None:
-            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], self.nb, self.fb, rounding=self.rounding_method)
+            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=self.rounding_method)
 
         
-        inputs = quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method)
         
         if self.ifmap_sa_fault_injection is not None:
-            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, self.nb, self.fb, rounding=self.rounding_method)
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=self.rounding_method)
 
 
         inverse_kernel_lr_multiplier = 1./self.kernel_lr_multiplier
@@ -232,7 +262,7 @@ class QuantizedConv2D(Conv2D):
             data_format=self.data_format,
             dilation_rate=self.dilation_rate)
         
-        outputs_qnn_gradient = quantize(outputs_qnn_gradient, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        outputs_qnn_gradient = quantize(outputs_qnn_gradient, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
 
         outputs = (outputs_qnn_gradient - (1. - 1./self.kernel_lr_multiplier) * K.stop_gradient(outputs_qnn_gradient))\
                   * self.kernel_lr_multiplier
@@ -241,10 +271,10 @@ class QuantizedConv2D(Conv2D):
         #outputs = outputs*K.mean(K.abs(self.kernel))
 
         if self.use_bias:
-            quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
             
             if self.weight_sa_fault_injection[1] is not None:
-                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], self.nb, self.fb, rounding=self.rounding_method)
+                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=self.rounding_method)
 
             
             outputs = K.bias_add(
@@ -253,11 +283,11 @@ class QuantizedConv2D(Conv2D):
                 data_format=self.data_format)
 
         if self.activation is not None:
-            outputs = quantize(outputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            outputs = quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
             return self.activation(outputs)
         
         if self.ofmap_sa_fault_injection is not None:
-            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, self.nb, self.fb, rounding=self.rounding_method)
+            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, nb_output, fb_output, rounding=self.rounding_method)
 
 
         return outputs
@@ -332,6 +362,21 @@ class QuantizedBatchNormalization(BatchNormalization):
         self.built = True
 
     def call(self, inputs, training=None):
+        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
+            nb_input =self.nb[0]
+            fb_input =self.fb[0]
+            nb_weight=self.nb[1]
+            fb_weight=self.fb[1]
+            nb_output=self.nb[2]
+            fb_output=self.fb[2]
+        else:
+            nb_input =self.nb
+            fb_input =self.fb
+            nb_weight=self.nb
+            fb_weight=self.fb
+            nb_output=self.nb
+            fb_output=self.fb
+        
         input_shape = K.int_shape(inputs)
         # Prepare broadcasting shape.
         ndim = len(input_shape)
@@ -360,13 +405,13 @@ class QuantizedBatchNormalization(BatchNormalization):
                 else:
                     broadcast_gamma = None
                     
-                broadcast_moving_mean = quantize(broadcast_moving_mean, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
-                broadcast_moving_variance = quantize(broadcast_moving_variance, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
-                broadcast_beta = quantize(broadcast_beta, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
-                broadcast_gamma = quantize(broadcast_gamma, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                broadcast_moving_mean = quantize(broadcast_moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                broadcast_moving_variance = quantize(broadcast_moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                broadcast_beta = quantize(broadcast_beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                broadcast_gamma = quantize(broadcast_gamma, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                     
                 return K.batch_normalization(
-                    quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method),
+                    quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
                     broadcast_moving_mean,
                     broadcast_moving_variance,
                     broadcast_beta,
@@ -374,13 +419,13 @@ class QuantizedBatchNormalization(BatchNormalization):
                     axis=self.axis,
                     epsilon=self.epsilon)
             else:
-                moving_mean = quantize(self.moving_mean, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
-                moving_variance = quantize(self.moving_variance, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
-                beta = quantize(self.beta, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
-                gamma = quantize(self.gamma, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+                moving_mean = quantize(self.moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                moving_variance = quantize(self.moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                beta = quantize(self.beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                gamma = quantize(self.gamma, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                 
                 return K.batch_normalization(
-                    quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method),
+                    quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
                     moving_mean,
                     moving_variance,
                     beta,
@@ -390,7 +435,7 @@ class QuantizedBatchNormalization(BatchNormalization):
 
         # If the learning phase is *static* and set to inference:
         if training in {0, False}:
-            return quantize(normalize_inference(), nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            return quantize(normalize_inference(), nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
 
         # If the learning is either dynamic, or set to training:
         normed_training, mean, variance = K.normalize_batch_in_training(
@@ -485,8 +530,23 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         self.built = True
 
     def call(self, inputs, training=None):
-        inputs=quantize(inputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
-        quantized_depthwise_kernel=quantize(self.depthwise_kernel, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
+            nb_input =self.nb[0]
+            fb_input =self.fb[0]
+            nb_weight=self.nb[1]
+            fb_weight=self.fb[1]
+            nb_output=self.nb[2]
+            fb_output=self.fb[2]
+        else:
+            nb_input =self.nb
+            fb_input =self.fb
+            nb_weight=self.nb
+            fb_weight=self.fb
+            nb_output=self.nb
+            fb_output=self.fb
+        
+        inputs=quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method)
+        quantized_depthwise_kernel=quantize(self.depthwise_kernel, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
         
         outputs = K.depthwise_conv2d(
             inputs,
@@ -497,15 +557,15 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
             data_format=self.data_format)
                 
         if self.bias:
-            outputs = quantize(outputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
-            quantized_bias = quantize(self.bias, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            outputs = quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
+            quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
             outputs = K.bias_add(
                 outputs,
                 quantized_bias,
                 data_format=self.data_format)
 
         if self.activation is not None:
-            outputs=quantize(outputs, nb=self.nb, fb=self.fb, rounding_method=self.rounding_method)
+            outputs=quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
             return self.activation(outputs)
 
         return outputs

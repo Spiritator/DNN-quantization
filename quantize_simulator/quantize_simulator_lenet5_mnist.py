@@ -31,7 +31,7 @@ weight_name='../../mnist_lenet5_weight.h5'
 # all augments use the same quantize precision
 model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest')
 # each augment uses different quantize precision. information list [input, weight, output]
-#model=quantized_lenet5(nbits=[10,8,8],fbits=[5,4,5],rounding_method='nearest')
+#model=quantized_lenet5(nbits=[10,4,10],fbits=[5,2,5],rounding_method='nearest')
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
@@ -53,6 +53,10 @@ print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
+
+computaion_esti=comp_num_estimate(model)
+print('\nTotal # of computations:', computaion_esti['total_MAC'])
+print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
 
 #%%
 # draw confusion matrix

@@ -20,6 +20,7 @@ from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
+from approximation.estimate import comp_num_estimate
 
 #%%
 # model setup
@@ -27,7 +28,10 @@ from metrics.topk_metrics import top2_acc
 weight_name='../../cifar10_4C2F_weight.h5'
 
 # model setup
-model=quantized_4C2F(nbits=10,fbits=5,rounding_method='nearest')
+# all augments use the same quantize precision
+#model=quantized_4C2F(nbits=8,fbits=4,rounding_method='nearest')
+# each augment uses different quantize precision. information list [input, weight, output]
+model=quantized_4C2F(nbits=[12,6,12],fbits=[6,3,6],rounding_method='nearest')
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
@@ -51,6 +55,10 @@ print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
+
+computaion_esti=comp_num_estimate(model)
+print('\nTotal # of computations:', computaion_esti['total_MAC'])
+print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
 
 #%%
 # draw confusion matrix

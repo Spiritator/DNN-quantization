@@ -20,6 +20,7 @@ from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
+from approximation.estimate import comp_num_estimate
 
 #%%
 # model setup

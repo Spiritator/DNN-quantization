@@ -11,6 +11,72 @@ assign a fault rate to generate.
 
 import numpy as np
 
+def coordinate_gen_fmap(data_shape,batch_size,distribution='uniform'):
+    coordinate=list()
+    coordinate.append(np.random.randint(batch_size))
+    for j in range(1,len(data_shape)):
+        coordinate.append(np.random.randint(data_shape[j]))
+    coordinate=tuple(coordinate)
+    return coordinate
+
+def coordinate_gen_wght(data_shape,distribution='uniform'):
+    coordinate=list()
+    for j in range(len(data_shape)):
+        coordinate.append(np.random.randint(data_shape[j]))
+    coordinate=tuple(coordinate)
+    return coordinate
+
+def fault_bit_loc_gen(model_word_length,distribution='uniform'):
+    fault_bit=np.random.randint(model_word_length)
+    return fault_bit
+
+def fault_num_gen_fmap(data_shape,fault_rate,batch_size,model_word_length):
+    fault_num=int(np.prod(data_shape[1:]) * batch_size * model_word_length * fault_rate)
+    return fault_num
+
+def fault_num_gen_wght(data_shape,fault_rate,model_word_length):
+    fault_num=int(np.prod(data_shape) * model_word_length * fault_rate)
+    return fault_num    
+
+def gen_fault_dict_list(data_shape,fault_rate,batch_size,model_word_length,is_weight):
+    fault_count=0        
+    fault_dict=dict()
+    if is_weight:
+        fault_num=fault_num_gen_wght(data_shape,fault_rate,batch_size,model_word_length)
+    else:
+        fault_num=fault_num_gen_fmap(data_shape,fault_rate,model_word_length)
+    
+    while fault_count<fault_num:
+        coordinate=list()
+        if is_weight:
+            coordinate=coordinate_gen_wght(data_shape)
+        else:   
+            coordinate=coordinate_gen_fmap(data_shape,batch_size)
+        fault_bit=fault_bit_loc_gen(model_word_length)
+        
+        if coordinate in fault_dict.keys():
+            if isinstance(fault_dict[coordinate]['fault_bit'],list):
+                if fault_bit in fault_dict[coordinate]['fault_bit']:
+                    continue
+                else:
+                    fault_dict[coordinate]['fault_type'].append('flip')
+                    fault_dict[coordinate]['fault_bit'].append(fault_bit)
+                    fault_count += 1
+            else:
+                if fault_bit == fault_dict[coordinate]['fault_bit']:
+                    continue
+                else:
+                    fault_dict[coordinate]['fault_type']=[fault_dict[coordinate]['fault_type'],'flip']
+                    fault_dict[coordinate]['fault_bit']=[fault_dict[coordinate]['fault_bit'],fault_bit]
+                    fault_count += 1
+        else:
+            fault_dict[coordinate]={'fault_type':'flip',
+                                          'fault_bit' : fault_bit}
+            fault_count += 1
+        
+        return fault_dict
+    
+
 def generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length):
     model_depth=len(model.layers)
     model_ifmap_fault_dict_list=[None]

@@ -21,7 +21,7 @@ from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
-from testing.fault_list import generate_model_random_stuck_fault
+from testing.fault_list import generate_model_random_stuck_fault,generate_model_stuck_fault
 
 #%%
 # setting parameter
@@ -39,7 +39,8 @@ model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,roundin
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 
-model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length)
+#model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length)
+model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length)
 
 # bypass keras flatten shape bug
 model_ifmap_fault_dict_list[6]=[model_ifmap_fault_dict_list[6],(batch_size,)+model.layers[6].input_shape[1:]]

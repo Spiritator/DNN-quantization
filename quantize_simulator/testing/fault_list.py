@@ -7,6 +7,7 @@ Created on Thu Oct 11 14:45:33 2018
 Generate random stuck at fault on a model. 
 Only generate the layers have weights.
 assign a fault rate to generate.
+support different type of fault distribution
 """
 
 import numpy as np
@@ -35,23 +36,16 @@ def fault_num_gen_fmap(data_shape,fault_rate,batch_size,model_word_length):
     return fault_num
 
 def fault_num_gen_wght(data_shape,fault_rate,model_word_length):
-    fault_num=int(np.prod(data_shape) * model_word_length * fault_rate)
-    return fault_num    
+    fault_num=[int(np.prod(shapes) * model_word_length * fault_rate) for shapes in data_shape]
+    return fault_num 
 
-def gen_fault_dict_list(data_shape,fault_rate,batch_size,model_word_length,is_weight):
+def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length):
     fault_count=0        
     fault_dict=dict()
-    if is_weight:
-        fault_num=fault_num_gen_wght(data_shape,fault_rate,batch_size,model_word_length)
-    else:
-        fault_num=fault_num_gen_fmap(data_shape,fault_rate,model_word_length)
+    fault_num=fault_num_gen_fmap(data_shape,fault_rate,model_word_length)
     
     while fault_count<fault_num:
-        coordinate=list()
-        if is_weight:
-            coordinate=coordinate_gen_wght(data_shape)
-        else:   
-            coordinate=coordinate_gen_fmap(data_shape,batch_size)
+        coordinate=coordinate_gen_fmap(data_shape,batch_size)
         fault_bit=fault_bit_loc_gen(model_word_length)
         
         if coordinate in fault_dict.keys():
@@ -74,7 +68,85 @@ def gen_fault_dict_list(data_shape,fault_rate,batch_size,model_word_length,is_we
                                           'fault_bit' : fault_bit}
             fault_count += 1
         
-        return fault_dict
+    return fault_dict,fault_num
+    
+def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,**kwargs):
+    fault_count=0        
+    fault_dict=[dict() for i in range(len(data_shape))]
+    fault_num=fault_num_gen_wght(data_shape,fault_rate,model_word_length)
+            
+    for i in range(len(fault_num)):
+        fault_count=0
+        while fault_count<fault_num[i]:
+            coordinate=coordinate_gen_wght(data_shape,**kwargs)
+            fault_bit=fault_bit_loc_gen(model_word_length,**kwargs)
+            
+            if coordinate in fault_dict[i].keys():
+                if isinstance(fault_dict[i][coordinate]['fault_bit'],list):
+                    if fault_bit in fault_dict[i][coordinate]['fault_bit']:
+                        #print('error 1')
+                        continue
+                    else:
+                        fault_dict[i][coordinate]['fault_type'].append('flip')
+                        fault_dict[i][coordinate]['fault_bit'].append(fault_bit)
+                        fault_count += 1
+                else:
+                    if fault_bit == fault_dict[i][coordinate]['fault_bit']:
+                        #print('error 2')
+                        continue
+                    else:
+                        fault_dict[i][coordinate]['fault_type']=[fault_dict[i][coordinate]['fault_type'],'flip']
+                        fault_dict[i][coordinate]['fault_bit']=[fault_dict[i][coordinate]['fault_bit'],fault_bit]
+                        fault_count += 1
+            else:
+                fault_dict[i][coordinate]={'fault_type':'flip',
+                                              'fault_bit' : fault_bit}
+                fault_count += 1
+        
+    return fault_dict,fault_num
+
+def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,**kwargs):
+    model_depth=len(model.layers)
+    model_ifmap_fault_dict_list=[None]
+    model_ofmap_fault_dict_list=[None]
+    model_weight_fault_dict_list=[[None,None]]
+    for layer_num in range(1,model_depth):
+        print('\nGenerating fault on layer %d ...'%layer_num)
+        
+        layer_input_shape=model.layers[layer_num].input_shape
+        layer_output_shape=model.layers[layer_num].output_shape
+        layer_weight_shape=[weight_shape.shape for weight_shape in model.layers[layer_num].get_weights()]
+        
+        if len(layer_weight_shape)==0:
+            model_ifmap_fault_dict_list.append(None)
+            model_ofmap_fault_dict_list.append(None)
+            model_weight_fault_dict_list.append([None,None])
+            print('    no weight layer Skipped!')
+            continue
+        
+        # ifmap fault generation
+        ifmap_fault_dict,layer_ifmap_fault_num=gen_fault_dict_list_fmap(layer_input_shape,fault_rate,batch_size,model_word_length,**kwargs)
+        
+        model_ifmap_fault_dict_list.append(ifmap_fault_dict)    
+        print('    generated layer %d ifmap %d faults'%(layer_num,layer_ifmap_fault_num))
+        
+        
+        # ofmap fault generation
+        ofmap_fault_dict,layer_ofmap_fault_num=gen_fault_dict_list_fmap(layer_output_shape,fault_rate,batch_size,model_word_length,**kwargs)
+        
+        model_ofmap_fault_dict_list.append(ofmap_fault_dict)    
+        print('    generated layer %d ofmap %d faults'%(layer_num,layer_ofmap_fault_num))
+        
+        # weight fault generation
+        weight_fault_dict,layer_weight_fault_num=gen_fault_dict_list_wght(layer_weight_shape,fault_rate,model_word_length,**kwargs)
+            
+        model_weight_fault_dict_list.append(weight_fault_dict)    
+        print('    generated layer %d weight %s faults'%(layer_num,str(layer_weight_fault_num)))
+        
+        print('    layer %d Done!'%layer_num)
+        
+    return model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list
+
     
 
 def generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length):

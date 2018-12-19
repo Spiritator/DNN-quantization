@@ -6,6 +6,10 @@ DNN quantize conversion and accuracy loss evaluation
 
 Use the digital circuit algorithm simulation method to simulate qunatized DNN by keras custom layer.
 
+## Fault Simulator
+
+Use bitwise operation on multidimension array or Tensor to create fault injection on DNN.
+
 ### now support:
 #### quantized layer
 -   Conv2D

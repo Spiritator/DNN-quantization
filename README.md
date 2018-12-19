@@ -30,10 +30,10 @@ Use the digital circuit algorithm simulation method to simulate qunatized DNN by
 - interconnection fault (SA fault)
 - memory fault (SA fault)
 
-### fault list generation
+#### fault list generation
 - uniform distributed fault
 
-### approximation
+#### approximation
 - number of computaion estimation
 - number of bits in computaion
 

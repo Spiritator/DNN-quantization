@@ -205,7 +205,7 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,**k
     return model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list
 
     
-
+# old function to be abandoned
 def generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length):
     model_depth=len(model.layers)
     model_ifmap_fault_dict_list=[None]

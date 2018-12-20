@@ -12,23 +12,80 @@ support different type of fault distribution
 
 import numpy as np
 
-def coordinate_gen_fmap(data_shape,batch_size,distribution='uniform'):
+def coordinate_gen_fmap(data_shape,batch_size,distribution='uniform',poisson_lam=None):
     coordinate=list()
-    coordinate.append(np.random.randint(batch_size))
-    for j in range(1,len(data_shape)):
-        coordinate.append(np.random.randint(data_shape[j]))
+    
+    if distribution=='uniform':
+        coordinate.append(np.random.randint(batch_size))
+        for j in range(1,len(data_shape)):
+            coordinate.append(np.random.randint(data_shape[j]))
+    elif distribution=='poisson':
+        if not isinstance(poisson_lam,tuple) or len(poisson_lam)!=len(data_shape):
+            raise TypeError('Poisson distribution lambda setting must be a tuple same length as input data shape which indicates the lamda of poisson distribution.')
+        
+        if isinstance(poisson_lam[0],int) and poisson_lam[0]>=0 and poisson_lam[0]<batch_size:
+            coor_tmp=np.random.poisson(poisson_lam[j])
+            while coor_tmp>=batch_size:
+                coor_tmp=np.random.poisson(poisson_lam[j])
+            coordinate.append(coor_tmp) 
+        for j in range(1,len(data_shape)):
+            if isinstance(poisson_lam[j],int) and poisson_lam[j]>=0 and poisson_lam[j]<data_shape[j]:
+                coor_tmp=np.random.poisson(poisson_lam[j])
+                while coor_tmp>=data_shape[j]:
+                    coor_tmp=np.random.poisson(poisson_lam[j])
+                coordinate.append(coor_tmp)
+        else:
+            raise ValueError('Poisson distribution Lambda must within feature map shape. Feature map shape %s but got lambda input %s'%(str(data_shape),str(poisson_lam)))
+    elif distribution=='normal':
+        pass 
+        '''TO BE DONE'''
+    else:
+        raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
+    
     coordinate=tuple(coordinate)
     return coordinate
 
-def coordinate_gen_wght(data_shape,distribution='uniform'):
+def coordinate_gen_wght(data_shape,distribution='uniform',poisson_lam=None):
     coordinate=list()
-    for j in range(len(data_shape)):
-        coordinate.append(np.random.randint(data_shape[j]))
+    
+    if distribution=='uniform':
+        for j in range(len(data_shape)):
+            coordinate.append(np.random.randint(data_shape[j]))
+    elif distribution=='poisson':
+        if not isinstance(poisson_lam,tuple) or len(poisson_lam)!=len(data_shape):
+            raise TypeError('Poisson distribution lambda setting must be a tuple same length as input data shape which indicates the lamda of poisson distribution.')
+        
+        for j in range(len(data_shape)):
+            if isinstance(poisson_lam,int) and poisson_lam>=0 and poisson_lam<data_shape[j]:
+                coor_tmp=np.random.poisson(poisson_lam[j])
+                while coor_tmp>=data_shape[j]:
+                    coor_tmp=np.random.poisson(poisson_lam[j])
+                coordinate.append(coor_tmp)
+        else:
+            raise ValueError('Poisson distribution Lambda must within feature map shape. Feature map shape %s but got lambda input %s'%(str(data_shape),str(poisson_lam)))
+    elif distribution=='normal':
+        pass 
+        '''TO BE DONE'''   
+    else:
+        raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
+    
     coordinate=tuple(coordinate)
     return coordinate
 
-def fault_bit_loc_gen(model_word_length,distribution='uniform'):
-    fault_bit=np.random.randint(model_word_length)
+def fault_bit_loc_gen(model_word_length,distribution='uniform',poisson_lam=None):
+    if distribution=='uniform':
+        fault_bit=np.random.randint(model_word_length)
+    elif distribution=='poisson':
+        if isinstance(poisson_lam,int) and poisson_lam>=0 and poisson_lam<model_word_length:
+            fault_bit=np.random.poisson(poisson_lam)
+            while fault_bit>=model_word_length:
+                fault_bit=np.random.poisson(poisson_lam)
+        else:
+            raise ValueError('Poisson distribution Lambda must within model word length.')
+    elif distribution=='normal':
+        pass    
+    else:
+        raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
     return fault_bit
 
 def fault_num_gen_fmap(data_shape,fault_rate,batch_size,model_word_length):
@@ -42,7 +99,7 @@ def fault_num_gen_wght(data_shape,fault_rate,model_word_length):
 def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length):
     fault_count=0        
     fault_dict=dict()
-    fault_num=fault_num_gen_fmap(data_shape,fault_rate,model_word_length)
+    fault_num=fault_num_gen_fmap(data_shape,fault_rate,batch_size,model_word_length)
     
     while fault_count<fault_num:
         coordinate=coordinate_gen_fmap(data_shape,batch_size)
@@ -78,7 +135,7 @@ def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,**kwargs):
     for i in range(len(fault_num)):
         fault_count=0
         while fault_count<fault_num[i]:
-            coordinate=coordinate_gen_wght(data_shape,**kwargs)
+            coordinate=coordinate_gen_wght(data_shape[i],**kwargs)
             fault_bit=fault_bit_loc_gen(model_word_length,**kwargs)
             
             if coordinate in fault_dict[i].keys():

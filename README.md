@@ -36,6 +36,7 @@ Use bitwise operation on multidimension array or Tensor to create fault injectio
 
 #### fault list generation
 - uniform distributed fault
+- poisson distributed fault
 
 #### approximation
 - number of computaion estimation

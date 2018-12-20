@@ -96,14 +96,14 @@ def fault_num_gen_wght(data_shape,fault_rate,model_word_length):
     fault_num=[int(np.prod(shapes) * model_word_length * fault_rate) for shapes in data_shape]
     return fault_num 
 
-def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length):
+def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,**kwargs):
     fault_count=0        
     fault_dict=dict()
     fault_num=fault_num_gen_fmap(data_shape,fault_rate,batch_size,model_word_length)
     
     while fault_count<fault_num:
-        coordinate=coordinate_gen_fmap(data_shape,batch_size)
-        fault_bit=fault_bit_loc_gen(model_word_length)
+        coordinate=coordinate_gen_fmap(data_shape,batch_size,distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
+        fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
         
         if coordinate in fault_dict.keys():
             if isinstance(fault_dict[coordinate]['fault_bit'],list):
@@ -127,7 +127,7 @@ def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length)
         
     return fault_dict,fault_num
     
-def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,**kwargs):
+def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,**kwargs):
     fault_count=0        
     fault_dict=[dict() for i in range(len(data_shape))]
     fault_num=fault_num_gen_wght(data_shape,fault_rate,model_word_length)
@@ -135,8 +135,8 @@ def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,**kwargs):
     for i in range(len(fault_num)):
         fault_count=0
         while fault_count<fault_num[i]:
-            coordinate=coordinate_gen_wght(data_shape[i],**kwargs)
-            fault_bit=fault_bit_loc_gen(model_word_length,**kwargs)
+            coordinate=coordinate_gen_wght(data_shape[i],distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
+            fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
             
             if coordinate in fault_dict[i].keys():
                 if isinstance(fault_dict[i][coordinate]['fault_bit'],list):
@@ -162,13 +162,25 @@ def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,**kwargs):
         
     return fault_dict,fault_num
 
-def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,**kwargs):
+def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,**kwargs):
     model_depth=len(model.layers)
     model_ifmap_fault_dict_list=[None]
     model_ofmap_fault_dict_list=[None]
     model_weight_fault_dict_list=[[None,None]]
+    if coor_pois_lam is None:
+        coor_pois_lam=[[None,None,None]]
+    
+    if coor_distribution=='poisson':
+        if not isinstance(coor_pois_lam,list) or len(coor_pois_lam)!=model_depth:
+            raise ValueError('Poisson distribution lambda setting must be a list has the same length as model layer number.')
+    
     for layer_num in range(1,model_depth):
         print('\nGenerating fault on layer %d ...'%layer_num)
+        
+        if coor_distribution == 'poisson':
+            lam_index=layer_num
+        else:
+            lam_index=0
         
         layer_input_shape=model.layers[layer_num].input_shape
         layer_output_shape=model.layers[layer_num].output_shape
@@ -182,21 +194,41 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,**k
             continue
         
         # ifmap fault generation
-        ifmap_fault_dict,layer_ifmap_fault_num=gen_fault_dict_list_fmap(layer_input_shape,fault_rate,batch_size,model_word_length,**kwargs)
-        
+        ifmap_fault_dict,layer_ifmap_fault_num=gen_fault_dict_list_fmap(layer_input_shape,
+                                                                        fault_rate,
+                                                                        batch_size,
+                                                                        model_word_length,
+                                                                        coor_distribution=coor_distribution,
+                                                                        coor_pois_lam=coor_pois_lam[lam_index][0],
+                                                                        bit_loc_distribution=bit_loc_distribution,
+                                                                        bit_loc_pois_lam=bit_loc_pois_lam,
+                                                                        **kwargs)
         model_ifmap_fault_dict_list.append(ifmap_fault_dict)    
         print('    generated layer %d ifmap %d faults'%(layer_num,layer_ifmap_fault_num))
         
         
         # ofmap fault generation
-        ofmap_fault_dict,layer_ofmap_fault_num=gen_fault_dict_list_fmap(layer_output_shape,fault_rate,batch_size,model_word_length,**kwargs)
-        
+        ofmap_fault_dict,layer_ofmap_fault_num=gen_fault_dict_list_fmap(layer_output_shape,
+                                                                        fault_rate,
+                                                                        batch_size,
+                                                                        model_word_length,
+                                                                        coor_distribution=coor_distribution,
+                                                                        coor_pois_lam=coor_pois_lam[lam_index][2],
+                                                                        bit_loc_distribution=bit_loc_distribution,
+                                                                        bit_loc_pois_lam=bit_loc_pois_lam,
+                                                                        **kwargs)
         model_ofmap_fault_dict_list.append(ofmap_fault_dict)    
         print('    generated layer %d ofmap %d faults'%(layer_num,layer_ofmap_fault_num))
         
         # weight fault generation
-        weight_fault_dict,layer_weight_fault_num=gen_fault_dict_list_wght(layer_weight_shape,fault_rate,model_word_length,**kwargs)
-            
+        weight_fault_dict,layer_weight_fault_num=gen_fault_dict_list_wght(layer_weight_shape,
+                                                                          fault_rate,
+                                                                          model_word_length,
+                                                                          coor_distribution=coor_distribution,
+                                                                          coor_pois_lam=coor_pois_lam[lam_index][1],
+                                                                          bit_loc_distribution=bit_loc_distribution,
+                                                                          bit_loc_pois_lam=bit_loc_pois_lam,
+                                                                          **kwargs)
         model_weight_fault_dict_list.append(weight_fault_dict)    
         print('    generated layer %d weight %s faults'%(layer_num,str(layer_weight_fault_num)))
         

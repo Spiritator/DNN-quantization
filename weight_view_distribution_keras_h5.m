@@ -2,19 +2,20 @@ clear;
 close all;
 
 % setup
-view_filename = '../resnet50_weights_tf_dim_ordering_tf_kernels.h5';
-fig_filename_prefix = '../resnet50_weights_tf_dim_ordering_tf_kernels_weight_distribution';
+view_filename = '../alexnet_weights.h5';
+fig_filename_prefix = '../alexnet_imagenet_weight_distribution';
 plot_normalize_factor=2;
 
 % open weight h5 file
 weight_file_id = H5F.open(view_filename);
 base_group_id = H5G.open(weight_file_id,'/');
 layer_info_id = H5A.open(base_group_id,'layer_names');
-backend_id = H5A.open(base_group_id,'backend');
-keras_ver_id = H5A.open(base_group_id,'keras_version');
 layer_info = H5A.read(layer_info_id);
-backend = H5A.read(backend_id);
-keras_ver = H5A.read(keras_ver_id);
+
+% backend_id = H5A.open(base_group_id,'backend');
+% keras_ver_id = H5A.open(base_group_id,'keras_version');
+% backend = H5A.read(backend_id);
+% keras_ver = H5A.read(keras_ver_id);
 
 layer_info = layer_info';
 
@@ -99,8 +100,6 @@ fig_filename=replace(fig_filename,{'/',':'},'_');
 saveas(distribution_fig,fig_filename);
 
 H5A.close(layer_info_id);
-H5A.close(backend_id);
-H5A.close(keras_ver_id);
 H5G.close(base_group_id);
 H5F.close(weight_file_id);
 H5G.close(layer_group_id);
@@ -108,3 +107,5 @@ H5A.close(weight_name_id);
 H5D.close(dset_id);
 H5T.close(type_id);
 H5S.close(mem_space_id);
+% H5A.close(backend_id);
+% H5A.close(keras_ver_id);

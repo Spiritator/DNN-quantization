@@ -2,8 +2,9 @@ clear;
 close all;
 
 % setup
-view_filename = 'mobilenet_1_0_224_tf.h5';
-fig_filename_prefix = 'mobilenet_1_0_224_tf_weight_distribution';
+view_filename = '../resnet50_weights_tf_dim_ordering_tf_kernels.h5';
+fig_filename_prefix = '../resnet50_weights_tf_dim_ordering_tf_kernels_weight_distribution';
+plot_normalize_factor=2;
 
 % open weight h5 file
 weight_file_id = H5F.open(view_filename);
@@ -86,7 +87,7 @@ saveas(distribution_fig,fig_filename);
 
 total_weight_std = std(total_weight);
 total_weight_mean = mean(total_weight);
-x=linspace(total_weight_mean-2*total_weight_std,total_weight_mean+2*total_weight_std,100);
+x=linspace(total_weight_mean-plot_normalize_factor*total_weight_std,total_weight_mean+plot_normalize_factor*total_weight_std,100);
 distribution_fig=histogram(total_weight,x);
 
 ylabel('# of weights');

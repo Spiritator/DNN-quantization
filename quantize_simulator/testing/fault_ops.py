@@ -50,7 +50,7 @@ def inject_layer_sa_fault_tensor(data, fault_dict, word_width, factorial_bit, ro
     fault_modulators=[tf.constant([0],dtype='int32') for i in range(3)]
     
     for key in fault_dict.keys():
-        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(word_width,factorial_bit,fault_dict[key]['SA_bit'],fault_dict[key]['fault_type'])
+        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(word_width,factorial_bit,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'])
         if modulator0 is not None:
             fault_indices[0]=np.append(fault_indices[0],[key],axis=0)
             fault_modulators[0]=tf.concat([fault_modulators[0],[modulator0]],0)

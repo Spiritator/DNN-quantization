@@ -106,23 +106,23 @@ def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,
         fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
         
         if coordinate in fault_dict.keys():
-            if isinstance(fault_dict[coordinate]['fault_bit'],list):
-                if fault_bit in fault_dict[coordinate]['fault_bit']:
+            if isinstance(fault_dict[coordinate]['SA_bit'],list):
+                if fault_bit in fault_dict[coordinate]['SA_bit']:
                     continue
                 else:
-                    fault_dict[coordinate]['fault_type'].append('flip')
-                    fault_dict[coordinate]['fault_bit'].append(fault_bit)
+                    fault_dict[coordinate]['SA_type'].append('flip')
+                    fault_dict[coordinate]['SA_bit'].append(fault_bit)
                     fault_count += 1
             else:
-                if fault_bit == fault_dict[coordinate]['fault_bit']:
+                if fault_bit == fault_dict[coordinate]['SA_bit']:
                     continue
                 else:
-                    fault_dict[coordinate]['fault_type']=[fault_dict[coordinate]['fault_type'],'flip']
-                    fault_dict[coordinate]['fault_bit']=[fault_dict[coordinate]['fault_bit'],fault_bit]
+                    fault_dict[coordinate]['SA_type']=[fault_dict[coordinate]['SA_type'],'flip']
+                    fault_dict[coordinate]['SA_bit']=[fault_dict[coordinate]['SA_bit'],fault_bit]
                     fault_count += 1
         else:
-            fault_dict[coordinate]={'fault_type':'flip',
-                                          'fault_bit' : fault_bit}
+            fault_dict[coordinate]={'SA_type':'flip',
+                                          'SA_bit' : fault_bit}
             fault_count += 1
         
     return fault_dict,fault_num
@@ -139,25 +139,25 @@ def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,coor_distri
             fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
             
             if coordinate in fault_dict[i].keys():
-                if isinstance(fault_dict[i][coordinate]['fault_bit'],list):
-                    if fault_bit in fault_dict[i][coordinate]['fault_bit']:
+                if isinstance(fault_dict[i][coordinate]['SA_bit'],list):
+                    if fault_bit in fault_dict[i][coordinate]['SA_bit']:
                         #print('error 1')
                         continue
                     else:
-                        fault_dict[i][coordinate]['fault_type'].append('flip')
-                        fault_dict[i][coordinate]['fault_bit'].append(fault_bit)
+                        fault_dict[i][coordinate]['SA_type'].append('flip')
+                        fault_dict[i][coordinate]['SA_bit'].append(fault_bit)
                         fault_count += 1
                 else:
-                    if fault_bit == fault_dict[i][coordinate]['fault_bit']:
+                    if fault_bit == fault_dict[i][coordinate]['SA_bit']:
                         #print('error 2')
                         continue
                     else:
-                        fault_dict[i][coordinate]['fault_type']=[fault_dict[i][coordinate]['fault_type'],'flip']
-                        fault_dict[i][coordinate]['fault_bit']=[fault_dict[i][coordinate]['fault_bit'],fault_bit]
+                        fault_dict[i][coordinate]['SA_type']=[fault_dict[i][coordinate]['SA_type'],'flip']
+                        fault_dict[i][coordinate]['SA_bit']=[fault_dict[i][coordinate]['SA_bit'],fault_bit]
                         fault_count += 1
             else:
-                fault_dict[i][coordinate]={'fault_type':'flip',
-                                              'fault_bit' : fault_bit}
+                fault_dict[i][coordinate]={'SA_type':'flip',
+                                              'SA_bit' : fault_bit}
                 fault_count += 1
         
     return fault_dict,fault_num
@@ -277,23 +277,23 @@ def generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_len
             fault_bit=np.random.randint(model_word_length)
             
             if coordinate in ifmap_fault_dict.keys():
-                if isinstance(ifmap_fault_dict[coordinate]['fault_bit'],list):
-                    if fault_bit in ifmap_fault_dict[coordinate]['fault_bit']:
+                if isinstance(ifmap_fault_dict[coordinate]['SA_bit'],list):
+                    if fault_bit in ifmap_fault_dict[coordinate]['SA_bit']:
                         continue
                     else:
-                        ifmap_fault_dict[coordinate]['fault_type'].append('flip')
-                        ifmap_fault_dict[coordinate]['fault_bit'].append(fault_bit)
+                        ifmap_fault_dict[coordinate]['SA_type'].append('flip')
+                        ifmap_fault_dict[coordinate]['SA_bit'].append(fault_bit)
                         fault_count += 1
                 else:
-                    if fault_bit == ifmap_fault_dict[coordinate]['fault_bit']:
+                    if fault_bit == ifmap_fault_dict[coordinate]['SA_bit']:
                         continue
                     else:
-                        ifmap_fault_dict[coordinate]['fault_type']=[ifmap_fault_dict[coordinate]['fault_type'],'flip']
-                        ifmap_fault_dict[coordinate]['fault_bit']=[ifmap_fault_dict[coordinate]['fault_bit'],fault_bit]
+                        ifmap_fault_dict[coordinate]['SA_type']=[ifmap_fault_dict[coordinate]['SA_type'],'flip']
+                        ifmap_fault_dict[coordinate]['SA_bit']=[ifmap_fault_dict[coordinate]['SA_bit'],fault_bit]
                         fault_count += 1
             else:
-                ifmap_fault_dict[coordinate]={'fault_type':'flip',
-                                              'fault_bit' : fault_bit}
+                ifmap_fault_dict[coordinate]={'SA_type':'flip',
+                                              'SA_bit' : fault_bit}
                 fault_count += 1
         
         model_ifmap_fault_dict_list.append(ifmap_fault_dict)    
@@ -311,23 +311,23 @@ def generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_len
             fault_bit=np.random.randint(model_word_length)
             
             if coordinate in ofmap_fault_dict.keys():
-                if isinstance(ofmap_fault_dict[coordinate]['fault_bit'],list):
-                    if fault_bit in ofmap_fault_dict[coordinate]['fault_bit']:
+                if isinstance(ofmap_fault_dict[coordinate]['SA_bit'],list):
+                    if fault_bit in ofmap_fault_dict[coordinate]['SA_bit']:
                         continue
                     else:
-                        ofmap_fault_dict[coordinate]['fault_type'].append('flip')
-                        ofmap_fault_dict[coordinate]['fault_bit'].append(fault_bit)
+                        ofmap_fault_dict[coordinate]['SA_type'].append('flip')
+                        ofmap_fault_dict[coordinate]['SA_bit'].append(fault_bit)
                         fault_count += 1
                 else:
-                    if fault_bit == ofmap_fault_dict[coordinate]['fault_bit']:
+                    if fault_bit == ofmap_fault_dict[coordinate]['SA_bit']:
                         continue
                     else:
-                        ofmap_fault_dict[coordinate]['fault_type']=[ofmap_fault_dict[coordinate]['fault_type'],'flip']
-                        ofmap_fault_dict[coordinate]['fault_bit']=[ofmap_fault_dict[coordinate]['fault_bit'],fault_bit]
+                        ofmap_fault_dict[coordinate]['SA_type']=[ofmap_fault_dict[coordinate]['SA_type'],'flip']
+                        ofmap_fault_dict[coordinate]['SA_bit']=[ofmap_fault_dict[coordinate]['SA_bit'],fault_bit]
                         fault_count += 1
             else:
-                ofmap_fault_dict[coordinate]={'fault_type':'flip',
-                                              'fault_bit' : fault_bit}
+                ofmap_fault_dict[coordinate]={'SA_type':'flip',
+                                              'SA_bit' : fault_bit}
                 fault_count += 1
         
         model_ofmap_fault_dict_list.append(ofmap_fault_dict)    
@@ -344,25 +344,25 @@ def generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_len
                 fault_bit=np.random.randint(model_word_length)
                 
                 if coordinate in weight_fault_dict[i].keys():
-                    if isinstance(weight_fault_dict[i][coordinate]['fault_bit'],list):
-                        if fault_bit in weight_fault_dict[i][coordinate]['fault_bit']:
+                    if isinstance(weight_fault_dict[i][coordinate]['SA_bit'],list):
+                        if fault_bit in weight_fault_dict[i][coordinate]['SA_bit']:
                             #print('error 1')
                             continue
                         else:
-                            weight_fault_dict[i][coordinate]['fault_type'].append('flip')
-                            weight_fault_dict[i][coordinate]['fault_bit'].append(fault_bit)
+                            weight_fault_dict[i][coordinate]['SA_type'].append('flip')
+                            weight_fault_dict[i][coordinate]['SA_bit'].append(fault_bit)
                             fault_count += 1
                     else:
-                        if fault_bit == weight_fault_dict[i][coordinate]['fault_bit']:
+                        if fault_bit == weight_fault_dict[i][coordinate]['SA_bit']:
                             #print('error 2')
                             continue
                         else:
-                            weight_fault_dict[i][coordinate]['fault_type']=[weight_fault_dict[i][coordinate]['fault_type'],'flip']
-                            weight_fault_dict[i][coordinate]['fault_bit']=[weight_fault_dict[i][coordinate]['fault_bit'],fault_bit]
+                            weight_fault_dict[i][coordinate]['SA_type']=[weight_fault_dict[i][coordinate]['SA_type'],'flip']
+                            weight_fault_dict[i][coordinate]['SA_bit']=[weight_fault_dict[i][coordinate]['SA_bit'],fault_bit]
                             fault_count += 1
                 else:
-                    weight_fault_dict[i][coordinate]={'fault_type':'flip',
-                                                  'fault_bit' : fault_bit}
+                    weight_fault_dict[i][coordinate]={'SA_type':'flip',
+                                                  'SA_bit' : fault_bit}
                     fault_count += 1
             
         model_weight_fault_dict_list.append(weight_fault_dict)    

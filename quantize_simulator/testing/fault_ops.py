@@ -21,17 +21,17 @@ def check_fault_dict(data, fault_dict):
         if any([key[i]>=data.shape[i] for i in range(len(key))]):
             raise ValueError('fault location %s is out of data index with shape %s'%(key,data.shape))
             
-#        if len(fault_dict[key]['fault_type'])!=len(fault_dict[key]['fault_bit']):
+#        if len(fault_dict[key]['fault_type'])!=len(fault_dict[key]['SA_bit']):
 #            raise ValueError('fault location %s has different number of fault types and fault bits'%key)
 
 
 def inject_layer_sa_fault_nparray(data, fault_dict, word_width, factorial_bit, rounding='nearest'):
     check_fault_dict(data,fault_dict)
     for key in fault_dict.keys():
-        if not isinstance(fault_dict[key]['fault_bit'],list):
-            data[key]=generate_single_stuck_at_fault(data[key],word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'],rounding=rounding,tensor_return=False)
+        if not isinstance(fault_dict[key]['SA_bit'],list):
+            data[key]=generate_single_stuck_at_fault(data[key],word_width,factorial_bit,fault_dict[key]['SA_bit'],fault_dict[key]['fault_type'],rounding=rounding,tensor_return=False)
         else:
-            data[key]=generate_multiple_stuck_at_fault(data[key],word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'],rounding=rounding,tensor_return=False)
+            data[key]=generate_multiple_stuck_at_fault(data[key],word_width,factorial_bit,fault_dict[key]['SA_bit'],fault_dict[key]['fault_type'],rounding=rounding,tensor_return=False)
             
     return data
 
@@ -50,7 +50,7 @@ def inject_layer_sa_fault_tensor(data, fault_dict, word_width, factorial_bit, ro
     fault_modulators=[tf.constant([0],dtype='int32') for i in range(3)]
     
     for key in fault_dict.keys():
-        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(word_width,factorial_bit,fault_dict[key]['fault_bit'],fault_dict[key]['fault_type'])
+        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(word_width,factorial_bit,fault_dict[key]['SA_bit'],fault_dict[key]['fault_type'])
         if modulator0 is not None:
             fault_indices[0]=np.append(fault_indices[0],[key],axis=0)
             fault_modulators[0]=tf.concat([fault_modulators[0],[modulator0]],0)

@@ -1,4 +1,4 @@
-# Quantize Simulator
+# Simulator
 
 Use the digital circuit algorithm simulation method to simulate qunatized DNN by keras custom layer.
 

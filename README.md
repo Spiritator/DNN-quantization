@@ -1,4 +1,4 @@
-# DNN-quantization
+# DNN Fault Simulator
 
 DNN quantize conversion and accuracy loss evaluation
 

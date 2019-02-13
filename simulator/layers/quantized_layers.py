@@ -18,6 +18,7 @@ from keras import initializers
 
 from layers.quantized_ops import quantize, clip_through
 from testing.fault_ops import inject_layer_sa_fault_tensor
+from layers.intra_layer_ops import QuantizedDenseCore, QuantizedConv2DCore, QuantizedBatchNormalizationCore
 
 
 class Clip(constraints.Constraint):
@@ -44,13 +45,14 @@ class QuantizedDense(Dense):
     References: 
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
-    def __init__(self, units, H=1., nb=16, fb=8, rounding_method='nearest', kernel_lr_multiplier='Glorot', bias_lr_multiplier=None,
+    def __init__(self, units, H=1., nb=16, fb=8, rounding_method='nearest', kernel_lr_multiplier='Glorot', bias_lr_multiplier=None, intrinsic=False,
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None], **kwargs):
         super(QuantizedDense, self).__init__(units, **kwargs)
         self.H = H
         self.nb = nb
         self.fb = fb
         self.rounding_method = rounding_method
+        self.intrinsic = intrinsic
         self.kernel_lr_multiplier = kernel_lr_multiplier
         self.bias_lr_multiplier = bias_lr_multiplier
         self.weight_sa_fault_injection=weight_sa_fault_injection
@@ -118,8 +120,12 @@ class QuantizedDense(Dense):
         if self.ifmap_sa_fault_injection is not None:
             inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=self.rounding_method)
         
-        output = K.dot(inputs, quantized_kernel)
-        output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
+        if self.intrinsic:
+            output = QuantizedDenseCore(inputs, quantized_kernel, nb_output, fb_output, self.rounding_method)
+        else:
+            output = K.dot(inputs, quantized_kernel)
+            output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)                        
+            
         if self.use_bias:
             quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
             
@@ -157,13 +163,14 @@ class QuantizedConv2D(Conv2D):
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
     def __init__(self, filters, kernel_regularizer=None,activity_regularizer=None, kernel_lr_multiplier='Glorot',
-                 bias_lr_multiplier=None, H=1., nb=16, fb=8, rounding_method='nearest',
+                 bias_lr_multiplier=None, H=1., nb=16, fb=8, rounding_method='nearest', intrinsic=False,
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],**kwargs):
         super(QuantizedConv2D, self).__init__(filters, **kwargs)
         self.H = H
         self.nb = nb
         self.fb = fb
         self.rounding_method = rounding_method
+        self.intrinsic = intrinsic
         self.kernel_lr_multiplier = kernel_lr_multiplier
         self.bias_lr_multiplier = bias_lr_multiplier
         self.activity_regularizer =activity_regularizer
@@ -254,15 +261,18 @@ class QuantizedConv2D(Conv2D):
         inputs_qnn_gradient = (inputs - (1. - 1./inverse_kernel_lr_multiplier) * K.stop_gradient(inputs))\
                   * inverse_kernel_lr_multiplier
 
-        outputs_qnn_gradient = K.conv2d(
-            inputs_qnn_gradient,
-            quantized_kernel,
-            strides=self.strides,
-            padding=self.padding,
-            data_format=self.data_format,
-            dilation_rate=self.dilation_rate)
+        if self.intrinsic:
+            outputs_qnn_gradient = QuantizedConv2DCore(inputs_qnn_gradient, quantized_kernel, self.strides, self.dilation_rate, self.padding, self.data_format, nb_output, fb_output, self.rounding_method)
+        else:
+            outputs_qnn_gradient = K.conv2d(
+                    inputs_qnn_gradient,
+                    quantized_kernel,
+                    strides=self.strides,
+                    padding=self.padding,
+                    data_format=self.data_format,
+                    dilation_rate=self.dilation_rate)
         
-        outputs_qnn_gradient = quantize(outputs_qnn_gradient, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
+            outputs_qnn_gradient = quantize(outputs_qnn_gradient, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
 
         outputs = (outputs_qnn_gradient - (1. - 1./self.kernel_lr_multiplier) * K.stop_gradient(outputs_qnn_gradient))\
                   * self.kernel_lr_multiplier
@@ -315,12 +325,13 @@ class QuantizedBatchNormalization(BatchNormalization):
     "Pytorch Playground: Base pretrained models and datasets in pytorch." [https://github.com/aaron-xichen/pytorch-playground]
     '''
     def __init__(self,
-                 H=1, nb=16, fb=8, rounding_method='nearest', **kwargs):
+                 H=1, nb=16, fb=8, rounding_method='nearest', intrinsic=False, **kwargs):
         super(QuantizedBatchNormalization, self).__init__(**kwargs)
         self.H = H
         self.nb = nb
         self.fb = fb
         self.rounding_method = rounding_method
+        self.intrinsic = intrinsic
 
     def build(self, input_shape):
         dim = input_shape[self.axis]
@@ -410,28 +421,52 @@ class QuantizedBatchNormalization(BatchNormalization):
                 broadcast_beta = quantize(broadcast_beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                 broadcast_gamma = quantize(broadcast_gamma, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                     
-                return K.batch_normalization(
-                    quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
-                    broadcast_moving_mean,
-                    broadcast_moving_variance,
-                    broadcast_beta,
-                    broadcast_gamma,
-                    axis=self.axis,
-                    epsilon=self.epsilon)
+                if self.intrinsic:
+                    return QuantizedBatchNormalizationCore(
+                            quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
+                            broadcast_moving_mean,
+                            broadcast_moving_variance,
+                            broadcast_beta,
+                            broadcast_gamma,
+                            self.epsilon,
+                            nb_output, 
+                            fb_output, 
+                            self.rounding_method)
+                else:
+                    return K.batch_normalization(
+                            quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
+                            broadcast_moving_mean,
+                            broadcast_moving_variance,
+                            broadcast_beta,
+                            broadcast_gamma,
+                            axis=self.axis,
+                            epsilon=self.epsilon)
             else:
                 moving_mean = quantize(self.moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                 moving_variance = quantize(self.moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                 beta = quantize(self.beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                 gamma = quantize(self.gamma, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                 
-                return K.batch_normalization(
-                    quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
-                    moving_mean,
-                    moving_variance,
-                    beta,
-                    gamma,
-                    axis=self.axis,
-                    epsilon=self.epsilon)
+                if self.intrinsic:
+                    return QuantizedBatchNormalizationCore(
+                            quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
+                            moving_mean,
+                            moving_variance,
+                            beta,
+                            gamma,
+                            self.epsilon,
+                            nb_output,
+                            fb_output,
+                            self.rounding_method)
+                else:
+                    return K.batch_normalization(
+                            quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
+                            moving_mean,
+                            moving_variance,
+                            beta,
+                            gamma,
+                            axis=self.axis,
+                            epsilon=self.epsilon)
 
         # If the learning phase is *static* and set to inference:
         if training in {0, False}:

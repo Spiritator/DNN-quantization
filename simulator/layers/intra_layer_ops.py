@@ -155,7 +155,6 @@ def QuantizedBatchNormalizationCore(inputs,
                                     beta,
                                     gamma,
                                     variance_epsilon,
-                                    quantizer, 
                                     nb, 
                                     fb, 
                                     rounding_method,
@@ -167,7 +166,7 @@ def QuantizedBatchNormalizationCore(inputs,
           coef = quantize(coef*gamma, nb, fb, rounding_method)
         
         if beta is not None:
-            const = quantize( beta - quantizer.quantize(mean * coef), nb, fb, rounding_method )
+            const = quantize( beta - quantize(mean * coef, nb, fb, rounding_method), nb, fb, rounding_method )
         else:
             const = quantize(-mean * coef, nb, fb, rounding_method)
         output = quantize( quantize(inputs * coef, nb, fb, rounding_method) + const, nb, fb, rounding_method )

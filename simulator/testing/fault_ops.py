@@ -39,10 +39,11 @@ def inject_layer_sa_fault_tensor(data, fault_dict, word_width, factorial_bit, ro
     if isinstance(fault_dict,dict):
         shape=data.shape
     elif isinstance(fault_dict,list):
+        # for the bypass method of keras flatten layer batch number bug
         shape=fault_dict[1]
         fault_dict=fault_dict[0]
     else:
-        raise TypeError('wrong type of fault list being injected. The fault list is either dict (normal injection) or list (index 0 fault list, index 1 being injected data shape.)')
+        raise TypeError('wrong type of fault list being injected. The fault list is either dict (normal injection) or list (index 0 fault list, index 1 the data shape of being injected tensor.)')
 
         
     check_fault_dict(data,fault_dict)

@@ -121,7 +121,10 @@ class QuantizedDense(Dense):
             inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=self.rounding_method)
         
         if self.intrinsic:
-            output = QuantizedDenseCore(inputs, quantized_kernel, nb_output, fb_output, self.rounding_method)
+            if inputs.shape.dims[0].value is None:
+                output = QuantizedDenseCore([inputs, self.batch_input_shape[0]], quantized_kernel, nb_output, fb_output, self.rounding_method)
+            else:
+                output = QuantizedDenseCore(inputs, quantized_kernel, nb_output, fb_output, self.rounding_method)
         else:
             output = K.dot(inputs, quantized_kernel)
             output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)                        
@@ -262,7 +265,9 @@ class QuantizedConv2D(Conv2D):
                   * inverse_kernel_lr_multiplier
 
         if self.intrinsic:
-            outputs_qnn_gradient = QuantizedConv2DCore(inputs_qnn_gradient, quantized_kernel, self.strides, self.dilation_rate, self.padding, self.data_format, nb_output, fb_output, self.rounding_method)
+            strides = (1,self.strides[0],self.strides[1],1)
+            dilation_rate = (1,self.dilation_rate[0],self.dilation_rate[1],1)
+            outputs_qnn_gradient = QuantizedConv2DCore(inputs_qnn_gradient, quantized_kernel, strides, dilation_rate, self.padding.upper(), self.data_format, nb_output, fb_output, self.rounding_method)
         else:
             outputs_qnn_gradient = K.conv2d(
                     inputs_qnn_gradient,

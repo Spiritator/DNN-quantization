@@ -26,6 +26,7 @@ from approximation.estimate import comp_num_estimate
 # model setup
 
 weight_name='../../mnist_lenet5_weight.h5'
+batch_size=25
 
 # model setup
 # all augments use the same quantize precision
@@ -33,7 +34,7 @@ weight_name='../../mnist_lenet5_weight.h5'
 # each augment uses different quantize precision. information list [input, weight, output]
 #model=quantized_lenet5(nbits=[10,4,10],fbits=[5,2,5],rounding_method='nearest')
 # intrinsic quantization
-model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest',batch_size=25,intrinsic=True)
+model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest',batch_size=batch_size,intrinsic=True)
 
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)
@@ -49,7 +50,7 @@ x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_
 # view test result
 t = time.time()
 
-test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=25)
+test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
 
 t = time.time()-t
 print('\nruntime: %f s'%t)
@@ -65,7 +66,7 @@ print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
 # draw confusion matrix
 
 print('\n')
-prediction = model.predict(x_test, verbose=1)
+prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
 prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)

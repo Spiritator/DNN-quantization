@@ -12,18 +12,10 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
 
-from layers.quantized_ops import quantize, clip_through
+from layers.quantized_ops import quantize
 
 def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
-    if isinstance(inputs,list):
-        # for the bypass method of keras flatten layer batch number bug
-        batch_size=inputs[1]
-        inputs=inputs[0]
-#    else:
-#        raise TypeError('wrong type of input being assigned. The input is either Tensor (normal injection) or list (index 0 fault list, index 1 the data shape of being injected tensor.)')
-    else:
-        batch_size = inputs.shape.dims[0].value
-        
+    batch_size = inputs.shape.dims[0].value  
     input_size = inputs.shape.dims[1].value
     output_size = kernel.get_shape().dims[1].value
     output = tf.split(inputs,batch_size)

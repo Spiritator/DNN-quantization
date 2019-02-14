@@ -9,10 +9,11 @@ all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-Tensorflow
 '''
 
 import numpy as np
+import tensorflow as tf
 
 from keras import backend as K
 
-from keras.layers import InputSpec, Layer, Dense, Conv2D, BatchNormalization, DepthwiseConv2D
+from keras.layers import InputSpec, Layer, Dense, Conv2D, BatchNormalization, DepthwiseConv2D, Flatten
 from keras import constraints
 from keras import initializers
 
@@ -121,10 +122,7 @@ class QuantizedDense(Dense):
             inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=self.rounding_method)
         
         if self.intrinsic:
-            if inputs.shape.dims[0].value is None:
-                output = QuantizedDenseCore([inputs, self.batch_input_shape[0]], quantized_kernel, nb_output, fb_output, self.rounding_method)
-            else:
-                output = QuantizedDenseCore(inputs, quantized_kernel, nb_output, fb_output, self.rounding_method)
+            output = QuantizedDenseCore(inputs, quantized_kernel, nb_output, fb_output, self.rounding_method)
         else:
             output = K.dot(inputs, quantized_kernel)
             output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)                        
@@ -620,4 +618,30 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-    
+class QuantizedFlatten(Flatten):
+    '''
+    Fix the fucking bug of not showing shape of flatten and reshape layer output in keras.
+    Custom remake a Flatten layer for the reliability analysis and intrinsic operation after flatten layer.
+    '''
+    def __init__(self, batch_size, **kwargs):
+        super(QuantizedFlatten, self).__init__(**kwargs)
+        self.batch_size = batch_size
+
+    def call(self, inputs):
+        if self.data_format == 'channels_first':
+            # Ensure works for any dim
+            permutation = [0]
+            permutation.extend([i for i in
+                                range(2, K.ndim(inputs))])
+            permutation.append(1)
+            inputs = K.permute_dimensions(inputs, permutation)
+        
+        if self.batch_size is None:
+            return K.batch_flatten(inputs)
+        else:
+            return tf.reshape(inputs, [self.batch_size,-1])
+
+    def get_config(self):
+        config = {'data_format': self.data_format}
+        base_config = super(Flatten, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))

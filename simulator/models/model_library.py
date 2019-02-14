@@ -5,6 +5,7 @@ all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-Tensorflow
 @author: Yung-Yu Tsai
 
 '''
+import tensorflow as tf
 
 from keras.models import Sequential, Model
 from keras import regularizers
@@ -14,7 +15,7 @@ from keras import metrics
 from keras import backend as K
 import numpy as np
 
-from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization
+from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
 from layers.quantized_ops import quantized_relu as quantize_op
 
 
@@ -70,7 +71,10 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     print('Building Layer 4')
     x = MaxPooling2D(pool_size=(2,2))(x)
     print('Building Layer 5')
-    x = Flatten()(x)
+    #x = tf.reshape(x, (batch_size,-1))
+    #x = Reshape((-1,))(x)
+    #x = Flatten()(x)
+    x = QuantizedFlatten(batch_size)(x)
     print('Building Layer 6')
     x = QuantizedDense(128,
                        H=1,

@@ -17,8 +17,8 @@ from keras import metrics
 from keras.applications.resnet50 import ResNet50
 from keras.applications.mobilenet import MobileNet
 from keras.preprocessing import image
-from keras.applications.resnet50 import preprocess_input, decode_predictions
-#from keras.applications.mobilenet import preprocess_input, decode_predictions
+#from keras.applications.resnet50 import preprocess_input, decode_predictions
+from keras.applications.mobilenet import preprocess_input, decode_predictions
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import time
 import numpy as np

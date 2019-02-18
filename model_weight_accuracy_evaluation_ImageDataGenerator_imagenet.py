@@ -15,11 +15,11 @@ from keras.models import Sequential, Model, load_model
 from keras import backend as K
 from keras import metrics
 from keras.applications.resnet50 import ResNet50
-#from keras.applications.mobilenet import MobileNet
+from keras.applications.mobilenet import MobileNet
 from keras.preprocessing import image
 from keras.applications.resnet50 import preprocess_input, decode_predictions
 #from keras.applications.mobilenet import preprocess_input, decode_predictions
-from quantize_simulator.utils_tool.confusion_matrix import show_confusion_matrix
+from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import time
 import numpy as np
 
@@ -39,8 +39,8 @@ def top5_acc(y_true,y_pred):
 
 print('Building model...')
 t = time.time()
-model = ResNet50(weights='../resnet50_weights_tf_dim_ordering_tf_kernels.h5')
-#model = MobileNet(weights='../mobilenet_1_0_224_tf.h5')
+#model = ResNet50(weights='../resnet50_weights_tf_dim_ordering_tf_kernels.h5')
+model = MobileNet(weights='../mobilenet_1_0_224_tf.h5')
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy', top5_acc])
@@ -52,14 +52,14 @@ print('model build time: %f s'%t)
 
 #%%
 
-#img_path = '../test_images/football.jpg'
-#img = image.load_img(img_path, target_size=(224, 224))
-#x = image.img_to_array(img)
-#x = np.expand_dims(x, axis=0)
-#x = preprocess_input(x)
-#
-#preds = model.predict(x)
-#print('Predicted:', decode_predictions(preds, top=5)[0])
+img_path = '../test_images/wine.jpg'
+img = image.load_img(img_path, target_size=(224, 224))
+x = image.img_to_array(img)
+x = np.expand_dims(x, axis=0)
+x = preprocess_input(x)
+
+preds = model.predict(x)
+print('Predicted:', decode_predictions(preds, top=5)[0])
 
 
 

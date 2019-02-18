@@ -13,8 +13,10 @@ import numpy as np
 from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
 from testing.fault_ops import inject_layer_sa_fault_tensor, inject_layer_sa_fault_nparray
 
+# a numpy array of 0 ~ 99
 original_weight=np.arange(1,100,dtype='float32')
 
+# inject single SA fault to a parameter
 single_fault_weight=generate_single_stuck_at_fault(original_weight,10,3,3,'1',tensor_return=False)
 
 multiple_fault_weight=generate_multiple_stuck_at_fault(original_weight,10,3,[3,2],['1','1'],tensor_return=False)
@@ -25,20 +27,20 @@ layer_original_weight=np.reshape(np.arange(1,101,dtype='float32'), (10,10))
 layer_original_input=tf.Variable(layer_original_weight)
 
 fault_dict={(1,6):\
-            {'fault_type':'1',
-             'fault_bit':2},
+            {'SA_type':'1',
+             'SA_bit':2},
             (1,4):\
-            {'fault_type':'0',
-             'fault_bit':3},
+            {'SA_type':'0',
+             'SA_bit':3},
             (0,1):\
-            {'fault_type':['1','flip'],
-             'fault_bit':[3,2]},
+            {'SA_type':['1','flip'],
+             'SA_bit':[3,2]},
             (0,5):\
-            {'fault_type':['1','flip'],
-             'fault_bit':[3,2]},
+            {'SA_type':['1','flip'],
+             'SA_bit':[3,2]},
             (0,8):\
-            {'fault_type':['0','flip'],
-             'fault_bit':[3,2]}
+            {'SA_type':['0','flip'],
+             'SA_bit':[3,2]}
             }
             
 layer_fault_weight=inject_layer_sa_fault_nparray(layer_original_weight,fault_dict,10,3,rounding='nearest')

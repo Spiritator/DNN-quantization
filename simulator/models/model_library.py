@@ -126,7 +126,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
         print('Inject weight fault')
     
     print('Building Layer 0')
-    input_shape = Input(shape=input_shape)
+    input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
     print('Building Layer 1')
     x = QuantizedConv2D(filters=32,
                         H=1,

@@ -19,7 +19,7 @@ from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras import metrics
-from quantize_simulator.utils_tool.confusion_matrix import show_confusion_matrix
+from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import numpy as np
 import time
 
@@ -104,17 +104,17 @@ else:
     
 t = time.time()
 
-test_result = model.evaluate(x_test, y_test, verbose=0)
+test_result = model.evaluate(x_test, y_test, verbose=1)
 
 t = time.time()-t
 
-prediction = model.predict(x_test, verbose=0)
-prediction = np.argmax(prediction, axis=1)
-        
 print('\nruntime: %f s'%t)
 print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
 
+prediction = model.predict(x_test, verbose=1)
+prediction = np.argmax(prediction, axis=1)
+        
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck'],'Confusion Matrix',figsize=(8,6),normalize=False)
 

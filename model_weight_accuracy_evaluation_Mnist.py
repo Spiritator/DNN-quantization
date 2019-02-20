@@ -19,7 +19,7 @@ from keras.layers.normalization import BatchNormalization
 from keras import backend as K
 from keras import metrics
 from keras.datasets import mnist
-from quantize_simulator.utils_tool.confusion_matrix import show_confusion_matrix
+from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import numpy as np
 import time
 
@@ -67,11 +67,11 @@ y_test = keras.utils.to_categorical(y_test, num_classes)
 
 t = time.time()
 
-test_result = model.evaluate(x_test, y_test, verbose=0)
+test_result = model.evaluate(x_test, y_test, verbose=1)
 
 t = time.time()-t
 
-prediction = model.predict(x_test, verbose=0)
+prediction = model.predict(x_test, verbose=1)
 prediction = np.argmax(prediction, axis=1)
         
 print('\nruntime: %f s'%t)

@@ -39,15 +39,9 @@ model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,roundin
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 
-#model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length)
-#model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length)
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,bit_loc_distribution='poisson',bit_loc_pois_lam=2)
 
-# bypass keras flatten shape bug
-#model_ifmap_fault_dict_list[6]=[model_ifmap_fault_dict_list[6],(batch_size,)+model.layers[6].input_shape[1:]]
-#model_ifmap_fault_dict_list[7]=[model_ifmap_fault_dict_list[7],(batch_size,)+model.layers[7].input_shape[1:]]
-#model_ofmap_fault_dict_list[6]=[model_ofmap_fault_dict_list[6],(batch_size,)+model.layers[6].output_shape[1:]]
-#model_ofmap_fault_dict_list[7]=[model_ofmap_fault_dict_list[7],(batch_size,)+model.layers[7].output_shape[1:]]
+# FC layer no fault
 model_weight_fault_dict_list[6]=[None,None]
 model_weight_fault_dict_list[7]=[None,None]
 model_ifmap_fault_dict_list[6]=None

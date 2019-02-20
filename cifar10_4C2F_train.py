@@ -116,8 +116,8 @@ else:
                         workers=4)
 
 # Save model and weights
-model.save_weights('cifar10_5C2F_weight.h5')
-model.save('cifar10_5C2F_model.h5')
+model.save_weights('cifar10_4C2F_weight.h5')
+model.save('cifar10_4C2F_model.h5')
 
 # Score trained model.
 # Score trained model.

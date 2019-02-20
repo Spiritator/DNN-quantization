@@ -24,15 +24,15 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     print('Building model : Quantized Lenet 5')
     
     if ifmap_fault_dict_list is None:
-        ifmap_fault_dict_list=[None,None,None,None,None,None,None,None]
+        ifmap_fault_dict_list=[None for i in range(8)]
     else:
         print('Inject input fault')
     if ofmap_fault_dict_list is None:
-        ofmap_fault_dict_list=[None,None,None,None,None,None,None,None]
+        ofmap_fault_dict_list=[None for i in range(8)]
     else:
         print('Inject output fault')
     if weight_fault_dict_list is None:
-        weight_fault_dict_list=[[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None]]
+        weight_fault_dict_list=[[None,None] for i in range(8)]
     else:
         print('Inject weight fault')
         
@@ -108,11 +108,26 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
 
     return model
 
-def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10):
+def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, intrinsic=False):
     
     print('Building model : Quantized 4C2F CNN')
     
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for i in range(14)]
+    else:
+        print('Inject input fault')
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for i in range(14)]
+    else:
+        print('Inject output fault')
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for i in range(14)]
+    else:
+        print('Inject weight fault')
+    
+    print('Building Layer 0')
     input_shape = Input(shape=input_shape)
+    print('Building Layer 1')
     x = QuantizedConv2D(filters=32,
                         H=1,
                         nb=nbits,
@@ -121,7 +136,12 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         kernel_size=(3, 3),
                         padding='same',
                         strides=(1, 1),
-                        activation='relu')(input_shape)
+                        activation='relu',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
+                        weight_sa_fault_injection=weight_fault_dict_list[1],
+                        intrinsic=intrinsic)(input_shape)
+    print('Building Layer 2')
     x = QuantizedConv2D(filters=32,
                         H=1,
                         nb=nbits,
@@ -129,10 +149,17 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         rounding_method=rounding_method,
                         kernel_size=(3, 3),
                         strides=(1, 1),
-                        activation='relu')(x)
+                        activation='relu',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
+                        weight_sa_fault_injection=weight_fault_dict_list[2],
+                        intrinsic=intrinsic)(x)
+    print('Building Layer 3')
     x = MaxPooling2D(pool_size=(2, 2))(x)
+    print('Building Layer 4')
     x = Dropout(0.25)(x)
     
+    print('Building Layer 5')
     x = QuantizedConv2D(filters=64,
                         H=1,
                         nb=nbits,
@@ -141,7 +168,12 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         kernel_size=(3, 3),
                         padding='same',
                         strides=(1, 1),
-                        activation='relu')(x)
+                        activation='relu',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[5],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
+                        weight_sa_fault_injection=weight_fault_dict_list[5],
+                        intrinsic=intrinsic)(x)
+    print('Building Layer 6')
     x = QuantizedConv2D(filters=64,
                         H=1,
                         nb=nbits,
@@ -149,25 +181,45 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         rounding_method=rounding_method,
                         kernel_size=(3, 3),
                         strides=(1, 1),
-                        activation='relu')(x)
+                        activation='relu',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
+                        weight_sa_fault_injection=weight_fault_dict_list[6],
+                        intrinsic=intrinsic)(x)
+    print('Building Layer 7')
     x = MaxPooling2D(pool_size=(2, 2))(x)
+    print('Building Layer 8')
     x = Dropout(0.25)(x)
     
-    x = Flatten()(x)
+    print('Building Layer 9')
+    #x = Flatten()(x)
+    x = QuantizedFlatten(batch_size)(x)
+    print('Building Layer 10')
     x = QuantizedDense(512,
                        H=1,
                        nb=nbits,
                        fb=fbits, 
                        rounding_method=rounding_method,
-                       activation='relu')(x)
+                       activation='relu',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[10],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[10],
+                        weight_sa_fault_injection=weight_fault_dict_list[10],
+                        intrinsic=intrinsic)(x)
+    print('Building Layer 11')
     x = Activation('relu')(x)
+    print('Building Layer 12')
     x = Dropout(0.5)(x)
+    print('Building Layer 13')
     x = QuantizedDense(num_classes,
                        H=1,
                        nb=nbits,
                        fb=fbits, 
                        rounding_method=rounding_method,
-                       activation='softmax')(x)
+                       activation='softmax',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
+                        weight_sa_fault_injection=weight_fault_dict_list[13],
+                        intrinsic=intrinsic)(x)
     
     model=Model(inputs=input_shape, outputs=x)
     

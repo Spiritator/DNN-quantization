@@ -68,6 +68,7 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
                                            rates=rate,#[1,1,1,1],
                                            padding=padding )
     patch_shape = patch.get_shape()
+    #[input channel, ofmap height, ofmap width, num of kernel psum * input channel]
 
     # inner loop condition and body.
     # iterates over all output maps
@@ -178,7 +179,7 @@ def QuantizedBatchNormalizationCore(inputs,
 ###########################################
 # parallel_iterations and swap_memory in tf.while_loops can be adjusted
 def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb, fb, rounding_method):
-    ''' Reimplementation of the 2D convolution layer.
+    ''' Reimplementation of the 2D depthwise convolution layer.
     Args: 
         inputs:  [batch_size, image_height, image_width, input_channels] 
         kernel: [kernel_height, kernel_width, input_channels, output_channels]
@@ -195,7 +196,8 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
 
     # prepare kernel
     kernel_shape = kernel.get_shape()
-    kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
+    #kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
+    # dont need in depthwise conv2D
 
     # get patch shape, needed for ofmap shape estimation
     patch = tf.extract_image_patches(output[0], 
@@ -204,22 +206,21 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
                                            rates=rate,#[1,1,1,1],
                                            padding=padding )
     patch_shape = patch.get_shape()
+    #[input channel, ofmap height, ofmap width, num of kernel psum * input channel]
 
-    # inner loop condition and body.
-    # iterates over all output maps
-    def inner_cond(index, outputs, output_patch):
-        return index < kernel_shape.dims[3].value 
+    # inner body depthwise convolution
 
     def inner_body(index, outputs, output_patch):
-        kernel_tmp = tf.gather(kernel, index)
-        kernel_tmp = tf.reshape(kernel_tmp, [1,1,1,patch_shape.dims[3].value])
+        kernel_tmp = tf.reshape(kernel, [1,1,1,patch_shape.dims[3].value])
         kernel_tmp = tf.tile(kernel_tmp,[1,patch_shape.dims[1].value,patch_shape.dims[2].value,1])  
         
         out_tmp = tf.multiply(output_patch, kernel_tmp)
         # quantize after multiplication
-        out_tmp = quantize(out_tmp, nb, fb, rounding_method)     
+        out_tmp = quantize(out_tmp, nb, fb, rounding_method)    
         
-        out_tmp = tf.reduce_sum(out_tmp,axis=3,keepdims=True)
+        out_tmp = tf.reshape(out_tmp, [1,patch_shape.dims[1].value,patch_shape.dims[2].value,kernel_shape.dims[2].value,kernel_shape.dims[3].value])
+        
+        out_tmp = tf.reduce_sum(out_tmp,axis=4,keepdims=False)
         # quantize after accumulation
         out_tmp = quantize(out_tmp, nb, fb, rounding_method)     
         

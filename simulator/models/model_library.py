@@ -18,7 +18,7 @@ import numpy as np
 from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
 
 
-def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, intrinsic=False):
+def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid'):
     
     print('Building model : Quantized Lenet 5')
     
@@ -39,7 +39,6 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
     print('Building Layer 1')
     x = QuantizedConv2D(filters=16,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
@@ -50,12 +49,11 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
-                        intrinsic=intrinsic)(input_shape)
+                        quant_mode=quant_mode)(input_shape)
     print('Building Layer 2')
     x = MaxPooling2D(pool_size=(2,2))(x)
     print('Building Layer 3')
     x = QuantizedConv2D(filters=36,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
@@ -66,7 +64,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
                         weight_sa_fault_injection=weight_fault_dict_list[3],
-                        intrinsic=intrinsic)(x)
+                        quant_mode=quant_mode)(x)
     print('Building Layer 4')
     x = MaxPooling2D(pool_size=(2,2))(x)
     print('Building Layer 5')
@@ -76,7 +74,6 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     x = QuantizedFlatten(batch_size)(x)
     print('Building Layer 6')
     x = QuantizedDense(128,
-                       H=1,
                        nb=nbits,
                        fb=fbits, 
                        rounding_method=rounding_method,
@@ -84,10 +81,9 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                        weight_sa_fault_injection=weight_fault_dict_list[6],
-                       intrinsic=intrinsic)(x)
+                       quant_mode=quant_mode)(x)
     print('Building Layer 7')
     x = QuantizedDense(num_classes,
-                       H=1,
                        nb=nbits,
                        fb=fbits, 
                        rounding_method=rounding_method,
@@ -95,7 +91,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[7],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[7],
                        weight_sa_fault_injection=weight_fault_dict_list[7],
-                       intrinsic=intrinsic)(x)
+                       quant_mode=quant_mode)(x)
 
     model=Model(inputs=input_shape, outputs=x)
     
@@ -107,7 +103,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
 
     return model
 
-def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, intrinsic=False):
+def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid'):
     
     print('Building model : Quantized 4C2F CNN')
     
@@ -128,7 +124,6 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
     input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
     print('Building Layer 1')
     x = QuantizedConv2D(filters=32,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
@@ -139,10 +134,9 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
-                        intrinsic=intrinsic)(input_shape)
+                        quant_mode=quant_mode)(input_shape)
     print('Building Layer 2')
     x = QuantizedConv2D(filters=32,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
@@ -152,7 +146,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
                         weight_sa_fault_injection=weight_fault_dict_list[2],
-                        intrinsic=intrinsic)(x)
+                        quant_mode=quant_mode)(x)
     print('Building Layer 3')
     x = MaxPooling2D(pool_size=(2, 2))(x)
     print('Building Layer 4')
@@ -160,7 +154,6 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
     
     print('Building Layer 5')
     x = QuantizedConv2D(filters=64,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
@@ -171,10 +164,9 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[5],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
                         weight_sa_fault_injection=weight_fault_dict_list[5],
-                        intrinsic=intrinsic)(x)
+                        quant_mode=quant_mode)(x)
     print('Building Layer 6')
     x = QuantizedConv2D(filters=64,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
@@ -184,7 +176,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                         weight_sa_fault_injection=weight_fault_dict_list[6],
-                        intrinsic=intrinsic)(x)
+                        quant_mode=quant_mode)(x)
     print('Building Layer 7')
     x = MaxPooling2D(pool_size=(2, 2))(x)
     print('Building Layer 8')
@@ -195,30 +187,28 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
     x = QuantizedFlatten(batch_size)(x)
     print('Building Layer 10')
     x = QuantizedDense(512,
-                       H=1,
                        nb=nbits,
                        fb=fbits, 
                        rounding_method=rounding_method,
                        activation='relu',
-                        ifmap_sa_fault_injection=ifmap_fault_dict_list[10],
-                        ofmap_sa_fault_injection=ofmap_fault_dict_list[10],
-                        weight_sa_fault_injection=weight_fault_dict_list[10],
-                        intrinsic=intrinsic)(x)
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[10],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[10],
+                       weight_sa_fault_injection=weight_fault_dict_list[10],
+                       quant_mode=quant_mode)(x)
     print('Building Layer 11')
     x = Activation('relu')(x)
     print('Building Layer 12')
     x = Dropout(0.5)(x)
     print('Building Layer 13')
     x = QuantizedDense(num_classes,
-                       H=1,
                        nb=nbits,
                        fb=fbits, 
                        rounding_method=rounding_method,
                        activation='softmax',
-                        ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
-                        ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
-                        weight_sa_fault_injection=weight_fault_dict_list[13],
-                        intrinsic=intrinsic)(x)
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
+                       weight_sa_fault_injection=weight_fault_dict_list[13],
+                       quant_mode=quant_mode)(x)
     
     model=Model(inputs=input_shape, outputs=x)
     
@@ -251,7 +241,6 @@ def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, 
     outputs = []
 
     x = QuantizedConv2D(filters=32,
-                        H=1,
                         nb=nbits,
                         fb=fbits,
                         rounding_method=rounding_method,
@@ -268,7 +257,6 @@ def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, 
 
     for i in range(3):
         x = QuantizedConv2D(filters=64*(2**i),
-                            H=1,
                             nb=nbits,
                             fb=fbits,
                             rounding_method=rounding_method,
@@ -284,7 +272,6 @@ def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, 
         outputs.append(x)
 
     x = QuantizedConv2D(filters=256,
-                        H=1,
                         nb=nbits,
                         fb=fbits,
                         rounding_method=rounding_method,
@@ -305,7 +292,6 @@ def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, 
         x = Flatten()(x)
         if version == 1:
             x = QuantizedDense(1024,
-                               H=1,
                                nb=nbits,
                                fb=fbits,
                                rounding_method=rounding_method,
@@ -317,7 +303,6 @@ def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, 
             x = Activation('relu')(x)
             x = Dropout(0.5)(x)
         x = QuantizedDense(classes,
-                           H=1,
                            nb=nbits,
                            fb=fbits,
                            rounding_method=rounding_method,

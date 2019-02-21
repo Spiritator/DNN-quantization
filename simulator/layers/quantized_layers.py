@@ -278,7 +278,7 @@ class QuantizedConv2D(Conv2D):
             elif self.quant_mode in ['extrinsic',None]:
                 outputs = K.bias_add(
                         outputs,
-                        quantized_bias,
+                        self.bias,
                         data_format=self.data_format)  
 
 

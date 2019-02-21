@@ -407,14 +407,20 @@ class QuantizedBatchNormalization(BatchNormalization):
                 else:
                     broadcast_gamma = None
                     
-                broadcast_moving_mean = quantize(broadcast_moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
-                broadcast_moving_variance = quantize(broadcast_moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
-                broadcast_beta = quantize(broadcast_beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
-                broadcast_gamma = quantize(broadcast_gamma, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                if self.quant_mode in ['hybrid','intrinsic']:
+                    broadcast_moving_mean = quantize(broadcast_moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                    broadcast_moving_variance = quantize(broadcast_moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                    if self.center:
+                        broadcast_beta = quantize(broadcast_beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                    if self.scale:
+                        broadcast_gamma = quantize(broadcast_gamma, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                     
-                if self.quant_mode:
+                if self.quant_mode in ['hybrid','intrinsic']:
+                    quantized_inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method)
+                
+                if self.quant_mode is 'intrinsic':
                     return QuantizedBatchNormalizationCore(
-                            quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
+                            quantized_inputs,
                             broadcast_moving_mean,
                             broadcast_moving_variance,
                             broadcast_beta,
@@ -423,41 +429,95 @@ class QuantizedBatchNormalization(BatchNormalization):
                             nb_output, 
                             fb_output, 
                             self.rounding_method)
-                else:
-                    return K.batch_normalization(
-                            quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
+                elif self.quant_mode is 'hybrid':
+                    output=K.batch_normalization(
+                            quantized_inputs,
                             broadcast_moving_mean,
                             broadcast_moving_variance,
                             broadcast_beta,
                             broadcast_gamma,
                             axis=self.axis,
                             epsilon=self.epsilon)
+                    return quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)     
+                elif self.quant_mode is 'extrinsic':
+                    output=K.batch_normalization(
+                            inputs,
+                            broadcast_moving_mean,
+                            broadcast_moving_variance,
+                            broadcast_beta,
+                            broadcast_gamma,
+                            axis=self.axis,
+                            epsilon=self.epsilon)
+                    return quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
+                elif self.quant_mode is None:
+                    return K.batch_normalization(
+                            inputs,
+                            broadcast_moving_mean,
+                            broadcast_moving_variance,
+                            broadcast_beta,
+                            broadcast_gamma,
+                            axis=self.axis,
+                            epsilon=self.epsilon)
+                    
             else:
-                moving_mean = quantize(self.moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
-                moving_variance = quantize(self.moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
-                beta = quantize(self.beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
-                gamma = quantize(self.gamma, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                if self.quant_mode in ['hybrid','intrinsic']:
+                    moving_mean = quantize(self.moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                    moving_variance = quantize(self.oving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                    if self.center:
+                        beta = quantize(self.beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                    else:
+                        beta = self.beta
+                    if self.scale:
+                        gamma = quantize(self.gamma, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                    else:
+                        gamma = self.gamma
+                    
+                if self.quant_mode in ['hybrid','intrinsic']:
+                    quantized_inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method)
                 
-                if self.quant_mode:
+                if self.quant_mode is 'intrinsic':
                     return QuantizedBatchNormalizationCore(
-                            quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
+                            quantized_inputs,
                             moving_mean,
                             moving_variance,
                             beta,
                             gamma,
                             self.epsilon,
-                            nb_output,
-                            fb_output,
+                            nb_output, 
+                            fb_output, 
                             self.rounding_method)
-                else:
-                    return K.batch_normalization(
-                            quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=self.rounding_method),
+                elif self.quant_mode is 'hybrid':
+                    output=K.batch_normalization(
+                            quantized_inputs,
                             moving_mean,
                             moving_variance,
                             beta,
                             gamma,
                             axis=self.axis,
                             epsilon=self.epsilon)
+                    return quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)     
+                elif self.quant_mode is 'extrinsic':
+                    output=K.batch_normalization(
+                            inputs,
+                            self.moving_mean,
+                            self.moving_variance,
+                            self.beta,
+                            self.gamma,
+                            axis=self.axis,
+                            epsilon=self.epsilon)
+                    return quantize(output, nb=nb_output, fb=fb_output, rounding_method=self.rounding_method)
+                elif self.quant_mode is None:
+                    return K.batch_normalization(
+                            inputs,
+                            self.moving_mean,
+                            self.moving_variance,
+                            self.beta,
+                            self.gamma,
+                            axis=self.axis,
+                            epsilon=self.epsilon)
+
+
+                
 
         # If the learning phase is *static* and set to inference:
         if training in {0, False}:

@@ -216,9 +216,9 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
         # quantize after multiplication
         out_tmp = quantize(out_tmp, nb, fb, rounding_method)    
         
-        out_tmp = tf.reshape(out_tmp, [1,patch_shape.dims[1].value,patch_shape.dims[2].value,kernel_shape.dims[2].value,tf.reduce_prod(kernel_shape[0:2])])
+        out_tmp = tf.reshape(out_tmp, [1,patch_shape.dims[1].value,patch_shape.dims[2].value,tf.reduce_prod(kernel_shape[0:2]),kernel_shape.dims[2].value])
         
-        out_tmp = tf.reduce_sum(out_tmp,axis=4,keepdims=False)
+        out_tmp = tf.reduce_sum(out_tmp,axis=3,keepdims=False)
         # quantize after accumulation
         out_tmp = quantize(out_tmp, nb, fb, rounding_method)     
                 

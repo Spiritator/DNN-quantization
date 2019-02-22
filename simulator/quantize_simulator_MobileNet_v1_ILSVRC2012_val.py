@@ -20,6 +20,7 @@ import numpy as np
 img_width, img_height = 224, 224
 
 class_number=1000
+batch_size=25
 
 validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_2'
 nb_validation_samples = 50000
@@ -37,6 +38,7 @@ model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5',
                              BN_nbits=20, 
                              BN_fbits=10,
                              rounding_method='nearest',
+                             batch_size=batch_size,
                              batch_size=1,
                              quant_mode='intrinsic')
 model.compile(loss='categorical_crossentropy',
@@ -53,7 +55,7 @@ print('model build time: %f s'%t)
 #dataset setup
 
 print('preparing dataset...')
-x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = validation_data_dir)
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, batch_size=batch_size, data_augmentation = False, data_dir = validation_data_dir)
 print('dataset ready')
 
 

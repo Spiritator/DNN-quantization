@@ -26,7 +26,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras import backend as K
 
 
-def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, data_augmentation = False, data_dir = None, preprocessing_function=None):
+def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, batch_size=32, data_augmentation = False, data_dir = None, preprocessing_function=None):
     if (dataset == "cifar10"):
 
         print('Setup CIFAR-10 dataset...')
@@ -165,6 +165,7 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, dat
             data_dir,
             target_size=(img_rows, img_cols),
             class_mode='categorical',
+            batch_size=batch_size,
             shuffle=False)
         
         x_train=None

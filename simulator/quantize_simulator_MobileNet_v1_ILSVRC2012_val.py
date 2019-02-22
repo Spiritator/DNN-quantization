@@ -76,9 +76,9 @@ print('Test top5 accuracy:', test_result[2])
 #%%
 # draw confusion matrix
 
-print('\n')
-prediction = model.predict_generator(datagen, verbose=1)
-prediction = np.argmax(prediction, axis=1)
-
-show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)
+#print('\n')
+#prediction = model.predict_generator(datagen, verbose=1)
+#prediction = np.argmax(prediction, axis=1)
+#
+#show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)
 

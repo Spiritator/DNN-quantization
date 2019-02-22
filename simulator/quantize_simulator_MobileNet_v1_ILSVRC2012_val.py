@@ -39,7 +39,6 @@ model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5',
                              BN_fbits=10,
                              rounding_method='nearest',
                              batch_size=batch_size,
-                             batch_size=1,
                              quant_mode='intrinsic')
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',

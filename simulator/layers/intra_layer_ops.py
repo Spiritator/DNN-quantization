@@ -46,7 +46,6 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
     Args: 
         inputs:  [batch_size, image_height, image_width, input_channels] 
         kernel: [kernel_height, kernel_width, input_channels, output_channels]
-        quantizer: Quantizer object, has interface '.quantize(tensor)'       
     '''
     PARALLEL_ITERATIONS=1 # number of convolution ops which can run in parallel.
 
@@ -183,7 +182,6 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     Args: 
         inputs:  [batch_size, image_height, image_width, input_channels] 
         kernel: [kernel_height, kernel_width, input_channels, output_channels]
-        quantizer: Quantizer object, has interface '.quantize(tensor)'       
     '''
     PARALLEL_ITERATIONS=1 # number of convolution ops which can run in parallel.
 
@@ -210,7 +208,7 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
 
     # inner body depthwise convolution
 
-    def inner_body(index, outputs, output_patch):
+    def inner_body(output_patch):
         kernel_tmp = tf.reshape(kernel, [1,1,1,patch_shape.dims[3].value])
         kernel_tmp = tf.tile(kernel_tmp,[1,patch_shape.dims[1].value,patch_shape.dims[2].value,1])  
         
@@ -218,15 +216,13 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
         # quantize after multiplication
         out_tmp = quantize(out_tmp, nb, fb, rounding_method)    
         
-        out_tmp = tf.reshape(out_tmp, [1,patch_shape.dims[1].value,patch_shape.dims[2].value,kernel_shape.dims[2].value,kernel_shape.dims[3].value])
+        out_tmp = tf.reshape(out_tmp, [1,patch_shape.dims[1].value,patch_shape.dims[2].value,kernel_shape.dims[2].value,tf.reduce_prod(kernel_shape[0:2])])
         
         out_tmp = tf.reduce_sum(out_tmp,axis=4,keepdims=False)
         # quantize after accumulation
         out_tmp = quantize(out_tmp, nb, fb, rounding_method)     
-        
-        outputs = tf.concat([outputs,out_tmp],3)
-        
-        return [tf.add(index,1), outputs, output_patch]
+                
+        return out_tmp
 
     # outer loop condition and body
     # iterates over all batches
@@ -240,24 +236,12 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
                                            strides=strides,
                                            rates=rate,#[1,1,1,1],
                                            padding=padding )
-        # prepare inner loop interation variable 'out_kernel'
-        out_kernel=tf.constant(0)
-        # placeholder 'outputs', ofmaps will be concatenated to this tensor. 
-        # Remove first element after all elements are computed!
-        outputs=tf.constant(0.0,
-                            shape=[1, output_patch.shape.dims[1].value,
-                            output_patch.shape.dims[2].value, 1])
         # start inner loop. pass loop iterator, ofmap placeholder and patch. 
         # Take 2nd element [1] as ofmap!
-        outputs=tf.while_loop( inner_cond, inner_body, [out_kernel, outputs, output_patch],
-                shape_invariants=[ out_kernel.get_shape(), tf.TensorShape(
-                    [1,output_patch.shape.dims[1].value,output_patch.shape.dims[2].value,None]),
-                    output_patch.get_shape() ],
-                parallel_iterations=PARALLEL_ITERATIONS,
-                swap_memory=True )[1]
+        outputs=inner_body(output_patch)
         # concatenate batches (along axis 0).
         # remove first placeholder element from outputs!
-        ofmap= tf.concat([ ofmap,outputs[:,:,:,1:] ], 0)
+        ofmap= tf.concat([ ofmap,outputs ], 0)
         return [tf.add(batch,1), ofmap]
     
     # main
@@ -266,12 +250,12 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     # placeholder 'ofmap', ofmaps from inner loop will be concatenated to this tensor.
     ofmap= tf.constant( 0.0,
                           shape=[1, patch_shape.dims[1].value,
-                          patch_shape.dims[2].value, kernel_shape.dims[3].value] )
+                          patch_shape.dims[2].value, kernel_shape.dims[2].value] )
     # start outer loop. pass 'batch' and 'ofmap'.
     # Take 2nd element [1] as ofmap!
     ofmap = tf.while_loop( outer_cond, outer_body, [batch, ofmap],
                 shape_invariants=[ batch.get_shape(), tf.TensorShape(
-                    [None,patch_shape.dims[1].value,patch_shape.dims[2].value,kernel_shape.dims[3]]) ],
+                    [None,patch_shape.dims[1].value,patch_shape.dims[2].value,kernel_shape.dims[2]]) ],
                 parallel_iterations=PARALLEL_ITERATIONS,
                 swap_memory=True )[1]
     # remove first element from placeholder!
@@ -281,5 +265,5 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     output.set_shape([batch_size, 
                         output.shape.dims[1].value,
                         output.shape.dims[2].value,
-                        kernel_shape.dims[3].value]) 
+                        kernel_shape.dims[2].value]) 
     return output

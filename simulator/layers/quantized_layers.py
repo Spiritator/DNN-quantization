@@ -470,7 +470,7 @@ class QuantizedBatchNormalization(BatchNormalization):
             else:
                 if self.quant_mode in ['hybrid','intrinsic']:
                     moving_mean = quantize(self.moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
-                    moving_variance = quantize(self.oving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
+                    moving_variance = quantize(self.moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                     if self.center:
                         beta = quantize(self.beta, nb=nb_weight, fb=fb_weight, rounding_method=self.rounding_method)
                     else:
@@ -662,7 +662,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         if self.quant_mode is 'intrinsic':
             strides = (1,self.strides[0],self.strides[1],1)
             dilation_rate = (1,self.dilation_rate[0],self.dilation_rate[1],1)
-            outputs = QuantizedDepthwiseConv2D(
+            outputs = QuantizedDepthwiseConv2DCore(
                     inputs,
                     quantized_depthwise_kernel,
                     strides, dilation_rate,

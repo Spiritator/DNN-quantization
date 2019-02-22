@@ -106,11 +106,13 @@ def QuantizedMobileNetV1(input_shape=None,
               input_tensor=None,
               pooling=None,
               classes=1000,
+              batch_size=None,
               nbits=16,
               fbits=8, 
               BN_nbits=None, 
               BN_fbits=None,
-              rounding_method='nearest'):
+              rounding_method='nearest',
+              quant_mode='hybrid'):
     """Instantiates the MobileNet architecture.
 
     To load a MobileNet model via `load_model`, import the custom
@@ -258,43 +260,43 @@ def QuantizedMobileNetV1(input_shape=None,
         old_data_format = None
 
     if input_tensor is None:
-        img_input = layers.Input(shape=input_shape)
+        img_input = layers.Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
     else:
         if not backend.is_keras_tensor(input_tensor):
-            img_input = layers.Input(tensor=input_tensor, shape=input_shape)
+            img_input = layers.Input(tensor=input_tensor, shape=input_shape, batch_shape=(batch_size,)+input_shape)
         else:
             img_input = input_tensor
 
-    x = _conv_block(img_input, 32, alpha, strides=(2, 2), nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+    x = _conv_block(img_input, 32, alpha, strides=(2, 2), nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
     x = _depthwise_conv_block(x, 64, alpha, depth_multiplier, block_id=1, 
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
 
     x = _depthwise_conv_block(x, 128, alpha, depth_multiplier,
                               strides=(2, 2), block_id=2,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
     x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, block_id=3,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
 
     x = _depthwise_conv_block(x, 256, alpha, depth_multiplier,
                               strides=(2, 2), block_id=4,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
     x = _depthwise_conv_block(x, 256, alpha, depth_multiplier, block_id=5,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
 
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier,
                               strides=(2, 2), block_id=6,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
 
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier,
                               strides=(2, 2), block_id=12,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
 
     if include_top:
         if backend.image_data_format() == 'channels_first':
@@ -307,12 +309,12 @@ def QuantizedMobileNetV1(input_shape=None,
         x = layers.Dropout(dropout, name='dropout')(x)
         x = QuantizedConv2D(classes, 
                             kernel_size=(1, 1),
-                            H=1,
                             nb=nbits,
                             fb=fbits, 
                             rounding_method=rounding_method,
                             padding='same',
-                            name='conv_preds')(x)
+                            name='conv_preds',
+                            quant_mode=quant_mode)(x)
         x = layers.Activation('softmax', name='act_softmax')(x)
         x = layers.Reshape((classes,), name='reshape_2')(x)
     else:
@@ -367,7 +369,7 @@ def QuantizedMobileNetV1(input_shape=None,
 
 
 def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
-                          nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest'):
+                          nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest', quant_mode='hybrid'):
     """Adds an initial convolution layer (with batch normalization and relu6).
 
     # Arguments
@@ -418,29 +420,31 @@ def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
     """
     channel_axis = 1 if backend.image_data_format() == 'channels_first' else -1
     filters = int(filters * alpha)
+    
+    print('building standard conv block...')
     x = layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
     x = QuantizedConv2D(filters, 
                         kernel_size=kernel,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
                         padding='valid',
                         use_bias=False,
                         strides=strides,
-                        name='conv1')(x)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        name='conv1', 
+                        quant_mode=quant_mode)(x)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
                                     axis=channel_axis, 
-                                    name='conv1_bn')(x)
+                                    name='conv1_bn', 
+                                    quant_mode=quant_mode)(x)
     return layers.Activation(relu6, name='conv1_relu')(x)
 
 
 def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
                           depth_multiplier=1, strides=(1, 1), block_id=1,
-                          nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest'):
+                          nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest', quant_mode='hybrid'):
     """Adds a depthwise convolution block.
 
     A depthwise convolution block consists of a depthwise conv,
@@ -495,9 +499,9 @@ def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
     channel_axis = 1 if backend.image_data_format() == 'channels_first' else -1
     pointwise_conv_filters = int(pointwise_conv_filters * alpha)
 
+    print('building depthwise conv block %d ...'%block_id)
     x = layers.ZeroPadding2D((1, 1), name='conv_pad_%d' % block_id)(inputs)
     x = QuantizedDepthwiseConv2D(kernel_size=(3, 3),
-                                 H=1,
                                  nb=nbits,
                                  fb=fbits, 
                                  rounding_method=rounding_method,
@@ -505,29 +509,30 @@ def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
                                  depth_multiplier=depth_multiplier,
                                  strides=strides,
                                  use_bias=False,
-                                 name='conv_dw_%d' % block_id)(x)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                                 name='conv_dw_%d' % block_id, 
+                                 quant_mode=quant_mode)(x)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
                                     axis=channel_axis, 
-                                    name='conv_dw_%d_bn' % block_id)(x)
+                                    name='conv_dw_%d_bn' % block_id, 
+                                    quant_mode=quant_mode)(x)
     x = layers.Activation(relu6, name='conv_dw_%d_relu' % block_id)(x)
 
     x = QuantizedConv2D(pointwise_conv_filters, 
                         kernel_size=(1, 1),
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
                         padding='same',
                         use_bias=False,
                         strides=(1, 1),
-                        name='conv_pw_%d' % block_id)(x)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        name='conv_pw_%d' % block_id, 
+                        quant_mode=quant_mode)(x)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
                                     axis=channel_axis,
-                                    name='conv_pw_%d_bn' % block_id)(x)
+                                    name='conv_pw_%d_bn' % block_id, 
+                                    quant_mode=quant_mode)(x)
     return layers.Activation(relu6, name='conv_pw_%d_relu' % block_id)(x)

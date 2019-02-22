@@ -32,11 +32,13 @@ print('Building model...')
 t = time.time()
 
 model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5', 
-                             nbits=16,
-                             fbits=8, 
-                             BN_nbits=16, 
-                             BN_fbits=8,
-                             rounding_method='nearest')
+                             nbits=20,
+                             fbits=10, 
+                             BN_nbits=20, 
+                             BN_fbits=10,
+                             rounding_method='nearest',
+                             batch_size=1,
+                             quant_mode='intrinsic')
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy', top5_acc])

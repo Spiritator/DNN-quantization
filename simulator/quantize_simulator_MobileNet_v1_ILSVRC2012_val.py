@@ -8,6 +8,7 @@ evaluate quantized testing result with custom Keras quantize layer
 """
 
 import keras
+from keras.utils import multi_gpu_model
 from models.mobilenet import QuantizedMobileNetV1
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
@@ -20,7 +21,7 @@ import numpy as np
 img_width, img_height = 224, 224
 
 class_number=1000
-batch_size=25
+batch_size=40
 
 validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_2'
 nb_validation_samples = 50000
@@ -40,6 +41,7 @@ model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5',
                              rounding_method='nearest',
                              batch_size=batch_size,
                              quant_mode='intrinsic')
+model = multi_gpu_model(model, gpus=2)
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy', top5_acc])

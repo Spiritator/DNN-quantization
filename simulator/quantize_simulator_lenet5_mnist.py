@@ -26,7 +26,7 @@ from approximation.estimate import comp_num_estimate
 # model setup
 
 weight_name='../../mnist_lenet5_weight.h5'
-batch_size=50
+batch_size=None
 
 # model setup
 # all augments use the same quantize precision

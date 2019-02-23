@@ -16,9 +16,19 @@ from layers.quantized_ops import quantize
 
 def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
     batch_size = inputs.shape.dims[0].value  
+    
+    # work around of tf.slice bug in multi gpu condition
+    if batch_size is None:
+        batch_size=tf.shape(inputs)[:1]
+
     input_size = inputs.shape.dims[1].value
     output_size = kernel.get_shape().dims[1].value
     output = tf.split(inputs,batch_size)
+    
+    # work around of tf.slice bug in multi gpu condition
+    if not isinstance(batch_size,int):
+        batch_size=batch_size[0]
+
     for batch in range(batch_size):
         output_tmp = output[batch]
         output_tmp = tf.reshape(output_tmp,[input_size,1])
@@ -54,7 +64,16 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
     
     # split input batchwise
     batch_size = inputs.shape.dims[0].value
+    
+    # work around of tf.slice bug in multi gpu condition
+    if batch_size is None:
+        batch_size=tf.shape(inputs)[:1]
+    
     output = tf.split(inputs,batch_size)
+    
+    # work around of tf.slice bug in multi gpu condition
+    if not isinstance(batch_size,int):
+        batch_size=batch_size[0]
 
     # prepare kernel
     kernel_shape = kernel.get_shape()
@@ -141,10 +160,15 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
     output = ofmap[1:,:,:,:]
 
     # setting shape, since partially ignored by while_loops
-    output.set_shape([batch_size, 
+    output = tf.reshape(output,[batch_size, 
                         output.shape.dims[1].value,
                         output.shape.dims[2].value,
                         kernel_shape.dims[3].value]) 
+
+#    output.set_shape([batch_size[0], 
+#                        output.shape.dims[1].value,
+#                        output.shape.dims[2].value,
+#                        kernel_shape.dims[3].value]) 
     return output
 
 # quantized batch normalization calculation

@@ -71,7 +71,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     #x = tf.reshape(x, (batch_size,-1))
     #x = Reshape((-1,))(x)
     #x = Flatten()(x)
-    x = QuantizedFlatten(batch_size)(x)
+    x = QuantizedFlatten()(x)
     print('Building Layer 6')
     x = QuantizedDense(128,
                        nb=nbits,
@@ -184,7 +184,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
     
     print('Building Layer 9')
     #x = Flatten()(x)
-    x = QuantizedFlatten(batch_size)(x)
+    x = QuantizedFlatten()(x)
     print('Building Layer 10')
     x = QuantizedDense(512,
                        nb=nbits,

@@ -13,7 +13,7 @@ import keras
 import numpy as np
 import keras.backend as K
 import time
-
+from keras.utils import multi_gpu_model
 
 from models.model_library import quantized_lenet5
 from utils_tool.weight_conversion import convert_original_weight_layer_name
@@ -26,7 +26,7 @@ from approximation.estimate import comp_num_estimate
 # model setup
 
 weight_name='../../mnist_lenet5_weight.h5'
-batch_size=25
+batch_size=50
 
 # model setup
 # all augments use the same quantize precision
@@ -34,12 +34,18 @@ batch_size=25
 # each augment uses different quantize precision. information list [input, weight, output]
 #model=quantized_lenet5(nbits=[10,4,10],fbits=[5,2,5],rounding_method='nearest')
 # intrinsic quantization
-model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest',batch_size=batch_size,quant_mode='extrinsic')
+model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest',batch_size=batch_size,quant_mode='intrinsic')
 
-model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 print('orginal weight loaded')
+
+model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
+
+# multi GPU
+#parallel_model = multi_gpu_model(model, gpus=2)
+#parallel_model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
+
 
 #%%
 #dataset setup

@@ -41,23 +41,22 @@ def load_attributes_from_hdf5_group(group, name):
 
 def convert_original_weight_layer_name(original_weight_name,quantized_weight_name=None):
         
-    o_weight_f = h5py.File(original_weight_name,'r')
     if quantized_weight_name is None:
         quantized_weight_name=original_weight_name[:-3]+'_quantized.h5'
         if os.path.isfile(quantized_weight_name):
-            o_weight_f.close()
             print('quantized layer name weight already exist skip conversion and continue...')
             return quantized_weight_name
         else:
             q_weight_f = h5py.File(quantized_weight_name,'w')
     else:
         if os.path.isfile(quantized_weight_name):
-            o_weight_f.close()
             print('quantized layer name weight already exist skip conversion and continue...')
             return quantized_weight_name
         else:
             q_weight_f = h5py.File(quantized_weight_name,'w')
-        
+    
+    
+    o_weight_f = h5py.File(original_weight_name,'r')
         
     if 'keras_version' in o_weight_f.attrs:
             original_keras_version = o_weight_f.attrs['keras_version'].decode('utf8')

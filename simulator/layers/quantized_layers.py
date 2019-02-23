@@ -738,9 +738,8 @@ class QuantizedFlatten(Flatten):
     Fix the fucking bug of not showing shape of flatten and reshape layer output in keras.
     Custom remake a Flatten layer for the reliability analysis and quant_mode operation after flatten layer.
     '''
-    def __init__(self, batch_size, **kwargs):
+    def __init__(self, **kwargs):
         super(QuantizedFlatten, self).__init__(**kwargs)
-        self.batch_size = batch_size
 
     def call(self, inputs):
         if self.data_format == 'channels_first':
@@ -751,10 +750,10 @@ class QuantizedFlatten(Flatten):
             permutation.append(1)
             inputs = K.permute_dimensions(inputs, permutation)
         
-        if self.batch_size is None:
+        if inputs.shape.dims[0].value is None:
             return K.batch_flatten(inputs)
         else:
-            return tf.reshape(inputs, [self.batch_size,-1])
+            return tf.reshape(inputs, [inputs.shape.dims[0].value,-1])
 
     def get_config(self):
         config = {'data_format': self.data_format}

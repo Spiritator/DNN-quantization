@@ -35,7 +35,7 @@ def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
     # work around of tf.slice bug in multi gpu condition
     if batch_size is None:
         batch_size=tf.shape(inputs)[:1]
-        output=tf.reshape(inputs,shape=[-1,1,inputs.shape.dims[1]])
+        output=tf.reshape(inputs,shape=[-1,1,input_size])
     else:
         output = tf.split(inputs,batch_size)
         

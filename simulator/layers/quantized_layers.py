@@ -751,7 +751,8 @@ class QuantizedFlatten(Flatten):
             inputs = K.permute_dimensions(inputs, permutation)
         
         if inputs.shape.dims[0].value is None:
-            return K.batch_flatten(inputs)
+            #return K.batch_flatten(inputs)
+            return tf.reshape(inputs, [-1,np.prod(inputs.shape.dims[1:])])
         else:
             return tf.reshape(inputs, [inputs.shape.dims[0].value,-1])
 

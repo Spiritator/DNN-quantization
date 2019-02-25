@@ -15,6 +15,14 @@ from tensorflow.python.ops import math_ops
 from layers.quantized_ops import quantize
 
 def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
+    ''' Reimplementation of the Dense layer.
+    Args: 
+        inputs:  [batch_size, neurons] 
+        kernel: [input_neurons, output_neurons]
+    '''    
+    
+    PARALLEL_ITERATIONS=1 # number of convolution ops which can run in parallel.
+    
     batch_size = inputs.shape.dims[0].value  
     
     # work around of tf.slice bug in multi gpu condition
@@ -23,14 +31,20 @@ def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
 
     input_size = inputs.shape.dims[1].value
     output_size = kernel.get_shape().dims[1].value
-    output = tf.split(inputs,batch_size)
     
     # work around of tf.slice bug in multi gpu condition
-    if not isinstance(batch_size,int):
-        batch_size=batch_size[0]
+    if batch_size is None:
+        batch_size=tf.shape(inputs)[:1]
+        output=tf.reshape(inputs,shape=[-1,1,inputs.shape.dims[1]])
+    else:
+        output = tf.split(inputs,batch_size)
+        
+        
+    def batch_cond(batch, neurons):
+        return batch < batch_size
 
-    for batch in range(batch_size):
-        output_tmp = output[batch]
+    def batch_body(batch, neurons):
+        output_tmp = tf.gather(output,batch)
         output_tmp = tf.reshape(output_tmp,[input_size,1])
         output_tmp = tf.tile(output_tmp,[1,output_size])
         
@@ -38,12 +52,29 @@ def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
         # quantize after multiplication
         output_tmp = quantize(output_tmp, nb=nb, fb=fb, rounding_method=rounding_method) 
         
-        output_tmp = tf.reduce_sum(output_tmp,axis=[0])
+        output_tmp = tf.reduce_sum(output_tmp,axis=0,keepdims=True)
         # quantize after accumulation
         output_tmp = quantize(output_tmp, nb=nb, fb=fb, rounding_method=rounding_method) 
-        output[batch] = output_tmp
+        # concatenate batches (along axis 0).
+        neurons= tf.concat([ neurons,output_tmp], 0)
+        return [tf.add(batch,1), neurons]
         
-    output = tf.stack(output)
+    # prepare outer loop iteration variable 'batch'
+    batch = tf.constant(0)
+    # placeholder 'ofmap', ofmaps from inner loop will be concatenated to this tensor.
+    neurons = tf.constant( 0.0, shape=[1, output_size] )
+    # start loop. pass 'batch' and 'ofmap'.
+    # Take 2nd element [1] as ofmap!
+    neurons = tf.while_loop( batch_cond, batch_body, [batch, neurons],
+                shape_invariants=[ batch.get_shape(), tf.TensorShape(
+                    [None,output_size]) ],
+                parallel_iterations=PARALLEL_ITERATIONS,
+                swap_memory=True )[1]
+    # remove first element from placeholder!
+    output = neurons[1:]
+    
+    output = tf.reshape(output,[batch_size,output_size])
+    
     return output
 
 
@@ -64,16 +95,17 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
     
     # split input batchwise
     batch_size = inputs.shape.dims[0].value
-    
+
     # work around of tf.slice bug in multi gpu condition
     if batch_size is None:
         batch_size=tf.shape(inputs)[:1]
     
-    output = tf.split(inputs,batch_size)
-    
     # work around of tf.slice bug in multi gpu condition
-    if not isinstance(batch_size,int):
-        batch_size=batch_size[0]
+    if batch_size is None:
+        batch_size=tf.shape(inputs)[:1]
+        output=tf.reshape(inputs,[-1,1,inputs.shape.dims[1].value,inputs.shape.dims[2].value,inputs.shape.dims[3].value])
+    else:
+        output = tf.split(inputs,batch_size)
 
     # prepare kernel
     kernel_shape = kernel.get_shape()
@@ -214,7 +246,13 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     
     # split input batchwise
     batch_size = inputs.shape.dims[0].value
-    output = tf.split(inputs,batch_size)
+    
+    # work around of tf.slice bug in multi gpu condition
+    if batch_size is None:
+        batch_size=tf.shape(inputs)[:1]
+        output=tf.reshape(inputs,[-1,1,inputs.shape.dims[1].value,inputs.shape.dims[2].value,inputs.shape.dims[3].value])
+    else:
+        output = tf.split(inputs,batch_size)
 
     # prepare kernel
     kernel_shape = kernel.get_shape()
@@ -286,8 +324,13 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     output = ofmap[1:,:,:,:]
 
     # setting shape, since partially ignored by while_loops
-    output.set_shape([batch_size, 
+    output = tf.reshape(output,[batch_size, 
                         output.shape.dims[1].value,
                         output.shape.dims[2].value,
                         kernel_shape.dims[2].value]) 
+
+#    output.set_shape([batch_size, 
+#                        output.shape.dims[1].value,
+#                        output.shape.dims[2].value,
+#                        kernel_shape.dims[2].value]) 
     return output

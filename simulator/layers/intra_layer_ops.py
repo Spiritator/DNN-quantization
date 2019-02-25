@@ -24,25 +24,19 @@ def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
     PARALLEL_ITERATIONS=1 # number of convolution ops which can run in parallel.
     
     batch_size = inputs.shape.dims[0].value  
-    
-    # work around of tf.slice bug in multi gpu condition
-    if batch_size is None:
-        batch_size=tf.shape(inputs)[:1]
-
     input_size = inputs.shape.dims[1].value
     output_size = kernel.get_shape().dims[1].value
-    
+
     # work around of tf.slice bug in multi gpu condition
     if batch_size is None:
         batch_size=tf.shape(inputs)[:1]
         output=tf.reshape(inputs,shape=[-1,1,input_size])
     else:
         output = tf.split(inputs,batch_size)
-        
+    
     # work around of tf.slice bug in multi gpu condition
     if not isinstance(batch_size,int):
         batch_size=batch_size[0]
-
         
         
     def batch_cond(batch, neurons):
@@ -100,18 +94,17 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
     
     # split input batchwise
     batch_size = inputs.shape.dims[0].value
-    
+
     # work around of tf.slice bug in multi gpu condition
     if batch_size is None:
         batch_size=tf.shape(inputs)[:1]
         output=tf.reshape(inputs,[-1,1,inputs.shape.dims[1].value,inputs.shape.dims[2].value,inputs.shape.dims[3].value])
     else:
         output = tf.split(inputs,batch_size)
-        
+    
     # work around of tf.slice bug in multi gpu condition
     if not isinstance(batch_size,int):
         batch_size=batch_size[0]
-
 
     # prepare kernel
     kernel_shape = kernel.get_shape()
@@ -259,7 +252,7 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
         output=tf.reshape(inputs,[-1,1,inputs.shape.dims[1].value,inputs.shape.dims[2].value,inputs.shape.dims[3].value])
     else:
         output = tf.split(inputs,batch_size)
-        
+    
     # work around of tf.slice bug in multi gpu condition
     if not isinstance(batch_size,int):
         batch_size=batch_size[0]

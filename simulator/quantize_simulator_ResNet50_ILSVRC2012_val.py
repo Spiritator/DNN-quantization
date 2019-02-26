@@ -8,6 +8,7 @@ evaluate quantized testing result with custom Keras quantize layer
 """
 
 import keras
+from keras.utils import multi_gpu_model
 from models.resnet50 import QuantizedResNet50, preprocess_input
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
@@ -20,6 +21,7 @@ import numpy as np
 img_width, img_height = 224, 224
 
 class_number=1000
+batch_size=40
 
 validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_2'
 nb_validation_samples = 50000
@@ -38,15 +40,26 @@ model = QuantizedResNet50(weights='../../resnet50_weights_tf_dim_ordering_tf_ker
                           BN_fbits=10,
                           rounding_method='nearest',
                           quant_mode='hybrid')
-model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy', top5_acc])
+#model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
 
 t = time.time()-t
 
-#model.summary()
-
 print('model build time: %f s'%t)
+
+model.summary()
+
+# multi GPU model
+
+print('Building multi GPU model...')
+
+parallel_model = multi_gpu_model(model, gpus=2)
+parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
+
+parallel_model.summary()
+
+t = time.time()-t
+
+print('multi GPU model build time: %f s'%t)
 
 #%%
 #dataset setup
@@ -62,7 +75,7 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-test_result = model.evaluate_generator(datagen, verbose=1)
+test_result = parallel_model.evaluate_generator(datagen, verbose=1)
 
 t = time.time()-t
 print('evaluate done')

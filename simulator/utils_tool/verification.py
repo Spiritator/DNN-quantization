@@ -31,17 +31,21 @@ def view_intermediate(model,input_x):
         
     output_list=list()
     
-    for n_layer in range(num_layers):
+    for n_layer in range(1,num_layers):
         output_list.append(model.layers[n_layer].output)
         
+    print('building verification model...')
     intermediate_model=Model(inputs=model.input,outputs=output_list)
     
+    print('predicting...')
     intermediate_output=intermediate_model.predict(input_x)
+    
+    intermediate_output=[input_x]+intermediate_output
     
     if batch_inference:
         return intermediate_output
     else:
-        return np.reshape(intermediate_output,intermediate_output.shape[1:])
+        return [output[0] for output in intermediate_output]
                              
         
 #    if batch_inference:

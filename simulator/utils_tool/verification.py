@@ -29,22 +29,37 @@ def view_intermediate(model,input_x):
         input_x=np.expand_dims(input_x, axis=0)
         batch_inference=False
         
+    output_list=list()
+    
+    for n_layer in range(num_layers):
+        output_list.append(model.layers[n_layer].output)
+        
+    intermediate_model=Model(inputs=model.input,outputs=output_list)
+    
+    intermediate_output=intermediate_model.predict(input_x)
+    
     if batch_inference:
-        output_list=[input_x]
+        return intermediate_output
     else:
-        output_list=[input_x[0]]
-    
-    for n_layer in range(1,num_layers):
-        print('evaluating layer %d/%d'%(n_layer+1,num_layers))
+        return np.reshape(intermediate_output,intermediate_output.shape[1:])
+                             
         
-        intermediate_model=Model(inputs=model.input,outputs=model.layers[n_layer].output)
-    
-        intermediate_output=intermediate_model.predict(input_x)
-        
-        if batch_inference:
-            output_list.append(intermediate_output)
-        else:
-            output_list.append(intermediate_output[0])
+#    if batch_inference:
+#        output_list=[input_x]
+#    else:
+#        output_list=[input_x[0]]
+#    
+#    for n_layer in range(1,num_layers):
+#        print('evaluating layer %d/%d'%(n_layer+1,num_layers))
+#        
+#        intermediate_model=Model(inputs=model.input,outputs=model.layers[n_layer].output)
+#    
+#        intermediate_output=intermediate_model.predict(input_x)
+#        
+#        if batch_inference:
+#            output_list.append(intermediate_output)
+#        else:
+#            output_list.append(intermediate_output[0])
             
-    return output_list
+#    return output_list
     

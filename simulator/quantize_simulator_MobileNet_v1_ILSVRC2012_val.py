@@ -41,16 +41,27 @@ model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5',
                              rounding_method='nearest',
                              batch_size=batch_size,
                              quant_mode='intrinsic')
-model = multi_gpu_model(model, gpus=2)
-model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy', top5_acc])
+
+#model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
 
 t = time.time()-t
 
+print('model build time: %f s'%t)
+
 model.summary()
 
-print('model build time: %f s'%t)
+# multi GPU model
+
+print('Building multi GPU model...')
+
+parallel_model = multi_gpu_model(model, gpus=2)
+parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
+
+parallel_model.summary()
+
+t = time.time()-t
+
+print('multi GPU model build time: %f s'%t)
 
 #%%
 #dataset setup
@@ -66,7 +77,7 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-test_result = model.evaluate_generator(datagen, verbose=1)
+test_result = parallel_model.evaluate_generator(datagen, verbose=1)
 
 t = time.time()-t
 print('evaluate done')

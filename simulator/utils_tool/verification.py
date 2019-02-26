@@ -38,7 +38,7 @@ def view_intermediate(model,input_x):
     intermediate_model=Model(inputs=model.input,outputs=output_list)
     
     print('predicting...')
-    intermediate_output=intermediate_model.predict(input_x)
+    intermediate_output=intermediate_model.predict(input_x,verbose=True)
     
     intermediate_output=[input_x]+intermediate_output
     

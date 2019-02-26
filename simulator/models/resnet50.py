@@ -24,7 +24,7 @@ keras_utils = get_keras_submodule('utils')
 from keras_applications import imagenet_utils
 from keras_applications.imagenet_utils import decode_predictions, _obtain_input_shape
 
-from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization
+from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
 
 preprocess_input = imagenet_utils.preprocess_input
 
@@ -37,7 +37,7 @@ WEIGHTS_PATH_NO_TOP = ('https://github.com/fchollet/deep-learning-models/'
 
 
 def identity_block(input_tensor, kernel_size, filters, stage, block, 
-                   nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest'):
+                   nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest',quant_mode='hybrid'):
     """The identity block is the block that has no conv layer at shortcut.
 
     # Arguments
@@ -58,47 +58,53 @@ def identity_block(input_tensor, kernel_size, filters, stage, block,
         bn_axis = 1
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
+    
+    print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
                         kernel_size=(1, 1),
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
-                        name=conv_name_base + '2a')(input_tensor)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        name=conv_name_base + '2a',
+                        quant_mode=quant_mode)(input_tensor)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
-                                    axis=bn_axis, name=bn_name_base + '2a')(x)
+                                    axis=bn_axis, 
+                                    name=bn_name_base + '2a',
+                                    quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
     x = QuantizedConv2D(filters2, 
                         kernel_size=kernel_size,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
-                        padding='same', name=conv_name_base + '2b')(x)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        padding='same', 
+                        name=conv_name_base + '2b',
+                        quant_mode=quant_mode)(x)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
-                                    axis=bn_axis, name=bn_name_base + '2b')(x)
+                                    axis=bn_axis, 
+                                    name=bn_name_base + '2b',
+                                    quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
     x = QuantizedConv2D(filters3, 
                         kernel_size=(1, 1), 
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
-                        name=conv_name_base + '2c')(x)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        name=conv_name_base + '2c',
+                        quant_mode=quant_mode)(x)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
-                                    axis=bn_axis, name=bn_name_base + '2c')(x)
+                                    axis=bn_axis, 
+                                    name=bn_name_base + '2c',
+                                    quant_mode=quant_mode)(x)
 
     x = layers.add([x, input_tensor])
     x = layers.Activation('relu')(x)
@@ -111,7 +117,7 @@ def conv_block(input_tensor,
                stage,
                block,
                strides=(2, 2),
-               nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest'):
+               nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest',quant_mode='hybrid'):
     """A block that has a conv layer at shortcut.
 
     # Arguments
@@ -137,63 +143,69 @@ def conv_block(input_tensor,
         bn_axis = 1
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
+    
+    print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
                         kernel_size=(1, 1), 
                         strides=strides,
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
-                        name=conv_name_base + '2a')(input_tensor)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        name=conv_name_base + '2a',
+                        quant_mode=quant_mode)(input_tensor)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
-                                    axis=bn_axis, name=bn_name_base + '2a')(x)
+                                    axis=bn_axis, 
+                                    name=bn_name_base + '2a',
+                                    quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
     x = QuantizedConv2D(filters2, 
                         kernel_size=kernel_size, 
                         padding='same',
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
-                        name=conv_name_base + '2b')(x)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        name=conv_name_base + '2b',
+                        quant_mode=quant_mode)(x)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
-                                    axis=bn_axis, name=bn_name_base + '2b')(x)
+                                    axis=bn_axis, 
+                                    name=bn_name_base + '2b',
+                                    quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
     x = QuantizedConv2D(filters3, 
                         kernel_size=(1, 1), 
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
-                        name=conv_name_base + '2c')(x)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        name=conv_name_base + '2c',
+                        quant_mode=quant_mode)(x)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
-                                    axis=bn_axis, name=bn_name_base + '2c')(x)
+                                    axis=bn_axis, 
+                                    name=bn_name_base + '2c',
+                                    quant_mode=quant_mode)(x)
 
     shortcut = QuantizedConv2D(filters3, 
                                kernel_size=(1, 1), 
                                strides=strides,
-                               H=1,
                                nb=nbits,
                                fb=fbits, 
                                rounding_method=rounding_method,
-                               name=conv_name_base + '1')(input_tensor)
-    shortcut = QuantizedBatchNormalization(H=1,
-                                           nb=BN_nbits,
+                               name=conv_name_base + '1',
+                               quant_mode=quant_mode)(input_tensor)
+    shortcut = QuantizedBatchNormalization(nb=BN_nbits,
                                            fb=BN_fbits,
                                            rounding_method=rounding_method,
-                                           axis=bn_axis, name=bn_name_base + '1')(shortcut)
+                                           axis=bn_axis, 
+                                           name=bn_name_base + '1',
+                                           quant_mode=quant_mode)(shortcut)
 
     x = layers.add([x, shortcut])
     x = layers.Activation('relu')(x)
@@ -206,11 +218,13 @@ def QuantizedResNet50(include_top=True,
              input_shape=None,
              pooling=None,
              classes=1000,
+             batch_size=None,
              nbits=16,
              fbits=8, 
              BN_nbits=None, 
              BN_fbits=None,
-             rounding_method='nearest'):
+             rounding_method='nearest',
+             quant_mode='hybrid'):
     """Instantiates the ResNet50 architecture.
 
     Optionally loads weights pre-trained on ImageNet.
@@ -281,63 +295,74 @@ def QuantizedResNet50(include_top=True,
                                       weights=weights)
 
     if input_tensor is None:
-        img_input = layers.Input(shape=input_shape)
+        img_input = layers.Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
     else:
         if not backend.is_keras_tensor(input_tensor):
-            img_input = layers.Input(tensor=input_tensor, shape=input_shape)
+            img_input = layers.Input(tensor=input_tensor, shape=input_shape, batch_shape=(batch_size,)+input_shape)
         else:
             img_input = input_tensor
     if backend.image_data_format() == 'channels_last':
         bn_axis = 3
     else:
         bn_axis = 1
+        
+    print('building stage 1 ...')
 
     x = layers.ZeroPadding2D(padding=(3, 3), name='conv1_pad')(img_input)
     x = QuantizedConv2D(64, 
                         kernel_size=(7, 7),
                         strides=(2, 2),
                         padding='valid',
-                        H=1,
                         nb=nbits,
                         fb=fbits, 
                         rounding_method=rounding_method,
-                        name='conv1')(x)
-    x = QuantizedBatchNormalization(H=1,
-                                    nb=BN_nbits,
+                        name='conv1',
+                        quant_mode=quant_mode)(x)
+    x = QuantizedBatchNormalization(nb=BN_nbits,
                                     fb=BN_fbits,
                                     rounding_method=rounding_method,
-                                    axis=bn_axis, name='bn_conv1')(x)
+                                    axis=bn_axis, 
+                                    name='bn_conv1',
+                                    quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
-    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+    print('building stage 2 ...')
 
-    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
 
-    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+    print('building stage 3 ...')
 
-    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
-    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method)
+    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+
+    print('building stage 4 ...')
+    
+    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+
+    print('building stage 5 ...')
+
+    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c', nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
 
     if include_top:
         x = layers.AveragePooling2D((7, 7), name='avg_pool')(x)
-        x = layers.Flatten()(x)
+        x = QuantizedFlatten()(x)
         x = QuantizedDense(classes, activation='softmax', name='fc1000',
-                           H=1,
                            nb=nbits,
                            fb=fbits, 
-                           rounding_method=rounding_method)(x)
+                           rounding_method=rounding_method,
+                           quant_mode=quant_mode)(x)
     else:
         if pooling == 'avg':
             x = layers.GlobalAveragePooling2D()(x)

@@ -36,7 +36,8 @@ model = QuantizedResNet50(weights='../../resnet50_weights_tf_dim_ordering_tf_ker
                           fbits=10, 
                           BN_nbits=28, 
                           BN_fbits=10,
-                          rounding_method='nearest')
+                          rounding_method='nearest',
+                          quant_mode='hybrid')
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy', top5_acc])

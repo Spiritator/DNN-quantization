@@ -39,18 +39,21 @@ model = QuantizedResNet50(weights='../../resnet50_weights_tf_dim_ordering_tf_ker
                           BN_nbits=28, 
                           BN_fbits=10,
                           rounding_method='nearest',
+                          batch_size=batch_size,
                           quant_mode='hybrid')
 #model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
+
+model.summary()
 
 t = time.time()-t
 
 print('model build time: %f s'%t)
 
-model.summary()
-
 # multi GPU model
 
 print('Building multi GPU model...')
+
+t = time.time()
 
 parallel_model = multi_gpu_model(model, gpus=2)
 parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
@@ -65,7 +68,7 @@ print('multi GPU model build time: %f s'%t)
 #dataset setup
 
 print('preparing dataset...')
-x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = validation_data_dir, preprocessing_function = preprocess_input)
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, batch_size = batch_size, data_augmentation = False, data_dir = validation_data_dir, preprocessing_function = preprocess_input)
 print('dataset ready')
 
 

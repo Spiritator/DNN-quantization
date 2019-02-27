@@ -21,7 +21,7 @@ def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
         kernel: [input_neurons, output_neurons]
     '''    
     
-    PARALLEL_ITERATIONS=1 # number of convolution ops which can run in parallel.
+    PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
     
     batch_size = inputs.shape.dims[0].value  
     input_size = inputs.shape.dims[1].value
@@ -87,7 +87,7 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
         inputs:  [batch_size, image_height, image_width, input_channels] 
         kernel: [kernel_height, kernel_width, input_channels, output_channels]
     '''
-    PARALLEL_ITERATIONS=1 # number of convolution ops which can run in parallel.
+    PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
 
     if data_format not in ("channels_last", None):
         raise ValueError("data_format other than NHWC not supported in quantized convolution, tried: %s"%(data_format))
@@ -238,7 +238,7 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
         inputs:  [batch_size, image_height, image_width, input_channels] 
         kernel: [kernel_height, kernel_width, input_channels, output_channels]
     '''
-    PARALLEL_ITERATIONS=1 # number of convolution ops which can run in parallel.
+    PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
 
     if data_format not in ("channels_last", None):
         raise ValueError("data_format other than NHWC not supported in quantized convolution, tried: %s"%(data_format))

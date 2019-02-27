@@ -54,6 +54,8 @@ model.summary()
 
 print('Building multi GPU model...')
 
+t = time.time()
+
 parallel_model = multi_gpu_model(model, gpus=2)
 parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
 
@@ -67,7 +69,7 @@ print('multi GPU model build time: %f s'%t)
 #dataset setup
 
 print('preparing dataset...')
-x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, batch_size=batch_size, data_augmentation = False, data_dir = validation_data_dir)
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, batch_size = batch_size, data_augmentation = False, data_dir = validation_data_dir)
 print('dataset ready')
 
 

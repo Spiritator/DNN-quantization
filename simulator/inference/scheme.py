@@ -14,7 +14,7 @@ from utils_tool.dataset_setup import dataset_setup
 from metrics.topk_metrics import *
 import time
 
-def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, multi_gpu=False, gpu_num=2):
+def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, summary=False, multi_gpu=False, gpu_num=2):
     """Take scheme as input and run different setting of inference automaticly. Write the results into a csv file.
 
     # Arguments
@@ -53,7 +53,8 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
             weight_name=convert_original_weight_layer_name(weight_name)
             model.load_weights(weight_name)
         
-        model.summary()
+        if summary:
+            model.summary()
 
         
         if multi_gpu:
@@ -65,7 +66,8 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
             t = time.time()            
             parallel_model = multi_gpu_model(model, gpus=gpu_num)
             parallel_model.compile( **compile_augment)
-            parallel_model.summary()
+            if summary:
+                parallel_model.summary()
             t = time.time()-t
             print('multi GPU model build time: %f s'%t)            
         else:

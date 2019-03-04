@@ -176,3 +176,87 @@ def quantize_weight(original_weight_name, weight_bit_width, weight_factorial_bit
     
     return quantized_weight_name
 
+def fuse_BN_weight(original_weight_name,fused_weight_name=None):
+    o_weight_f = h5py.File(original_weight_name,'r')
+    if fused_weight_name is None:
+        fused_weight_name=original_weight_name[:-3]+('_fused_BN.h5')
+        f_weight_f = h5py.File(fused_weight_name,'w')
+    else:
+        f_weight_f = h5py.File(fused_weight_name,'w')
+        
+        
+    if 'keras_version' in o_weight_f.attrs:
+        original_keras_version = o_weight_f.attrs['keras_version'].decode('utf8')
+    else:
+        original_keras_version = '1'
+    if 'backend' in o_weight_f.attrs:
+        original_backend = o_weight_f.attrs['backend'].decode('utf8')
+    else:
+        original_backend = None
+        
+    #================================================================
+    possible_BN_name_list=['bn','BN','BatchNormalization','batch']
+    #================================================================
+    
+    layer_names = load_attributes_from_hdf5_group(o_weight_f, 'layer_names')
+    fused_layer_names = []
+    for layer_iter,layer_name in enumerate(layer_names):
+        pred_list=[(keyword in layer_names[layer_iter+1]) for keyword in possible_BN_name_list]
+        if any(pred_list):
+            fused_layer_names.append(layer_name)
+        
+    new_layer_names = []
+    bn_layer_names = []
+    for layer_name in layer_names:
+        pred_list=[(keyword in layer_names[layer_iter+1]) for keyword in possible_BN_name_list]
+        if any(pred_list):
+            bn_layer_names.append(layer_name)
+        else:
+            new_layer_names.append(layer_name)
+
+            
+            
+    f_weight_f.attrs.create('layer_names',[temp.encode('utf8') for temp in new_layer_names])
+    f_weight_f.attrs.create('backend',original_backend.encode('utf8'))
+    f_weight_f.attrs.create('keras_version',original_keras_version.encode('utf8'))
+    
+    for layer_iter, layer_name in enumerate(layer_names):
+        if layer_name not in bn_layer_names:
+            o_group = o_weight_f[layer_name]
+            weight_names = load_attributes_from_hdf5_group(o_group, 'weight_names')
+            weight_values = [np.asarray(o_group[weight_name]) for weight_name in weight_names]
+            fused_layer = f_weight_f.create_group(layer_names[layer_iter])
+            fused_layer.attrs.create('weight_names',[temp.encode('utf8') for temp in weight_names])
+            fused_sublayer = fused_layer.create_group(layer_names[layer_iter])
+            
+            if layer_name in fused_layer_names:
+                
+            else:
+                for weight_iter, weight_name in enumerate(weight_names):
+                    
+                    m = np.power(2,weight_factorial_bit)
+                    quantized_weight_value = weight_values[weight_iter] * m
+                    
+                    if rounding_method == 'nearest':
+                        quantized_weight_value = np.round(quantized_weight_value)
+                    elif rounding_method == 'zero':
+                        quantized_weight_value = np.trunc(quantized_weight_value)
+                    elif rounding_method == 'down':
+                        quantized_weight_value = np.floor(quantized_weight_value)
+                    elif rounding_method == 'stochastic':
+                        if np.average(quantized_weight_value-np.floor(quantized_weight_value)) > 0.5:
+                            quantized_weight_value = np.ceil(quantized_weight_value)
+                        else:
+                            quantized_weight_value = np.floor(quantized_weight_value)
+                    else:
+                        print('Wrong Rounding Type\nChoose between \'nearest\' , \'zero\' , \'down\'')
+                        
+                    quantized_weight_value = np.clip(quantized_weight_value/m, -np.power(2,weight_bit_width-weight_factorial_bit-1), np.power(2,weight_bit_width-weight_factorial_bit-1)-np.power(0.5,weight_factorial_bit))
+                        
+                    quantized_sublayer.create_dataset(weight_name[len(layer_name)+1:],weight_values[weight_iter].shape,weight_values[weight_iter].dtype,quantized_weight_value)
+        
+        
+    o_weight_f.close()
+    q_weight_f.close()
+
+

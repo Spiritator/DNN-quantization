@@ -34,10 +34,10 @@ print('Building model...')
 t = time.time()
 
 model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5', 
-                             nbits=20,
-                             fbits=10, 
-                             BN_nbits=20, 
-                             BN_fbits=10,
+                             nbits=16,
+                             fbits=8, 
+                             BN_nbits=16, 
+                             BN_fbits=8,
                              rounding_method='nearest',
                              batch_size=batch_size,
                              quant_mode='intrinsic')

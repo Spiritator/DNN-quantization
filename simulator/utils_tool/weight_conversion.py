@@ -96,7 +96,8 @@ def convert_original_weight_layer_name(original_weight_name,quantized_weight_nam
             quantized_layer.attrs.create('weight_names',[('quantized_'+temp).encode('utf8') for temp in weight_names])
         else:
             quantized_layer.attrs.create('weight_names',[temp.encode('utf8') for temp in weight_names])
-        quantized_sublayer = quantized_layer.create_group(quantized_layer_names[layer_iter])
+        if len(weight_names) is not 0:
+            quantized_sublayer = quantized_layer.create_group(quantized_layer_names[layer_iter])
         
         for weight_iter, weight_name in enumerate(weight_names):
             quantized_sublayer.create_dataset(weight_name[len(layer_name)+1:],weight_values[weight_iter].shape,weight_values[weight_iter].dtype,weight_values[weight_iter])
@@ -146,7 +147,8 @@ def quantize_weight(original_weight_name, weight_bit_width, weight_factorial_bit
         weight_values = [np.asarray(o_group[weight_name]) for weight_name in weight_names]
         quantized_layer = q_weight_f.create_group(layer_names[layer_iter])
         quantized_layer.attrs.create('weight_names',[temp.encode('utf8') for temp in weight_names])
-        quantized_sublayer = quantized_layer.create_group(layer_names[layer_iter])
+        if len(weight_names) is not 0:
+            quantized_sublayer = quantized_layer.create_group(layer_names[layer_iter])
         
         for weight_iter, weight_name in enumerate(weight_names):
             m = np.power(2,weight_factorial_bit)
@@ -239,20 +241,34 @@ def fuse_BN_weight(original_weight_name,fused_weight_name=None):
             weight_values = [np.asarray(o_group[weight_name]) for weight_name in weight_names]
             fused_layer = f_weight_f.create_group(layer_names[layer_iter])
             fused_layer.attrs.create('weight_names',[temp.encode('utf8') for temp in weight_names])
-            fused_sublayer = fused_layer.create_group(layer_names[layer_iter])
+            if len(weight_names) is not 0:
+                fused_sublayer = fused_layer.create_group(layer_names[layer_iter])
             
             if layer_name in fused_layer_names:
                 bn_o_group = o_weight_f[layer_names[layer_iter+1]]
                 bn_weight_names = load_attributes_from_hdf5_group(bn_o_group, 'weight_names')
                 bn_weight_values = [np.asarray(bn_o_group[weight_name]) for weight_name in bn_weight_names]
                 
-                shape_tmp1 = []
-                shape_tmp2 = []
-                for i in range(len(weight_values[0].shape)-1):
+                if weight_values[0].shape[-1]==len(bn_weight_values[0]):
+                    # normal circumstance output channel at last dimension
+                    shape_tmp1 = []
+                    shape_tmp2 = []
+                    for i in range(len(weight_values[0].shape)-1):
+                        shape_tmp1.append(1)
+                        shape_tmp2.append(weight_values[0].shape[i])
+                    shape_tmp1.append(len(bn_weight_values[0]))
+                    shape_tmp2.append(1)
+                elif weight_values[0].shape[-2]==len(bn_weight_values[0]) and weight_values[0].shape[-1]==1:
+                    # depthwise convolution 
+                    shape_tmp1 = []
+                    shape_tmp2 = []
+                    for i in range(len(weight_values[0].shape)-2):
+                        shape_tmp1.append(1)
+                        shape_tmp2.append(weight_values[0].shape[i])
+                    shape_tmp1.append(len(bn_weight_values[0]))
                     shape_tmp1.append(1)
-                    shape_tmp2.append(weight_values[0].shape[i])
-                shape_tmp1.append(len(bn_weight_values[0]))
-                shape_tmp2.append(1)
+                    shape_tmp2.append(1)
+                    shape_tmp2.append(1)
                     
                 gamma_tmp = bn_weight_values[0]
                 beta_tmp = bn_weight_values[1]
@@ -262,16 +278,24 @@ def fuse_BN_weight(original_weight_name,fused_weight_name=None):
                 coef = np.divide(gamma_tmp,np.sqrt(variance_tmp+epsilon))
                 const = beta_tmp-np.multiply(mean_tmp,coef)
                 
-                coef = np.tile(np.reshape(coef,shape_tmp1),shape_tmp2)
-                
-                fused_kernel = np.multiply(weight_values[0],coef)
+                # for those layer without bias
                 if len(weight_names)==1:
                     fused_bias = const
                 else:
-                    fused_bias = weight_values[1]+const
+                    fused_bias = np.multiply(coef,weight_values[1])+const
+                
+                coef = np.tile(np.reshape(coef,shape_tmp1),shape_tmp2)
+                
+                fused_kernel = np.multiply(weight_values[0],coef)
+                
                     
                 fused_sublayer.create_dataset(weight_names[0][len(layer_name)+1:],weight_values[0].shape,weight_values[0].dtype,fused_kernel)
-                fused_sublayer.create_dataset(weight_names[1][len(layer_name)+1:],weight_values[1].shape,weight_values[1].dtype,fused_bias)
+                # for those layer without bias
+                if len(weight_names)==1:
+                    fused_layer.attrs.create('weight_names',[weight_names[0].encode('utf8'),weight_names[0].replace('kernel','bias').encode('utf8')])
+                    fused_sublayer.create_dataset(weight_names[0][len(layer_name)+1:].replace('kernel','bias'),bn_weight_values[0].shape,bn_weight_values[0].dtype,fused_bias)
+                else:
+                    fused_sublayer.create_dataset(weight_names[1][len(layer_name)+1:],weight_values[1].shape,weight_values[1].dtype,fused_bias)
 
                         
             else:

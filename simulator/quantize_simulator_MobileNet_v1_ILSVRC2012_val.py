@@ -9,7 +9,7 @@ evaluate quantized testing result with custom Keras quantize layer
 
 import keras
 from keras.utils import multi_gpu_model
-from models.mobilenet import QuantizedMobileNetV1
+from models.mobilenet import QuantizedMobileNetV1,QuantizedMobileNetV1FusedBN
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top5_acc
@@ -33,14 +33,21 @@ print('Building model...')
 
 t = time.time()
 
-model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5', 
-                             nbits=16,
-                             fbits=8, 
-                             BN_nbits=16, 
-                             BN_fbits=8,
-                             rounding_method='nearest',
-                             batch_size=batch_size,
-                             quant_mode='intrinsic')
+#model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5', 
+#                             nbits=16,
+#                             fbits=8, 
+#                             BN_nbits=16, 
+#                             BN_fbits=8,
+#                             rounding_method='nearest',
+#                             batch_size=batch_size,
+#                             quant_mode='intrinsic')
+
+model = QuantizedMobileNetV1FusedBN(weights='../../mobilenet_1_0_224_tf_fused_BN.h5', 
+                                    nbits=16,
+                                    fbits=8, 
+                                    rounding_method='nearest',
+                                    batch_size=batch_size,
+                                    quant_mode=None)
 
 #model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
 

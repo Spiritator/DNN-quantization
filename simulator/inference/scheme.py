@@ -50,8 +50,8 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         model=model_func( **model_augment[scheme_num])
         
         if weight_load:
-            weight_name=convert_original_weight_layer_name(weight_name)
-            model.load_weights(weight_name)
+            weight_name_convert=convert_original_weight_layer_name(weight_name)
+            model.load_weights(weight_name_convert)
         
         if show_summary:
             model.summary()

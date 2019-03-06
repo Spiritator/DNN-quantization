@@ -341,12 +341,17 @@ class QuantizedBatchNormalization(BatchNormalization):
     References: 
     "Pytorch Playground: Base pretrained models and datasets in pytorch." [https://github.com/aaron-xichen/pytorch-playground]
     '''
-    def __init__(self, nb=16, fb=8, rounding_method='nearest', quant_mode='hybrid', **kwargs):
+    def __init__(self, nb=16, fb=8, rounding_method='nearest', quant_mode='hybrid',
+                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None, None, None],**kwargs):
         super(QuantizedBatchNormalization, self).__init__(**kwargs)
         self.nb = nb
         self.fb = fb
         self.rounding_method = rounding_method
         self.quant_mode = quant_mode
+        self.weight_sa_fault_injection=weight_sa_fault_injection
+        self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
+        self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
+
 
     def build(self, input_shape):
         dim = input_shape[self.axis]
@@ -451,9 +456,26 @@ class QuantizedBatchNormalization(BatchNormalization):
                         broadcast_beta = quantize(broadcast_beta, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
                     if self.scale:
                         broadcast_gamma = quantize(broadcast_gamma, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                        
+                if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.scale:
+                    broadcast_gamma = inject_layer_sa_fault_tensor(broadcast_gamma, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+                    
+                if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.center:
+                    broadcast_beta = inject_layer_sa_fault_tensor(broadcast_beta, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+                    
+                if self.weight_sa_fault_injection[2] is not None and self.quant_mode in ['hybrid','intrinsic']:
+                    broadcast_moving_mean = inject_layer_sa_fault_tensor(broadcast_moving_mean, self.weight_sa_fault_injection[2], nb_weight, fb_weight, rounding=rounding_weight)
+                    
+                if self.weight_sa_fault_injection[3] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.scale:
+                    broadcast_moving_variance = inject_layer_sa_fault_tensor(broadcast_moving_variance, self.weight_sa_fault_injection[3], nb_weight, fb_weight, rounding=rounding_weight)
+                    
                     
                 if self.quant_mode in ['hybrid','intrinsic']:
                     quantized_inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+                    
+                if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
+                    quantized_inputs = inject_layer_sa_fault_tensor(quantized_inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+
                 
                 if self.quant_mode is 'intrinsic':
                     return QuantizedBatchNormalizationCore(
@@ -508,9 +530,26 @@ class QuantizedBatchNormalization(BatchNormalization):
                         gamma = quantize(self.gamma, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
                     else:
                         gamma = self.gamma
+                        
+                if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.scale:
+                    gamma = inject_layer_sa_fault_tensor(gamma, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+                    
+                if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.center:
+                    beta = inject_layer_sa_fault_tensor(beta, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+                    
+                if self.weight_sa_fault_injection[2] is not None and self.quant_mode in ['hybrid','intrinsic']:
+                    moving_mean = inject_layer_sa_fault_tensor(moving_mean, self.weight_sa_fault_injection[2], nb_weight, fb_weight, rounding=rounding_weight)
+                    
+                if self.weight_sa_fault_injection[3] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.scale:
+                    moving_variance = inject_layer_sa_fault_tensor(moving_variance, self.weight_sa_fault_injection[3], nb_weight, fb_weight, rounding=rounding_weight)
+                    
                     
                 if self.quant_mode in ['hybrid','intrinsic']:
                     quantized_inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+                    
+                if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
+                    quantized_inputs = inject_layer_sa_fault_tensor(quantized_inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+
                 
                 if self.quant_mode is 'intrinsic':
                     return QuantizedBatchNormalizationCore(
@@ -558,7 +597,10 @@ class QuantizedBatchNormalization(BatchNormalization):
 
         # If the learning phase is *static* and set to inference:
         if training in {0, False}:
-            return normalize_inference()
+            if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
+                return inject_layer_sa_fault_tensor(normalize_inference(), self.ofmap_sa_fault_injection, nb_output, fb_output, rounding=rounding_output)
+            else:
+                return normalize_inference()
 
         # If the learning is either dynamic, or set to training:
         normed_training, mean, variance = K.normalize_batch_in_training(

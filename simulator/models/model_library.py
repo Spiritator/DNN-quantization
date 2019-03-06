@@ -220,6 +220,189 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
 
     return model
 
+def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid'):
+    
+    print('Building model : Quantized 4C2FBN CNN')
+    
+    if BN_nbits is None:
+        BN_nbits=nbits
+
+    if BN_fbits is None:
+        BN_fbits=fbits
+
+    
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for i in range(23)]
+    else:
+        print('Inject input fault')
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for i in range(23)]
+    else:
+        print('Inject output fault')
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None,None,None] for i in range(23)]
+    else:
+        print('Inject weight fault')
+        
+    channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
+    
+    print('Building Layer 0')
+    input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+    print('Building Layer 1')
+    x = QuantizedConv2D(filters=32,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        padding='same',
+                        strides=(1, 1),
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
+                        weight_sa_fault_injection=weight_fault_dict_list[1],
+                        quant_mode=quant_mode)(input_shape)
+    print('Building Layer 2')
+    x = QuantizedBatchNormalization(nb=BN_nbits,
+                                    fb=BN_fbits,
+                                    rounding_method=rounding_method,
+                                    axis=channel_axis, 
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
+                                    weight_sa_fault_injection=weight_fault_dict_list[2],
+                                    quant_mode=quant_mode)(x)
+    print('Building Layer 3')
+    x = Activation('relu')(x)
+
+    print('Building Layer 4')
+    x = QuantizedConv2D(filters=32,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
+                        weight_sa_fault_injection=weight_fault_dict_list[4],
+                        quant_mode=quant_mode)(x)
+    print('Building Layer 5')
+    x = QuantizedBatchNormalization(nb=BN_nbits,
+                                    fb=BN_fbits,
+                                    rounding_method=rounding_method,
+                                    axis=channel_axis, 
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[5],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
+                                    weight_sa_fault_injection=weight_fault_dict_list[5],
+                                    quant_mode=quant_mode)(x)
+    print('Building Layer 6')
+    x = Activation('relu')(x)
+
+
+    print('Building Layer 7')
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    print('Building Layer 8')
+    x = Dropout(0.25)(x)
+    
+    print('Building Layer 9')
+    x = QuantizedConv2D(filters=64,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        padding='same',
+                        strides=(1, 1),
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[9],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[9],
+                        weight_sa_fault_injection=weight_fault_dict_list[9],
+                        quant_mode=quant_mode)(x)
+    print('Building Layer 10')
+    x = QuantizedBatchNormalization(nb=BN_nbits,
+                                    fb=BN_fbits,
+                                    rounding_method=rounding_method,
+                                    axis=channel_axis, 
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[10],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[10],
+                                    weight_sa_fault_injection=weight_fault_dict_list[10],
+                                    quant_mode=quant_mode)(x)
+    print('Building Layer 11')
+    x = Activation('relu')(x)
+
+
+    print('Building Layer 12')
+    x = QuantizedConv2D(filters=64,
+                        nb=nbits,
+                        fb=fbits, 
+                        rounding_method=rounding_method,
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[12],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[12],
+                        weight_sa_fault_injection=weight_fault_dict_list[12],
+                        quant_mode=quant_mode)(x)
+    print('Building Layer 13')
+    x = QuantizedBatchNormalization(nb=BN_nbits,
+                                    fb=BN_fbits,
+                                    rounding_method=rounding_method,
+                                    axis=channel_axis, 
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
+                                    weight_sa_fault_injection=weight_fault_dict_list[13],
+                                    quant_mode=quant_mode)(x)
+    print('Building Layer 14')
+    x = Activation('relu')(x)
+
+
+    print('Building Layer 15')
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    print('Building Layer 16')
+    x = Dropout(0.25)(x)
+    
+    print('Building Layer 17')
+    #x = Flatten()(x)
+    x = QuantizedFlatten()(x)
+    print('Building Layer 18')
+    x = QuantizedDense(512,
+                       nb=nbits,
+                       fb=fbits, 
+                       rounding_method=rounding_method,
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[18],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[18],
+                       weight_sa_fault_injection=weight_fault_dict_list[18],
+                       quant_mode=quant_mode)(x)
+    print('Building Layer 19')
+    x = QuantizedBatchNormalization(nb=BN_nbits,
+                                    fb=BN_fbits,
+                                    rounding_method=rounding_method,
+                                    axis=channel_axis, 
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[19],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[19],
+                                    weight_sa_fault_injection=weight_fault_dict_list[19],
+                                    quant_mode=quant_mode)(x)
+
+    print('Building Layer 20')
+    x = Activation('relu')(x)
+    print('Building Layer 21')
+    x = Dropout(0.5)(x)
+    print('Building Layer 22')
+    x = QuantizedDense(num_classes,
+                       nb=nbits,
+                       fb=fbits, 
+                       rounding_method=rounding_method,
+                       activation='softmax',
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[22],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[22],
+                       weight_sa_fault_injection=weight_fault_dict_list[22],
+                       quant_mode=quant_mode)(x)
+    
+    model=Model(inputs=input_shape, outputs=x)
+    
+#    model.compile(loss='categorical_crossentropy',
+#                  optimizer='adam',
+#                  metrics=['accuracy', top2_acc])
+    
+    model.summary()
+
+    return model
+
+
 def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', inputs=None,  include_top=True, classes=10, *args, **kwargs):
     if BN_nbits is None:
         BN_nbits=nbits

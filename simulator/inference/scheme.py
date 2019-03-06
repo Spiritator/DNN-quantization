@@ -41,7 +41,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
 
     
     for scheme_num in range(len(model_augment)):
-        print('Running inference scheme %d/%d'%(scheme_num,len(model_augment)))
+        print('Running inference scheme %d/%d'%(scheme_num+1,len(model_augment)))
         
         print('Building model...')
         

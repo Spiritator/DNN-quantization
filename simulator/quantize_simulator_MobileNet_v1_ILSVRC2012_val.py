@@ -33,29 +33,29 @@ print('Building model...')
 
 t = time.time()
 
-#model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5', 
-#                             nbits=16,
-#                             fbits=8, 
-#                             BN_nbits=16, 
-#                             BN_fbits=8,
-#                             rounding_method='nearest',
-#                             batch_size=batch_size,
-#                             quant_mode='intrinsic')
+model = QuantizedMobileNetV1(weights='../../mobilenet_1_0_224_tf.h5', 
+                             nbits=16,
+                             fbits=8, 
+                             BN_nbits=16, 
+                             BN_fbits=8,
+                             rounding_method='nearest',
+                             batch_size=batch_size,
+                             quant_mode='intrinsic')
 
-model = QuantizedMobileNetV1FusedBN(weights='../../mobilenet_1_0_224_tf_fused_BN.h5', 
-                                    nbits=16,
-                                    fbits=8, 
-                                    rounding_method='nearest',
-                                    batch_size=batch_size,
-                                    quant_mode=None)
+#model = QuantizedMobileNetV1FusedBN(weights='../../mobilenet_1_0_224_tf_fused_BN.h5', 
+#                                    nbits=16,
+#                                    fbits=8, 
+#                                    rounding_method='nearest',
+#                                    batch_size=batch_size,
+#                                    quant_mode=None)
 
 #model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
-
-t = time.time()-t
 
 print('model build time: %f s'%t)
 
 model.summary()
+
+t = time.time()-t
 
 # multi GPU model
 

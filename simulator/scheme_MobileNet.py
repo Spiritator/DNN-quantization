@@ -12,7 +12,7 @@ from models.mobilenet import QuantizedMobileNetV1FusedBN, preprocess_input
 from metrics.topk_metrics import top2_acc,top5_acc
 
 result_save_file='../../test_result/imagenet_MobileNet_fused_BN.csv'
-weight_name='../../../../mobilenet_1_0_224_tf_fused_BN.h5'
+weight_name='../../mobilenet_1_0_224_tf_fused_BN.h5'
 img_width, img_height = 224, 224
 class_number=1000
 batch_size=40

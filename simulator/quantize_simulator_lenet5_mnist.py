@@ -34,7 +34,7 @@ batch_size=25
 # each augment uses different quantize precision. information list [input, weight, output]
 #model=quantized_lenet5(nbits=[10,4,10],fbits=[5,2,5],rounding_method='nearest')
 # intrinsic quantization
-model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest',batch_size=batch_size,quant_mode='intrinsic')
+model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest',batch_size=batch_size,quant_mode='hybrid')
 
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)

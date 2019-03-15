@@ -61,21 +61,77 @@ class tile:
         elif prior is 'Tc':
             return self.Tc,axis_idex[3]
         
+    def coor_tile_recursive_call(self,coor,prior_list,prior_index,increase=False):
+        T_size,T_index=self.priorexchange(prior_list[prior_index])
+        if increase:
+            if coor[T_index] < T_size-1:
+                coor[T_index]+=1
+            else:
+                if prior_index==len(prior_list)-1:
+                    raise ValueError('Index out of range !!')
+                    
+                coor[T_index]=0
+                coor=self.coor_tile_recursive_call(coor,prior_list,prior_index+1,increase=True)
+        else:
+            if coor[T_index] > 0:
+                coor[T_index]-=1
+            else:
+                if prior_index==len(prior_list)-1:
+                    raise ValueError('Index out of range !!')
+                    
+                coor[T_index]=T_size-1
+                coor=self.coor_tile_recursive_call(coor,prior_list,prior_index+1,increase=False)
+            
+        return coor
+        
+    def coor_tile_move(self,coor,bit,n_move,increase=False):
+        coor_tmp=list(coor)
+        bit_coor_tmp=self.wl-bit-1
+        
+        for n_count in reversed(range(n_move)):
+            if increase:
+                if bit_coor_tmp < self.wl-1:
+                    bit_coor_tmp+=1
+                else:
+                    bit_coor_tmp=0
+                    coor_tmp=self.coor_tile_recursive_call(coor_tmp,self.col_prior,0,increase=True)
+            else:
+                if bit_coor_tmp > 0:
+                    bit_coor_tmp-=1
+                else:
+                    bit_coor_tmp=self.wl-1
+                    coor_tmp=self.coor_tile_recursive_call(coor_tmp,self.col_prior,0,increase=False)
+                
+        return tuple(coor_tmp),bit_coor_tmp
+
+        
     def get_numtag_bitmap(self,bitmap,addr):
         if len(addr)!=2:
             raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
             
         return addr[0]*bitmap.col+addr[1]
-    def get_numtag_tile(self,bitmap,coor):
+    
+    def get_numtag_tile(self,bitmap,coor,bit):
         if len(coor)!=4:
             raise ValueError('The length of coordinate Tuple in tile must be 4 but got %d.'%(len(coor)))
            
         id_col_expand=0
         for i in reversed(range(4)):
             T_size,T_index=self.priorexchange(self.col_prior[i])
-            id_col_expand+=T_size*coor[T_index]
+            id_col_expand+=T_size*coor[T_index]*self.wl
             
-        row_addr=id_col_expand % bitmap.col
+        id_col_expand+=self.wl-bit-1
+            
+        col_addr=id_col_expand % bitmap.col
+        
+        coor_slice_head,bit_val=self.coor_tile_move(coor,bit,col_addr,increase=False)
+        
+        if bit_val is not 0:
+            raise ValueError('coordinate slice head is not the MSB of a word. There might be some error.')
+        
+        
+                
+                                
 
     def fault_dict_bitmap2tile(self,bitmap,row_prior=None,col_prior=None):
         """Mapping the fault on the memory bitmap to tile coordinate

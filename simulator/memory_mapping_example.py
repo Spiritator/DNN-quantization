@@ -42,3 +42,12 @@ coor_fmap_test=(8,2,2,4)
 coor_fmap_reduced,bit_reduced=fmap_tile.coor_tile_move(coor_fmap_test,5,1+2+32+8*16*4*2*8)
 coor_fmap_increased,bit_increased=fmap_tile.coor_tile_move(coor_fmap_test,5,1+5+8*12,increase=True)
 
+numtag_mem=GLB_wght.get_numtag((2,3))
+addr_mem=GLB_wght.numtag2addr(numtag_mem)
+
+numtag_tile_wght=wght_tile.get_numtag(coor_wght_test,3)
+coor_wght_val,bit_val=wght_tile.numtag2coor(numtag_tile_wght)
+
+addr_fault=wght_tile.tile2bitmap(coor_wght_test,3,GLB_wght)
+coor_fault,bit_fault=wght_tile.bitmap2tile(addr_fault,GLB_wght)
+

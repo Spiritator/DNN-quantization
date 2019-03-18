@@ -89,7 +89,6 @@ class bitmap:
         # Returns
             The fault information Dictionary. The number of fault generated Integer.
         """
-        
         fault_count=0        
         fault_dict=dict()
         self.fault_num_gen_mem(fault_rate)
@@ -106,6 +105,34 @@ class bitmap:
         self.fault_dict=fault_dict
         
         return fault_dict,self.fault_num
+    
+    def get_numtag(self,addr):
+        """Get the bitmap and tile conversion index numtag.
+
+        # Arguments
+            addr: Tuple. The address of memory bit oriented representation. Length 2 i.e. 2D representation of memory.
+    
+        # Returns
+            The numtag (Integer)
+        """
+
+        if len(addr)!=2:
+            raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
+            
+        return addr[0]*self.col+addr[1]
+    
+    def numtag2addr(self,numtag):
+        """Convert the numtag to its corresponding address.
+
+        # Arguments
+            numtag: Integer. The bitmap and tile conversion index numtag.
+    
+        # Returns
+            The memory address (Tuple)
+        """
+        return (numtag//self.col, numtag % self.col)
+
+
 
 
 

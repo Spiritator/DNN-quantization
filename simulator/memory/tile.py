@@ -121,7 +121,7 @@ class tile:
         if self.tile_size is None:
             self.tile_size=self.Tm*self.Tn*self.Tr*self.Tc*self.wl
             
-        if bitmap_size>self.tile_size:
+        if bitmap_size<self.tile_size:
             return True
         else:
             return False
@@ -227,7 +227,7 @@ class tile:
         
         
         for addr in bitmap.fault_dict.keys():
-            if not self.check_tile_overflow(bitmap,addr):
+            if self.check_tile_overflow(bitmap,addr):
                 fault_type=bitmap.fault_dict[addr]
                 fault_coor,fault_bit=self.bitmap2tile(addr,bitmap)
                 
@@ -243,5 +243,71 @@ class tile:
                                                  'SA_bit' : fault_bit}
                 
         return self.fault_dict
+    
+    def fault_dict_tile2bitmap(self,bitmap,row_prior=None,col_prior=None):
+        """Mapping the fault on the tile coordinate to memory bitmap 
+
+        # Arguments
+            bitmap: Class. The bitmap class for memory fault tolerance analysis.
+            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        
+        # Returns
+            The fault information Dictionary of bitmap.
+        """
+        if self.wl!=bitmap.wl and bitmap.wl is not None:
+            raise ValueError('Word length of tile (%d) must be the same as bitmap (%d).'%(self.wl,bitmap.wl))
+            
+        if bitmap.col % self.wl is not 0:
+            raise ValueError('The memory column size %d does not fit word length %d.'%(bitmap.col,self.wl))
+            
+        if row_prior is not None:
+            self.row_prior=row_prior
+        if col_prior is not None:
+            self.col_prior=col_prior
+        self.check_prior()
+        
+        if self.check_tile_overflow(bitmap):
+            raise ValueError('The tile is bigger than the memory !')
+        
+        for coor in self.fault_dict.keys():                
+            if not isinstance(self.fault_dict[coor]['SA_bit'],list):
+                fault_type=self.fault_dict[coor]['SA_type']
+                fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'],bitmap)
+                
+                bitmap.fault_dict[fault_addr]=fault_type
+            else:
+                for i in range(len(self.fault_dict[coor]['SA_bit'])):
+                    fault_type=self.fault_dict[coor]['SA_type'][i]
+                    fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'][i],bitmap)
+                    
+                    bitmap.fault_dict[fault_addr]=fault_type
+                
+        return bitmap.fault_dict
+    
+    def gen_layer_fault_dict(self,layer_shape):
+        """Restore the fault dictionary from tile to entire layer
+
+        # Arguments
+            layer_shape: Tuple. The shape of a layer parameter were divided into tile.
+        
+        # Returns
+            The fault information Dictionary of a layer parameter (feature maps or weights).
+        """
+        layer_shape=list(layer_shape)
+        if self.is_fmap:
+            tile_shape=[self.Tn,self.Tr,self.Tc,self.Tm]
+        else:
+            tile_shape=[self.Tr,self.Tc,self.Tm,self.Tn]
+            
+        restore_multiple=np.floor_divide(layer_shape,tile_shape)
+        
+        base_coor=np.array([[0,0,0,0]])
+        
+        
+        
+        
+
+
 
 

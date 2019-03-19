@@ -33,6 +33,8 @@ class tile:
         self.col_prior=col_prior
         self.prior_list=['Tm','Tn','Tr','Tc']
         self.slice_head_list=None
+        self.fault_dict=dict()
+        self.tile_size=None
         
     def check_prior(self):
         if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=4 or len(self.col_prior)!=4:
@@ -110,6 +112,20 @@ class tile:
                 
         return tuple(coor_tmp),self.wl-bit_coor_tmp-1
     
+    def check_tile_overflow(self,bitmap,addr=None):
+        if addr is None:
+            bitmap_size=bitmap.row*bitmap.col
+        else:
+            bitmap_size=bitmap.get_numtag(addr)+1
+            
+        if self.tile_size is None:
+            self.tile_size=self.Tm*self.Tn*self.Tr*self.Tc*self.wl
+            
+        if bitmap_size>self.tile_size:
+            return True
+        else:
+            return False
+    
     def get_numtag(self,coor,bit,row_mode=False):
         if len(coor)!=4:
             raise ValueError('The length of coordinate Tuple in tile must be 4 but got %d.'%(len(coor)))
@@ -165,7 +181,7 @@ class tile:
         row_addr_psuedo=numtag_slice_head//bitmap.col
         
         if self.slice_head_list is None:
-            slice_head_list=[self.numtag2coor(bitmap.col*i)[0] for i in range(bitmap.row-1)]
+            slice_head_list=[self.numtag2coor(bitmap.col*i)[0] for i in range(bitmap.row)]
             self.slice_head_list=[self.get_numtag(head,self.wl-1,row_mode=True) for head in slice_head_list]
         row_addr=np.argsort(self.slice_head_list)[row_addr_psuedo]
         
@@ -176,7 +192,7 @@ class tile:
             raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
 
         if self.slice_head_list is None:
-            slice_head_list=[self.numtag2coor(bitmap.col*i)[0] for i in range(bitmap.row-1)]
+            slice_head_list=[self.numtag2coor(bitmap.col*i)[0] for i in range(bitmap.row)]
             self.slice_head_list=[self.get_numtag(head,self.wl-1,row_mode=True) for head in slice_head_list]
         
         numtag_head=self.slice_head_list[np.argwhere(np.argsort(self.slice_head_list)==addr[0])[0,0]]
@@ -211,5 +227,21 @@ class tile:
         
         
         for addr in bitmap.fault_dict.keys():
-            pass    
+            if not self.check_tile_overflow(bitmap,addr):
+                fault_type=bitmap.fault_dict[addr]
+                fault_coor,fault_bit=self.bitmap2tile(addr,bitmap)
+                
+                if fault_coor in self.fault_dict.keys():
+                    if isinstance(self.fault_dict[fault_coor]['SA_bit'],list):
+                        self.fault_dict[fault_coor]['SA_type'].append(fault_type)
+                        self.fault_dict[fault_coor]['SA_bit'].append(fault_bit)
+                    else:
+                        self.fault_dict[fault_coor]['SA_type']=[self.fault_dict[fault_coor]['SA_type'],fault_type]
+                        self.fault_dict[fault_coor]['SA_bit']=[self.fault_dict[fault_coor]['SA_bit'],fault_bit]
+                else:
+                    self.fault_dict[fault_coor]={'SA_type':fault_type,
+                                                 'SA_bit' : fault_bit}
+                
+        return self.fault_dict
+
 

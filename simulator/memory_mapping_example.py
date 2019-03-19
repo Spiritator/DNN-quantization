@@ -51,3 +51,7 @@ coor_wght_val,bit_val=wght_tile.numtag2coor(numtag_tile_wght)
 addr_fault=wght_tile.tile2bitmap(coor_wght_test,3,GLB_wght)
 coor_fault,bit_fault=wght_tile.bitmap2tile(addr_fault,GLB_wght)
 
+tile_fault_dict_wght=wght_tile.fault_dict_bitmap2tile(GLB_wght)
+tile_fault_dict_fmap=fmap_tile.fault_dict_bitmap2tile(GLB_wght)
+
+

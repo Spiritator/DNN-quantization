@@ -304,6 +304,33 @@ class tile:
         
         base_coor=np.array([[0,0,0,0]])
         
+        def gen_coor(coor,index):
+            if coor[index] < restore_multiple[index]:
+                coor[index]+=1
+            else:
+                if index is not 0:
+                    coor[index]=0
+                    coor=gen_coor(coor,index-1)
+            return coor
+                
+        coor_tmp=[0,0,0,0]
+        
+        for i in range(np.prod(np.add(restore_multiple,[1,1,1,1]))-1):
+            coor_tmp=gen_coor(coor_tmp,3)
+            base_coor=np.append(base_coor,[coor_tmp],axis=0)
+            
+        base_coor=np.multiply(base_coor,np.tile(tile_shape,[len(base_coor),1]))
+        
+        layer_fault_dict=dict()
+        
+        for i in range(len(base_coor)):
+            for tile_fault_coor in self.fault_dict.keys():
+                layer_fault_coor=np.add(base_coor[i],list(tile_fault_coor))
+                if all(layer_shape>layer_fault_coor):
+                    layer_fault_dict[tuple(layer_fault_coor)]=self.fault_dict[tile_fault_coor]
+
+        return layer_fault_dict
+        
         
         
         

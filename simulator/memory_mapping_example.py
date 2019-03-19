@@ -66,3 +66,7 @@ tile_fault_dict_fmap=fmap_tile.fault_dict_bitmap2tile(GLB_wght)
 mem_fault_dict_wght=wght_tile.fault_dict_tile2bitmap(GLB_wght)
 mem_fault_dict_fmap=fmap_tile.fault_dict_tile2bitmap(GLB_fmap)
 
+# example of tile fault dictionary restore to layer fault dictionary
+layer_shape=(30,30,40,64)
+layer_fault_dict=wght_tile.gen_layer_fault_dict(layer_shape)
+

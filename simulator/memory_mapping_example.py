@@ -63,6 +63,7 @@ tile_fault_dict_wght=wght_tile.fault_dict_bitmap2tile(GLB_wght)
 tile_fault_dict_fmap=fmap_tile.fault_dict_bitmap2tile(GLB_wght)
 
 # example of tile mapping to memory using fault dictionary
+GLB_wght.fault_dict=dict()
 mem_fault_dict_wght=wght_tile.fault_dict_tile2bitmap(GLB_wght)
 mem_fault_dict_fmap=fmap_tile.fault_dict_tile2bitmap(GLB_fmap)
 

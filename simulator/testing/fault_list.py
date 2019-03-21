@@ -247,9 +247,6 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,coo
         The fault information Dictionary. The number of fault generated Integer.
     """
 
-    model_ifmap_fault_dict=dict()
-    model_ofmap_fault_dict=dict()
-    model_weight_fault_dict=[dict() for i in range(len(layer.get_weights()))]
     if coor_pois_lam is None:
         coor_pois_lam=[None,None,None]
     
@@ -265,7 +262,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,coo
     
     if len(layer_weight_shape)==0:
         print('    no weight layer Skipped!')
-        return model_ifmap_fault_dict, model_ofmap_fault_dict, model_weight_fault_dict
+        return None, None, [None,None]
     
     # ifmap fault generation
     ifmap_fault_dict,layer_ifmap_fault_num=gen_fault_dict_list_fmap(layer_input_shape,
@@ -306,7 +303,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,coo
                                                                       **kwargs)
     print('    generated layer weight %s faults'%(str(layer_weight_fault_num)))
             
-    return model_ifmap_fault_dict, model_ofmap_fault_dict, model_weight_fault_dict
+    return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 
 
 def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):

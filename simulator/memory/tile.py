@@ -405,7 +405,69 @@ class tile:
         
         
         
-        
+def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,ifmap_tile,wght_tile,ofmap_tile,batch_size,model_word_length,**kwargs):
+    """Generate the fault dictionary list of a layer base on its memory mapping and buffer fault information.
+
+    # Arguments
+        layer: Keras.Layer. 
+        ifmap_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of input feature maps.
+        ofmap_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of output feature maps.
+        wght_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of weights.
+        batch_size: Integer. The batch size of fault tolerance evaluation process.
+        model_word_length: Integer. The word length of model parameters.
+
+    # Returns
+        The fault information Dictionary List.
+    """
+    
+    print('\nMapping memory fault on layer ...')
+    
+    layer_input_shape=layer.input_shape
+    layer_output_shape=layer.output_shape
+    layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
+    
+    if len(layer_weight_shape)==0 or 'dense' in layer.name:
+        print('    no weight layer Skipped!')
+        return None, None, [None,None]
+    
+    # ifmap memory mapping
+    if len(ifmap_buffer.fault_dict) is 0:
+        raise ValueError('The input feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
+    
+    if len(ifmap_tile.fault_dict) is 0:
+        ifmap_tile.fault_dict_bitmap2tile(ifmap_buffer)
+    
+    ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape)
+    
+    print('    mapped layer ifmap %d faults'%(ifmap_buffer.fault_num))
+    
+    
+    # ofmap memory mapping
+    if len(ofmap_buffer.fault_dict) is 0:
+        raise ValueError('The output feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
+
+    if len(ofmap_tile.fault_dict) is 0:
+        ifmap_tile.fault_dict_bitmap2tile(ofmap_buffer)
+    
+    ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape)
+    
+    print('    mapped layer ofmap %d faults'%(ofmap_buffer.fault_num))
+    
+    # weight memory mapping
+    if len(wght_buffer.fault_dict) is 0:
+        raise ValueError('The weights buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
+    
+    if len(wght_tile.fault_dict) is 0:
+        wght_tile.fault_dict_bitmap2tile(wght_buffer)
+    
+    weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0])
+
+    weight_fault_dict=[weight_fault_dict,None]
+    
+    print('    mapped layer weight %s faults'%(str([wght_buffer.fault_num,0])))
+            
+    return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
+
 
 
 

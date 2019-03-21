@@ -21,7 +21,9 @@ from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
-from testing.fault_list import generate_model_stuck_fault
+from memory.mem_bitmap import bitmap
+from memory.tile import tile, generate_layer_memory_mapping
+#from testing.fault_list import generate_model_stuck_fault
 
 #%%
 # setting parameter
@@ -35,23 +37,16 @@ fault_rate=0.001
 
 #%%
 # fault generation
-model=quantized_lenet5(batch_size=batch_size,nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method)
+model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method)
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 
-model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_stuck_fault(model,fault_rate,
-                                                                                                                  batch_size,
-                                                                                                                  model_word_length,
-                                                                                                                  bit_loc_distribution='poisson',
-                                                                                                                  bit_loc_pois_lam=2)
+model_ifmap_fault_dict_list=[None for i in range(8)]
+model_ofmap_fault_dict_list=[None for i in range(8)] 
+model_weight_fault_dict_list=[[None,None] for i in range(8)]
 
-# FC layer no fault
-model_weight_fault_dict_list[6]=[None,None]
-model_weight_fault_dict_list[7]=[None,None]
-model_ifmap_fault_dict_list[6]=None
-model_ifmap_fault_dict_list[7]=None
-model_ofmap_fault_dict_list[6]=None
-model_ofmap_fault_dict_list[7]=None
+
+
 
 #%%
 # model setup

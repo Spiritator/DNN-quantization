@@ -9,6 +9,7 @@ inject stuck at fault during model build phase
 """
 
 import tensorflow as tf
+import keras.backend as K
 import numpy as np
 from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_stuck_at_fault_modulator
 from layers.quantized_ops import quantize_1half,quantize_2half
@@ -28,11 +29,11 @@ def check_fault_dict(data, fault_dict):
 #            raise ValueError('fault location %s has different number of fault types and fault bits'%key)
 
 
-def inject_layer_sa_fault_nparray(data, fault_dict, word_width, fractional_bit, rounding='nearest'):
+def inject_layer_sa_fault_nparray(data_in, fault_dict, word_width, fractional_bit, rounding='nearest'):
     """Inject fault dictionary to numpy array.
 
     # Arguments
-        data: Variable. The variable to be injected fault.
+        data_in: Variable. The variable to be injected fault.
         fault_dict: Dictionary. The dictionary contain fault list information.
         word_width: Variable. The fix-point representation of the parameter word length.
         fractional_bits: Variable. Number of fractional bits in a fix-point parameter
@@ -41,6 +42,7 @@ def inject_layer_sa_fault_nparray(data, fault_dict, word_width, fractional_bit, 
     # Returns
         The faulty numpy array.
     """
+    data=data_in
     check_fault_dict(data,fault_dict)
     for key in fault_dict.keys():
         if not isinstance(fault_dict[key]['SA_bit'],list):
@@ -50,11 +52,11 @@ def inject_layer_sa_fault_nparray(data, fault_dict, word_width, fractional_bit, 
             
     return data
 
-def inject_layer_sa_fault_tensor(data, fault_dict, word_width, fractional_bit, rounding='nearest'):
+def inject_layer_sa_fault_tensor(data_in, fault_dict, word_width, fractional_bit, rounding='nearest'):
     """Inject fault dictionary to Tensor.
 
     # Arguments
-        data: Tensor. The Tensor to be injected fault.
+        data_in: Tensor. The Tensor to be injected fault.
         fault_dict: Dictionary. The dictionary contain fault list information.
         word_width: Variable. The fix-point representation of the parameter word length.
         fractional_bits: Variable. Number of fractional bits in a fix-point parameter
@@ -63,6 +65,7 @@ def inject_layer_sa_fault_tensor(data, fault_dict, word_width, fractional_bit, r
     # Returns
         The faulty Tensor.
     """
+    data=data_in
     if isinstance(fault_dict,dict):
         shape=data.shape
     elif isinstance(fault_dict,list):
@@ -99,7 +102,7 @@ def inject_layer_sa_fault_tensor(data, fault_dict, word_width, fractional_bit, r
     data=tf.cast(data,tf.int32)
     
     if fault_indices[0].shape[0]>0:
-        modulater_tensor0=tf.Variable(np.ones(shape,dtype='int32')*(2**word_width-1),dtype='int32')
+        modulater_tensor0=tf.Variable(np.ones(shape,dtype='int32')*(-1),dtype='int32')
         modulater_tensor0=tf.scatter_nd_update(modulater_tensor0,fault_indices[0],fault_modulators[0])
         data=tf.bitwise.bitwise_and(data,modulater_tensor0)
     if fault_indices[1].shape[0]>0:

@@ -154,7 +154,7 @@ def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck
         if stuck_at!='1' and stuck_at!='0' and stuck_at!='flip':
             raise ValueError('You must stuck at \'0\' , \'1\' or \'flip\'.')
     
-    modulator0=2**word_width-1
+    modulator0=-1
     modulator1=0
     modulatorF=0
     if isinstance(fault_bit,list):

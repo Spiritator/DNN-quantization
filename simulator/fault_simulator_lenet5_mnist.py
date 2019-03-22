@@ -43,7 +43,8 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                                                                                                                   batch_size,
                                                                                                                   model_word_length,
                                                                                                                   bit_loc_distribution='poisson',
-                                                                                                                  bit_loc_pois_lam=2)
+                                                                                                                  bit_loc_pois_lam=2,
+                                                                                                                  fault_type='flip')
 
 # FC layer no fault
 model_weight_fault_dict_list[6]=[None,None]

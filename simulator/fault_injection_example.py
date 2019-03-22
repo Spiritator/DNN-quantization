@@ -24,8 +24,10 @@ multiple_fault_weight=generate_multiple_stuck_at_fault(original_weight,10,3,[3,2
 
 
 # the Tensor of original parameter
-layer_original_weight=np.reshape(np.arange(1,101,dtype='float32'), (10,10))
-layer_original_input=tf.Variable(layer_original_weight)
+layer_original_weight_pos=np.reshape(np.arange(1,101,dtype='float32'), (10,10))
+layer_original_input_pos=tf.Variable(layer_original_weight_pos)
+layer_original_weight_neg=np.reshape(np.arange(1,101,dtype='float32')*(-1), (10,10))
+layer_original_input_neg=tf.Variable(layer_original_weight_neg)
 
 # example of fault dictionary
 fault_dict={(1,6):\
@@ -46,9 +48,13 @@ fault_dict={(1,6):\
             }
             
 # inject fault to a numpy array
-layer_fault_weight=inject_layer_sa_fault_nparray(layer_original_weight,fault_dict,10,3,rounding='nearest')
+layer_fault_weight_pos=inject_layer_sa_fault_nparray(layer_original_weight_pos,fault_dict,10,3,rounding='nearest')
+layer_fault_weight_neg=inject_layer_sa_fault_nparray(layer_original_weight_neg,fault_dict,10,3,rounding='nearest')
 
 # inject fault to a Tensor
-layer_fault_input=inject_layer_sa_fault_tensor(layer_original_input,fault_dict,10,3,rounding='nearest')
-layer_fault_input_array=K.eval(layer_fault_input)
+layer_fault_input_pos=inject_layer_sa_fault_tensor(layer_original_input_pos,fault_dict,10,3,rounding='nearest')
+layer_fault_input_array_pos=K.eval(layer_fault_input_pos)
+layer_fault_input_neg=inject_layer_sa_fault_tensor(layer_original_input_neg,fault_dict,10,3,rounding='nearest')
+layer_fault_input_array_neg=K.eval(layer_fault_input_neg)
+
             

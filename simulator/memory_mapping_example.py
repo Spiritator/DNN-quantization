@@ -90,4 +90,5 @@ wght_tile_b.bias_fault_dict={(3,):{'SA_type': 'flip', 'SA_bit': 0},(17,):{'SA_ty
 mem_fault_dict_b=wght_tile_b.fault_dict_tile2bitmap(GLB_wght_b,use_bias=True)
 
 tile_fault_dict_wght_b=wght_tile_b.fault_dict_bitmap2tile(GLB_wght_b,use_bias=True)
+layer_fault_dict_bias=wght_tile_b.gen_layer_fault_dict(layer_shape,GLB_wght_b)
 

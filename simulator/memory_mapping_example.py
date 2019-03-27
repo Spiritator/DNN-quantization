@@ -59,7 +59,7 @@ addr_fault=wght_tile.tile2bitmap(coor_wght_test,3,GLB_wght)
 coor_fault,bit_fault=wght_tile.bitmap2tile(addr_fault,GLB_wght)
 
 # example of memory mapping to tile using fault dictionary
-tile_fault_dict_wght=wght_tile.fault_dict_bitmap2tile(GLB_wght)
+tile_fault_dict_wght=wght_tile.fault_dict_bitmap2tile(GLB_wght,use_bias=True)
 tile_fault_dict_fmap=fmap_tile.fault_dict_bitmap2tile(GLB_wght)
 
 # example of tile mapping to memory using fault dictionary
@@ -69,5 +69,25 @@ mem_fault_dict_fmap=fmap_tile.fault_dict_tile2bitmap(GLB_fmap)
 
 # example of tile fault dictionary restore to layer fault dictionary
 layer_shape=(30,30,40,64)
-layer_fault_dict=wght_tile.gen_layer_fault_dict(layer_shape)
+layer_fault_dict=wght_tile.fault_dict_tile2layer(layer_shape)
+
+# example of memory fault dictionary restore to layer fault dictionary 
+layer_fault_dict_val=wght_tile.gen_layer_fault_dict(layer_shape,GLB_wght)
+
+#%%
+
+# test bias fault
+
+# a buffer memory for weights
+GLB_wght_b=bitmap(row, col*word*model_wl, wl=model_wl)
+mem_fault_dict_b,mem_fault_num=GLB_wght_b.gen_bitmap_SA_fault_dict(fault_rate)
+# weight tile and feature map tile
+wght_tile_b=tile(15,32,3,3,is_fmap=False,wl=8,row_prior=memory_row_priority,col_prior=memory_column_priority)
+
+# assign bias fault
+wght_tile_b.bias_fault_dict={(3,):{'SA_type': 'flip', 'SA_bit': 0},(17,):{'SA_type': 'flip', 'SA_bit': 4}}
+# prepare bias fault
+mem_fault_dict_b=wght_tile_b.fault_dict_tile2bitmap(GLB_wght_b,use_bias=True)
+
+tile_fault_dict_wght_b=wght_tile_b.fault_dict_bitmap2tile(GLB_wght_b,use_bias=True)
 

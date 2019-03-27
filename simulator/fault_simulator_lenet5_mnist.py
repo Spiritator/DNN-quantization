@@ -35,9 +35,13 @@ fault_rate=0.001
 
 #%%
 # fault generation
-model=quantized_lenet5(batch_size=batch_size,nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method)
-weight_name=convert_original_weight_layer_name(weight_name)
-model.load_weights(weight_name)
+
+# model for get configuration
+model=quantized_lenet5(nbits=model_word_length,
+                       fbits=model_factorial_bit,
+                       rounding_method=rounding_method,
+                       batch_size=batch_size,
+                       quant_mode=None)
 
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_stuck_fault(model,fault_rate,
                                                                                                                   batch_size,

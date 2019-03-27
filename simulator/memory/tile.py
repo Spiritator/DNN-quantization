@@ -10,7 +10,7 @@ DNN tiling for memory fault mapping
 import numpy as np
 
 class tile:
-    def __init__(self, Tm, Tn, Tr, Tc, is_fmap=True, wl=32, row_prior=[], col_prior=[]):
+    def __init__(self, Tm, Tn, Tr, Tc, is_fmap, wl=32, row_prior=[], col_prior=[]):
         """The tile of a DNN feature map or weights
 
         # Arguments
@@ -18,6 +18,7 @@ class tile:
             Tn: Integer. The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
             Tr: Integer. The size of tile on the kernel row dimension or feature map row dimention.
             Tc: Integer. The size of tile on the kernel column dimension or feature map column dimention.
+            is_fmap: The tile is feature map tile or weight tile.
             wl: Integer. The word length of DNN model parameter.
             row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
             col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
@@ -36,6 +37,9 @@ class tile:
         self.slice_head_order=None
         self.fault_dict=dict()
         self.tile_size=None
+        self.use_bias=False
+        self.bias_fault_dict=dict()
+        self.bias_range=None
         
     def check_prior(self):
         if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=4 or len(self.col_prior)!=4:
@@ -120,10 +124,34 @@ class tile:
         else:
             bitmap_size=bitmap.get_numtag(addr)+1
             
+            
         if self.tile_size is None:
             self.tile_size=self.Tm*self.Tn*self.Tr*self.Tc*self.wl
             
         if bitmap_size<self.tile_size:
+            return True
+        else:
+            return False
+        
+    def check_within_bias_range(self,bitmap,addr=None):
+        if addr is None:
+            bitmap_size=bitmap.row*bitmap.col
+        else:
+            bitmap_size=bitmap.get_numtag(addr)+1
+        
+        if self.tile_size is None:
+            self.tile_size=self.Tm*self.Tn*self.Tr*self.Tc*self.wl
+            
+        if self.bias_range is None:
+            if self.use_bias:
+                bias_size,T_index=self.priorexchange('Tn')
+            else:
+                bias_size=0
+            
+            self.bias_range=self.tile_size+bias_size
+               
+            
+        if bitmap_size<self.bias_range:
             return True
         else:
             return False
@@ -264,6 +292,7 @@ class tile:
             coor,bit=self.coor_tile_move(coor_head,self.wl-1,addr[1],increase=True)
         except Exception as ValueError:
             if self.check_tile_overflow(bitmap,addr):
+                print(addr)
                 print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
                 n_move=addr[1]-(self.tile_size-self.get_numtag(coor_head,self.wl-1))
                 coor_head=self.slice_head_list[self.slice_head_order[addr[0]+1]]
@@ -274,11 +303,12 @@ class tile:
         return coor,bit
         
 
-    def fault_dict_bitmap2tile(self,bitmap,row_prior=None,col_prior=None):
+    def fault_dict_bitmap2tile(self,bitmap,use_bias=None,row_prior=None,col_prior=None):
         """Mapping the fault on the memory bitmap to tile coordinate
 
         # Arguments
             bitmap: Class. The bitmap class for memory fault tolerance analysis.
+            use_bias: Use bias in weight tile or not.
             row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
             col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
         
@@ -297,6 +327,12 @@ class tile:
             self.col_prior=col_prior
         self.check_prior()
         
+        if self.is_fmap and use_bias:
+            raise ValueError('Feature map tile with use_bias option True. Only weight tile can mapping with bias.')
+        if use_bias is not None:
+            self.use_bias=use_bias
+
+        
         
         for addr in bitmap.fault_dict.keys():
             if self.check_tile_overflow(bitmap,addr):
@@ -313,10 +349,23 @@ class tile:
                 else:
                     self.fault_dict[fault_coor]={'SA_type':fault_type,
                                                  'SA_bit' : fault_bit}
-                
-        return self.fault_dict
+            elif self.check_within_bias_range(bitmap,addr) and not self.is_fmap:
+                print(addr)
+                print('bias fault')
+                fault_type=bitmap.fault_dict[addr]
+                bias_numtag=bitmap.get_numtag((addr))-self.tile_size
+                self.bias_fault_dict[(bias_numtag//self.wl,)]={'SA_type':fault_type,
+                                                              'SA_bit' :self.wl - bias_numtag % self.wl}
+        
+        if self.is_fmap:
+            return self.fault_dict
+        else:
+            if len(self.bias_fault_dict) is 0:
+                return [self.fault_dict,None]
+            else:
+                return [self.fault_dict,self.bias_fault_dict]
     
-    def fault_dict_tile2bitmap(self,bitmap,row_prior=None,col_prior=None):
+    def fault_dict_tile2bitmap(self,bitmap,use_bias=None,row_prior=None,col_prior=None):
         """Mapping the fault on the tile coordinate to memory bitmap 
 
         # Arguments
@@ -339,8 +388,15 @@ class tile:
             self.col_prior=col_prior
         self.check_prior()
         
+        if self.is_fmap and use_bias:
+            raise ValueError('Feature map tile with use_bias option True. Only weight tile can mapping with bias.')
+        if use_bias is not None:
+            self.use_bias=use_bias
+        
         if self.check_tile_overflow(bitmap):
-            raise ValueError('The tile is bigger than the memory !')
+            if self.check_within_bias_range(bitmap):
+                raise ValueError('The tile is bigger than the memory !')
+            
         
         for coor in self.fault_dict.keys():                
             if not isinstance(self.fault_dict[coor]['SA_bit'],list):
@@ -354,18 +410,42 @@ class tile:
                     fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'][i],bitmap)
                     
                     bitmap.fault_dict[fault_addr]=fault_type
+                    
+        if self.use_bias:
+            kernel_end_coor=[self.Tr-1,self.Tc-1,self.Tm-1,self.Tn-1]
+
+            for coor in self.bias_fault_dict.keys():
+                fault_type=self.bias_fault_dict[coor]['SA_type']
+                fault_addr=self.tile2bitmap(kernel_end_coor,0,bitmap)
+                n_move=coor[0]*self.wl+self.wl-self.bias_fault_dict[coor]['SA_bit']
+                fault_addr=list(fault_addr)
+                fault_addr[1]+=n_move
+                if fault_addr[1]>=bitmap.col:
+                    fault_addr[0]+=1
+                    fault_addr[1]=fault_addr[1]%bitmap.col
+                fault_addr=tuple(fault_addr)
+                print('bias fault')
+                print(fault_addr)
+                
+                bitmap.fault_dict[fault_addr]=fault_type
                 
         return bitmap.fault_dict
     
-    def gen_layer_fault_dict(self,layer_shape):
+    def fault_dict_tile2layer(self,layer_shape,use_bias=None):
         """Restore the fault dictionary from tile to entire layer
 
         # Arguments
             layer_shape: Tuple. The shape of a layer parameter were divided into tile.
+            use_bias: Use bias in weight tile or not.
         
         # Returns
             The fault information Dictionary of a layer parameter (feature maps or weights).
         """
+        if self.is_fmap and use_bias:
+            raise ValueError('Feature map tile with use_bias option True. Only weight tile can mapping with bias.')
+        if use_bias is not None:
+            self.use_bias=use_bias
+            
         layer_shape=list(layer_shape)
         if self.is_fmap:
             tile_shape=[self.Tn,self.Tr,self.Tc,self.Tm]
@@ -402,6 +482,21 @@ class tile:
                     layer_fault_dict[tuple(layer_fault_coor)]=self.fault_dict[tile_fault_coor]
 
         return layer_fault_dict
+    
+    def gen_layer_fault_dict(self,layer_shape,bitmap,use_bias=None,col_prior=None,row_prior=None):
+        if col_prior is not None:
+            self.col_prior=col_prior
+        if row_prior is not None:
+            self.row_prior=row_prior
+        if self.is_fmap and use_bias:
+            raise ValueError('Feature map tile with use_bias option True. Only weight tile can mapping with bias.')
+        if use_bias is not None:
+            self.use_bias=use_bias
+            
+        self.fault_dict_bitmap2tile(bitmap)
+    
+        return self.fault_dict_tile2layer(layer_shape)
+    
         
         
         
@@ -460,9 +555,12 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     if len(wght_tile.fault_dict) is 0:
         wght_tile.fault_dict_bitmap2tile(wght_buffer)
     
-    weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0])
-
-    weight_fault_dict=[weight_fault_dict,None]
+    if len(layer_weight_shape)>1:
+        use_bias=True
+    else:
+        use_bias=False
+    
+    weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0],use_bias)
     
     print('    mapped layer weight %s faults'%(str([wght_buffer.fault_num,0])))
             

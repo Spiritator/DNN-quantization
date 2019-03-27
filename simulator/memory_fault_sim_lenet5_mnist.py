@@ -33,19 +33,35 @@ model_word_length=8
 model_factorial_bit=4
 rounding_method='nearest'
 batch_size=20
+# memory fault simulation parameter
 fault_rate=0.001
+row=80
+col=20
+word=4
+model_wl=8
+
+memory_column_priority=['Tm','Tc','Tr','Tn']
+memory_row_priority=['Tr','Tm','Tc','Tn']
+
 
 #%%
 # fault generation
-model=quantized_lenet5(nbits=model_word_length,fbits=model_factorial_bit,rounding_method=rounding_method)
-weight_name=convert_original_weight_layer_name(weight_name)
-model.load_weights(weight_name)
+
+# model for get configuration
+model=quantized_lenet5(nbits=model_word_length,
+                       fbits=model_factorial_bit,
+                       rounding_method=rounding_method,
+                       batch_size=batch_size,
+                       quant_mode=None)
 
 model_ifmap_fault_dict_list=[None for i in range(8)]
 model_ofmap_fault_dict_list=[None for i in range(8)] 
 model_weight_fault_dict_list=[[None,None] for i in range(8)]
 
-
+# memory mapping
+GLB_wght=bitmap(row, col*word*model_wl, wl=model_wl)
+GLB_ifmap=bitmap(row, col*word*model_wl, wl=model_wl)
+GLB_ofmap=bitmap(row, col*word*model_wl, wl=model_wl)
 
 
 #%%

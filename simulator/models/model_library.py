@@ -20,7 +20,7 @@ from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBa
 
 def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid'):
     
-    print('Building model : Quantized Lenet 5')
+    print('\nBuilding model : Quantized Lenet 5')
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(8)]
@@ -105,7 +105,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
 
 def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid'):
     
-    print('Building model : Quantized 4C2F CNN')
+    print('\nBuilding model : Quantized 4C2F CNN')
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(14)]
@@ -222,7 +222,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
 
 def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid'):
     
-    print('Building model : Quantized 4C2FBN CNN')
+    print('\nBuilding model : Quantized 4C2FBN CNN')
     
     if BN_nbits is None:
         BN_nbits=nbits

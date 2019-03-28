@@ -173,7 +173,7 @@ def QuantizedMobileNetV1(input_shape=None,
         RuntimeError: If attempting to run this model with a
             backend that does not support separable convolutions.
     """
-    print('Building model : Quantized MobileNet V1')
+    print('\nBuilding model : Quantized MobileNet V1')
 
     if BN_nbits is None:
         BN_nbits=nbits
@@ -619,7 +619,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
         RuntimeError: If attempting to run this model with a
             backend that does not support separable convolutions.
     """
-    print('Building model : Quantized MobileNet V1 Fused BatchNornalization')
+    print('\nBuilding model : Quantized MobileNet V1 Fused BatchNornalization')
 
     if not os.path.exists(weights):
         raise ValueError('The `weights` argument must be the path to the weights file to be loaded. File not found!')

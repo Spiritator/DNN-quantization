@@ -268,7 +268,7 @@ def QuantizedResNet50(include_top=True,
         ValueError: in case of invalid argument for `weights`,
             or invalid input shape.
     """
-    print('Building model : Quantized ResNet50')
+    print('\nBuilding model : Quantized ResNet50')
     
     if BN_nbits is None:
         BN_nbits=nbits
@@ -584,7 +584,7 @@ def QuantizedResNet50FusedBN(include_top=True,
         ValueError: in case of invalid argument for `weights`,
             or invalid input shape.
     """
-    print('Building model : Quantized ResNet50')
+    print('\nBuilding model : Quantized ResNet50')
     
     
     if not os.path.exists(weights):

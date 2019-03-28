@@ -8,6 +8,7 @@ Plan for multiple inferece setting and write into file
 """
 
 import keras, os, csv
+import keras.backend as K
 from keras.utils import multi_gpu_model
 from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
@@ -113,6 +114,9 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                         test_result_dict['metric %d'%i]=test_result[i]
                     writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow(test_result_dict)
+                    
+            
+        #K.clear_session()
                     
         print('\n===============================================\n')
 

@@ -38,8 +38,8 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 #%%
 
 # weight tile and feature map tile
-wght_tile=tile(16,32,3,3,is_fmap=False,wl=8,row_prior=memory_row_priority,col_prior=memory_column_priority)
-fmap_tile=tile(16,32,3,3,is_fmap=True,wl=8,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile=tile((3,3,16,32),is_fmap=False,wl=8,row_prior=memory_row_priority,col_prior=memory_column_priority)
+fmap_tile=tile((16,3,3,32),is_fmap=True,wl=8,row_prior=memory_row_priority,col_prior=memory_column_priority)
 
 # example of coordinate moving in tile
 coor_wght_test=(2,2,4,8)
@@ -82,7 +82,7 @@ layer_fault_dict_val=wght_tile.gen_layer_fault_dict(layer_shape,GLB_wght)
 GLB_wght_b=bitmap(row, col*word*model_wl, wl=model_wl)
 mem_fault_dict_b,mem_fault_num=GLB_wght_b.gen_bitmap_SA_fault_dict(fault_rate)
 # weight tile and feature map tile
-wght_tile_b=tile(15,32,3,3,is_fmap=False,wl=8,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_b=tile((3,3,15,32),is_fmap=False,wl=8,row_prior=memory_row_priority,col_prior=memory_column_priority)
 
 # assign bias fault
 wght_tile_b.bias_fault_dict={(3,):{'SA_type': 'flip', 'SA_bit': 0},(17,):{'SA_type': 'flip', 'SA_bit': 4}}

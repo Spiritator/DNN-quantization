@@ -10,24 +10,35 @@ DNN tiling for memory fault mapping
 import numpy as np
 
 class tile:
-    def __init__(self, Tm, Tn, Tr, Tc, is_fmap, wl=32, row_prior=[], col_prior=[]):
+    def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
         """The tile of a DNN feature map or weights
 
         # Arguments
+            tile_shape: Tuple. The shape of tile.
             Tm: Integer. The size of tile on the input feature map dimension (weight) or channel dimention (feature map).
             Tn: Integer. The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
             Tr: Integer. The size of tile on the kernel row dimension or feature map row dimention.
             Tc: Integer. The size of tile on the kernel column dimension or feature map column dimention.
-            is_fmap: The tile is feature map tile or weight tile.
+            is_fmap: Bool. The tile is feature map tile or weight tile.
             wl: Integer. The word length of DNN model parameter.
             row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
             col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
     
         """
-        self.Tm=Tm
-        self.Tn=Tn
-        self.Tr=Tr
-        self.Tc=Tc
+        if not isinstance(is_fmap,bool):
+            raise ValueError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
+        if len(tile_shape) is not 4:
+            raise ValueError('The augment tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
+        if is_fmap:    
+            self.Tm=tile_shape[3]
+            self.Tn=tile_shape[0]
+            self.Tr=tile_shape[1]
+            self.Tc=tile_shape[2]
+        else:
+            self.Tm=tile_shape[2]
+            self.Tn=tile_shape[3]
+            self.Tr=tile_shape[0]
+            self.Tc=tile_shape[1]
         self.is_fmap=is_fmap
         self.wl=wl
         self.row_prior=row_prior
@@ -511,7 +522,7 @@ class tile:
         
         
         
-def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,ifmap_tile,wght_tile,ofmap_tile,batch_size,model_word_length,**kwargs):
+def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,ifmap_tile,wght_tile,ofmap_tile,**kwargs):
     """Generate the fault dictionary list of a layer base on its memory mapping and buffer fault information.
 
     # Arguments
@@ -542,7 +553,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         
     ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape,ifmap_buffer)
     
-    print('    mapped layer ifmap %d faults'%(ifmap_buffer.fault_num))
+    print('    mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
     
     
     # ofmap memory mapping
@@ -551,7 +562,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     
     ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape,ofmap_buffer)
     
-    print('    mapped layer ofmap %d faults'%(ofmap_buffer.fault_num))
+    print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
     
     # weight memory mapping
     if len(wght_buffer.fault_dict) is 0:
@@ -562,9 +573,9 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     else:
         use_bias=False
     
-    weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0],use_bias)
+    weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0],wght_buffer,use_bias=use_bias)
     
-    print('    mapped layer weight %s faults'%(str([wght_buffer.fault_num,0])))
+    print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
             
     return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 

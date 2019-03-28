@@ -34,7 +34,7 @@ model_factorial_bit=4
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter
-fault_rate=0.001
+fault_rate=0.01
 row=80
 col=20
 word=4
@@ -63,6 +63,30 @@ GLB_wght=bitmap(row, col*word*model_wl, wl=model_wl)
 GLB_ifmap=bitmap(row, col*word*model_wl, wl=model_wl)
 GLB_ofmap=bitmap(row, col*word*model_wl, wl=model_wl)
 
+GLB_wght.gen_bitmap_SA_fault_dict(fault_rate)
+GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate)
+GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate)
+
+# conv1
+ofmap_tile_conv1=tile((1,28,28,8),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_conv1=tile((1,28,28,1),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_conv1 =tile((5,5,1,8),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+
+# conv2
+ofmap_tile_conv2=tile((1,14,14,12),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_conv2=tile((1,14,14,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_conv2 =tile((5,5,16,12),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+
+# generate fault dictionary
+model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault_dict_list[1]\
+=generate_layer_memory_mapping(model.layers[1],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1)
+
+model_ifmap_fault_dict_list[3],model_ofmap_fault_dict_list[3],model_weight_fault_dict_list[3]\
+=generate_layer_memory_mapping(model.layers[3],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2)
 
 #%%
 # model setup
@@ -107,10 +131,10 @@ print('Test top2 accuracy:', test_result[2])
 #%%
 # draw confusion matrix
 
-print('\n')
-prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
-prediction = np.argmax(prediction, axis=1)
-
-show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)
+#print('\n')
+#prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
+#prediction = np.argmax(prediction, axis=1)
+#
+#show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)
 
 

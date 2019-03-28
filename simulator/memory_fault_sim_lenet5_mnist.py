@@ -34,11 +34,11 @@ model_factorial_bit=4
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter
-fault_rate=0.01
+fault_rate=0.001
 row=80
 col=20
 word=4
-model_wl=8
+model_wl=16
 
 memory_column_priority=['Tm','Tc','Tr','Tn']
 memory_row_priority=['Tr','Tm','Tc','Tn']
@@ -131,10 +131,10 @@ print('Test top2 accuracy:', test_result[2])
 #%%
 # draw confusion matrix
 
-#print('\n')
-#prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
-#prediction = np.argmax(prediction, axis=1)
-#
-#show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)
+print('\n')
+prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
+prediction = np.argmax(prediction, axis=1)
+
+show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)
 
 

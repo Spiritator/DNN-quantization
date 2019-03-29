@@ -51,12 +51,13 @@ class tile:
         self.use_bias=False
         self.bias_fault_dict=dict()
         self.bias_range=None
+        self.shape_len=4
         
     def check_prior(self):
-        if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=len(self.prior_element) or len(self.col_prior)!=len(self.prior_element):
-            raise ValueError('The augment row_prior and col_prior must be in list dtype and have length %d but got length %d and %d'%(len(self.prior_element),len(self.row_prior),len(self.col_prior)))
+        if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=self.shape_len or len(self.col_prior)!=self.shape_len:
+            raise ValueError('The augment row_prior and col_prior must be in list dtype and have length %d but got length %d and %d'%(self.shape_len,len(self.row_prior),len(self.col_prior)))
                 
-        for i in range(len(self.prior_element)):
+        for i in range(self.shape_len):
             if self.row_prior[i] not in self.prior_element:
                 raise ValueError('The augment row_prior must be in list %s'%(str(self.prior_element)))
             if self.col_prior[i] not in self.prior_element:
@@ -177,8 +178,8 @@ class tile:
         # Returns
             The numtag (Integer)
         """
-        if len(coor)!=len(self.prior_element):
-            raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(len(self.prior_element),len(coor)))
+        if len(coor)!=self.shape_len:
+            raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,len(coor)))
                    
         if row_mode:
             prior_list=self.row_prior
@@ -187,7 +188,7 @@ class tile:
 
         numtag=0
         coef_tmp=1
-        for i in range(len(self.prior_element)):
+        for i in range(self.shape_len):
             T_size,T_index=self.priorexchange(prior_list[i])
             numtag+=coef_tmp*coor[T_index]
             coef_tmp*=T_size
@@ -211,12 +212,12 @@ class tile:
             prior_list=self.col_prior
 
         
-        coor=[0 for i in range(len(self.prior_element))]
+        coor=[0 for i in range(self.shape_len)]
         
         bit=self.wl-(numtag % self.wl)-1
         numtag_tmp=numtag//self.wl
         
-        for i in reversed(range(len(self.prior_element))):
+        for i in reversed(range(self.shape_len)):
             T_size,T_index=self.priorexchange(prior_list[i])
             coef_tmp=1
             for j in reversed(range(i)):
@@ -561,6 +562,7 @@ class tile_FC(tile):
         self.use_bias=False
         self.bias_fault_dict=dict()
         self.bias_range=None
+        self.shape_len=2
                         
     def priorexchange(self,prior):
         if prior not in self.prior_element:

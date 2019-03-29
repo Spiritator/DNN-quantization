@@ -34,11 +34,11 @@ model_factorial_bit=4
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter
-fault_rate=0.001
+fault_rate=0.0001
 row=80
 col=20
 word=4
-model_wl=16
+model_wl=model_word_length
 
 memory_column_priority=['Tm','Tc','Tr','Tn']
 memory_row_priority=['Tr','Tm','Tc','Tn']

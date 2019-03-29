@@ -53,10 +53,10 @@ class tile:
         self.bias_range=None
         
     def check_prior(self):
-        if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=4 or len(self.col_prior)!=4:
-            raise ValueError('The augment row_prior and col_prior must be in list dtype and have length 4 but got length %d and %d'%(len(self.row_prior),len(self.col_prior)))
+        if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=len(self.prior_element) or len(self.col_prior)!=len(self.prior_element):
+            raise ValueError('The augment row_prior and col_prior must be in list dtype and have length %d but got length %d and %d'%(len(self.prior_element),len(self.row_prior),len(self.col_prior)))
                 
-        for i in range(4):
+        for i in range(len(self.prior_element)):
             if self.row_prior[i] not in self.prior_element:
                 raise ValueError('The augment row_prior must be in list %s'%(str(self.prior_element)))
             if self.col_prior[i] not in self.prior_element:
@@ -161,7 +161,6 @@ class tile:
             
             self.bias_range=self.tile_size+bias_size
                
-            
         if bitmap_size<self.bias_range:
             return True
         else:
@@ -178,8 +177,8 @@ class tile:
         # Returns
             The numtag (Integer)
         """
-        if len(coor)!=4:
-            raise ValueError('The length of coordinate Tuple in tile must be 4 but got %d.'%(len(coor)))
+        if len(coor)!=len(self.prior_element):
+            raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(len(self.prior_element),len(coor)))
                    
         if row_mode:
             prior_list=self.row_prior
@@ -188,7 +187,7 @@ class tile:
 
         numtag=0
         coef_tmp=1
-        for i in range(4):
+        for i in range(len(self.prior_element)):
             T_size,T_index=self.priorexchange(prior_list[i])
             numtag+=coef_tmp*coor[T_index]
             coef_tmp*=T_size
@@ -212,12 +211,12 @@ class tile:
             prior_list=self.col_prior
 
         
-        coor=[0,0,0,0]
+        coor=[0 for i in range(len(self.prior_element))]
         
         bit=self.wl-(numtag % self.wl)-1
         numtag_tmp=numtag//self.wl
         
-        for i in reversed(range(4)):
+        for i in reversed(range(len(self.prior_element))):
             T_size,T_index=self.priorexchange(prior_list[i])
             coef_tmp=1
             for j in reversed(range(i)):
@@ -519,6 +518,103 @@ class tile:
     
         return self.fault_dict_tile2layer(layer_shape)
     
+        
+class tile_FC(tile):
+    def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
+        """The tile of a DNN feature map or weights
+
+        # Arguments
+            tile_shape: Tuple. The shape of tile.
+            Tm: Integer. The size of tile on the input neurons (weight) or channel dimention (feature map).
+            Tn: Integer. The size of tile on the output neurons (weight) or batch dimention (feature map).
+            is_fmap: Bool. The tile is feature map tile or weight tile.
+            wl: Integer. The word length of DNN model parameter.
+            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn'.
+            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn'.
+    
+        """
+        if not isinstance(is_fmap,bool):
+            raise ValueError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
+        if len(tile_shape) is not 2:
+            raise ValueError('The augment tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
+        if is_fmap:    
+            self.Tm=tile_shape[1]
+            self.Tn=tile_shape[0]
+        else:
+            self.Tm=tile_shape[0]
+            self.Tn=tile_shape[1]
+        self.is_fmap=is_fmap
+        self.wl=wl
+        if len(row_prior) is not 0:
+            self.row_prior=row_prior
+        else:
+            self.row_prior=['Tm','Tn']
+        if len(col_prior) is not 0:
+            self.col_prior=col_prior
+        else:
+            self.col_prior=['Tm','Tn']
+        self.prior_element=['Tm','Tn']
+        self.slice_head_list=None
+        self.slice_head_order=None
+        self.fault_dict=dict()
+        self.tile_size=None
+        self.use_bias=False
+        self.bias_fault_dict=dict()
+        self.bias_range=None
+                        
+    def priorexchange(self,prior):
+        if prior not in self.prior_element:
+            raise ValueError('The augment row_prior must be in list %s'%(str(self.prior_element)))
+            
+        if self.is_fmap:
+            axis_idex=[1,0]
+        else:
+            axis_idex=[0,1]
+            
+        if prior is 'Tm':
+            return self.Tm,axis_idex[0]
+        elif prior is 'Tn':
+            return self.Tn,axis_idex[1]
+        
+    def check_tile_overflow(self,bitmap,addr=None):
+        if addr is None:
+            bitmap_size=bitmap.row*bitmap.col
+        else:
+            bitmap_size=bitmap.get_numtag(addr)+1
+            
+            
+        if self.tile_size is None:
+            self.tile_size=self.Tm*self.Tn*self.wl
+            
+        if bitmap_size<self.tile_size:
+            return True
+        else:
+            return False
+        
+    def check_within_bias_range(self,bitmap,addr=None):
+        if addr is None:
+            bitmap_size=bitmap.row*bitmap.col
+        else:
+            bitmap_size=bitmap.get_numtag(addr)+1
+        
+        if self.tile_size is None:
+            self.tile_size=self.Tm*self.Tn*self.wl
+            
+        if self.bias_range is None:
+            if self.use_bias:
+                bias_size=self.Tn
+            else:
+                bias_size=0
+            
+            self.bias_range=self.tile_size+bias_size
+               
+        if bitmap_size<self.bias_range:
+            return True
+        else:
+            return False
+
+
+
         
         
         

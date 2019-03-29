@@ -31,7 +31,7 @@ model_word_length=8
 model_factorial_bit=4
 rounding_method='nearest'
 batch_size=20
-fault_rate=0.001
+fault_rate=0.0001
 
 #%%
 # fault generation
@@ -46,8 +46,8 @@ model=quantized_lenet5(nbits=model_word_length,
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_stuck_fault(model,fault_rate,
                                                                                                                   batch_size,
                                                                                                                   model_word_length,
-                                                                                                                  bit_loc_distribution='poisson',
-                                                                                                                  bit_loc_pois_lam=2,
+                                                                                                                  bit_loc_distribution='uniform',
+                                                                                                                  bit_loc_pois_lam=None,
                                                                                                                   fault_type='flip')
 
 # FC layer no fault

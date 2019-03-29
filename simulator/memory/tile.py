@@ -366,7 +366,7 @@ class tile:
                 fault_type=bitmap.fault_dict[addr]
                 bias_numtag=bitmap.get_numtag((addr))-self.tile_size
                 self.bias_fault_dict[(bias_numtag//self.wl,)]={'SA_type':fault_type,
-                                                              'SA_bit' :self.wl - bias_numtag % self.wl}
+                                                               'SA_bit' :self.wl - bias_numtag % self.wl}
         
         if self.is_fmap:
             return self.fault_dict
@@ -423,7 +423,8 @@ class tile:
                     bitmap.fault_dict[fault_addr]=fault_type
                     
         if self.use_bias:
-            kernel_end_coor=[self.Tr-1,self.Tc-1,self.Tm-1,self.Tn-1]
+            #kernel_end_coor=[self.Tr-1,self.Tc-1,self.Tm-1,self.Tn-1]
+            kernel_end_coor=self.numtag2coor(self.tile_size-1)[0]
 
             for coor in self.bias_fault_dict.keys():
                 fault_type=self.bias_fault_dict[coor]['SA_type']
@@ -615,6 +616,68 @@ class tile_FC(tile):
         else:
             return False
 
+    def fault_dict_tile2layer(self,layer_shape,use_bias=None):
+        """Restore the fault dictionary from tile to entire layer
+
+        # Arguments
+            layer_shape: Tuple. The shape of a layer parameter were divided into tile.
+            use_bias: Use bias in weight tile or not.
+        
+        # Returns
+            The fault information Dictionary of a layer parameter (feature maps or weights).
+        """
+        if self.is_fmap and use_bias:
+            raise ValueError('Feature map tile with use_bias option True. Only weight tile can mapping with bias.')
+        if use_bias is not None:
+            self.use_bias=use_bias
+            
+        layer_shape=list(layer_shape)
+        if self.is_fmap:
+            tile_shape=[self.Tn,self.Tm]
+        else:
+            tile_shape=[self.Tm,self.Tn]
+            
+        restore_multiple=np.floor_divide(layer_shape,tile_shape)
+        
+        base_coor=np.array([[0,0]])
+        
+        def gen_coor(coor,index):
+            if coor[index] < restore_multiple[index]:
+                coor[index]+=1
+            else:
+                if index is not 0:
+                    coor[index]=0
+                    coor=gen_coor(coor,index-1)
+            return coor
+                
+        coor_tmp=[0,0]
+        
+        for i in range(np.prod(np.add(restore_multiple,[1,1]))-1):
+            coor_tmp=gen_coor(coor_tmp,1)
+            base_coor=np.append(base_coor,[coor_tmp],axis=0)
+            
+        base_coor=np.multiply(base_coor,np.tile(tile_shape,[len(base_coor),1]))
+        
+        layer_fault_dict=dict()
+        
+        for i in range(len(base_coor)):
+            for tile_fault_coor in self.fault_dict.keys():
+                layer_fault_coor=np.add(base_coor[i],list(tile_fault_coor))
+                if all(layer_shape>layer_fault_coor):
+                    layer_fault_dict[tuple(layer_fault_coor)]=self.fault_dict[tile_fault_coor]
+                  
+        layer_fault_dict_bias=dict()
+                    
+        if self.use_bias:
+            for i in range(layer_shape[-1]//self.Tn+1):
+                for bias_fault_coor in self.bias_fault_dict.keys():
+                    bias_fault_coor_layer=i*self.Tn+bias_fault_coor[0]
+                    if bias_fault_coor_layer<layer_shape[-1]:
+                        layer_fault_dict_bias[(bias_fault_coor_layer,)]=self.bias_fault_dict[bias_fault_coor]
+                    
+            return [layer_fault_dict,layer_fault_dict_bias]
+
+        return layer_fault_dict
 
 
         

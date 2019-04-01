@@ -8,7 +8,7 @@ Memory mapping example
 """
 
 from memory.mem_bitmap import bitmap
-from memory.tile import tile
+from memory.tile import tile, tile_FC
 
 #%%
 
@@ -77,18 +77,38 @@ layer_fault_dict_val=wght_tile.gen_layer_fault_dict(layer_shape,GLB_wght)
 #%%
 
 # test bias fault
-
+print('\ntest bias fault')
 # a buffer memory for weights
 GLB_wght_b=bitmap(row, col*word*model_wl, wl=model_wl)
-mem_fault_dict_b,mem_fault_num=GLB_wght_b.gen_bitmap_SA_fault_dict(fault_rate)
+#mem_fault_dict_b,mem_fault_num=GLB_wght_b.gen_bitmap_SA_fault_dict(fault_rate)
 # weight tile and feature map tile
 wght_tile_b=tile((3,3,15,32),is_fmap=False,wl=8,row_prior=memory_row_priority,col_prior=memory_column_priority)
 
 # assign bias fault
-wght_tile_b.bias_fault_dict={(3,):{'SA_type': 'flip', 'SA_bit': 0},(17,):{'SA_type': 'flip', 'SA_bit': 4}}
+wght_tile_b.bias_fault_dict={(3,):{'SA_type': 'flip', 'SA_bit': 0},(17,):{'SA_type': 'flip', 'SA_bit': 4},(28,):{'SA_type': 'flip', 'SA_bit': 7}}
 # prepare bias fault
 mem_fault_dict_b=wght_tile_b.fault_dict_tile2bitmap(GLB_wght_b,use_bias=True)
+wght_tile_b.bias_fault_dict=dict()
 
 tile_fault_dict_wght_b=wght_tile_b.fault_dict_bitmap2tile(GLB_wght_b,use_bias=True)
 layer_fault_dict_bias=wght_tile_b.gen_layer_fault_dict(layer_shape,GLB_wght_b)
+
+
+#%% 
+
+# test FC layer memory mapping
+print('\ntest FC layer memory mapping')
+
+GLB_wght_fc=bitmap(row, col*word*model_wl, wl=model_wl)
+GLB_fmap_fc=bitmap(row, col*word*model_wl, wl=model_wl)
+
+wght_tile_fc=tile_FC((1764,3),is_fmap=False,wl=model_wl)
+fmap_tile_fc=tile_FC((2,1764),is_fmap=True,wl=model_wl)
+
+mem_fault_dict_fc,mem_fault_num=GLB_wght_fc.gen_bitmap_SA_fault_dict(fault_rate)
+
+layer_fault_dict_fc=wght_tile_fc.gen_layer_fault_dict((1764,128),GLB_wght_fc,use_bias=True)
+tile_fault_dict_fc=wght_tile_fc.fault_dict
+tile_fault_dict_fc_bias=wght_tile_fc.bias_fault_dict
+
 

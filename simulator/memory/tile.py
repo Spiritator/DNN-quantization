@@ -156,7 +156,7 @@ class tile:
             
         if self.bias_range is None:
             if self.use_bias:
-                bias_size=self.Tn
+                bias_size=self.Tn*self.wl
             else:
                 bias_size=0
             
@@ -361,12 +361,11 @@ class tile:
                     self.fault_dict[fault_coor]={'SA_type':fault_type,
                                                  'SA_bit' : fault_bit}
             elif self.check_within_bias_range(bitmap,addr) and not self.is_fmap:
-                print(addr)
-                print('bias fault')
+                print('bias fault %s'%str(addr))
                 fault_type=bitmap.fault_dict[addr]
                 bias_numtag=bitmap.get_numtag((addr))-self.tile_size
                 self.bias_fault_dict[(bias_numtag//self.wl,)]={'SA_type':fault_type,
-                                                               'SA_bit' :self.wl - bias_numtag % self.wl}
+                                                               'SA_bit' :self.wl - bias_numtag % self.wl -1}
         
         if self.is_fmap:
             return self.fault_dict
@@ -425,19 +424,18 @@ class tile:
         if self.use_bias:
             #kernel_end_coor=[self.Tr-1,self.Tc-1,self.Tm-1,self.Tn-1]
             kernel_end_coor=self.numtag2coor(self.tile_size-1)[0]
-
+            kernel_end_addr=self.tile2bitmap(kernel_end_coor,0,bitmap)
             for coor in self.bias_fault_dict.keys():
                 fault_type=self.bias_fault_dict[coor]['SA_type']
-                fault_addr=self.tile2bitmap(kernel_end_coor,0,bitmap)
+                fault_addr=kernel_end_addr
                 n_move=coor[0]*self.wl+self.wl-self.bias_fault_dict[coor]['SA_bit']
                 fault_addr=list(fault_addr)
                 fault_addr[1]+=n_move
                 if fault_addr[1]>=bitmap.col:
-                    fault_addr[0]+=1
+                    fault_addr[0]+=fault_addr[1]//bitmap.col
                     fault_addr[1]=fault_addr[1]%bitmap.col
                 fault_addr=tuple(fault_addr)
-                print('bias fault')
-                print(fault_addr)
+                print('bias fault %s'%str(fault_addr))
                 
                 bitmap.fault_dict[fault_addr]=fault_type
                 
@@ -605,7 +603,7 @@ class tile_FC(tile):
             
         if self.bias_range is None:
             if self.use_bias:
-                bias_size=self.Tn
+                bias_size=self.Tn*self.wl
             else:
                 bias_size=0
             
@@ -704,7 +702,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     layer_output_shape=layer.output_shape
     layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
     
-    if len(layer_weight_shape)==0 or 'dense' in layer.name:
+    if len(layer_weight_shape)==0:
         print('    no weight layer Skipped!')
         return None, None, [None,None]
     

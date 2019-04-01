@@ -99,7 +99,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
 #    model.compile(loss='categorical_crossentropy',
 #    			  optimizer='adam',metrics=['accuracy'])
 
-    model.summary()
+#    model.summary()
 
     return model
 
@@ -216,7 +216,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
 #                  optimizer='adam',
 #                  metrics=['accuracy', top2_acc])
     
-    model.summary()
+#    model.summary()
 
     return model
 
@@ -398,7 +398,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
 #                  optimizer='adam',
 #                  metrics=['accuracy', top2_acc])
     
-    model.summary()
+    #model.summary()
 
     return model
 

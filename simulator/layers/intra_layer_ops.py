@@ -12,7 +12,50 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
 
+import keras.backend as K
+
 from layers.quantized_ops import quantize
+
+def _preprocess_conv2d_input(x, data_format):
+    """Transpose and cast the input before the conv2d.
+
+    # Arguments
+        x: input tensor.
+        data_format: string, `"channels_last"` or `"channels_first"`.
+
+    # Returns
+        A tensor.
+    """
+    if K.dtype(x) == 'float64':
+        x = tf.cast(x, 'float32')
+    tf_data_format = 'NHWC'
+    if data_format == 'channels_first':
+        tf_data_format = 'NCHW'
+    return x, tf_data_format
+
+def _preprocess_padding(padding):
+    """Convert keras' padding to tensorflow's padding.
+
+    # Arguments
+        padding: string, `"same"` or `"valid"`.
+
+    # Returns
+        a string, `"SAME"` or `"VALID"`.
+
+    # Raises
+        ValueError: if `padding` is invalid.
+    """
+    if padding == 'same':
+        padding = 'SAME'
+    elif padding == 'valid':
+        padding = 'VALID'
+    elif padding == 'SAME' or padding == 'VALID':
+        pass
+    else:
+        raise ValueError('Invalid padding: ' + str(padding))
+    return padding
+
+
 
 def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
     ''' Reimplementation of the Dense layer.
@@ -89,8 +132,11 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
     '''
     PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
 
-    if data_format not in ("channels_last", None):
-        raise ValueError("data_format other than NHWC not supported in quantized convolution, tried: %s"%(data_format))
+    inputs, tf_data_format = _preprocess_conv2d_input(inputs, data_format)
+    if tf_data_format not in ("NHWC", None):
+        raise ValueError("data_format other than NHWC not supported in quantized convolution, tried: %s"%(tf_data_format))
+    
+    padding = _preprocess_padding(padding)
     
     # split input batchwise
     batch_size = inputs.shape.dims[0].value
@@ -240,8 +286,11 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     '''
     PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
 
-    if data_format not in ("channels_last", None):
-        raise ValueError("data_format other than NHWC not supported in quantized convolution, tried: %s"%(data_format))
+    inputs, tf_data_format = _preprocess_conv2d_input(inputs, data_format)
+    if tf_data_format not in ("NHWC", None):
+        raise ValueError("data_format other than NHWC not supported in quantized convolution, tried: %s"%(tf_data_format))
+        
+    padding = _preprocess_padding(padding)
     
     # split input batchwise
     batch_size = inputs.shape.dims[0].value
@@ -338,3 +387,115 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
 #                        output.shape.dims[2].value,
 #                        kernel_shape.dims[2].value]) 
     return output
+
+
+###############################
+### Distributed Convolution ###
+###############################
+# Distributed convolution for evaluattion of partial sum in hardware accelerator 
+# where its input feature map channel is too many for input buffer. Divide the convolution
+# into several parallel convolutions to view the partial sum value and inject fault.
+    
+def DistributedConv2D(x, kernel, splits, strides=(1, 1), padding='valid',
+           data_format=None, dilation_rate=(1, 1)):
+    """2D convolution.
+
+    # Arguments
+        x: Tensor or variable.
+        kernel: kernel tensor.
+        splits: Either a 0-D integer `Tensor` indicating the number of splits 
+            along split_dim or a 1-D integer `Tensor` containing the sizes of 
+            each output tensor along split_dim. If a scalar then it must evenly
+            divide `value.shape[axis]`; otherwise the sum of sizes along the 
+            split dimension must match that of the `value`.
+        strides: strides tuple.
+        padding: string, `"same"` or `"valid"`.
+        data_format: string, `"channels_last"` or `"channels_first"`.
+            Whether to use Theano or TensorFlow/CNTK data format
+            for inputs/kernels/outputs.
+        dilation_rate: tuple of 2 integers.
+
+    # Returns
+        A tensor, result of 2D convolution.
+
+    # Raises
+        ValueError: If `data_format` is neither
+            `"channels_last"` nor `"channels_first"`.
+    """
+    if data_format is None:
+        data_format = K.image_data_format()
+    if data_format not in {'channels_first', 'channels_last'}:
+        raise ValueError('Unknown data_format: ' + str(data_format))
+
+    x, tf_data_format = _preprocess_conv2d_input(x, data_format)
+    if tf_data_format not in ("NHWC", None):
+        raise ValueError("data_format other than NHWC not supported in quantized convolution, tried: %s"%(tf_data_format))
+
+    padding = _preprocess_padding(padding)
+    
+    x=tf.split(x,splits,axis=3)
+    kernel=tf.split(kernel,splits,axis=2)
+    
+    for i in range(len(x)):
+        x[i] = tf.nn.convolution(
+                input=x[i],
+                filter=kernel[i],
+                dilation_rate=dilation_rate,
+                strides=strides,
+                padding=padding,
+                data_format=tf_data_format)
+    return x
+
+def QuantizedDistributedConv2DCore(x, kernel, splits, strides, dilation_rate, padding, data_format, nb, fb, rounding_method):
+    """2D convolution.
+
+    # Arguments
+        x: Tensor or variable.
+        kernel: kernel tensor.
+        splits: Either a 0-D integer `Tensor` indicating the number of splits 
+            along split_dim or a 1-D integer `Tensor` containing the sizes of 
+            each output tensor along split_dim. If a scalar then it must evenly
+            divide `value.shape[axis]`; otherwise the sum of sizes along the 
+            split dimension must match that of the `value`.
+        strides: strides tuple.
+        padding: string, `"same"` or `"valid"`.
+        data_format: string, `"channels_last"` or `"channels_first"`.
+            Whether to use Theano or TensorFlow/CNTK data format
+            for inputs/kernels/outputs.
+        dilation_rate: tuple of 2 integers.
+
+    # Returns
+        A tensor, result of 2D convolution.
+
+    # Raises
+        ValueError: If `data_format` is neither
+            `"channels_last"` nor `"channels_first"`.
+    """
+    if data_format is None:
+        data_format = K.image_data_format()
+    if data_format not in {'channels_first', 'channels_last'}:
+        raise ValueError('Unknown data_format: ' + str(data_format))
+
+    x, tf_data_format = _preprocess_conv2d_input(x, data_format)
+    if tf_data_format not in ("NHWC", None):
+        raise ValueError("data_format other than NHWC not supported in quantized convolution, tried: %s"%(tf_data_format))
+
+    padding = _preprocess_padding(padding)
+    
+    x=tf.split(x,splits,axis=3)
+    kernel=tf.split(kernel,splits,axis=2)
+    
+    for i in range(len(x)):
+        x[i] = QuantizedConv2DCore(
+                inputs=x[i],
+                kernel=kernel[i],
+                strides=strides,
+                rate=dilation_rate,
+                padding=padding,
+                data_format=tf_data_format,
+                nb=nb,
+                fb=fb,
+                rounding_method=rounding_method)
+    return x
+
+

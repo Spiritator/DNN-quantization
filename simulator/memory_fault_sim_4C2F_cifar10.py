@@ -16,7 +16,7 @@ import time
 import scipy
 
 
-from models.model_library import quantized_lenet5
+from models.model_library import quantized_4C2F
 from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
@@ -28,15 +28,17 @@ from memory.tile import tile, tile_FC, generate_layer_memory_mapping
 #%%
 # setting parameter
 
-weight_name='../../mnist_lenet5_weight.h5'
-model_word_length=8
-model_factorial_bit=4
+weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
+model_word_length=16
+model_factorial_bit=8
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter
 fault_rate=0.0001
 row=80
-col=20
+col=40
+#row=100
+#col=100
 word=4
 model_wl=model_word_length
 
@@ -48,15 +50,15 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 # fault generation
 
 # model for get configuration
-model=quantized_lenet5(nbits=model_word_length,
+model=quantized_4C2F(nbits=model_word_length,
                        fbits=model_factorial_bit,
                        rounding_method=rounding_method,
                        batch_size=batch_size,
                        quant_mode=None)
 
-model_ifmap_fault_dict_list=[None for i in range(8)]
-model_ofmap_fault_dict_list=[None for i in range(8)] 
-model_weight_fault_dict_list=[[None,None] for i in range(8)]
+model_ifmap_fault_dict_list=[None for i in range(14)]
+model_ofmap_fault_dict_list=[None for i in range(14)] 
+model_weight_fault_dict_list=[[None,None] for i in range(14)]
 
 # memory mapping
 GLB_wght=bitmap(row, col*word*model_wl, wl=model_wl)
@@ -79,7 +81,7 @@ ifmap_tile_conv2=tile((1,14,14,16),is_fmap=True,wl=model_wl,row_prior=memory_row
 wght_tile_conv2 =tile((5,5,16,12),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
 
 # FC1
-ofmap_tile_fc1=tile_FC((1,3),is_fmap=True,wl=model_wl)
+ofmap_tile_fc1=tile_FC((1,128),is_fmap=True,wl=model_wl)
 ifmap_tile_fc1=tile_FC((1,1764),is_fmap=True,wl=model_wl)
 wght_tile_fc1 =tile_FC((1764,3),is_fmap=False,wl=model_wl)
 
@@ -114,14 +116,14 @@ model_ifmap_fault_dict_list[7],model_ofmap_fault_dict_list[7],model_weight_fault
 # model setup
 
 t = time.time()
-model=quantized_lenet5(nbits=model_word_length,
-                       fbits=model_factorial_bit,
-                       rounding_method=rounding_method,
-                       batch_size=batch_size,
-                       quant_mode='hybrid',
-                       ifmap_fault_dict_list=model_ifmap_fault_dict_list,
-                       ofmap_fault_dict_list=model_ofmap_fault_dict_list,
-                       weight_fault_dict_list=model_weight_fault_dict_list)
+model=quantized_4C2F(nbits=model_word_length,
+                     fbits=model_factorial_bit,
+                     rounding_method=rounding_method,
+                     batch_size=batch_size,
+                     quant_mode='hybrid',
+                     ifmap_fault_dict_list=model_ifmap_fault_dict_list,
+                     ofmap_fault_dict_list=model_ofmap_fault_dict_list,
+                     weight_fault_dict_list=model_weight_fault_dict_list)
 t = time.time()-t
 print('\nModel build time: %f s'%t)
 

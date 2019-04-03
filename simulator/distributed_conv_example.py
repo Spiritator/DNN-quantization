@@ -143,9 +143,9 @@ print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
 
-computaion_esti=comp_num_estimate(model)
-print('\nTotal # of computations:', computaion_esti['total_MAC'])
-print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
+#computaion_esti=comp_num_estimate(model)
+#print('\nTotal # of computations:', computaion_esti['total_MAC'])
+#print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
 
 #%%
 # draw confusion matrix

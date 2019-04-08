@@ -43,12 +43,13 @@ model=quantized_4C2F(nbits=model_word_length,
                      batch_size=batch_size,
                      quant_mode=None)
 
-model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_stuck_fault(model,
-                                                                                                                  fault_rate,
-                                                                                                                  batch_size,
-                                                                                                                  model_word_length,
-                                                                                                                  bit_loc_distribution='poisson',
-                                                                                                                  bit_loc_pois_lam=2)
+model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+=generate_model_stuck_fault(model,
+                            fault_rate,
+                            batch_size,
+                            model_word_length,
+                            bit_loc_distribution='poisson',
+                            bit_loc_pois_lam=2)
 
 # FC layer no fault
 model_weight_fault_dict_list[10]=[None,None]

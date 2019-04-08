@@ -51,10 +51,10 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 
 # model for get configuration
 model=quantized_4C2F(nbits=model_word_length,
-                       fbits=model_factorial_bit,
-                       rounding_method=rounding_method,
-                       batch_size=batch_size,
-                       quant_mode=None)
+                     fbits=model_factorial_bit,
+                     rounding_method=rounding_method,
+                     batch_size=batch_size,
+                     quant_mode=None)
 
 model_ifmap_fault_dict_list=[None for i in range(14)]
 model_ofmap_fault_dict_list=[None for i in range(14)] 
@@ -71,24 +71,34 @@ GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate)
 GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate)
 
 # conv1
-ofmap_tile_conv1=tile((1,28,28,8),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-ifmap_tile_conv1=tile((1,28,28,1),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-wght_tile_conv1 =tile((5,5,1,8),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ofmap_tile_conv1=tile((1,32,32,11),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_conv1=tile((1,32,32,3),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_conv1 =tile((3,3,3,11),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
 
 # conv2
-ofmap_tile_conv2=tile((1,14,14,12),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-ifmap_tile_conv2=tile((1,14,14,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-wght_tile_conv2 =tile((5,5,16,12),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ofmap_tile_conv2=tile((1,30,30,11),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_conv2=tile((1,32,32,11),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_conv2 =tile((3,3,11,11),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+
+# conv3
+ofmap_tile_conv3=tile((1,15,15,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_conv3=tile((1,15,15,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_conv3 =tile((3,3,32,32),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+
+# conv4
+ofmap_tile_conv4=tile((1,13,13,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_conv4=tile((1,15,15,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_conv4 =tile((3,3,32,64),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
 
 # FC1
-ofmap_tile_fc1=tile_FC((1,128),is_fmap=True,wl=model_wl)
-ifmap_tile_fc1=tile_FC((1,1764),is_fmap=True,wl=model_wl)
-wght_tile_fc1 =tile_FC((1764,3),is_fmap=False,wl=model_wl)
+ofmap_tile_fc1=tile_FC((1,5),is_fmap=True,wl=model_wl)
+ifmap_tile_fc1=tile_FC((1,2304),is_fmap=True,wl=model_wl)
+wght_tile_fc1 =tile_FC((2304,5),is_fmap=False,wl=model_wl)
 
 # FC2
 ofmap_tile_fc2=tile_FC((1,10),is_fmap=True,wl=model_wl)
-ifmap_tile_fc2=tile_FC((1,128),is_fmap=True,wl=model_wl)
-wght_tile_fc2 =tile_FC((128,10),is_fmap=False,wl=model_wl)
+ifmap_tile_fc2=tile_FC((1,512),is_fmap=True,wl=model_wl)
+wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
 
 # generate fault dictionary
 model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault_dict_list[1]\
@@ -96,18 +106,28 @@ model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault
                                GLB_ifmap,GLB_wght,GLB_ofmap,
                                ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1)
 
-model_ifmap_fault_dict_list[3],model_ofmap_fault_dict_list[3],model_weight_fault_dict_list[3]\
-=generate_layer_memory_mapping(model.layers[3],
+model_ifmap_fault_dict_list[2],model_ofmap_fault_dict_list[2],model_weight_fault_dict_list[2]\
+=generate_layer_memory_mapping(model.layers[2],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
                                ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2)
+
+model_ifmap_fault_dict_list[5],model_ofmap_fault_dict_list[5],model_weight_fault_dict_list[5]\
+=generate_layer_memory_mapping(model.layers[5],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3)
 
 model_ifmap_fault_dict_list[6],model_ofmap_fault_dict_list[6],model_weight_fault_dict_list[6]\
 =generate_layer_memory_mapping(model.layers[6],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4)
+
+model_ifmap_fault_dict_list[10],model_ofmap_fault_dict_list[10],model_weight_fault_dict_list[10]\
+=generate_layer_memory_mapping(model.layers[10],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
                                ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1)
 
-model_ifmap_fault_dict_list[7],model_ofmap_fault_dict_list[7],model_weight_fault_dict_list[7]\
-=generate_layer_memory_mapping(model.layers[7],
+model_ifmap_fault_dict_list[13],model_ofmap_fault_dict_list[13],model_weight_fault_dict_list[13]\
+=generate_layer_memory_mapping(model.layers[13],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
                                ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2)
 
@@ -136,7 +156,7 @@ print('orginal weight loaded')
 #%%
 #dataset setup
 
-x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('mnist')
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('cifar10')
 
 #%%
 # view test result

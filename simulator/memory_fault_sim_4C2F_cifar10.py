@@ -30,7 +30,7 @@ from memory.tile import tile, tile_FC, generate_layer_memory_mapping
 
 weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
 model_word_length=16
-model_factorial_bit=8
+model_factorial_bit=12
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter

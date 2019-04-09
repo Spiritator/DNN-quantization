@@ -43,12 +43,13 @@ model=quantized_lenet5(nbits=model_word_length,
                        batch_size=batch_size,
                        quant_mode=None)
 
-model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list=generate_model_stuck_fault(model,fault_rate,
-                                                                                                                  batch_size,
-                                                                                                                  model_word_length,
-                                                                                                                  bit_loc_distribution='uniform',
-                                                                                                                  bit_loc_pois_lam=None,
-                                                                                                                  fault_type='flip')
+model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+=generate_model_stuck_fault(model,fault_rate,
+                            batch_size,
+                            model_word_length,
+                            bit_loc_distribution='uniform',
+                            bit_loc_pois_lam=None,
+                            fault_type='flip')
 
 # FC layer no fault
 model_weight_fault_dict_list[6]=[None,None]

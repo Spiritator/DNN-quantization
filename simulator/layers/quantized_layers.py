@@ -16,10 +16,11 @@ from keras import backend as K
 from keras.layers import InputSpec, Layer, Dense, Conv2D, BatchNormalization, DepthwiseConv2D, Flatten
 from keras import constraints
 from keras import initializers
+from keras.utils import conv_utils
 
 from layers.quantized_ops import quantize, clip_through
 from testing.fault_ops import inject_layer_sa_fault_tensor
-from layers.intra_layer_ops import QuantizedDenseCore, QuantizedConv2DCore, QuantizedBatchNormalizationCore, QuantizedDepthwiseConv2DCore
+from layers.intra_layer_ops import QuantizedDenseCore, QuantizedConv2DCore, QuantizedBatchNormalizationCore, QuantizedDepthwiseConv2DCore, DistributedConv2D, QuantizedDistributedConv2DCore
 
 
 class Clip(constraints.Constraint):
@@ -265,7 +266,7 @@ class QuantizedConv2D(Conv2D):
                     inputs,
                     quantized_kernel,
                     strides, dilation_rate,
-                    self.padding.upper(),
+                    self.padding,
                     self.data_format,
                     nb_output,
                     fb_output,
@@ -310,7 +311,7 @@ class QuantizedConv2D(Conv2D):
 
 
         if self.activation is not None:
-            return self.activation(outputs)
+            outputs = self.activation(outputs)
         
         if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
             outputs = quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
@@ -747,7 +748,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                     inputs,
                     quantized_depthwise_kernel,
                     strides, dilation_rate,
-                    self.padding.upper(),
+                    self.padding,
                     self.data_format,
                     nb_output,
                     fb_output,
@@ -839,5 +840,220 @@ class QuantizedFlatten(Flatten):
 
     def get_config(self):
         config = {'data_format': self.data_format}
-        base_config = super(Flatten, self).get_config()
+        base_config = super(QuantizedFlatten, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
+    
+    
+class QuantizedDistributedConv2D(Conv2D):
+    '''Quantized Distributed Convolution2D layer'''
+    # Distributed convolution for evaluattion of partial sum in hardware accelerator 
+    # where its input feature map channel is too many for input buffer. Divide the convolution
+    # into several parallel convolutions to view the partial sum value and inject fault.
+
+    def __init__(self, filters, splits, nb=16, fb=8, rounding_method='nearest', quant_mode='hybrid',
+                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],**kwargs):
+        super(QuantizedDistributedConv2D, self).__init__(filters, **kwargs)
+        self.splits = splits
+        self.nb = nb
+        self.fb = fb
+        self.rounding_method = rounding_method
+        self.quant_mode = quant_mode
+        self.weight_sa_fault_injection=weight_sa_fault_injection
+        self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
+        self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
+        
+    def build(self, input_shape):
+        if self.data_format == 'channels_first':
+            channel_axis = 1
+        else:
+            channel_axis = -1 
+        if input_shape[channel_axis] is None:
+                raise ValueError('The channel dimension of the inputs '
+                                 'should be defined. Found `None`.')
+
+        input_dim = input_shape[channel_axis]
+        kernel_shape = self.kernel_size + (input_dim, self.filters)
+            
+        self.kernel = self.add_weight(shape=kernel_shape,
+                                 initializer=self.kernel_initializer,
+                                 name='kernel',
+                                 regularizer=self.kernel_regularizer,
+                                 constraint=self.kernel_constraint)
+
+        if self.use_bias:
+            self.bias = self.add_weight((self.filters,),
+                                     initializer=self.bias_initializer,
+                                     name='bias',
+                                     regularizer=self.bias_regularizer,
+                                     constraint=self.bias_constraint)
+
+        else:
+            self.bias = None
+
+        # Set input spec.
+        self.input_spec = InputSpec(ndim=4, axes={channel_axis: input_dim})
+        self.built = True
+
+    def call(self, inputs):
+        if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
+            raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
+
+        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
+            nb_input =self.nb[0]
+            fb_input =self.fb[0]
+            nb_weight=self.nb[1]
+            fb_weight=self.fb[1]
+            nb_output=self.nb[2]
+            fb_output=self.fb[2]
+        else:
+            nb_input =self.nb
+            fb_input =self.fb
+            nb_weight=self.nb
+            fb_weight=self.fb
+            nb_output=self.nb
+            fb_output=self.fb
+            
+        if isinstance(self.rounding_method,list) and len(self.rounding_method)==3:
+            rounding_input =self.rounding_method[0]
+            rounding_weight=self.rounding_method[1]
+            rounding_output=self.rounding_method[2]
+        else:
+            rounding_input =self.rounding_method
+            rounding_weight=self.rounding_method
+            rounding_output=self.rounding_method
+
+        
+        if self.quant_mode in ['hybrid','intrinsic']:
+            quantized_kernel = quantize(self.kernel, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+        
+        if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic']:
+            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+
+        if self.quant_mode in ['hybrid','intrinsic']:
+            inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+        
+        if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+
+
+        if self.quant_mode is 'intrinsic':
+            strides = (1,self.strides[0],self.strides[1],1)
+            dilation_rate = (1,self.dilation_rate[0],self.dilation_rate[1],1)
+            outputs = QuantizedDistributedConv2DCore(
+                    inputs,
+                    quantized_kernel,
+                    self.splits,
+                    strides, dilation_rate,
+                    self.padding,
+                    self.data_format,
+                    nb_output,
+                    fb_output,
+                    rounding_output)
+        elif self.quant_mode is 'hybrid':
+            outputs = DistributedConv2D(
+                    inputs,
+                    quantized_kernel,
+                    splits=self.splits,
+                    strides=self.strides,
+                    padding=self.padding,
+                    data_format=self.data_format,
+                    dilation_rate=self.dilation_rate)
+            for i in range(len(outputs)):
+                outputs[i] = quantize(outputs[i], nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+        elif self.quant_mode in ['extrinsic',None]:
+            outputs = DistributedConv2D(
+                    inputs,
+                    self.kernel,
+                    splits=self.splits,
+                    strides=self.strides,
+                    padding=self.padding,
+                    data_format=self.data_format,
+                    dilation_rate=self.dilation_rate)
+            
+
+        if self.use_bias:
+            if self.quant_mode in ['hybrid','intrinsic']:
+                quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+            
+            if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic']:
+                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+
+            if self.quant_mode in ['hybrid','intrinsic']:
+                outputs[0] = K.bias_add(
+                        outputs[0],
+                        quantized_bias,
+                        data_format=self.data_format)          
+                outputs[0] = quantize(outputs[0], nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+            elif self.quant_mode in ['extrinsic',None]:
+                outputs[0] = K.bias_add(
+                        outputs[0],
+                        self.bias,
+                        data_format=self.data_format)  
+
+
+        if self.activation is not None:
+            for i in range(len(outputs)):
+                outputs[i] = self.activation(outputs[i])
+        
+        if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
+            for i in range(len(outputs)):
+                outputs[i] = quantize(outputs[i], nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+        
+        if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
+            if not isinstance(self.ofmap_sa_fault_injection,list) or len(outputs) is not len(self.ofmap_sa_fault_injection):
+                raise ValueError('The output has %d sub-group, but output fault list got %d item can\'t match.'%(len(outputs),len(self.ofmap_sa_fault_injection)))
+                
+            for i in range(len(outputs)):
+                outputs[i] = inject_layer_sa_fault_tensor(outputs[i], self.ofmap_sa_fault_injection[i], nb_output, fb_output, rounding=rounding_output)
+
+
+        return outputs
+    
+    def compute_output_shape(self, input_shape):
+        if self.data_format == 'channels_last':
+            space = input_shape[1:-1]
+            new_space = []
+            for i in range(len(space)):
+                new_dim = conv_utils.conv_output_length(
+                    space[i],
+                    self.kernel_size[i],
+                    padding=self.padding,
+                    stride=self.strides[i],
+                    dilation=self.dilation_rate[i])
+                new_space.append(new_dim)
+            if isinstance(self.splits,int):
+                return [(input_shape[0],) + tuple(new_space) + (self.filters,) for i in range(self.splits)]
+            elif isinstance(self.splits,list):
+                return [(input_shape[0],) + tuple(new_space) + (self.filters,) for i in range(len(self.splits))]
+            else:
+                raise ValueError('splits augment must be integer or list.')
+                
+        if self.data_format == 'channels_first':
+            space = input_shape[2:]
+            new_space = []
+            for i in range(len(space)):
+                new_dim = conv_utils.conv_output_length(
+                    space[i],
+                    self.kernel_size[i],
+                    padding=self.padding,
+                    stride=self.strides[i],
+                    dilation=self.dilation_rate[i])
+                new_space.append(new_dim)
+            if isinstance(self.splits,int):
+                return [(input_shape[0],self.filters) + tuple(new_space) for i in range(self.splits)]
+            elif isinstance(self.splits,list):
+                return [(input_shape[0],self.filters) + tuple(new_space) for i in range(len(self.splits))]
+            else:
+                raise ValueError('splits augment must be integer or list.')
+        
+    def get_config(self):
+        config = {'quant_mode': self.quant_mode,
+                  'splits': self.splits,
+                  'nb': self.nb,
+                  'fb': self.fb,
+                  'rounding_method': self.rounding_method
+                  }
+        base_config = super(QuantizedDistributedConv2D, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+

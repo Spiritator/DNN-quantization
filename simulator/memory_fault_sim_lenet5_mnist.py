@@ -63,6 +63,7 @@ GLB_wght=bitmap(row, col*word*model_wl, wl=model_wl)
 GLB_ifmap=bitmap(row, col*word*model_wl, wl=model_wl)
 GLB_ofmap=bitmap(row, col*word*model_wl, wl=model_wl)
 
+# assign fault dictionary
 GLB_wght.gen_bitmap_SA_fault_dict(fault_rate)
 GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate)
 GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate)
@@ -78,7 +79,7 @@ ifmap_tile_conv2=tile((1,14,14,16),is_fmap=True,wl=model_wl,row_prior=memory_row
 wght_tile_conv2 =tile((5,5,16,12),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
 
 # FC1
-ofmap_tile_fc1=tile_FC((1,128),is_fmap=True,wl=model_wl)
+ofmap_tile_fc1=tile_FC((1,3),is_fmap=True,wl=model_wl)
 ifmap_tile_fc1=tile_FC((1,1764),is_fmap=True,wl=model_wl)
 wght_tile_fc1 =tile_FC((1764,3),is_fmap=False,wl=model_wl)
 

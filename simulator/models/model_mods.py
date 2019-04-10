@@ -17,4 +17,5 @@ def exchange_distributed_conv(model,target_layer_num,splits,fault_dict_list):
     node_upstream=model.layers[target_layer_num-1].output
     node_downstream=model.layers[target_layer_num+1].input
     
-    node_downstream=QuantizedDistributedConv2D()(node_upstream)
+    node_downstream = QuantizedDistributedConv2D()(node_upstream)
+    

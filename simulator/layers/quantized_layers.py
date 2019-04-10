@@ -806,12 +806,11 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         return outputs
 
     def get_config(self):
-        config = {'H': self.H,
-                  'nb': self.nb,
+        config = {'nb': self.nb,
                   'fb': self.fb,
                   'rounding_method': self.rounding_method
                   }
-        base_config = super(QuantizedBatchNormalization, self).get_config()
+        base_config = super(QuantizedDepthwiseConv2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 

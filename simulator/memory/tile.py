@@ -27,7 +27,7 @@ class tile:
         """
         if not isinstance(is_fmap,bool):
             raise ValueError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
-        if len(tile_shape) is not 4:
+        if len(tile_shape) != 4:
             raise ValueError('The augment tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
         if is_fmap:    
             self.Tm=tile_shape[3]
@@ -72,13 +72,13 @@ class tile:
         else:
             axis_idex=[2,3,0,1]
             
-        if prior is 'Tm':
+        if prior == 'Tm':
             return self.Tm,axis_idex[0]
-        elif prior is 'Tn':
+        elif prior == 'Tn':
             return self.Tn,axis_idex[1]
-        elif prior is 'Tr':
+        elif prior == 'Tr':
             return self.Tr,axis_idex[2]
-        elif prior is 'Tc':
+        elif prior == 'Tc':
             return self.Tc,axis_idex[3]
         
     def coor_tile_recursive_call(self,coor,prior_list,prior_index,increase=False):
@@ -329,7 +329,7 @@ class tile:
         if self.wl!=bitmap.wl and bitmap.wl is not None:
             raise ValueError('Word length of tile (%d) must be the same as bitmap (%d).'%(self.wl,bitmap.wl))
             
-        if bitmap.col % self.wl is not 0:
+        if bitmap.col % self.wl != 0:
             raise ValueError('The memory column size %d does not fit word length %d.'%(bitmap.col,self.wl))
             
         if row_prior is not None:
@@ -370,7 +370,7 @@ class tile:
         if self.is_fmap:
             return self.fault_dict
         else:
-            if len(self.bias_fault_dict) is 0:
+            if len(self.bias_fault_dict) == 0:
                 return [self.fault_dict,None]
             else:
                 return [self.fault_dict,self.bias_fault_dict]
@@ -389,7 +389,7 @@ class tile:
         if self.wl!=bitmap.wl and bitmap.wl is not None:
             raise ValueError('Word length of tile (%d) must be the same as bitmap (%d).'%(self.wl,bitmap.wl))
             
-        if bitmap.col % self.wl is not 0:
+        if bitmap.col % self.wl != 0:
             raise ValueError('The memory column size %d does not fit word length %d.'%(bitmap.col,self.wl))
             
         if row_prior is not None:
@@ -470,7 +470,7 @@ class tile:
             if coor[index] < restore_multiple[index]:
                 coor[index]+=1
             else:
-                if index is not 0:
+                if index != 0:
                     coor[index]=0
                     coor=gen_coor(coor,index-1)
             return coor
@@ -535,7 +535,7 @@ class tile_FC(tile):
         """
         if not isinstance(is_fmap,bool):
             raise ValueError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
-        if len(tile_shape) is not 2:
+        if len(tile_shape) != 2:
             raise ValueError('The augment tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
         if is_fmap:    
             self.Tm=tile_shape[1]
@@ -545,11 +545,11 @@ class tile_FC(tile):
             self.Tn=tile_shape[1]
         self.is_fmap=is_fmap
         self.wl=wl
-        if len(row_prior) is not 0:
+        if len(row_prior) != 0:
             self.row_prior=row_prior
         else:
             self.row_prior=['Tm','Tn']
-        if len(col_prior) is not 0:
+        if len(col_prior) != 0:
             self.col_prior=col_prior
         else:
             self.col_prior=['Tm','Tn']
@@ -572,9 +572,9 @@ class tile_FC(tile):
         else:
             axis_idex=[0,1]
             
-        if prior is 'Tm':
+        if prior == 'Tm':
             return self.Tm,axis_idex[0]
-        elif prior is 'Tn':
+        elif prior == 'Tn':
             return self.Tn,axis_idex[1]
         
     def check_tile_overflow(self,bitmap,addr=None):
@@ -643,7 +643,7 @@ class tile_FC(tile):
             if coor[index] < restore_multiple[index]:
                 coor[index]+=1
             else:
-                if index is not 0:
+                if index != 0:
                     coor[index]=0
                     coor=gen_coor(coor,index-1)
             return coor
@@ -707,7 +707,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         return None, None, [None,None]
     
     # ifmap memory mapping
-    if len(ifmap_buffer.fault_dict) is 0:
+    if len(ifmap_buffer.fault_dict) == 0:
         raise ValueError('The input feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
         
     ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape,ifmap_buffer)
@@ -716,7 +716,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     
     
     # ofmap memory mapping
-    if len(ofmap_buffer.fault_dict) is 0:
+    if len(ofmap_buffer.fault_dict) == 0:
         raise ValueError('The output feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
     
     ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape,ofmap_buffer)
@@ -724,7 +724,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
     
     # weight memory mapping
-    if len(wght_buffer.fault_dict) is 0:
+    if len(wght_buffer.fault_dict) == 0:
         raise ValueError('The weights buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
         
     if len(layer_weight_shape)>1:

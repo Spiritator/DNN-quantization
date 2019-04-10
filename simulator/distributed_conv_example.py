@@ -23,6 +23,8 @@ from approximation.estimate import comp_num_estimate
 from keras.models import Model
 from keras.layers import Activation, Input, MaxPooling2D, Add
 from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedFlatten, QuantizedDistributedConv2D
+from models.model_library import quantized_4C2F
+from models.model_mods import exchange_distributed_conv
 
 
 #%%
@@ -121,9 +123,6 @@ print('orginal weight loaded')
 
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 
-# multi GPU
-#parallel_model = multi_gpu_model(model, gpus=2)
-#parallel_model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 
 
 #%%
@@ -155,4 +154,61 @@ prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
 prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)
+
+#%%
+K.clear_session()
+
+#%%
+
+weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
+batch_size=25
+
+t = time.time()
+model=quantized_4C2F(nbits=12,
+                     fbits=6,
+                     rounding_method='nearest',
+                     batch_size=batch_size,
+                     quant_mode='hybrid',)
+
+model=exchange_distributed_conv(model,[2,6],[[11,11,10],2],fault_dict_conversion=True)
+
+t = time.time()-t
+
+print('\nModel build time: %f s'%t)
+
+print('Model compiling...')
+model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
+print('Model compiled !')
+model.load_weights(weight_name)
+print('orginal weight loaded')
+
+#%%
+#dataset setup
+
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('cifar10')
+
+#%%
+# view test result
+
+t = time.time()
+
+test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+
+t = time.time()-t
+  
+print('\nruntime: %f s'%t)
+print('\nTest loss:', test_result[0])
+print('Test top1 accuracy:', test_result[1])
+print('Test top2 accuracy:', test_result[2])
+
+#%%
+# draw confusion matrix
+
+print('\n')
+prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
+prediction = np.argmax(prediction, axis=1)
+
+show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',figsize=(8,6),normalize=False)
+
+
 

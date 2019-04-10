@@ -107,6 +107,6 @@ print('\n')
 prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
 prediction = np.argmax(prediction, axis=1)
 
-show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)
+show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',figsize=(8,6),normalize=False)
 
 

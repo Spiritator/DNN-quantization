@@ -122,9 +122,9 @@ class QuantizedDense(Dense):
         if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
             inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
         
-        if self.quant_mode is 'intrinsic':
+        if self.quant_mode == 'intrinsic':
             output = QuantizedDenseCore(inputs, quantized_kernel, nb_output, fb_output, rounding_output)
-        elif self.quant_mode is 'hybrid':
+        elif self.quant_mode == 'hybrid':
             output = K.dot(inputs, quantized_kernel)
             output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)                        
         elif self.quant_mode in ['extrinsic',None]:
@@ -259,7 +259,7 @@ class QuantizedConv2D(Conv2D):
             inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
 
 
-        if self.quant_mode is 'intrinsic':
+        if self.quant_mode == 'intrinsic':
             strides = (1,self.strides[0],self.strides[1],1)
             dilation_rate = (1,self.dilation_rate[0],self.dilation_rate[1],1)
             outputs = QuantizedConv2DCore(
@@ -271,7 +271,7 @@ class QuantizedConv2D(Conv2D):
                     nb_output,
                     fb_output,
                     rounding_output)
-        elif self.quant_mode is 'hybrid':
+        elif self.quant_mode == 'hybrid':
             outputs = K.conv2d(
                     inputs,
                     quantized_kernel,
@@ -478,7 +478,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                     quantized_inputs = inject_layer_sa_fault_tensor(quantized_inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
 
                 
-                if self.quant_mode is 'intrinsic':
+                if self.quant_mode == 'intrinsic':
                     return QuantizedBatchNormalizationCore(
                             quantized_inputs,
                             broadcast_moving_mean,
@@ -489,7 +489,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             nb_output, 
                             fb_output, 
                             rounding_output)
-                elif self.quant_mode is 'hybrid':
+                elif self.quant_mode == 'hybrid':
                     output=K.batch_normalization(
                             quantized_inputs,
                             broadcast_moving_mean,
@@ -499,7 +499,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             axis=self.axis,
                             epsilon=self.epsilon)
                     return quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)     
-                elif self.quant_mode is 'extrinsic':
+                elif self.quant_mode == 'extrinsic':
                     output=K.batch_normalization(
                             inputs,
                             broadcast_moving_mean,
@@ -552,7 +552,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                     quantized_inputs = inject_layer_sa_fault_tensor(quantized_inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
 
                 
-                if self.quant_mode is 'intrinsic':
+                if self.quant_mode == 'intrinsic':
                     return QuantizedBatchNormalizationCore(
                             quantized_inputs,
                             moving_mean,
@@ -563,7 +563,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             nb_output, 
                             fb_output, 
                             rounding_output)
-                elif self.quant_mode is 'hybrid':
+                elif self.quant_mode == 'hybrid':
                     output=K.batch_normalization(
                             quantized_inputs,
                             moving_mean,
@@ -573,7 +573,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             axis=self.axis,
                             epsilon=self.epsilon)
                     return quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)     
-                elif self.quant_mode is 'extrinsic':
+                elif self.quant_mode == 'extrinsic':
                     output=K.batch_normalization(
                             inputs,
                             self.moving_mean,
@@ -583,7 +583,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             axis=self.axis,
                             epsilon=self.epsilon)
                     return quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
-                elif self.quant_mode is None:
+                elif self.quant_mode == None:
                     return K.batch_normalization(
                             inputs,
                             self.moving_mean,
@@ -741,7 +741,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic']:
             quantized_depthwise_kernel= inject_layer_sa_fault_tensor(quantized_depthwise_kernel, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
 
-        if self.quant_mode is 'intrinsic':
+        if self.quant_mode == 'intrinsic':
             strides = (1,self.strides[0],self.strides[1],1)
             dilation_rate = (1,self.dilation_rate[0],self.dilation_rate[1],1)
             outputs = QuantizedDepthwiseConv2DCore(
@@ -753,7 +753,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                     nb_output,
                     fb_output,
                     rounding_output)
-        elif self.quant_mode is 'hybrid':
+        elif self.quant_mode == 'hybrid':
             outputs = K.depthwise_conv2d(
                     inputs,
                     quantized_depthwise_kernel,
@@ -935,7 +935,7 @@ class QuantizedDistributedConv2D(Conv2D):
             inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
 
 
-        if self.quant_mode is 'intrinsic':
+        if self.quant_mode == 'intrinsic':
             strides = (1,self.strides[0],self.strides[1],1)
             dilation_rate = (1,self.dilation_rate[0],self.dilation_rate[1],1)
             outputs = QuantizedDistributedConv2DCore(
@@ -948,7 +948,7 @@ class QuantizedDistributedConv2D(Conv2D):
                     nb_output,
                     fb_output,
                     rounding_output)
-        elif self.quant_mode is 'hybrid':
+        elif self.quant_mode == 'hybrid':
             outputs = DistributedConv2D(
                     inputs,
                     quantized_kernel,

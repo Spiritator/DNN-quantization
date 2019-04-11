@@ -12,17 +12,12 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import warnings
 
-from keras_applications import  get_keras_submodule
-
-backend = get_keras_submodule('backend')
-engine = get_keras_submodule('engine')
-layers = get_keras_submodule('layers')
-models = get_keras_submodule('models')
-keras_utils = get_keras_submodule('utils')
-
+from keras_applications import get_submodules_from_kwargs
 from keras_applications import imagenet_utils
-from keras_applications.imagenet_utils import decode_predictions, _obtain_input_shape
+from keras_applications.imagenet_utils import decode_predictions
+from keras_applications.imagenet_utils import _obtain_input_shape
 
 from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
 
@@ -34,6 +29,12 @@ WEIGHTS_PATH = ('https://github.com/fchollet/deep-learning-models/'
 WEIGHTS_PATH_NO_TOP = ('https://github.com/fchollet/deep-learning-models/'
                        'releases/download/v0.2/'
                        'resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5')
+
+import keras.backend as backend
+import keras.layers as layers
+import keras.models as models
+import keras.utils as keras_utils
+
 
 
 def identity_block(input_tensor, kernel_size, filters, stage, block, 
@@ -368,11 +369,14 @@ def QuantizedResNet50(include_top=True,
             x = layers.GlobalAveragePooling2D()(x)
         elif pooling == 'max':
             x = layers.GlobalMaxPooling2D()(x)
+        else:
+            warnings.warn('The output shape of `ResNet50(include_top=False)` '
+                          'has been changed since Keras 2.2.0.')
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
     if input_tensor is not None:
-        inputs = engine.get_source_inputs(input_tensor)
+        inputs = backend.get_source_inputs(input_tensor)
     else:
         inputs = img_input
     # Create model.
@@ -666,11 +670,15 @@ def QuantizedResNet50FusedBN(include_top=True,
             x = layers.GlobalAveragePooling2D()(x)
         elif pooling == 'max':
             x = layers.GlobalMaxPooling2D()(x)
+        else:
+            warnings.warn('The output shape of `ResNet50(include_top=False)` '
+                          'has been changed since Keras 2.2.0.')
+
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
     if input_tensor is not None:
-        inputs = engine.get_source_inputs(input_tensor)
+        inputs = backend.get_source_inputs(input_tensor)
     else:
         inputs = img_input
     # Create model.

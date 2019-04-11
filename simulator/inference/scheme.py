@@ -116,7 +116,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                     writer.writerow(test_result_dict)
                     
             
-        #K.clear_session()
+        K.clear_session()
                     
         print('\n===============================================\n')
 

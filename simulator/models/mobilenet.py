@@ -63,29 +63,24 @@ from __future__ import division
 import os
 import warnings
 
-from keras_applications import  get_keras_submodule
-
-backend = get_keras_submodule('backend')
-engine = get_keras_submodule('engine')
-layers = get_keras_submodule('layers')
-models = get_keras_submodule('models')
-keras_utils = get_keras_submodule('utils')
-
+from keras_applications import get_submodules_from_kwargs
 from keras_applications import imagenet_utils
-from keras_applications.imagenet_utils import decode_predictions, _obtain_input_shape
-
-from layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
-
+from keras_applications.imagenet_utils import decode_predictions
+from keras_applications.imagenet_utils import _obtain_input_shape
 
 BASE_WEIGHT_PATH = ('https://github.com/fchollet/deep-learning-models/'
                     'releases/download/v0.6/')
 
+import keras.backend as backend
+import keras.layers as layers
+import keras.models as models
+import keras.utils as keras_utils
 
-def relu6(x):
-    return backend.relu(x, max_value=6)
+
+from layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
 
 
-def preprocess_input(x):
+def preprocess_input(x, **kwargs):
     """Preprocesses a numpy array encoding a batch of images.
 
     # Arguments
@@ -94,7 +89,7 @@ def preprocess_input(x):
     # Returns
         Preprocessed array.
     """
-    return imagenet_utils.preprocess_input(x, mode='tf')
+    return imagenet_utils.preprocess_input(x, mode='tf', **kwargs)
 
 
 def QuantizedMobileNetV1(input_shape=None,
@@ -112,7 +107,8 @@ def QuantizedMobileNetV1(input_shape=None,
               BN_nbits=None, 
               BN_fbits=None,
               rounding_method='nearest',
-              quant_mode='hybrid'):
+              quant_mode='hybrid',
+              **kwargs):
     """Instantiates the MobileNet architecture.
 
     To load a MobileNet model via `load_model`, import the custom
@@ -173,6 +169,7 @@ def QuantizedMobileNetV1(input_shape=None,
         RuntimeError: If attempting to run this model with a
             backend that does not support separable convolutions.
     """
+
     print('\nBuilding model : Quantized MobileNet V1')
 
     if BN_nbits is None:
@@ -326,7 +323,7 @@ def QuantizedMobileNetV1(input_shape=None,
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
     if input_tensor is not None:
-        inputs = engine.get_source_inputs(input_tensor)
+        inputs = keras_utils.get_source_inputs(input_tensor)
     else:
         inputs = img_input
 
@@ -439,7 +436,7 @@ def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
                                     axis=channel_axis, 
                                     name='conv1_bn', 
                                     quant_mode=quant_mode)(x)
-    return layers.Activation(relu6, name='conv1_relu')(x)
+    return layers.ReLU(6., name='conv1_relu')(x)
 
 
 def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
@@ -517,7 +514,7 @@ def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
                                     axis=channel_axis, 
                                     name='conv_dw_%d_bn' % block_id, 
                                     quant_mode=quant_mode)(x)
-    x = layers.Activation(relu6, name='conv_dw_%d_relu' % block_id)(x)
+    x = layers.ReLU(6., name='conv_dw_%d_relu' % block_id)(x)
 
     x = QuantizedConv2D(pointwise_conv_filters, 
                         kernel_size=(1, 1),
@@ -535,7 +532,7 @@ def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
                                     axis=channel_axis,
                                     name='conv_pw_%d_bn' % block_id, 
                                     quant_mode=quant_mode)(x)
-    return layers.Activation(relu6, name='conv_pw_%d_relu' % block_id)(x)
+    return layers.ReLU(6., name='conv_pw_%d_relu' % block_id)(x)
 
 
 
@@ -558,7 +555,8 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
               nbits=16,
               fbits=8, 
               rounding_method='nearest',
-              quant_mode='hybrid'):
+              quant_mode='hybrid',
+              **kwargs):
     """Instantiates the MobileNet architecture.
 
     To load a MobileNet model via `load_model`, import the custom
@@ -763,7 +761,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
     if input_tensor is not None:
-        inputs = engine.get_source_inputs(input_tensor)
+        inputs = keras_utils.get_source_inputs(input_tensor)
     else:
         inputs = img_input
 
@@ -843,7 +841,7 @@ def _conv_block_fused_BN(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
                         strides=strides,
                         name='conv1', 
                         quant_mode=quant_mode)(x)
-    return layers.Activation(relu6, name='conv1_relu')(x)
+    return layers.ReLU(6., name='conv1_relu')(x)
 
 
 def _depthwise_conv_block_fused_BN(inputs, pointwise_conv_filters, alpha,
@@ -914,7 +912,7 @@ def _depthwise_conv_block_fused_BN(inputs, pointwise_conv_filters, alpha,
                                  strides=strides,
                                  name='conv_dw_%d' % block_id, 
                                  quant_mode=quant_mode)(x)
-    x = layers.Activation(relu6, name='conv_dw_%d_relu' % block_id)(x)
+    x = layers.ReLU(6., name='conv_dw_%d_relu' % block_id)(x)
 
     x = QuantizedConv2D(pointwise_conv_filters, 
                         kernel_size=(1, 1),
@@ -925,5 +923,5 @@ def _depthwise_conv_block_fused_BN(inputs, pointwise_conv_filters, alpha,
                         strides=(1, 1),
                         name='conv_pw_%d' % block_id, 
                         quant_mode=quant_mode)(x)
-    return layers.Activation(relu6, name='conv_pw_%d_relu' % block_id)(x)
+    return layers.ReLU(6., name='conv_pw_%d_relu' % block_id)(x)
 

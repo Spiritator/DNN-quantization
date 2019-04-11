@@ -78,7 +78,7 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-test_result = parallel_model.evaluate_generator(datagen, verbose=1)
+test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
 
 t = time.time()-t
 print('evaluate done')
@@ -91,7 +91,7 @@ print('Test top5 accuracy:', test_result[2])
 # draw confusion matrix
 
 #print('\n')
-#prediction = model.predict_generator(datagen, verbose=1)
+#prediction = model.predict_generator(datagen, verbose=1, steps=len(datagen))
 #prediction = np.argmax(prediction, axis=1)
 #
 #show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)

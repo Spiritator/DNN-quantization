@@ -83,12 +83,12 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
             if datagen is None:
                 test_result = parallel_model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
             else:
-                test_result = parallel_model.evaluate_generator(datagen, verbose=1)
+                test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
         else:
             if datagen is None:
                 test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
             else:
-                test_result = model.evaluate_generator(datagen, verbose=1)
+                test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
         
         t = time.time()-t
         print('evaluate done')

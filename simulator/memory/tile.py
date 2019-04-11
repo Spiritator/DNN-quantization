@@ -708,35 +708,38 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     
     # ifmap memory mapping
     if len(ifmap_buffer.fault_dict) == 0:
-        raise ValueError('The input feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
-        
-    ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape,ifmap_buffer)
+        print('The input feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
+        ifmap_fault_dict=None
+    else:
+        ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape,ifmap_buffer)
     
-    print('    mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
+        print('    mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
     
     
     # ofmap memory mapping
     if len(ofmap_buffer.fault_dict) == 0:
-        raise ValueError('The output feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
+        print('The output feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
+        ofmap_fault_dict=None
+    else:
+        ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape,ofmap_buffer)
     
-    ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape,ofmap_buffer)
-    
-    print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
+        print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
     
     # weight memory mapping
     if len(wght_buffer.fault_dict) == 0:
-        raise ValueError('The weights buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.')
-        
-    if len(layer_weight_shape)>1:
-        use_bias=True
+        raise ValueError('The weights buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
+        weight_fault_dict=[None for i in layer_weight_shape]
     else:
-        use_bias=False
-    
-    weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0],wght_buffer,use_bias=use_bias)
-    
-    print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
-            
-    return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
+        if len(layer_weight_shape)>1:
+            use_bias=True
+        else:
+            use_bias=False
+        
+        weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0],wght_buffer,use_bias=use_bias)
+        
+        print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
+                
+        return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 
 
 

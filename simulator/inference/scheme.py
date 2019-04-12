@@ -39,7 +39,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
     print('preparing dataset...')
     x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup( **dataset_augment)
     print('dataset ready')
-
+        
     
     for scheme_num in range(len(model_augment)):
         print('Running inference scheme %d/%d'%(scheme_num+1,len(model_augment)))
@@ -97,7 +97,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         for i in range(1,len(test_result)):
             print('Test metric %d :'%i, test_result[i])
             
-        if scheme_num is 0:     
+        if scheme_num == 0:     
             with open(result_save_file, 'w', newline='') as csvfile:
                 fieldnames=['loss']
                 test_result_dict={'loss':test_result[0]}
@@ -117,7 +117,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                     
             
         K.clear_session()
-                    
-        print('\n===============================================\n')
+                            
+        print('\n-==============================================\n')
 
 

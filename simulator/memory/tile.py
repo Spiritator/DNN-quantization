@@ -727,7 +727,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     
     # weight memory mapping
     if len(wght_buffer.fault_dict) == 0:
-        raise ValueError('The weights buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
+        print('The weights buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
         weight_fault_dict=[None for i in layer_weight_shape]
     else:
         if len(layer_weight_shape)>1:
@@ -739,7 +739,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         
         print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
                 
-        return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
+    return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 
 
 

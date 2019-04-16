@@ -131,6 +131,11 @@ class bitmap:
             The memory address (Tuple)
         """
         return (numtag//self.col, numtag % self.col)
+    
+    def clear(self):
+        """Clear the fault information of tile"""
+        self.fault_dict=dict()
+
 
 
 

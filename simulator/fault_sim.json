@@ -1,0 +1,1 @@
+[{"nbits": 8, "fbits": 3, "rounding_method": "nearest", "batch_size": 20, "quant_mode": "hybrid", "ifmap_fault_dict_list": [null, {

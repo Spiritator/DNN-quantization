@@ -505,6 +505,19 @@ class tile:
         return layer_fault_dict
     
     def gen_layer_fault_dict(self,layer_shape,bitmap,use_bias=None,col_prior=None,row_prior=None):
+        """Generate the fault dictionary of a layer from bitmap fault dictionary
+
+        # Arguments
+            layer_shape: Tuple. The shape of a layer parameter were divided into tile.
+            bitmap: Class. The bitmap class for memory fault tolerance analysis.
+            use_bias: Use bias in weight tile or not.
+            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        
+        # Returns
+            The fault information Dictionary of a layer parameter (feature maps or weights).
+        """
+
         if col_prior is not None:
             self.col_prior=col_prior
         if row_prior is not None:
@@ -517,6 +530,12 @@ class tile:
         self.fault_dict_bitmap2tile(bitmap)
     
         return self.fault_dict_tile2layer(layer_shape)
+    
+    def clear(self):
+        """Clear the fault information of tile"""
+        self.fault_dict=dict()
+        self.bias_fault_dict=dict()
+        
     
         
 class tile_FC(tile):

@@ -19,8 +19,9 @@ from memory.tile import tile, tile_FC, generate_layer_memory_mapping
 
 result_save_file='../../test_result/mnist_lenet5_mem_fault.csv'
 weight_name='../../mnist_lenet5_weight.h5'
+test_rounds=100
 model_word_length=8
-model_factorial_bit=4
+model_factorial_bit=3
 batch_size=20
 # memory fault simulation parameter
 fault_rate=0.0001
@@ -123,9 +124,13 @@ def gen_model_mem_fault_dict():
 
 model_augment=list()
 
-for i in range(100):
+for i in range(test_rounds):
     model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=gen_model_mem_fault_dict()
-    model_augment.append({'nbits':8,'fbits':3,'rounding_method':'nearest','batch_size':batch_size,'quant_mode':'hybrid',
+    model_augment.append({'nbits':model_word_length,
+                          'fbits':model_factorial_bit,
+                          'rounding_method':'nearest',
+                          'batch_size':batch_size,
+                          'quant_mode':'hybrid',
                           'ifmap_fault_dict_list':model_ifmap_fdl,
                           'ofmap_fault_dict_list':model_ofmap_fdl,
                           'weight_fault_dict_list':model_weight_fdl})

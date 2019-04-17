@@ -343,7 +343,9 @@ class tile:
         if use_bias is not None:
             self.use_bias=use_bias
 
-        
+        if self.check_tile_overflow(bitmap):
+            raise ValueError('The tile is bigger than the memory !')
+
         
         for addr in bitmap.fault_dict.keys():
             if self.check_tile_overflow(bitmap,addr):
@@ -363,7 +365,7 @@ class tile:
             elif self.check_within_bias_range(bitmap,addr) and not self.is_fmap:
                 print('bias fault %s'%str(addr))
                 fault_type=bitmap.fault_dict[addr]
-                bias_numtag=bitmap.get_numtag((addr))-self.tile_size
+                bias_numtag=bitmap.get_numtag(addr)-self.tile_size+1
                 self.bias_fault_dict[(bias_numtag//self.wl,)]={'SA_type':fault_type,
                                                                'SA_bit' :self.wl - bias_numtag % self.wl -1}
         
@@ -404,8 +406,7 @@ class tile:
             self.use_bias=use_bias
         
         if self.check_tile_overflow(bitmap):
-            if self.check_within_bias_range(bitmap):
-                raise ValueError('The tile is bigger than the memory !')
+            raise ValueError('The tile is bigger than the memory !')
             
         
         for coor in self.fault_dict.keys():                

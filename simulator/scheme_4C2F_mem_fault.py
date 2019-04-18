@@ -82,6 +82,36 @@ ofmap_tile_fc2=tile_FC((1,10),is_fmap=True,wl=model_wl)
 ifmap_tile_fc2=tile_FC((1,512),is_fmap=True,wl=model_wl)
 wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
 
+## conv1
+#ofmap_tile_conv1=tile((1,32,32,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#ifmap_tile_conv1=tile((1,32,32,3),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#wght_tile_conv1 =tile((3,3,3,32),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#
+## conv2
+#ofmap_tile_conv2=tile((1,30,30,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#ifmap_tile_conv2=tile((1,32,32,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#wght_tile_conv2 =tile((3,3,32,32),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#
+## conv3
+#ofmap_tile_conv3=tile((1,15,15,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#ifmap_tile_conv3=tile((1,15,15,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#wght_tile_conv3 =tile((3,3,32,64),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#
+## conv4
+#ofmap_tile_conv4=tile((1,13,13,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#ifmap_tile_conv4=tile((1,15,15,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#wght_tile_conv4 =tile((3,3,64,64),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+#
+## FC1
+#ofmap_tile_fc1=tile_FC((1,17),is_fmap=True,wl=model_wl)
+#ifmap_tile_fc1=tile_FC((1,2304),is_fmap=True,wl=model_wl)
+#wght_tile_fc1 =tile_FC((2304,17),is_fmap=False,wl=model_wl)
+#
+## FC2
+#ofmap_tile_fc2=tile_FC((1,10),is_fmap=True,wl=model_wl)
+#ifmap_tile_fc2=tile_FC((1,512),is_fmap=True,wl=model_wl)
+#wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
+
 
 def gen_model_mem_fault_dict():
     model_ifmap_fault_dict_list=[None for i in range(14)]

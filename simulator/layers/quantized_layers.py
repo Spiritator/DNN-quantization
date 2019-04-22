@@ -18,7 +18,7 @@ from keras import constraints
 from keras import initializers
 from keras.utils import conv_utils
 
-from layers.quantized_ops import quantize, clip_through
+from layers.quantized_ops import quantizer
 from testing.fault_ops import inject_layer_sa_fault_tensor
 from layers.intra_layer_ops import QuantizedDenseCore, QuantizedConv2DCore, QuantizedBatchNormalizationCore, QuantizedDepthwiseConv2DCore, DistributedConv2D, QuantizedDistributedConv2DCore
 
@@ -47,12 +47,10 @@ class QuantizedDense(Dense):
     References: 
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
-    def __init__(self, units, nb=16, fb=8, rounding_method='nearest', quant_mode='hybrid',
+    def __init__(self, units, quantizers, quant_mode='hybrid',
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None], **kwargs):
         super(QuantizedDense, self).__init__(units, **kwargs)
-        self.nb = nb
-        self.fb = fb
-        self.rounding_method = rounding_method
+        self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
@@ -86,60 +84,46 @@ class QuantizedDense(Dense):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
             raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
         
-        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
-            nb_input =self.nb[0]
-            fb_input =self.fb[0]
-            nb_weight=self.nb[1]
-            fb_weight=self.fb[1]
-            nb_output=self.nb[2]
-            fb_output=self.fb[2]
+        if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+            quantizer_input =self.quantizer[0]
+            quantizer_weight =self.quantizer[1]
+            quantizer_output =self.quantizer[2]
         else:
-            nb_input =self.nb
-            fb_input =self.fb
-            nb_weight=self.nb
-            fb_weight=self.fb
-            nb_output=self.nb
-            fb_output=self.fb
+            quantizer_input =self.quantizer
+            quantizer_weight =self.quantizer
+            quantizer_output =self.quantizer
             
-        if isinstance(self.rounding_method,list) and len(self.rounding_method)==3:
-            rounding_input =self.rounding_method[0]
-            rounding_weight=self.rounding_method[1]
-            rounding_output=self.rounding_method[2]
-        else:
-            rounding_input =self.rounding_method
-            rounding_weight=self.rounding_method
-            rounding_output=self.rounding_method
         
         if self.quant_mode in ['hybrid','intrinsic']:
-            quantized_kernel = quantize(self.kernel, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+            quantized_kernel = quantizer_weight.quantize(self.kernel)
         
         if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic']:
-            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], quantizer_weight)
         
         if self.quant_mode in ['hybrid','intrinsic']:
-            inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+            inputs = quantizer_input.quantize(inputs)
         
         if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, quantizer_input)
         
         if self.quant_mode == 'intrinsic':
-            output = QuantizedDenseCore(inputs, quantized_kernel, nb_output, fb_output, rounding_output)
+            output = QuantizedDenseCore(inputs, quantized_kernel, quantizer_output)
         elif self.quant_mode == 'hybrid':
             output = K.dot(inputs, quantized_kernel)
-            output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)                        
+            output = quantizer_output.quantize(output)                        
         elif self.quant_mode in ['extrinsic',None]:
             output = K.dot(inputs, self.kernel)
             
         if self.use_bias:
             if self.quant_mode in ['hybrid','intrinsic']:
-                quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                quantized_bias = quantizer_weight.quantize(self.bias)
             
             if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic']:
-                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], quantizer_weight)
                 
             if self.quant_mode in ['hybrid','intrinsic']:
                 output = K.bias_add(output, quantized_bias)
-                output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+                output = quantizer_output.quantize(output)
             elif self.quant_mode in ['extrinsic',None]:
                 output = K.bias_add(output, self.bias)
             
@@ -149,10 +133,10 @@ class QuantizedDense(Dense):
             output = self.activation(output)
         
         if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
-            output = quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+            output = quantizer_output.quantize(output)
             
         if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-            output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, nb_output, fb_output, rounding=rounding_output)
+            output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, quantizer_output)
 
 
 
@@ -160,10 +144,18 @@ class QuantizedDense(Dense):
         
         
     def get_config(self):
+        if isinstance(self.quantizer,list):
+            nb=[quant.nb for quant in self.quantizer]
+            fb=[quant.fb for quant in self.quantizer]
+            rounding_method=[quant.rounding_method for quant in self.quantizer]
+        else:
+            nb=self.quantizer.nb
+            fb=self.quantizer.fb
+            rounding_method=self.quantizer.rounding_method
         config = {'quant_mode': self.quant_mode,
-                  'nb': self.nb,
-                  'fb': self.fb,
-                  'rounding_method': self.rounding_method
+                  'nb': nb,
+                  'fb': fb,
+                  'rounding_method': rounding_method
                   }
         base_config = super(QuantizedDense, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -174,12 +166,10 @@ class QuantizedConv2D(Conv2D):
     References: 
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
-    def __init__(self, filters, nb=16, fb=8, rounding_method='nearest', quant_mode='hybrid',
+    def __init__(self, filters, quantizers, quant_mode='hybrid',
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],**kwargs):
         super(QuantizedConv2D, self).__init__(filters, **kwargs)
-        self.nb = nb
-        self.fb = fb
-        self.rounding_method = rounding_method
+        self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
@@ -221,42 +211,27 @@ class QuantizedConv2D(Conv2D):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
             raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
 
-        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
-            nb_input =self.nb[0]
-            fb_input =self.fb[0]
-            nb_weight=self.nb[1]
-            fb_weight=self.fb[1]
-            nb_output=self.nb[2]
-            fb_output=self.fb[2]
+        if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+            quantizer_input =self.quantizer[0]
+            quantizer_weight =self.quantizer[1]
+            quantizer_output =self.quantizer[2]
         else:
-            nb_input =self.nb
-            fb_input =self.fb
-            nb_weight=self.nb
-            fb_weight=self.fb
-            nb_output=self.nb
-            fb_output=self.fb
-            
-        if isinstance(self.rounding_method,list) and len(self.rounding_method)==3:
-            rounding_input =self.rounding_method[0]
-            rounding_weight=self.rounding_method[1]
-            rounding_output=self.rounding_method[2]
-        else:
-            rounding_input =self.rounding_method
-            rounding_weight=self.rounding_method
-            rounding_output=self.rounding_method
+            quantizer_input =self.quantizer
+            quantizer_weight =self.quantizer
+            quantizer_output =self.quantizer
 
         
         if self.quant_mode in ['hybrid','intrinsic']:
-            quantized_kernel = quantize(self.kernel, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+            quantized_kernel = quantizer_weight.quantize(self.kernel)
         
         if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic']:
-            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], quantizer_weight)
 
         if self.quant_mode in ['hybrid','intrinsic']:
-            inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+            inputs = quantizer_input.quantize(inputs)
         
         if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, quantizer_input)
 
 
         if self.quant_mode == 'intrinsic':
@@ -268,9 +243,7 @@ class QuantizedConv2D(Conv2D):
                     strides, dilation_rate,
                     self.padding,
                     self.data_format,
-                    nb_output,
-                    fb_output,
-                    rounding_output)
+                    quantizer_output)
         elif self.quant_mode == 'hybrid':
             outputs = K.conv2d(
                     inputs,
@@ -279,7 +252,7 @@ class QuantizedConv2D(Conv2D):
                     padding=self.padding,
                     data_format=self.data_format,
                     dilation_rate=self.dilation_rate)
-            outputs = quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+            outputs = quantizer_output.quantize(outputs)                        
         elif self.quant_mode in ['extrinsic',None]:
             outputs = K.conv2d(
                     inputs,
@@ -292,17 +265,17 @@ class QuantizedConv2D(Conv2D):
 
         if self.use_bias:
             if self.quant_mode in ['hybrid','intrinsic']:
-                quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                quantized_bias = quantizer_weight.quantize(self.bias)
             
             if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic']:
-                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], quantizer_weight)
 
             if self.quant_mode in ['hybrid','intrinsic']:
                 outputs = K.bias_add(
                         outputs,
                         quantized_bias,
                         data_format=self.data_format)          
-                outputs = quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+                outputs = quantizer_output.quantize(outputs)
             elif self.quant_mode in ['extrinsic',None]:
                 outputs = K.bias_add(
                         outputs,
@@ -314,19 +287,27 @@ class QuantizedConv2D(Conv2D):
             outputs = self.activation(outputs)
         
         if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
-            outputs = quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+            outputs = quantizer_output.quantize(outputs)
         
         if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, nb_output, fb_output, rounding=rounding_output)
+            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
 
 
         return outputs
         
     def get_config(self):
+        if isinstance(self.quantizer,list):
+            nb=[quant.nb for quant in self.quantizer]
+            fb=[quant.fb for quant in self.quantizer]
+            rounding_method=[quant.rounding_method for quant in self.quantizer]
+        else:
+            nb=self.quantizer.nb
+            fb=self.quantizer.fb
+            rounding_method=self.quantizer.rounding_method
         config = {'quant_mode': self.quant_mode,
-                  'nb': self.nb,
-                  'fb': self.fb,
-                  'rounding_method': self.rounding_method
+                  'nb': nb,
+                  'fb': fb,
+                  'rounding_method': rounding_method
                   }
         base_config = super(QuantizedConv2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -342,12 +323,10 @@ class QuantizedBatchNormalization(BatchNormalization):
     References: 
     "Pytorch Playground: Base pretrained models and datasets in pytorch." [https://github.com/aaron-xichen/pytorch-playground]
     '''
-    def __init__(self, nb=16, fb=8, rounding_method='nearest', quant_mode='hybrid',
+    def __init__(self, quantizers, quant_mode='hybrid',
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None, None, None],**kwargs):
         super(QuantizedBatchNormalization, self).__init__(**kwargs)
-        self.nb = nb
-        self.fb = fb
-        self.rounding_method = rounding_method
+        self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
@@ -397,29 +376,14 @@ class QuantizedBatchNormalization(BatchNormalization):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
             raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
 
-        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
-            nb_input =self.nb[0]
-            fb_input =self.fb[0]
-            nb_weight=self.nb[1]
-            fb_weight=self.fb[1]
-            nb_output=self.nb[2]
-            fb_output=self.fb[2]
+        if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+            quantizer_input =self.quantizer[0]
+            quantizer_weight =self.quantizer[1]
+            quantizer_output =self.quantizer[2]
         else:
-            nb_input =self.nb
-            fb_input =self.fb
-            nb_weight=self.nb
-            fb_weight=self.fb
-            nb_output=self.nb
-            fb_output=self.fb
-            
-        if isinstance(self.rounding_method,list) and len(self.rounding_method)==3:
-            rounding_input =self.rounding_method[0]
-            rounding_weight=self.rounding_method[1]
-            rounding_output=self.rounding_method[2]
-        else:
-            rounding_input =self.rounding_method
-            rounding_weight=self.rounding_method
-            rounding_output=self.rounding_method
+            quantizer_input =self.quantizer
+            quantizer_weight =self.quantizer
+            quantizer_output =self.quantizer
 
         
         input_shape = K.int_shape(inputs)
@@ -451,31 +415,31 @@ class QuantizedBatchNormalization(BatchNormalization):
                     broadcast_gamma = None
                     
                 if self.quant_mode in ['hybrid','intrinsic']:
-                    broadcast_moving_mean = quantize(broadcast_moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
-                    broadcast_moving_variance = quantize(broadcast_moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                    broadcast_moving_mean = quantizer_weight.quantize(broadcast_moving_mean)
+                    broadcast_moving_variance = quantizer_weight.quantize(broadcast_moving_variance)
                     if self.center:
-                        broadcast_beta = quantize(broadcast_beta, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                        broadcast_beta = quantizer_weight.quantize(broadcast_beta)
                     if self.scale:
-                        broadcast_gamma = quantize(broadcast_gamma, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                        broadcast_gamma = quantizer_weight.quantize(broadcast_gamma)
                         
                 if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.scale:
-                    broadcast_gamma = inject_layer_sa_fault_tensor(broadcast_gamma, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+                    broadcast_gamma = inject_layer_sa_fault_tensor(broadcast_gamma, self.weight_sa_fault_injection[0], quantizer_weight)
                     
                 if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.center:
-                    broadcast_beta = inject_layer_sa_fault_tensor(broadcast_beta, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+                    broadcast_beta = inject_layer_sa_fault_tensor(broadcast_beta, self.weight_sa_fault_injection[1], quantizer_weight)
                     
                 if self.weight_sa_fault_injection[2] is not None and self.quant_mode in ['hybrid','intrinsic']:
-                    broadcast_moving_mean = inject_layer_sa_fault_tensor(broadcast_moving_mean, self.weight_sa_fault_injection[2], nb_weight, fb_weight, rounding=rounding_weight)
+                    broadcast_moving_mean = inject_layer_sa_fault_tensor(broadcast_moving_mean, self.weight_sa_fault_injection[2], quantizer_weight)
                     
                 if self.weight_sa_fault_injection[3] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.scale:
-                    broadcast_moving_variance = inject_layer_sa_fault_tensor(broadcast_moving_variance, self.weight_sa_fault_injection[3], nb_weight, fb_weight, rounding=rounding_weight)
+                    broadcast_moving_variance = inject_layer_sa_fault_tensor(broadcast_moving_variance, self.weight_sa_fault_injection[3], quantizer_weight)
                     
                     
                 if self.quant_mode in ['hybrid','intrinsic']:
-                    quantized_inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+                    quantized_inputs = quantizer_input.quantize(inputs)
                     
                 if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-                    quantized_inputs = inject_layer_sa_fault_tensor(quantized_inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+                    quantized_inputs = inject_layer_sa_fault_tensor(quantized_inputs, self.ifmap_sa_fault_injection, quantizer_input)
 
                 
                 if self.quant_mode == 'intrinsic':
@@ -486,9 +450,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             broadcast_beta,
                             broadcast_gamma,
                             self.epsilon,
-                            nb_output, 
-                            fb_output, 
-                            rounding_output)
+                            quantizer_output)
                 elif self.quant_mode == 'hybrid':
                     output=K.batch_normalization(
                             quantized_inputs,
@@ -498,7 +460,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             broadcast_gamma,
                             axis=self.axis,
                             epsilon=self.epsilon)
-                    return quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)     
+                    return quantizer_output.quantize(output)     
                 elif self.quant_mode == 'extrinsic':
                     output=K.batch_normalization(
                             inputs,
@@ -508,7 +470,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             broadcast_gamma,
                             axis=self.axis,
                             epsilon=self.epsilon)
-                    return quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+                    return quantizer_output.quantize(output)
                 elif self.quant_mode is None:
                     return K.batch_normalization(
                             inputs,
@@ -521,35 +483,35 @@ class QuantizedBatchNormalization(BatchNormalization):
                     
             else:
                 if self.quant_mode in ['hybrid','intrinsic']:
-                    moving_mean = quantize(self.moving_mean, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
-                    moving_variance = quantize(self.moving_variance, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                    moving_mean = quantizer_weight.quantize(self.moving_mean)
+                    moving_variance = quantizer_weight.quantize(self.moving_variance)
                     if self.center:
-                        beta = quantize(self.beta, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                        beta = quantizer_weight.quantize(self.beta)
                     else:
                         beta = self.beta
                     if self.scale:
-                        gamma = quantize(self.gamma, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                        gamma = quantizer_weight.quantize(self.gamma)
                     else:
                         gamma = self.gamma
                         
                 if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.scale:
-                    gamma = inject_layer_sa_fault_tensor(gamma, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+                    gamma = inject_layer_sa_fault_tensor(gamma, self.weight_sa_fault_injection[0], quantizer_weight)
                     
                 if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.center:
-                    beta = inject_layer_sa_fault_tensor(beta, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+                    beta = inject_layer_sa_fault_tensor(beta, self.weight_sa_fault_injection[1], quantizer_weight)
                     
                 if self.weight_sa_fault_injection[2] is not None and self.quant_mode in ['hybrid','intrinsic']:
-                    moving_mean = inject_layer_sa_fault_tensor(moving_mean, self.weight_sa_fault_injection[2], nb_weight, fb_weight, rounding=rounding_weight)
+                    moving_mean = inject_layer_sa_fault_tensor(moving_mean, self.weight_sa_fault_injection[2], quantizer_weight)
                     
                 if self.weight_sa_fault_injection[3] is not None and self.quant_mode in ['hybrid','intrinsic'] and self.scale:
-                    moving_variance = inject_layer_sa_fault_tensor(moving_variance, self.weight_sa_fault_injection[3], nb_weight, fb_weight, rounding=rounding_weight)
+                    moving_variance = inject_layer_sa_fault_tensor(moving_variance, self.weight_sa_fault_injection[3], quantizer_weight)
                     
                     
                 if self.quant_mode in ['hybrid','intrinsic']:
-                    quantized_inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+                    quantized_inputs = quantizer_input.quantize(inputs)
                     
                 if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-                    quantized_inputs = inject_layer_sa_fault_tensor(quantized_inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+                    quantized_inputs = inject_layer_sa_fault_tensor(quantized_inputs, self.ifmap_sa_fault_injection, quantizer_input)
 
                 
                 if self.quant_mode == 'intrinsic':
@@ -560,9 +522,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             beta,
                             gamma,
                             self.epsilon,
-                            nb_output, 
-                            fb_output, 
-                            rounding_output)
+                            quantizer_output)
                 elif self.quant_mode == 'hybrid':
                     output=K.batch_normalization(
                             quantized_inputs,
@@ -572,7 +532,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             gamma,
                             axis=self.axis,
                             epsilon=self.epsilon)
-                    return quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)     
+                    return quantizer_output.quantize(output)     
                 elif self.quant_mode == 'extrinsic':
                     output=K.batch_normalization(
                             inputs,
@@ -582,7 +542,7 @@ class QuantizedBatchNormalization(BatchNormalization):
                             self.gamma,
                             axis=self.axis,
                             epsilon=self.epsilon)
-                    return quantize(output, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+                    return quantizer_output.quantize(output)
                 elif self.quant_mode == None:
                     return K.batch_normalization(
                             inputs,
@@ -599,7 +559,7 @@ class QuantizedBatchNormalization(BatchNormalization):
         # If the learning phase is *static* and set to inference:
         if training in {0, False}:
             if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-                return inject_layer_sa_fault_tensor(normalize_inference(), self.ofmap_sa_fault_injection, nb_output, fb_output, rounding=rounding_output)
+                return inject_layer_sa_fault_tensor(normalize_inference(), self.ofmap_sa_fault_injection, quantizer_output)
             else:
                 return normalize_inference()
 
@@ -630,10 +590,18 @@ class QuantizedBatchNormalization(BatchNormalization):
                                 training=training)
 
     def get_config(self):
+        if isinstance(self.quantizer,list):
+            nb=[quant.nb for quant in self.quantizer]
+            fb=[quant.fb for quant in self.quantizer]
+            rounding_method=[quant.rounding_method for quant in self.quantizer]
+        else:
+            nb=self.quantizer.nb
+            fb=self.quantizer.fb
+            rounding_method=self.quantizer.rounding_method
         config = {'quant_mode': self.quant_mode,
-                  'nb': self.nb,
-                  'fb': self.fb,
-                  'rounding_method': self.rounding_method
+                  'nb': nb,
+                  'fb': fb,
+                  'rounding_method': rounding_method
                   }
         base_config = super(QuantizedBatchNormalization, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -647,18 +615,14 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
     '''
     def __init__(self,
                  kernel_size,
-                 nb=16,
-                 fb=8,
-                 rounding_method='nearest',
+                 quantizers,
                  quant_mode='hybrid',
                  ifmap_sa_fault_injection=None, 
                  ofmap_sa_fault_injection=None, 
                  weight_sa_fault_injection=[None, None],
                  **kwargs):
         super(QuantizedDepthwiseConv2D, self).__init__(kernel_size, **kwargs)
-        self.nb = nb
-        self.fb = fb
-        self.rounding_method = rounding_method
+        self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
@@ -704,42 +668,27 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         self.built = True
 
     def call(self, inputs, training=None):
-        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
-            nb_input =self.nb[0]
-            fb_input =self.fb[0]
-            nb_weight=self.nb[1]
-            fb_weight=self.fb[1]
-            nb_output=self.nb[2]
-            fb_output=self.fb[2]
+        if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+            quantizer_input =self.quantizer[0]
+            quantizer_weight =self.quantizer[1]
+            quantizer_output =self.quantizer[2]
         else:
-            nb_input =self.nb
-            fb_input =self.fb
-            nb_weight=self.nb
-            fb_weight=self.fb
-            nb_output=self.nb
-            fb_output=self.fb
-            
-        if isinstance(self.rounding_method,list) and len(self.rounding_method)==3:
-            rounding_input =self.rounding_method[0]
-            rounding_weight=self.rounding_method[1]
-            rounding_output=self.rounding_method[2]
-        else:
-            rounding_input =self.rounding_method
-            rounding_weight=self.rounding_method
-            rounding_output=self.rounding_method
+            quantizer_input =self.quantizer
+            quantizer_weight =self.quantizer
+            quantizer_output =self.quantizer
 
         
         if self.quant_mode in ['hybrid','intrinsic']:
-            inputs=quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+            inputs = quantizer_input.quantize(inputs)
         
         if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, quantizer_input)
 
         if self.quant_mode in ['hybrid','intrinsic']:
-            quantized_depthwise_kernel=quantize(self.depthwise_kernel, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+            quantized_depthwise_kernel=quantizer_weight.quantize(self.depthwise_kernel)
         
         if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic']:
-            quantized_depthwise_kernel= inject_layer_sa_fault_tensor(quantized_depthwise_kernel, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+            quantized_depthwise_kernel= inject_layer_sa_fault_tensor(quantized_depthwise_kernel, self.weight_sa_fault_injection[0], quantizer_weight)
 
         if self.quant_mode == 'intrinsic':
             strides = (1,self.strides[0],self.strides[1],1)
@@ -750,9 +699,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                     strides, dilation_rate,
                     self.padding,
                     self.data_format,
-                    nb_output,
-                    fb_output,
-                    rounding_output)
+                    quantizer_output)
         elif self.quant_mode == 'hybrid':
             outputs = K.depthwise_conv2d(
                     inputs,
@@ -761,7 +708,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                     padding=self.padding,
                     dilation_rate=self.dilation_rate,
                     data_format=self.data_format)
-            outputs=quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+            outputs = quantizer_output.quantize(outputs)
         elif self.quant_mode in ['extrinsic',None]:
             outputs = K.depthwise_conv2d(
                     inputs,
@@ -775,17 +722,17 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                 
         if self.bias:
             if self.quant_mode in ['hybrid','intrinsic']:
-                quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                quantized_bias = quantizer_weight.quantize(self.bias)
             
             if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic']:
-                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], quantizer_weight)
 
             if self.quant_mode in ['hybrid','intrinsic']:
                 outputs = K.bias_add(
                     outputs,
                     quantized_bias,
                     data_format=self.data_format)
-                outputs=quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+                outputs = quantizer_output.quantize(outputs)
             elif self.quant_mode in ['extrinsic',None]:
                 outputs = K.bias_add(
                         outputs,
@@ -797,10 +744,10 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
             outputs = self.activation(outputs)
 
         if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
-            outputs=quantize(outputs, nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+            outputs = quantizer_output.quantize(outputs)
         
         if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, nb_output, fb_output, rounding=rounding_output)
+            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
 
 
         return outputs
@@ -849,13 +796,11 @@ class QuantizedDistributedConv2D(Conv2D):
     # where its input feature map channel is too many for input buffer. Divide the convolution
     # into several parallel convolutions to view the partial sum value and inject fault.
 
-    def __init__(self, filters, splits, nb=16, fb=8, rounding_method='nearest', quant_mode='hybrid',
+    def __init__(self, filters, splits, quantizers, quant_mode='hybrid',
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],**kwargs):
         super(QuantizedDistributedConv2D, self).__init__(filters, **kwargs)
         self.splits = splits
-        self.nb = nb
-        self.fb = fb
-        self.rounding_method = rounding_method
+        self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
@@ -897,42 +842,27 @@ class QuantizedDistributedConv2D(Conv2D):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
             raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
 
-        if isinstance(self.nb,list) and isinstance(self.fb,list) and len(self.nb)==3 and len(self.fb)==3:
-            nb_input =self.nb[0]
-            fb_input =self.fb[0]
-            nb_weight=self.nb[1]
-            fb_weight=self.fb[1]
-            nb_output=self.nb[2]
-            fb_output=self.fb[2]
+        if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+            quantizer_input =self.quantizer[0]
+            quantizer_weight =self.quantizer[1]
+            quantizer_output =self.quantizer[2]
         else:
-            nb_input =self.nb
-            fb_input =self.fb
-            nb_weight=self.nb
-            fb_weight=self.fb
-            nb_output=self.nb
-            fb_output=self.fb
-            
-        if isinstance(self.rounding_method,list) and len(self.rounding_method)==3:
-            rounding_input =self.rounding_method[0]
-            rounding_weight=self.rounding_method[1]
-            rounding_output=self.rounding_method[2]
-        else:
-            rounding_input =self.rounding_method
-            rounding_weight=self.rounding_method
-            rounding_output=self.rounding_method
+            quantizer_input =self.quantizer
+            quantizer_weight =self.quantizer
+            quantizer_output =self.quantizer
 
         
         if self.quant_mode in ['hybrid','intrinsic']:
-            quantized_kernel = quantize(self.kernel, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+            quantized_kernel = quantizer_weight.quantize(self.kernel)
         
         if self.weight_sa_fault_injection[0] is not None and self.quant_mode in ['hybrid','intrinsic']:
-            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], nb_weight, fb_weight, rounding=rounding_weight)
+            quantized_kernel = inject_layer_sa_fault_tensor(quantized_kernel, self.weight_sa_fault_injection[0], quantizer_weight)
 
         if self.quant_mode in ['hybrid','intrinsic']:
-            inputs = quantize(inputs, nb=nb_input, fb=fb_input, rounding_method=rounding_input)
+            inputs = quantizer_input.quantize(inputs)
         
         if self.ifmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, nb_input, fb_input, rounding=rounding_input)
+            inputs = inject_layer_sa_fault_tensor(inputs, self.ifmap_sa_fault_injection, quantizer_input)
 
 
         if self.quant_mode == 'intrinsic':
@@ -945,9 +875,7 @@ class QuantizedDistributedConv2D(Conv2D):
                     strides, dilation_rate,
                     self.padding,
                     self.data_format,
-                    nb_output,
-                    fb_output,
-                    rounding_output)
+                    quantizer_output)
         elif self.quant_mode == 'hybrid':
             outputs = DistributedConv2D(
                     inputs,
@@ -958,7 +886,7 @@ class QuantizedDistributedConv2D(Conv2D):
                     data_format=self.data_format,
                     dilation_rate=self.dilation_rate)
             for i in range(len(outputs)):
-                outputs[i] = quantize(outputs[i], nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+                outputs[i] = quantizer_output.quantize(outputs[i])
         elif self.quant_mode in ['extrinsic',None]:
             outputs = DistributedConv2D(
                     inputs,
@@ -972,17 +900,17 @@ class QuantizedDistributedConv2D(Conv2D):
 
         if self.use_bias:
             if self.quant_mode in ['hybrid','intrinsic']:
-                quantized_bias = quantize(self.bias, nb=nb_weight, fb=fb_weight, rounding_method=rounding_weight)
+                quantized_bias = quantizer_weight.quantize(self.bias)
             
             if self.weight_sa_fault_injection[1] is not None and self.quant_mode in ['hybrid','intrinsic']:
-                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], nb_weight, fb_weight, rounding=rounding_weight)
+                quantized_bias = inject_layer_sa_fault_tensor(quantized_bias, self.weight_sa_fault_injection[1], quantizer_weight)
 
             if self.quant_mode in ['hybrid','intrinsic']:
                 outputs[0] = K.bias_add(
                         outputs[0],
                         quantized_bias,
                         data_format=self.data_format)          
-                outputs[0] = quantize(outputs[0], nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+                outputs[0] = quantizer_output.quantize(outputs[0])
             elif self.quant_mode in ['extrinsic',None]:
                 outputs[0] = K.bias_add(
                         outputs[0],
@@ -996,14 +924,14 @@ class QuantizedDistributedConv2D(Conv2D):
         
         if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
             for i in range(len(outputs)):
-                outputs[i] = quantize(outputs[i], nb=nb_output, fb=fb_output, rounding_method=rounding_output)
+                outputs[i] = quantizer_output.quantize(outputs[i])
         
         if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
             if not isinstance(self.ofmap_sa_fault_injection,list) or len(outputs) is not len(self.ofmap_sa_fault_injection):
                 raise ValueError('The output has %d sub-group, but output fault list got %d item can\'t match.'%(len(outputs),len(self.ofmap_sa_fault_injection)))
                 
             for i in range(len(outputs)):
-                outputs[i] = inject_layer_sa_fault_tensor(outputs[i], self.ofmap_sa_fault_injection[i], nb_output, fb_output, rounding=rounding_output)
+                outputs[i] = inject_layer_sa_fault_tensor(outputs[i], self.ofmap_sa_fault_injection[i], quantizer_output)
 
 
         return outputs
@@ -1046,11 +974,19 @@ class QuantizedDistributedConv2D(Conv2D):
                 raise ValueError('splits augment must be integer or list.')
         
     def get_config(self):
+        if isinstance(self.quantizer,list):
+            nb=[quant.nb for quant in self.quantizer]
+            fb=[quant.fb for quant in self.quantizer]
+            rounding_method=[quant.rounding_method for quant in self.quantizer]
+        else:
+            nb=self.quantizer.nb
+            fb=self.quantizer.fb
+            rounding_method=self.quantizer.rounding_method
         config = {'quant_mode': self.quant_mode,
                   'splits': self.splits,
-                  'nb': self.nb,
-                  'fb': self.fb,
-                  'rounding_method': self.rounding_method
+                  'nb': nb,
+                  'fb': fb,
+                  'rounding_method': rounding_method
                   }
         base_config = super(QuantizedDistributedConv2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))

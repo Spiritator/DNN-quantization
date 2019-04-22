@@ -14,8 +14,6 @@ from tensorflow.python.ops import math_ops
 
 import keras.backend as K
 
-from layers.quantized_ops import quantize
-
 def _preprocess_conv2d_input(x, data_format):
     """Transpose and cast the input before the conv2d.
 
@@ -57,7 +55,7 @@ def _preprocess_padding(padding):
 
 
 
-def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
+def QuantizedDenseCore(inputs, kernel, Q_info):
     ''' Reimplementation of the Dense layer.
     Args: 
         inputs:  [batch_size, neurons] 
@@ -92,11 +90,11 @@ def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
         
         output_tmp = tf.multiply(output_tmp,kernel)
         # quantize after multiplication
-        output_tmp = quantize(output_tmp, nb=nb, fb=fb, rounding_method=rounding_method) 
+        output_tmp = Q_info.quantize(output_tmp) 
         
         output_tmp = tf.reduce_sum(output_tmp,axis=0,keepdims=True)
         # quantize after accumulation
-        output_tmp = quantize(output_tmp, nb=nb, fb=fb, rounding_method=rounding_method) 
+        output_tmp = Q_info.quantize(output_tmp) 
         # concatenate batches (along axis 0).
         neurons= tf.concat([ neurons,output_tmp], 0)
         return [tf.add(batch,1), neurons]
@@ -124,7 +122,7 @@ def QuantizedDenseCore(inputs, kernel, nb, fb, rounding_method):
 ### Reimplemented Conv ###
 ##########################
 # parallel_iterations and swap_memory in tf.while_loops can be adjusted
-def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb, fb, rounding_method):
+def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_info):
     ''' Reimplementation of the 2D convolution layer.
     Args: 
         inputs:  [batch_size, image_height, image_width, input_channels] 
@@ -177,11 +175,11 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb,
         
         out_tmp = tf.multiply(output_patch, kernel_tmp)
         # quantize after multiplication
-        out_tmp = quantize(out_tmp, nb, fb, rounding_method)     
+        out_tmp = Q_info.quantize(out_tmp)     
         
         out_tmp = tf.reduce_sum(out_tmp,axis=3,keepdims=True)
         # quantize after accumulation
-        out_tmp = quantize(out_tmp, nb, fb, rounding_method)     
+        out_tmp = Q_info.quantize(out_tmp)     
         
         outputs = tf.concat([outputs,out_tmp],3)
         
@@ -256,21 +254,19 @@ def QuantizedBatchNormalizationCore(inputs,
                                     beta,
                                     gamma,
                                     variance_epsilon,
-                                    nb, 
-                                    fb, 
-                                    rounding_method,
+                                    Q_info,
                                     name=None):
     with ops.name_scope(name, "batchnorm", [inputs, mean, variance, gamma, beta]):
-        coef = quantize( math_ops.sqrt(variance + variance_epsilon), nb, fb, rounding_method )
-        coef = quantize( math_ops.reciprocal(coef), nb, fb, rounding_method )
+        coef = Q_info.quantize( math_ops.sqrt(variance + variance_epsilon))
+        coef = Q_info.quantize( math_ops.reciprocal(coef))
         if gamma is not None:
-          coef = quantize(coef*gamma, nb, fb, rounding_method)
+          coef = Q_info.quantize(coef*gamma)
         
         if beta is not None:
-            const = quantize( beta - quantize(mean * coef, nb, fb, rounding_method), nb, fb, rounding_method )
+            const = Q_info.quantize( beta - Q_info.quantize(mean * coef))
         else:
-            const = quantize(-mean * coef, nb, fb, rounding_method)
-        output = quantize( quantize(inputs * coef, nb, fb, rounding_method) + const, nb, fb, rounding_method )
+            const = Q_info.quantize(-mean * coef)
+        output = Q_info.quantize( Q_info.quantize(inputs * coef) + const)
         return output
 
 
@@ -278,7 +274,7 @@ def QuantizedBatchNormalizationCore(inputs,
 ### Reimplemented Depthwise Convolution ###
 ###########################################
 # parallel_iterations and swap_memory in tf.while_loops can be adjusted
-def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_format, nb, fb, rounding_method):
+def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_info):
     ''' Reimplementation of the 2D depthwise convolution layer.
     Args: 
         inputs:  [batch_size, image_height, image_width, input_channels] 
@@ -329,13 +325,13 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
         
         out_tmp = tf.multiply(output_patch, kernel_tmp)
         # quantize after multiplication
-        out_tmp = quantize(out_tmp, nb, fb, rounding_method)    
+        out_tmp = Q_info.quantize(out_tmp)    
         
         out_tmp = tf.reshape(out_tmp, [1,patch_shape.dims[1].value,patch_shape.dims[2].value,tf.reduce_prod(kernel_shape[0:2]),kernel_shape.dims[2].value])
         
         out_tmp = tf.reduce_sum(out_tmp,axis=3,keepdims=False)
         # quantize after accumulation
-        out_tmp = quantize(out_tmp, nb, fb, rounding_method)     
+        out_tmp = Q_info.quantize(out_tmp)     
                 
         return out_tmp
 
@@ -446,7 +442,7 @@ def DistributedConv2D(x, kernel, splits, strides=(1, 1), padding='valid',
                 data_format=tf_data_format)
     return x
 
-def QuantizedDistributedConv2DCore(x, kernel, splits, strides, dilation_rate, padding, data_format, nb, fb, rounding_method):
+def QuantizedDistributedConv2DCore(x, kernel, splits, strides, dilation_rate, padding, data_format, Q_info):
     """2D convolution.
 
     # Arguments
@@ -493,9 +489,7 @@ def QuantizedDistributedConv2DCore(x, kernel, splits, strides, dilation_rate, pa
                 rate=dilation_rate,
                 padding=padding,
                 data_format=tf_data_format,
-                nb=nb,
-                fb=fb,
-                rounding_method=rounding_method)
+                Q_info=Q_info)
     return x
 
 

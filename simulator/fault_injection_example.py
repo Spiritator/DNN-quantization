@@ -12,15 +12,19 @@ import keras.backend as K
 import numpy as np
 from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
 from testing.fault_ops import inject_layer_sa_fault_tensor, inject_layer_sa_fault_nparray
+from layers.quantized_ops import quantizer
+
+# declare qunatizer setting
+qt=quantizer(10,3,rounding_method='nearest')
 
 # a numpy array of 0 ~ 99
 original_weight=np.arange(1,100,dtype='float32')
 
 # inject single SA fault to a parameter
-single_fault_weight=generate_single_stuck_at_fault(original_weight,10,3,3,'1',tensor_return=False)
+single_fault_weight=generate_single_stuck_at_fault(original_weight,3,'1',qt,tensor_return=False)
 
 # inject multiple SA fault to a parameter
-multiple_fault_weight=generate_multiple_stuck_at_fault(original_weight,10,3,[3,2],['1','1'],tensor_return=False)
+multiple_fault_weight=generate_multiple_stuck_at_fault(original_weight,[3,2],['1','1'],qt,tensor_return=False)
 
 
 # the Tensor of original parameter
@@ -48,13 +52,13 @@ fault_dict={(1,6):\
             }
             
 # inject fault to a numpy array
-layer_fault_weight_pos=inject_layer_sa_fault_nparray(layer_original_weight_pos,fault_dict,10,3,rounding='nearest')
-layer_fault_weight_neg=inject_layer_sa_fault_nparray(layer_original_weight_neg,fault_dict,10,3,rounding='nearest')
+layer_fault_weight_pos=inject_layer_sa_fault_nparray(layer_original_weight_pos,fault_dict,qt)
+layer_fault_weight_neg=inject_layer_sa_fault_nparray(layer_original_weight_neg,fault_dict,qt)
 
 # inject fault to a Tensor
-layer_fault_input_pos=inject_layer_sa_fault_tensor(layer_original_input_pos,fault_dict,10,3,rounding='nearest')
+layer_fault_input_pos=inject_layer_sa_fault_tensor(layer_original_input_pos,fault_dict,qt)
 layer_fault_input_array_pos=K.eval(layer_fault_input_pos)
-layer_fault_input_neg=inject_layer_sa_fault_tensor(layer_original_input_neg,fault_dict,10,3,rounding='nearest')
+layer_fault_input_neg=inject_layer_sa_fault_tensor(layer_original_input_neg,fault_dict,qt)
 layer_fault_input_array_neg=K.eval(layer_fault_input_neg)
 
             

@@ -12,7 +12,6 @@ import tensorflow as tf
 import keras.backend as K
 import numpy as np
 from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_stuck_at_fault_modulator
-from layers.quantized_ops import quantize_1half,quantize_2half
 
 def check_fault_dict(data, fault_dict):
     """Check the fault dictionary is valid for the data or not.
@@ -29,15 +28,16 @@ def check_fault_dict(data, fault_dict):
 #            raise ValueError('fault location %s has different number of fault types and fault bits'%key)
 
 
-def inject_layer_sa_fault_nparray(data_in, fault_dict, word_width, fractional_bit, rounding='nearest'):
+def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
     """Inject fault dictionary to numpy array.
 
     # Arguments
         data_in: Variable. The variable to be injected fault.
         fault_dict: Dictionary. The dictionary contain fault list information.
-        word_width: Variable. The fix-point representation of the parameter word length.
-        fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-        rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
+        quantizer: Class. The quantizer class contain following quantize operation infromation.
+            word_width: Variable. The fix-point representation of the parameter word length.
+            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
 
     # Returns
         The faulty numpy array.
@@ -46,21 +46,22 @@ def inject_layer_sa_fault_nparray(data_in, fault_dict, word_width, fractional_bi
     check_fault_dict(data,fault_dict)
     for key in fault_dict.keys():
         if not isinstance(fault_dict[key]['SA_bit'],list):
-            data[key]=generate_single_stuck_at_fault(data[key],word_width,fractional_bit,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'],rounding=rounding,tensor_return=False)
+            data[key]=generate_single_stuck_at_fault(data[key],fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'],quantizer,tensor_return=False)
         else:
-            data[key]=generate_multiple_stuck_at_fault(data[key],word_width,fractional_bit,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'],rounding=rounding,tensor_return=False)
+            data[key]=generate_multiple_stuck_at_fault(data[key],fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'],quantizer,tensor_return=False)
             
     return data
 
-def inject_layer_sa_fault_tensor(data_in, fault_dict, word_width, fractional_bit, rounding='nearest'):
+def inject_layer_sa_fault_tensor(data_in, fault_dict, quantizer):
     """Inject fault dictionary to Tensor.
 
     # Arguments
         data_in: Tensor. The Tensor to be injected fault.
         fault_dict: Dictionary. The dictionary contain fault list information.
-        word_width: Variable. The fix-point representation of the parameter word length.
-        fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-        rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
+        quantizer: Class. The quantizer class contain following quantize operation infromation.
+            word_width: Variable. The fix-point representation of the parameter word length.
+            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
 
     # Returns
         The faulty Tensor.
@@ -81,7 +82,7 @@ def inject_layer_sa_fault_tensor(data_in, fault_dict, word_width, fractional_bit
     fault_modulators=[tf.constant([0],dtype='int32') for i in range(3)]
     
     for key in fault_dict.keys():
-        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(word_width,fractional_bit,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'])
+        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(quantizer.nb,quantizer.fb,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'])
         if modulator0 is not None:
             fault_indices[0]=np.append(fault_indices[0],[key],axis=0)
             fault_modulators[0]=tf.concat([fault_modulators[0],[modulator0]],0)
@@ -98,7 +99,7 @@ def inject_layer_sa_fault_tensor(data_in, fault_dict, word_width, fractional_bit
         fault_indices[i]=tf.constant(fault_indices[i],dtype='int32')
         
         
-    data=quantize_1half(data, nb = word_width, fb = fractional_bit, rounding_method = rounding)
+    data=quantizer.quantize_1half(data)
     data=tf.cast(data,tf.int32)
     
     if fault_indices[0].shape[0]>0:
@@ -115,6 +116,6 @@ def inject_layer_sa_fault_tensor(data_in, fault_dict, word_width, fractional_bit
         data=tf.bitwise.bitwise_xor(data,modulater_tensorF)        
 
     data=tf.cast(data,tf.float32)    
-    data=quantize_2half(data, nb = word_width, fb = fractional_bit)
+    data=quantizer.quantize_2half(data)
     
     return data

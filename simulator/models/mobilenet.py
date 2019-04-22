@@ -78,6 +78,7 @@ import keras.utils as keras_utils
 
 
 from layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
+from layers.quantized_ops import quantizer
 
 
 def preprocess_input(x, **kwargs):
@@ -108,6 +109,8 @@ def QuantizedMobileNetV1(input_shape=None,
               BN_fbits=None,
               rounding_method='nearest',
               quant_mode='hybrid',
+              overflow_mode='saturation',
+              stop_gradient=False,
               **kwargs):
     """Instantiates the MobileNet architecture.
 
@@ -177,6 +180,43 @@ def QuantizedMobileNetV1(input_shape=None,
 
     if BN_fbits is None:
         BN_fbits=fbits
+        
+    if isinstance(nbits,list) and isinstance(fbits,list) and len(nbits)==3 and len(fbits)==3:
+        if isinstance(rounding_method,list) and len(rounding_method)==3:            
+            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method[0],overflow_mode,stop_gradient),
+                             quantizer(nbits[1],fbits[1],rounding_method[1],overflow_mode,stop_gradient),
+                             quantizer(nbits[2],fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
+        else:
+            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method,overflow_mode,stop_gradient),
+                             quantizer(nbits[1],fbits[1],rounding_method,overflow_mode,stop_gradient),
+                             quantizer(nbits[2],fbits[2],rounding_method,overflow_mode,stop_gradient)]
+    else:
+        if isinstance(rounding_method,list) and len(rounding_method)==3:            
+            layer_quantizer=[quantizer(nbits,fbits,rounding_method[0],overflow_mode,stop_gradient),
+                             quantizer(nbits,fbits,rounding_method[1],overflow_mode,stop_gradient),
+                             quantizer(nbits,fbits,rounding_method[2],overflow_mode,stop_gradient)]
+        else:
+            layer_quantizer=quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+            
+            
+    if isinstance(BN_nbits,list) and isinstance(BN_fbits,list) and len(BN_nbits)==3 and len(BN_fbits)==3:
+        if isinstance(rounding_method,list) and len(rounding_method)==3:            
+            layer_BN_quantizer=[quantizer(BN_nbits[0],BN_fbits[0],rounding_method[0],overflow_mode,stop_gradient),
+                                quantizer(BN_nbits[1],BN_fbits[1],rounding_method[1],overflow_mode,stop_gradient),
+                                quantizer(BN_nbits[2],BN_fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
+        else:
+            layer_BN_quantizer=[quantizer(BN_nbits[0],BN_fbits[0],rounding_method,overflow_mode,stop_gradient),
+                                quantizer(BN_nbits[1],BN_fbits[1],rounding_method,overflow_mode,stop_gradient),
+                                quantizer(BN_nbits[2],BN_fbits[2],rounding_method,overflow_mode,stop_gradient)]
+    else:
+        if isinstance(rounding_method,list) and len(rounding_method)==3:            
+            layer_BN_quantizer=[quantizer(BN_nbits,BN_fbits,rounding_method[0],overflow_mode,stop_gradient),
+                                quantizer(BN_nbits,BN_fbits,rounding_method[1],overflow_mode,stop_gradient),
+                                quantizer(BN_nbits,BN_fbits,rounding_method[2],overflow_mode,stop_gradient)]
+        else:
+            layer_BN_quantizer=quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
+
+
 
     if not (weights in {'imagenet', None} or os.path.exists(weights)):
         raise ValueError('The `weights` argument should be either '
@@ -264,36 +304,36 @@ def QuantizedMobileNetV1(input_shape=None,
         else:
             img_input = input_tensor
 
-    x = _conv_block(img_input, 32, alpha, strides=(2, 2), nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = _conv_block(img_input, 32, alpha, strides=(2, 2), layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
     x = _depthwise_conv_block(x, 64, alpha, depth_multiplier, block_id=1, 
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                              layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
 
     x = _depthwise_conv_block(x, 128, alpha, depth_multiplier,
                               strides=(2, 2), block_id=2,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                              layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
     x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, block_id=3,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                              layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
 
     x = _depthwise_conv_block(x, 256, alpha, depth_multiplier,
                               strides=(2, 2), block_id=4,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                              layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
     x = _depthwise_conv_block(x, 256, alpha, depth_multiplier, block_id=5,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                              layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
 
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier,
                               strides=(2, 2), block_id=6,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11, nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                              layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7, layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8, layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9, layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10, layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11, layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
 
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier,
                               strides=(2, 2), block_id=12,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                              layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13,
-                              nbits=nbits, fbits=fbits, BN_nbits=BN_nbits, BN_fbits=BN_fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                              layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
 
     if include_top:
         if backend.image_data_format() == 'channels_first':
@@ -306,9 +346,7 @@ def QuantizedMobileNetV1(input_shape=None,
         x = layers.Dropout(dropout, name='dropout')(x)
         x = QuantizedConv2D(classes, 
                             kernel_size=(1, 1),
-                            nb=nbits,
-                            fb=fbits, 
-                            rounding_method=rounding_method,
+                            quantizers=layer_quantizer,
                             padding='same',
                             name='conv_preds',
                             quant_mode=quant_mode)(x)
@@ -365,8 +403,14 @@ def QuantizedMobileNetV1(input_shape=None,
     return model
 
 
-def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
-                          nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest', quant_mode='hybrid'):
+def _conv_block(inputs, 
+                filters, 
+                alpha, 
+                kernel=(3, 3), 
+                strides=(1, 1), 
+                layer_quantizer=quantizer(16,8), 
+                layer_BN_quantizer=quantizer(16,8), 
+                quant_mode='hybrid'):
     """Adds an initial convolution layer (with batch normalization and relu6).
 
     # Arguments
@@ -422,26 +466,28 @@ def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
     x = layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
     x = QuantizedConv2D(filters, 
                         kernel_size=kernel,
-                        nb=nbits,
-                        fb=fbits, 
-                        rounding_method=rounding_method,
+                        quantizers=layer_quantizer, 
                         padding='valid',
                         use_bias=False,
                         strides=strides,
                         name='conv1', 
                         quant_mode=quant_mode)(x)
-    x = QuantizedBatchNormalization(nb=BN_nbits,
-                                    fb=BN_fbits,
-                                    rounding_method=rounding_method,
+    x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
                                     name='conv1_bn', 
                                     quant_mode=quant_mode)(x)
     return layers.ReLU(6., name='conv1_relu')(x)
 
 
-def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
-                          depth_multiplier=1, strides=(1, 1), block_id=1,
-                          nbits=16, fbits=8, BN_nbits=10, BN_fbits=5, rounding_method='nearest', quant_mode='hybrid'):
+def _depthwise_conv_block(inputs, 
+                          pointwise_conv_filters, 
+                          alpha,
+                          depth_multiplier=1, 
+                          strides=(1, 1), 
+                          block_id=1,
+                          layer_quantizer=quantizer(16,8), 
+                          layer_BN_quantizer=quantizer(16,8), 
+                          quant_mode='hybrid'):
     """Adds a depthwise convolution block.
 
     A depthwise convolution block consists of a depthwise conv,
@@ -499,18 +545,14 @@ def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
     print('building depthwise conv block %d ...'%block_id)
     x = layers.ZeroPadding2D((1, 1), name='conv_pad_%d' % block_id)(inputs)
     x = QuantizedDepthwiseConv2D(kernel_size=(3, 3),
-                                 nb=nbits,
-                                 fb=fbits, 
-                                 rounding_method=rounding_method,
+                                 quantizers=layer_quantizer,
                                  padding='valid',
                                  depth_multiplier=depth_multiplier,
                                  strides=strides,
                                  use_bias=False,
                                  name='conv_dw_%d' % block_id, 
                                  quant_mode=quant_mode)(x)
-    x = QuantizedBatchNormalization(nb=BN_nbits,
-                                    fb=BN_fbits,
-                                    rounding_method=rounding_method,
+    x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
                                     name='conv_dw_%d_bn' % block_id, 
                                     quant_mode=quant_mode)(x)
@@ -518,17 +560,13 @@ def _depthwise_conv_block(inputs, pointwise_conv_filters, alpha,
 
     x = QuantizedConv2D(pointwise_conv_filters, 
                         kernel_size=(1, 1),
-                        nb=nbits,
-                        fb=fbits, 
-                        rounding_method=rounding_method,
+                        quantizers=layer_quantizer,
                         padding='same',
                         use_bias=False,
                         strides=(1, 1),
                         name='conv_pw_%d' % block_id, 
                         quant_mode=quant_mode)(x)
-    x = QuantizedBatchNormalization(nb=BN_nbits,
-                                    fb=BN_fbits,
-                                    rounding_method=rounding_method,
+    x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis,
                                     name='conv_pw_%d_bn' % block_id, 
                                     quant_mode=quant_mode)(x)
@@ -556,6 +594,8 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
               fbits=8, 
               rounding_method='nearest',
               quant_mode='hybrid',
+              overflow_mode='saturation',
+              stop_gradient=False,
               **kwargs):
     """Instantiates the MobileNet architecture.
 
@@ -618,6 +658,24 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
             backend that does not support separable convolutions.
     """
     print('\nBuilding model : Quantized MobileNet V1 Fused BatchNornalization')
+    
+    if isinstance(nbits,list) and isinstance(fbits,list) and len(nbits)==3 and len(fbits)==3:
+        if isinstance(rounding_method,list) and len(rounding_method)==3:            
+            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method[0],overflow_mode,stop_gradient),
+                             quantizer(nbits[1],fbits[1],rounding_method[1],overflow_mode,stop_gradient),
+                             quantizer(nbits[2],fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
+        else:
+            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method,overflow_mode,stop_gradient),
+                             quantizer(nbits[1],fbits[1],rounding_method,overflow_mode,stop_gradient),
+                             quantizer(nbits[2],fbits[2],rounding_method,overflow_mode,stop_gradient)]
+    else:
+        if isinstance(rounding_method,list) and len(rounding_method)==3:            
+            layer_quantizer=[quantizer(nbits,fbits,rounding_method[0],overflow_mode,stop_gradient),
+                             quantizer(nbits,fbits,rounding_method[1],overflow_mode,stop_gradient),
+                             quantizer(nbits,fbits,rounding_method[2],overflow_mode,stop_gradient)]
+        else:
+            layer_quantizer=quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+
 
     if not os.path.exists(weights):
         raise ValueError('The `weights` argument must be the path to the weights file to be loaded. File not found!')
@@ -704,34 +762,34 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
 
     x = _conv_block_fused_BN(img_input, 32, alpha, strides=(2, 2), nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
     x = _depthwise_conv_block_fused_BN(x, 64, alpha, depth_multiplier, block_id=1, 
-                                       nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                                       layer_quantizer=layer_quantizer, quant_mode=quant_mode)
 
     x = _depthwise_conv_block_fused_BN(x, 128, alpha, depth_multiplier,
                                        strides=(2, 2), block_id=2,
-                                       nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                                       layer_quantizer=layer_quantizer, quant_mode=quant_mode)
     x = _depthwise_conv_block_fused_BN(x, 128, alpha, depth_multiplier, block_id=3,
-                                       nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                                       layer_quantizer=layer_quantizer, quant_mode=quant_mode)
 
     x = _depthwise_conv_block_fused_BN(x, 256, alpha, depth_multiplier,
                                        strides=(2, 2), block_id=4,
-                                       nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                                       layer_quantizer=layer_quantizer, quant_mode=quant_mode)
     x = _depthwise_conv_block_fused_BN(x, 256, alpha, depth_multiplier, block_id=5,
-                                       nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                                       layer_quantizer=layer_quantizer, quant_mode=quant_mode)
 
     x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier,
                                        strides=(2, 2), block_id=6,
-                                       nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=7, nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=8, nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=9, nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=10, nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
-    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=11, nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                                       layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=7, layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=8, layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=9, layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=10, layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=11, layer_quantizer=layer_quantizer, quant_mode=quant_mode)
 
     x = _depthwise_conv_block_fused_BN(x, 1024, alpha, depth_multiplier,
                                        strides=(2, 2), block_id=12,
-                                       nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                                       layer_quantizer=layer_quantizer, quant_mode=quant_mode)
     x = _depthwise_conv_block_fused_BN(x, 1024, alpha, depth_multiplier, block_id=13,
-                                       nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+                                       layer_quantizer=layer_quantizer, quant_mode=quant_mode)
 
     if include_top:
         if backend.image_data_format() == 'channels_first':
@@ -744,9 +802,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
         x = layers.Dropout(dropout, name='dropout')(x)
         x = QuantizedConv2D(classes, 
                             kernel_size=(1, 1),
-                            nb=nbits,
-                            fb=fbits, 
-                            rounding_method=rounding_method,
+                            quantizers=layer_quantizer,
                             padding='same',
                             name='conv_preds',
                             quant_mode=quant_mode)(x)
@@ -777,8 +833,13 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
     return model
 
 
-def _conv_block_fused_BN(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
-                         nbits=16, fbits=8, rounding_method='nearest', quant_mode='hybrid'):
+def _conv_block_fused_BN(inputs, 
+                         filters, 
+                         alpha, 
+                         layer_quantizer, 
+                         kernel=(3, 3), 
+                         strides=(1, 1),
+                         quant_mode='hybrid'):
     """Adds an initial convolution layer (with batch normalization and relu6).
 
     # Arguments
@@ -834,9 +895,7 @@ def _conv_block_fused_BN(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
     x = layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
     x = QuantizedConv2D(filters, 
                         kernel_size=kernel,
-                        nb=nbits,
-                        fb=fbits, 
-                        rounding_method=rounding_method,
+                        quantizers=layer_quantizer,
                         padding='valid',
                         strides=strides,
                         name='conv1', 
@@ -844,9 +903,14 @@ def _conv_block_fused_BN(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1),
     return layers.ReLU(6., name='conv1_relu')(x)
 
 
-def _depthwise_conv_block_fused_BN(inputs, pointwise_conv_filters, alpha,
-                                   depth_multiplier=1, strides=(1, 1), block_id=1,
-                                   nbits=16, fbits=8, rounding_method='nearest', quant_mode='hybrid'):
+def _depthwise_conv_block_fused_BN(inputs, 
+                                   pointwise_conv_filters, 
+                                   alpha,
+                                   layer_quantizer, 
+                                   depth_multiplier=1, 
+                                   strides=(1, 1), 
+                                   block_id=1,
+                                   quant_mode='hybrid'):
     """Adds a depthwise convolution block.
 
     A depthwise convolution block consists of a depthwise conv,
@@ -904,9 +968,7 @@ def _depthwise_conv_block_fused_BN(inputs, pointwise_conv_filters, alpha,
     print('building depthwise conv block %d ...'%block_id)
     x = layers.ZeroPadding2D((1, 1), name='conv_pad_%d' % block_id)(inputs)
     x = QuantizedDepthwiseConv2D(kernel_size=(3, 3),
-                                 nb=nbits,
-                                 fb=fbits, 
-                                 rounding_method=rounding_method,
+                                 quantizers=layer_quantizer,
                                  padding='valid',
                                  depth_multiplier=depth_multiplier,
                                  strides=strides,
@@ -916,9 +978,7 @@ def _depthwise_conv_block_fused_BN(inputs, pointwise_conv_filters, alpha,
 
     x = QuantizedConv2D(pointwise_conv_filters, 
                         kernel_size=(1, 1),
-                        nb=nbits,
-                        fb=fbits, 
-                        rounding_method=rounding_method,
+                        quantizers=layer_quantizer,
                         padding='same',
                         strides=(1, 1),
                         name='conv_pw_%d' % block_id, 

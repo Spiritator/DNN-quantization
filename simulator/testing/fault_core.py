@@ -9,18 +9,18 @@ weight fault injection
 
 import tensorflow as tf
 import keras.backend as K
-from layers.quantized_ops import quantize_1half,quantize_2half
 
-def generate_single_stuck_at_fault(original_value,word_width,fractional_bits,fault_bit,stuck_at,rounding='nearest',tensor_return=True):
+def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,tensor_return=True):
     """Returns the a tensor or variable with single SA fault injected in each parameter.
 
     # Arguments
         original_value: Tensor or Variable. The variable to be injected fault.
-        word_width: Variable. The fix-point representation of the parameter word length.
-        fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+        quantizer: Class. The quantizer class contain following quantize operation infromation.
+            word_width: Variable. The fix-point representation of the parameter word length.
+            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
         fault_bit: Variable. The index of the SA fault bit on a fix-point parameter
         stuck_at: String. The SA type of the faulty bit, input augment must be one of '1' , '0' or 'flip'.
-        rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
         tensor_return: Condition. Return augment in Tensor dtype or nparray.
 
     # Returns
@@ -34,16 +34,16 @@ def generate_single_stuck_at_fault(original_value,word_width,fractional_bits,fau
         
     ```
     """
-    if word_width<=fractional_bits-1:
-        raise ValueError('Not enough word width %d for fractional bits %d'%(word_width,fractional_bits))
+    if quantizer.nb<=quantizer.fb-1:
+        raise ValueError('Not enough word width %d for fractional bits %d'%(quantizer.nb,quantizer.fb))
     
-    if fault_bit<0 or fault_bit>word_width or not isinstance(fault_bit,int):
-        raise ValueError('Fault bit must be integer between (include) %d and 0, %d is MSB, 0 is LSB.'%(word_width-1,word_width-1))
+    if fault_bit<0 or fault_bit>quantizer.nb or not isinstance(fault_bit,int):
+        raise ValueError('Fault bit must be integer between (include) %d and 0, %d is MSB, 0 is LSB.'%(quantizer.nb-1,quantizer.nb-1))
         
     if stuck_at!='1' and stuck_at!='0' and stuck_at!='flip':
         raise ValueError('You must stuck at \'0\' , \'1\' or \'flip\'.')
         
-    fault_value=quantize_1half(original_value, nb = word_width, fb = fractional_bits, rounding_method = rounding)
+    fault_value=quantizer.quantize_1half(original_value)
     fault_value=tf.cast(fault_value,tf.int32)
     
     if stuck_at=='1':
@@ -57,23 +57,24 @@ def generate_single_stuck_at_fault(original_value,word_width,fractional_bits,fau
         fault_value=tf.bitwise.bitwise_xor(fault_value,modulator)
     
     fault_value=tf.cast(fault_value,tf.float32)    
-    fault_value=quantize_2half(fault_value, nb = word_width, fb = fractional_bits)
+    fault_value=quantizer.quantize_2half(fault_value)
     
     if tensor_return:
         return fault_value
     else:
         return K.eval(fault_value)
 
-def generate_multiple_stuck_at_fault(original_value,word_width,fractional_bits,fault_bit,stuck_at,rounding='nearest',tensor_return=True):
+def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,tensor_return=True):
     """Returns the a tensor or variable with multiple SA fault injected in each parameter.
 
     # Arguments
         original_value: Tensor or Variable. The variable to be injected fault.
-        word_width: Variable. The fix-point representation of the parameter word length.
-        fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+        quantizer: Class. The quantizer class contain following quantize operation infromation.
+            word_width: Variable. The fix-point representation of the parameter word length.
+            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
         fault_bit: List of Variable. The index of the SA fault bit on a fix-point parameter
         stuck_at: List of String. The SA type of the faulty bit, augment must be one of '1' , '0' or 'flip'.
-        rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
         tensor_return: Condition. Return augment in Tensor dtype or nparray.
 
     # Returns
@@ -87,11 +88,11 @@ def generate_multiple_stuck_at_fault(original_value,word_width,fractional_bits,f
         
     ```
     """
-    if word_width<=fractional_bits-1:
-        raise ValueError('Not enough word width %d for fractional bits %d'%(word_width,fractional_bits))
+    if quantizer.nb<=quantizer.fb-1:
+        raise ValueError('Not enough word width %d for fractional bits %d'%(quantizer.nb,quantizer.fb))
     
-    if any([fault_bit_iter<0 or fault_bit_iter>word_width or not isinstance(fault_bit_iter,int) for fault_bit_iter in fault_bit]):
-        raise ValueError('Fault bit must be integer between (include) %d and 0, %d is MSB, 0 is LSB.'%(word_width-1,word_width-1))
+    if any([fault_bit_iter<0 or fault_bit_iter>quantizer.nb or not isinstance(fault_bit_iter,int) for fault_bit_iter in fault_bit]):
+        raise ValueError('Fault bit must be integer between (include) %d and 0, %d is MSB, 0 is LSB.'%(quantizer.nb-1,quantizer.nb-1))
         
     if any([stuck_at_iter!='1' and stuck_at_iter!='0' and stuck_at_iter!='flip' for stuck_at_iter in stuck_at]):
         raise ValueError('You must stuck at \'0\' , \'1\' or \'flip\'.')
@@ -99,7 +100,7 @@ def generate_multiple_stuck_at_fault(original_value,word_width,fractional_bits,f
     if len(fault_bit) != len(stuck_at):
         raise ValueError('Fault location list and stuck at type list must be the same length')
         
-    fault_value=quantize_1half(original_value, nb = word_width, fb = fractional_bits, rounding_method = rounding)
+    fault_value=quantizer.quantize_1half(original_value)
     fault_value=tf.cast(fault_value,tf.int32)
     
     modulator=0
@@ -115,7 +116,7 @@ def generate_multiple_stuck_at_fault(original_value,word_width,fractional_bits,f
             fault_value=tf.bitwise.bitwise_xor(fault_value,modulator)
     
     fault_value=tf.cast(fault_value,tf.float32)    
-    fault_value=quantize_2half(fault_value, nb = word_width, fb = fractional_bits)
+    fault_value=quantizer.quantize_2half(fault_value)
     
     if tensor_return:
         return fault_value

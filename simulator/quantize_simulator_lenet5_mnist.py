@@ -13,7 +13,7 @@ import keras
 import numpy as np
 import keras.backend as K
 import time
-from keras.utils import multi_gpu_model
+#from keras.utils import multi_gpu_model
 
 from models.model_library import quantized_lenet5
 from utils_tool.weight_conversion import convert_original_weight_layer_name
@@ -34,7 +34,7 @@ batch_size=25
 # each augment uses different quantize precision. information list [input, weight, output]
 #model=quantized_lenet5(nbits=[10,4,10],fbits=[5,2,5],rounding_method='nearest')
 # intrinsic quantization
-model=quantized_lenet5(nbits=8,fbits=3,rounding_method='nearest',batch_size=batch_size,quant_mode='hybrid')
+model=quantized_lenet5(nbits=8,fbits=3,rounding_method='nearest',batch_size=batch_size,quant_mode='intrinsic')
 
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)

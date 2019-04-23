@@ -22,7 +22,16 @@ from keras_applications.imagenet_utils import _obtain_input_shape
 from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
 from layers.quantized_ops import quantizer,build_layer_quantizer
 
-preprocess_input = imagenet_utils.preprocess_input
+def preprocess_input(x, **kwargs):
+    """Preprocesses a numpy array encoding a batch of images.
+
+    # Arguments
+        x: a 4D numpy array consists of RGB values within [0, 255].
+
+    # Returns
+        Preprocessed array.
+    """
+    return imagenet_utils.preprocess_input(x, data_format='channels_last', **kwargs)
 
 WEIGHTS_PATH = ('https://github.com/fchollet/deep-learning-models/'
                 'releases/download/v0.2/'

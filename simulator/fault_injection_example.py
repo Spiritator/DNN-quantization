@@ -33,6 +33,12 @@ layer_original_input_pos=tf.Variable(layer_original_weight_pos)
 layer_original_weight_neg=np.reshape(np.arange(1,101,dtype='float32')*(-1), (10,10))
 layer_original_input_neg=tf.Variable(layer_original_weight_neg)
 
+# overflow simulation
+layer_overflow_sim_pos=qt.quantize(tf.subtract(layer_original_input_pos,0.5),overflow_sim=True)
+layer_overflow_sim_neg=qt.quantize(tf.add(layer_original_input_neg,0.5),overflow_sim=True)
+layer_overflow_input_pos=K.eval(layer_overflow_sim_pos)
+layer_overflow_input_neg=K.eval(layer_overflow_sim_neg)
+
 # example of fault dictionary
 fault_dict={(1,6):\
             {'SA_type':'1',
@@ -60,5 +66,14 @@ layer_fault_input_pos=inject_layer_sa_fault_tensor(layer_original_input_pos,faul
 layer_fault_input_array_pos=K.eval(layer_fault_input_pos)
 layer_fault_input_neg=inject_layer_sa_fault_tensor(layer_original_input_neg,fault_dict,qt)
 layer_fault_input_array_neg=K.eval(layer_fault_input_neg)
+
+
+# inject fault to a Tensor with overflow simulation
+qt_ovf=quantizer(10,3,rounding_method='nearest',overflow_mode=True)
+layer_fault_input_pos=inject_layer_sa_fault_tensor(layer_original_input_pos,fault_dict,qt_ovf)
+layer_fault_input_array_pos_ovf=K.eval(layer_fault_input_pos)
+layer_fault_input_neg=inject_layer_sa_fault_tensor(layer_original_input_neg,fault_dict,qt_ovf)
+layer_fault_input_array_neg_ovf=K.eval(layer_fault_input_neg)
+
 
             

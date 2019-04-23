@@ -78,7 +78,7 @@ import keras.utils as keras_utils
 
 
 from layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
-from layers.quantized_ops import quantizer
+from layers.quantized_ops import quantizer,build_layer_quantizer
 
 
 def preprocess_input(x, **kwargs):
@@ -109,7 +109,7 @@ def QuantizedMobileNetV1(input_shape=None,
               BN_fbits=None,
               rounding_method='nearest',
               quant_mode='hybrid',
-              overflow_mode='saturation',
+              overflow_mode=False,
               stop_gradient=False,
               **kwargs):
     """Instantiates the MobileNet architecture.
@@ -181,41 +181,9 @@ def QuantizedMobileNetV1(input_shape=None,
     if BN_fbits is None:
         BN_fbits=fbits
         
-    if isinstance(nbits,list) and isinstance(fbits,list) and len(nbits)==3 and len(fbits)==3:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method,overflow_mode,stop_gradient)]
-    else:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits,fbits,rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
             
-            
-    if isinstance(BN_nbits,list) and isinstance(BN_fbits,list) and len(BN_nbits)==3 and len(BN_fbits)==3:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_BN_quantizer=[quantizer(BN_nbits[0],BN_fbits[0],rounding_method[0],overflow_mode,stop_gradient),
-                                quantizer(BN_nbits[1],BN_fbits[1],rounding_method[1],overflow_mode,stop_gradient),
-                                quantizer(BN_nbits[2],BN_fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_BN_quantizer=[quantizer(BN_nbits[0],BN_fbits[0],rounding_method,overflow_mode,stop_gradient),
-                                quantizer(BN_nbits[1],BN_fbits[1],rounding_method,overflow_mode,stop_gradient),
-                                quantizer(BN_nbits[2],BN_fbits[2],rounding_method,overflow_mode,stop_gradient)]
-    else:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_BN_quantizer=[quantizer(BN_nbits,BN_fbits,rounding_method[0],overflow_mode,stop_gradient),
-                                quantizer(BN_nbits,BN_fbits,rounding_method[1],overflow_mode,stop_gradient),
-                                quantizer(BN_nbits,BN_fbits,rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_BN_quantizer=quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
-
+    layer_BN_quantizer=build_layer_quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
 
 
     if not (weights in {'imagenet', None} or os.path.exists(weights)):
@@ -594,7 +562,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
               fbits=8, 
               rounding_method='nearest',
               quant_mode='hybrid',
-              overflow_mode='saturation',
+              overflow_mode=False,
               stop_gradient=False,
               **kwargs):
     """Instantiates the MobileNet architecture.
@@ -659,23 +627,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
     """
     print('\nBuilding model : Quantized MobileNet V1 Fused BatchNornalization')
     
-    if isinstance(nbits,list) and isinstance(fbits,list) and len(nbits)==3 and len(fbits)==3:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method,overflow_mode,stop_gradient)]
-    else:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits,fbits,rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
-
+    layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
 
     if not os.path.exists(weights):
         raise ValueError('The `weights` argument must be the path to the weights file to be loaded. File not found!')

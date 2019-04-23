@@ -16,29 +16,14 @@ from keras import backend as K
 import numpy as np
 
 from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
-from layers.quantized_ops import quantizer
+from layers.quantized_ops import quantizer,build_layer_quantizer
 
 
-def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode='saturation', stop_gradient=False,):
+def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False,):
     
     print('\nBuilding model : Quantized Lenet 5')
     
-    if isinstance(nbits,list) and isinstance(fbits,list) and len(nbits)==3 and len(fbits)==3:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method,overflow_mode,stop_gradient)]
-    else:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits,fbits,rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(8)]
@@ -113,27 +98,11 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
 
     return model
 
-def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode='saturation', stop_gradient=False):
+def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False):
     
     print('\nBuilding model : Quantized 4C2F CNN')
     
-    if isinstance(nbits,list) and isinstance(fbits,list) and len(nbits)==3 and len(fbits)==3:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method,overflow_mode,stop_gradient)]
-    else:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits,fbits,rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
-
+    layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(14)]
@@ -236,7 +205,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
 
     return model
 
-def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode='saturation', stop_gradient=False):
+def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False):
     
     print('\nBuilding model : Quantized 4C2FBN CNN')
     
@@ -246,39 +215,9 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
     if BN_fbits is None:
         BN_fbits=fbits
         
-    if isinstance(nbits,list) and isinstance(fbits,list) and len(nbits)==3 and len(fbits)==3:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=[quantizer(nbits[0],fbits[0],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[1],fbits[1],rounding_method,overflow_mode,stop_gradient),
-                             quantizer(nbits[2],fbits[2],rounding_method,overflow_mode,stop_gradient)]
-    else:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_quantizer=[quantizer(nbits,fbits,rounding_method[0],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[1],overflow_mode,stop_gradient),
-                             quantizer(nbits,fbits,rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_quantizer=quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
         
-    if isinstance(BN_nbits,list) and isinstance(BN_fbits,list) and len(BN_nbits)==3 and len(BN_fbits)==3:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_BN_quantizer=[quantizer(BN_nbits[0],BN_fbits[0],rounding_method[0],overflow_mode,stop_gradient),
-                                quantizer(BN_nbits[1],BN_fbits[1],rounding_method[1],overflow_mode,stop_gradient),
-                                quantizer(BN_nbits[2],BN_fbits[2],rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_BN_quantizer=[quantizer(BN_nbits[0],BN_fbits[0],rounding_method,overflow_mode,stop_gradient),
-                                quantizer(BN_nbits[1],BN_fbits[1],rounding_method,overflow_mode,stop_gradient),
-                                quantizer(BN_nbits[2],BN_fbits[2],rounding_method,overflow_mode,stop_gradient)]
-    else:
-        if isinstance(rounding_method,list) and len(rounding_method)==3:            
-            layer_BN_quantizer=[quantizer(BN_nbits,BN_fbits,rounding_method[0],overflow_mode,stop_gradient),
-                                quantizer(BN_nbits,BN_fbits,rounding_method[1],overflow_mode,stop_gradient),
-                                quantizer(BN_nbits,BN_fbits,rounding_method[2],overflow_mode,stop_gradient)]
-        else:
-            layer_BN_quantizer=quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
+    layer_BN_quantizer=build_layer_quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
 
     
     if ifmap_fault_dict_list is None:

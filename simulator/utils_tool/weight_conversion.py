@@ -65,7 +65,7 @@ def convert_original_weight_layer_name(original_weight_name,quantized_weight_nam
     if 'backend' in o_weight_f.attrs:
         original_backend = o_weight_f.attrs['backend'].decode('utf8')
     else:
-        original_backend = None
+        original_backend = 'None'
         
     
     layer_names = load_attributes_from_hdf5_group(o_weight_f, 'layer_names')
@@ -209,7 +209,7 @@ def fuse_BN_weight(original_weight_name,fused_weight_name=None):
     if 'backend' in o_weight_f.attrs:
         original_backend = o_weight_f.attrs['backend'].decode('utf8')
     else:
-        original_backend = None
+        original_backend = 'None'
         
     
     layer_names = load_attributes_from_hdf5_group(o_weight_f, 'layer_names')
@@ -241,7 +241,7 @@ def fuse_BN_weight(original_weight_name,fused_weight_name=None):
             weight_values = [np.asarray(o_group[weight_name]) for weight_name in weight_names]
             fused_layer = f_weight_f.create_group(layer_names[layer_iter])
             fused_layer.attrs.create('weight_names',[temp.encode('utf8') for temp in weight_names])
-            if len(weight_names) is not 0:
+            if len(weight_names) != 0:
                 fused_sublayer = fused_layer.create_group(layer_names[layer_iter])
             
             if layer_name in fused_layer_names:

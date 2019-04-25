@@ -90,7 +90,7 @@ def preprocess_input(x, **kwargs):
     # Returns
         Preprocessed array.
     """
-    return imagenet_utils.preprocess_input(x, mode='tf', **kwargs)
+    return imagenet_utils.preprocess_input(x, data_format='channels_last', mode='tf', **kwargs)
 
 
 def QuantizedMobileNetV1(input_shape=None,
@@ -712,7 +712,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
         else:
             img_input = input_tensor
 
-    x = _conv_block_fused_BN(img_input, 32, alpha, strides=(2, 2), nbits=nbits, fbits=fbits, rounding_method=rounding_method, quant_mode=quant_mode)
+    x = _conv_block_fused_BN(img_input, 32, alpha, strides=(2, 2), layer_quantizer=layer_quantizer, quant_mode=quant_mode)
     x = _depthwise_conv_block_fused_BN(x, 64, alpha, depth_multiplier, block_id=1, 
                                        layer_quantizer=layer_quantizer, quant_mode=quant_mode)
 
@@ -788,9 +788,9 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
 def _conv_block_fused_BN(inputs, 
                          filters, 
                          alpha, 
-                         layer_quantizer, 
                          kernel=(3, 3), 
                          strides=(1, 1),
+                         layer_quantizer=quantizer(16,8), 
                          quant_mode='hybrid'):
     """Adds an initial convolution layer (with batch normalization and relu6).
 
@@ -858,10 +858,10 @@ def _conv_block_fused_BN(inputs,
 def _depthwise_conv_block_fused_BN(inputs, 
                                    pointwise_conv_filters, 
                                    alpha,
-                                   layer_quantizer, 
                                    depth_multiplier=1, 
                                    strides=(1, 1), 
                                    block_id=1,
+                                   layer_quantizer=quantizer(16,8), 
                                    quant_mode='hybrid'):
     """Adds a depthwise convolution block.
 

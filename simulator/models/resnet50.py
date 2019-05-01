@@ -365,7 +365,7 @@ def QuantizedResNet50(include_top=True,
     else:
         inputs = img_input
     # Create model.
-    model = models.Model(inputs, x, name='resnet50')
+    model = models.Model(inputs, x, name='quantized_resnet50')
 
     # load weights
     if weights == 'imagenet':
@@ -653,7 +653,7 @@ def QuantizedResNet50FusedBN(include_top=True,
     else:
         inputs = img_input
     # Create model.
-    model = models.Model(inputs, x, name='resnet50')
+    model = models.Model(inputs, x, name='quantized_resnet50_fusedBN')
 
     # load weights
     if weights is not None:

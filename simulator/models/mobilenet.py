@@ -334,7 +334,7 @@ def QuantizedMobileNetV1(input_shape=None,
         inputs = img_input
 
     # Create model.
-    model = models.Model(inputs, x, name='mobilenet_%0.2f_%s' % (alpha, rows))
+    model = models.Model(inputs, x, name='quantized_mobilenet_%0.2f_%s' % (alpha, rows))
 
     # load weights
     if weights == 'imagenet':
@@ -774,7 +774,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
         inputs = img_input
 
     # Create model.
-    model = models.Model(inputs, x, name='mobilenet_%0.2f_%s' % (alpha, rows))
+    model = models.Model(inputs, x, name='quantized_mobilenet_fusedBN_%0.2f_%s' % (alpha, rows))
 
     # load weights
     if weights is not None:

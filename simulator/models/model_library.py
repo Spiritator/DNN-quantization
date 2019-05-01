@@ -88,7 +88,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        weight_sa_fault_injection=weight_fault_dict_list[7],
                        quant_mode=quant_mode)(x)
 
-    model=Model(inputs=input_shape, outputs=x)
+    model=Model(inputs=input_shape, outputs=x, name='quantized_lenet5')
     
 #    model.summary()
 #    model.compile(loss='categorical_crossentropy',
@@ -195,7 +195,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                        weight_sa_fault_injection=weight_fault_dict_list[13],
                        quant_mode=quant_mode)(x)
     
-    model=Model(inputs=input_shape, outputs=x)
+    model=Model(inputs=input_shape, outputs=x, name='quantized_4C2F')
     
 #    model.compile(loss='categorical_crossentropy',
 #                  optimizer='adam',
@@ -359,7 +359,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                        weight_sa_fault_injection=weight_fault_dict_list[22],
                        quant_mode=quant_mode)(x)
     
-    model=Model(inputs=input_shape, outputs=x)
+    model=Model(inputs=input_shape, outputs=x, name='quantized_4C2FBN')
     
 #    model.compile(loss='categorical_crossentropy',
 #                  optimizer='adam',

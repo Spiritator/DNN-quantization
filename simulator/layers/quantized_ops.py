@@ -35,17 +35,15 @@ class quantizer:
         '''
         if self.rounding_method == 'nearest':
             rounded = tf.rint(x)
-        elif self.rounding_method == 'zero':
-            rounded = tf.trunc(x)
         elif self.rounding_method == 'down':
             rounded = tf.floor(x)
         elif self.rounding_method == 'stochastic':
-            if tf.average(x-tf.floor(x)).eval() > 0.5:
+            if K.eval(tf.greater(tf.reduce_mean(x-tf.floor(x)), 0.5)):
                 rounded = tf.ceil(x)
             else:
                 rounded = tf.floor(x)
         else:
-            print('Wrong Rounding Type\nChoose between \'nearest\' , \'zero\' , \'down\'')
+            print('Wrong Rounding Type\nChoose between \'nearest\' , \'down\', \'stochastic\' ')
             
         rounded_through = x + K.stop_gradient(rounded - x)
         return rounded_through

@@ -18,7 +18,7 @@ def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,t
         quantizer: Class. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'stochastic'.
         fault_bit: Variable. The index of the SA fault bit on a fix-point parameter
         stuck_at: String. The SA type of the faulty bit, input augment must be one of '1' , '0' or 'flip'.
         tensor_return: Condition. Return augment in Tensor dtype or nparray.
@@ -72,7 +72,7 @@ def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer
         quantizer: Class. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'zero' , 'down', 'stochastic'.
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'stochastic'.
         fault_bit: List of Variable. The index of the SA fault bit on a fix-point parameter
         stuck_at: List of String. The SA type of the faulty bit, augment must be one of '1' , '0' or 'flip'.
         tensor_return: Condition. Return augment in Tensor dtype or nparray.

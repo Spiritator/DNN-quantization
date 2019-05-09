@@ -13,6 +13,26 @@ import numpy as np
 from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
 from testing.fault_ops import inject_layer_sa_fault_tensor, inject_layer_sa_fault_nparray
 from layers.quantized_ops import quantizer
+#%%
+####################
+##  Quantization  ##
+####################
+
+# declare qunatizer setting
+qtn=quantizer(7,2,rounding_method='nearest')
+qtd=quantizer(7,2,rounding_method='down')
+qts=quantizer(7,2,rounding_method='stochastic')
+
+unquant_param=np.reshape((np.arange(1,1001,dtype='float32')-500)/16,(-1,10))
+
+quant_param_nearest=K.eval(qtn.quantize(unquant_param))
+quant_param_down=K.eval(qtd.quantize(unquant_param))
+quant_param_stochastic=K.eval(qts.quantize(unquant_param))
+
+#%%
+#####################
+## Fault Injection ##
+#####################
 
 # declare qunatizer setting
 qt=quantizer(10,3,rounding_method='nearest')

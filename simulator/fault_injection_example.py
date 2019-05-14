@@ -22,12 +22,15 @@ from layers.quantized_ops import quantizer
 qtn=quantizer(7,2,rounding_method='nearest')
 qtd=quantizer(7,2,rounding_method='down')
 qts=quantizer(7,2,rounding_method='stochastic')
+qtz=quantizer(7,2,rounding_method='zero')
 
 unquant_param=np.reshape((np.arange(1,1001,dtype='float32')-500)/16,(-1,10))
 
 quant_param_nearest=K.eval(qtn.quantize(unquant_param))
 quant_param_down=K.eval(qtd.quantize(unquant_param))
 quant_param_stochastic=K.eval(qts.quantize(unquant_param))
+quant_param_zero=K.eval(qtz.quantize(unquant_param))
+
 
 #%%
 #####################

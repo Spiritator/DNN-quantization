@@ -37,7 +37,7 @@ def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
         quantizer: Class. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'stochastic'.
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
 
     # Returns
         The faulty numpy array.
@@ -61,7 +61,7 @@ def inject_layer_sa_fault_tensor(data_in, fault_dict, quantizer):
         quantizer: Class. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'stochastic'.
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
 
     # Returns
         The faulty Tensor.

@@ -33,17 +33,24 @@ class quantizer:
         '''Element-wise rounding to the closest integer with full gradient propagation.
         A trick from [Sergey Ioffe](http://stackoverflow.com/a/36480182)
         '''
+        def ceil_fn():
+            return tf.ceil(x)
+        
+        def floor_fn():
+            return tf.floor(x)
+
+        
         if self.rounding_method == 'nearest':
             rounded = tf.rint(x)
         elif self.rounding_method == 'down':
             rounded = tf.floor(x)
         elif self.rounding_method == 'stochastic':
-            if K.eval(tf.greater(tf.reduce_mean(x-tf.floor(x)), 0.5)):
-                rounded = tf.ceil(x)
-            else:
-                rounded = tf.floor(x)
+            rounded=tf.cond(tf.greater(tf.reduce_mean(x-tf.floor(x)), 0.5), ceil_fn, floor_fn)
+        elif self.rounding_method == 'zero':
+            neg_alter=tf.add(tf.multiply(tf.cast(tf.less(x,0),'float32'),-2.0),1.0)
+            rounded=tf.multiply(tf.floor(tf.multiply(x,neg_alter)),neg_alter)
         else:
-            print('Wrong Rounding Type\nChoose between \'nearest\' , \'down\', \'stochastic\' ')
+            print('Wrong Rounding Type\nChoose between \'nearest\' , \'down\', \'zero\', \'stochastic\' ')
             
         rounded_through = x + K.stop_gradient(rounded - x)
         return rounded_through

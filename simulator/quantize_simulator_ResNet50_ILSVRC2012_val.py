@@ -9,7 +9,7 @@ evaluate quantized testing result with custom Keras quantize layer
 
 import keras
 from keras.utils import multi_gpu_model
-from models.resnet50 import QuantizedResNet50, preprocess_input
+from models.resnet50 import QuantizedResNet50, QuantizedResNet50FusedBN, preprocess_input
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top5_acc
@@ -41,6 +41,16 @@ model = QuantizedResNet50(weights='../../resnet50_weights_tf_dim_ordering_tf_ker
                           rounding_method='nearest',
                           batch_size=batch_size,
                           quant_mode='hybrid')
+
+
+#model = QuantizedResNet50FusedBN(weights='../../resnet50_weights_tf_dim_ordering_tf_kernels_fused_BN.h5', 
+#                          nbits=20,
+#                          fbits=10, 
+#                          rounding_method='nearest',
+#                          batch_size=batch_size,
+#                          quant_mode='hybrid')
+
+
 #model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
 
 model.summary()

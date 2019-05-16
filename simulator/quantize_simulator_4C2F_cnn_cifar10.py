@@ -25,7 +25,8 @@ from approximation.estimate import comp_num_estimate
 #%%
 # model setup
 
-weight_name='../../cifar10_4C2F_weight.h5'
+#weight_name='../../cifar10_4C2F_weight.h5'
+weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
 batch_size=25
 
 

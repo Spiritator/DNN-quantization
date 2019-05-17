@@ -22,6 +22,7 @@ from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
 from metrics.FT_metrics import FT_metric_setup,acc_loss, relative_acc, pred_miss, top2_pred_miss, pred_vary_10, pred_vary_20
 from approximation.estimate import comp_num_estimate
+from inference.evaluate import evaluate_FT
 
 #%%
 # model setup
@@ -60,12 +61,14 @@ x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_
 # view test result
 t = time.time()
 
-test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+#test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
+test_result = evaluate_FT('lenet',prediction=prediction,test_label=y_test,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20])
 
 t = time.time()-t
 print('\nruntime: %f s'%t)
-for i in range(len(test_result)):
-    print('Test %s\t:'%model.metrics_names[i], test_result[i])
+for key in test_result.keys():
+    print('Test %s\t:'%key, test_result[key])
 
 computaion_esti=comp_num_estimate(model)
 print('\nTotal # of computations:', computaion_esti['total_MAC'])
@@ -75,7 +78,7 @@ print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
 # draw confusion matrix
 
 print('\n')
-prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
+#prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
 prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)

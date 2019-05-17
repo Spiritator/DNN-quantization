@@ -12,18 +12,16 @@ import keras.backend as K
 import tensorflow as tf
 import numpy as np
 
-# score of original floating-point fault free NN
-lenet5_mnist_stat=[0.025439078912439465,0.9920999966561794,0.9986999993026257]
-C4F2fusedBN_cifar10_stat=[0.391714577046223,0.8702999973297119,0.9513999938964843]
-mobilenet_imagenet_stat=[1.6203491767287255,0.6226999995172023,0.8393599996805191]
-mobilenet_fusedBN_imagenet_stat=[1.47549153089523,0.625499997138977,0.843499995470047]
-resnet50_imagenet_stat=[1.35314666219651,0.680959999883174,0.883000002408027]
-resnet50_fusedBN_imagenet_stat=[1.3531466766715,0.680959999883174,0.883000002408027]
 
 def FT_metric_setup(model,fuseBN=None,setsize=50,score=None,fault_free_pred=None):
-    global ff_score
-    global ff_pred
-    
+    # score of original floating-point fault free NN
+    lenet5_mnist_stat=[0.025439078912439465,0.9920999966561794,0.9986999993026257]
+    C4F2fusedBN_cifar10_stat=[0.391714577046223,0.8702999973297119,0.9513999938964843]
+    mobilenet_imagenet_stat=[1.6203491767287255,0.6226999995172023,0.8393599996805191]
+    mobilenet_fusedBN_imagenet_stat=[1.47549153089523,0.625499997138977,0.843499995470047]
+    resnet50_imagenet_stat=[1.35314666219651,0.680959999883174,0.883000002408027]
+    resnet50_fusedBN_imagenet_stat=[1.3531466766715,0.680959999883174,0.883000002408027]
+
     if not isinstance(fuseBN,bool) and fuseBN is not None:
         raise ValueError('Augment fusedBN is a indicator for whether the model is fused BN or not. Please use bool type.')
         
@@ -73,36 +71,38 @@ def FT_metric_setup(model,fuseBN=None,setsize=50,score=None,fault_free_pred=None
         ff_score=score
     if fault_free_pred is not None:
         ff_pred=fault_free_pred
+        
+    return ff_score,ff_pred
 
-def acc_loss(y_true,y_pred):
+def acc_loss(y_true,y_pred,ff_score):
     pred_acc=K.mean(K.equal(K.argmax(y_true, axis=-1),K.argmax(y_pred, axis=-1)))
     return K.clip(tf.subtract(ff_score[1],pred_acc),0.0,None)
 
-def relative_acc(y_true,y_pred):
+def relative_acc(y_true,y_pred,ff_score):
     pred_acc=K.mean(K.equal(K.argmax(y_true, axis=-1),K.argmax(y_pred, axis=-1)))
     return K.clip(tf.divide(pred_acc,ff_score[1]),0.0,1.0)
 
-def pred_miss(y_true,y_pred):
+def pred_miss(y_true,y_pred,ff_pred):
     return tf.subtract(1.0,K.mean(K.equal(K.argmax(y_true, axis=-1),K.argmax(ff_pred, axis=-1))))
 
-def top2_pred_miss(y_true,y_pred):
+def top2_pred_miss(y_true,y_pred,ff_pred):
     return tf.subtract(1.0,K.mean(K.in_top_k(y_pred, K.argmax(ff_pred, axis=-1), 2), axis=-1))
 
-def top3_pred_miss(y_true,y_pred):
+def top3_pred_miss(y_true,y_pred,ff_pred):
     return tf.subtract(1.0,K.mean(K.in_top_k(y_pred, K.argmax(ff_pred, axis=-1), 3), axis=-1))
 
-def top5_pred_miss(y_true,y_pred):
+def top5_pred_miss(y_true,y_pred,ff_pred):
     return tf.subtract(1.0,K.mean(K.in_top_k(y_pred, K.argmax(ff_pred, axis=-1), 5), axis=-1))
 
-def pred_vary_10(y_true,y_pred):
-    ff_indices=K.concatenate([np.reshape(np.arange(y_pred.shape.dims[0].value),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
+def pred_vary_10(y_true,y_pred,ff_pred):
+    ff_indices=K.concatenate([np.reshape(np.arange(y_pred.shape[0]),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
     ff_pred_class=tf.gather_nd(ff_pred,ff_indices)
-    return K.greater(K.abs(tf.divide(tf.subtract(y_pred,ff_pred_class),ff_pred_class)),0.1)
+    return K.greater(K.abs(tf.divide(tf.subtract(K.max(y_pred,axis=-1),ff_pred_class),ff_pred_class)),0.1)
 
-def pred_vary_20(y_true,y_pred):
-    ff_indices=K.concatenate([np.reshape(np.arange(y_pred.shape.dims[0].value),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
+def pred_vary_20(y_true,y_pred,ff_pred):
+    ff_indices=K.concatenate([np.reshape(np.arange(y_pred.shape[0]),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
     ff_pred_class=tf.gather_nd(ff_pred,ff_indices)
-    return K.greater(K.abs(tf.divide(tf.subtract(y_pred,ff_pred_class),ff_pred_class)),0.2)
+    return K.greater(K.abs(tf.divide(tf.subtract(K.max(y_pred,axis=-1),ff_pred_class),ff_pred_class)),0.2)
     
 
     

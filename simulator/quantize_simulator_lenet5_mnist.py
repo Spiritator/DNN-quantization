@@ -62,8 +62,9 @@ x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_
 t = time.time()
 
 #test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+from keras.losses import categorical_crossentropy
 prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
-test_result = evaluate_FT('lenet',prediction=prediction,test_label=y_test,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20])
+test_result = evaluate_FT('lenet',prediction=prediction,test_label=y_test,loss_function=categorical_crossentropy,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20])
 
 t = time.time()-t
 print('\nruntime: %f s'%t)

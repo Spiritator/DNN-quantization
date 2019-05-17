@@ -11,11 +11,14 @@ import inspect
 from metrics.FT_metrics import FT_metric_setup
 import keras.backend as K
 from keras.metrics import categorical_accuracy
+import tensorflow as tf
 
-def evaluate_FT(model_name,prediction,test_label,metrics,fuseBN=None,setsize=50,score=None,fault_free_pred=None):
+def evaluate_FT(model_name,prediction,test_label,loss_function,metrics,fuseBN=None,setsize=50,score=None,fault_free_pred=None):
     ff_score,ff_pred=FT_metric_setup(model_name,fuseBN=fuseBN,setsize=setsize,score=score,fault_free_pred=fault_free_pred)
     
     test_result=dict()
+    
+    test_result['loss']=K.eval(K.mean(loss_function(tf.Variable(test_label),tf.Variable(prediction))))
     
     for metric in metrics:
         if metric in ('accuracy', 'acc'):

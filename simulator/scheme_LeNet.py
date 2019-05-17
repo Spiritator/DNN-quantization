@@ -9,7 +9,7 @@ An example of using inference scheme to arange analysis and save result.
 
 from inference.scheme import inference_scheme
 from models.model_library import quantized_lenet5
-from metrics.topk_metrics import top2_acc,top5_acc
+from metrics.topk_metrics import top2_acc
 
 result_save_file='../../test_result/mnist_lenet5_hybrid.csv'
 weight_name='../../mnist_lenet5_weight.h5'

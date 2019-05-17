@@ -8,6 +8,8 @@ metirc for fault tolerance analysis
 """
 
 from keras import metrics
+import keras.backend as K
+import tensorflow as tf
 import numpy as np
 
 # score of original floating-point fault free NN
@@ -22,7 +24,7 @@ def FT_metric_setup(model,fuseBN=None,setsize=50,score=None,fault_free_pred=None
     global ff_score
     global ff_pred
     
-    if not isinstance(fuseBN,bool) or not None:
+    if not isinstance(fuseBN,bool) and fuseBN is not None:
         raise ValueError('Augment fusedBN is a indicator for whether the model is fused BN or not. Please use bool type.')
         
     if not isinstance(model,str):
@@ -72,5 +74,35 @@ def FT_metric_setup(model,fuseBN=None,setsize=50,score=None,fault_free_pred=None
     if fault_free_pred is not None:
         ff_pred=fault_free_pred
 
-#def acc_loss0(y_true,y_pred):
+def acc_loss(y_true,y_pred):
+    pred_acc=K.mean(K.equal(K.argmax(y_true, axis=-1),K.argmax(y_pred, axis=-1)))
+    return K.clip(tf.subtract(ff_score[1],pred_acc),0.0,None)
+
+def relative_acc(y_true,y_pred):
+    pred_acc=K.mean(K.equal(K.argmax(y_true, axis=-1),K.argmax(y_pred, axis=-1)))
+    return K.clip(tf.divide(pred_acc,ff_score[1]),0.0,1.0)
+
+def pred_miss(y_true,y_pred):
+    return tf.subtract(1.0,K.mean(K.equal(K.argmax(y_true, axis=-1),K.argmax(ff_pred, axis=-1))))
+
+def top2_pred_miss(y_true,y_pred):
+    return tf.subtract(1.0,K.mean(K.in_top_k(y_pred, K.argmax(ff_pred, axis=-1), 2), axis=-1))
+
+def top3_pred_miss(y_true,y_pred):
+    return tf.subtract(1.0,K.mean(K.in_top_k(y_pred, K.argmax(ff_pred, axis=-1), 3), axis=-1))
+
+def top5_pred_miss(y_true,y_pred):
+    return tf.subtract(1.0,K.mean(K.in_top_k(y_pred, K.argmax(ff_pred, axis=-1), 5), axis=-1))
+
+def pred_vary_10(y_true,y_pred):
+    ff_indices=K.concatenate([np.reshape(np.arange(y_pred.shape.dims[0].value),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
+    ff_pred_class=tf.gather_nd(ff_pred,ff_indices)
+    return K.greater(K.abs(tf.divide(tf.subtract(y_pred,ff_pred_class),ff_pred_class)),0.1)
+
+def pred_vary_20(y_true,y_pred):
+    ff_indices=K.concatenate([np.reshape(np.arange(y_pred.shape.dims[0].value),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
+    ff_pred_class=tf.gather_nd(ff_pred,ff_indices)
+    return K.greater(K.abs(tf.divide(tf.subtract(y_pred,ff_pred_class),ff_pred_class)),0.2)
+    
+
     

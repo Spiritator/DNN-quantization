@@ -20,6 +20,7 @@ from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
+from metrics.FT_metrics import FT_metric_setup,acc_loss, relative_acc, pred_miss, top2_pred_miss, pred_vary_10, pred_vary_20
 from approximation.estimate import comp_num_estimate
 
 #%%
@@ -42,6 +43,8 @@ model.load_weights(weight_name)
 print('orginal weight loaded')
 
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
+#FT_metric_setup('lenet')
+#model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20])
 
 # multi GPU
 #parallel_model = multi_gpu_model(model, gpus=2)
@@ -61,9 +64,8 @@ test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
 
 t = time.time()-t
 print('\nruntime: %f s'%t)
-print('\nTest loss:', test_result[0])
-print('Test top1 accuracy:', test_result[1])
-print('Test top2 accuracy:', test_result[2])
+for i in range(len(test_result)):
+    print('Test %s\t:'%model.metrics_names[i], test_result[i])
 
 computaion_esti=comp_num_estimate(model)
 print('\nTotal # of computations:', computaion_esti['total_MAC'])

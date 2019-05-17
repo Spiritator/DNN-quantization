@@ -93,25 +93,24 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         t = time.time()-t
         print('evaluate done')
         print('\nruntime: %f s'%t)        
-        print('\nTest loss:', test_result[0])
-        for i in range(1,len(test_result)):
-            print('Test metric %d :'%i, test_result[i])
+        for i in range(len(test_result)):
+            print('Test %s\t:'%model.metrics_names[i], test_result[i])
             
         if scheme_num == 0:     
             with open(result_save_file, 'w', newline='') as csvfile:
-                fieldnames=['loss']
-                test_result_dict={'loss':test_result[0]}
-                for i in range(1,len(test_result)):
-                    fieldnames.append('metric %d'%i)
-                    test_result_dict['metric %d'%i]=test_result[i]
+                fieldnames=list()
+                test_result_dict=dict()
+                for i in range(len(test_result)):
+                    fieldnames.append(model.metrics_names[i])
+                    test_result_dict[model.metrics_names[i]]=test_result[i]
                 writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerow(test_result_dict)
         else:
             with open(result_save_file, 'a', newline='') as csvfile:
-                    test_result_dict={'loss':test_result[0]}
-                    for i in range(1,len(test_result)):
-                        test_result_dict['metric %d'%i]=test_result[i]
+                    test_result_dict=dict()
+                    for i in range(len(test_result)):
+                        test_result_dict[model.metrics_names[i]]=test_result[i]
                     writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow(test_result_dict)
                     

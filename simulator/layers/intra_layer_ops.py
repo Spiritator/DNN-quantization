@@ -394,7 +394,7 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     
 def DistributedConv2D(x, kernel, splits, strides=(1, 1), padding='valid',
            data_format=None, dilation_rate=(1, 1)):
-    """2D convolution.
+    """Distributed 2D convolution.
 
     # Arguments
         x: Tensor or variable.

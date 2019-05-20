@@ -39,9 +39,7 @@ def exchange_distributed_conv(model,target_layer_num,splits,fault_dict_conversio
             
             x = QuantizedDistributedConv2D(filters=original_layer.filters,
                                            splits=splits_tmp,
-                                           nb=original_layer.nb,
-                                           fb=original_layer.fb,
-                                           rounding_method=original_layer.rounding_method,
+                                           quantizers=original_layer.quantizer,
                                            kernel_size=original_layer.kernel_size,
                                            padding=original_layer.padding,
                                            strides=original_layer.strides,

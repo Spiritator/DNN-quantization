@@ -12,10 +12,10 @@ import keras.backend as K
 from keras.utils import multi_gpu_model
 from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
-from metrics.topk_metrics import *
+from inference.evaluate import evaluate_FT
 import time
 
-def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, show_summary=False, multi_gpu=False, gpu_num=2):
+def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, FT_evaluate=False, FT_augment=None, show_summary=False, multi_gpu=False, gpu_num=2):
     """Take scheme as input and run different setting of inference automaticly. Write the results into a csv file.
 
     # Arguments
@@ -26,6 +26,8 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         result_save_file: String. The file and directory to the result csv file.
         weight_load: Bool. Need load weight proccess outside model_func or not.
         weight_name: String. The weight file to load. (if weight_load is True)
+        FT_evaluate: Bool. Doing fault tolerance analysis or not.
+        FT_augment: Dictionary. The augments for fault tolerance analysis. (if FT_evaluate is True)
         multi_gpu: Bool. Using multi GPU inference or not.
         gpu_num: Integer. The number of GPUs in your system setup. (for multi_gpu = True only)
 
@@ -81,34 +83,64 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         
         if multi_gpu:
             if datagen is None:
-                test_result = parallel_model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
+                if FT_evaluate:
+                    prediction = parallel_model.predict(x_test, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
+                    test_result = evaluate_FT(model_name=FT_augment['model_name'],prediction=prediction,test_label=y_test,loss_function=FT_augment['loss_function'],metrics=FT_augment['metrics'])
+                else:
+                    test_result = parallel_model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
             else:
-                test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
+                if FT_evaluate:
+                    prediction = parallel_model.predict_generator(datagen, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
+                    test_result = evaluate_FT(model_name=FT_augment['model_name'],prediction=prediction,test_label=datagen.classes,loss_function=FT_augment['loss_function'],metrics=FT_augment['metrics'])
+                else:
+                    test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
         else:
             if datagen is None:
-                test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
+                if FT_evaluate:
+                    prediction = model.predict(x_test, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
+                    test_result = evaluate_FT(model_name=FT_augment['model_name'],prediction=prediction,test_label=y_test,loss_function=FT_augment['loss_function'],metrics=FT_augment['metrics'])
+                else:
+                    test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
             else:
-                test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
+                if FT_evaluate:
+                    prediction = model.predict_generator(datagen, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
+                    test_result = evaluate_FT(model_name=FT_augment['model_name'],prediction=prediction,test_label=datagen.classes,loss_function=FT_augment['loss_function'],metrics=FT_augment['metrics'])
+                else:
+                    test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
         
         t = time.time()-t
         print('evaluate done')
         print('\nruntime: %f s'%t)        
-        for i in range(len(test_result)):
-            print('Test %s\t:'%model.metrics_names[i], test_result[i])
+        
+        if FT_evaluate:
+            for key in test_result.keys():
+                print('Test %s\t:'%key, test_result[key])
+        else:
+            for i in range(len(test_result)):
+                print('Test %s\t:'%model.metrics_names[i], test_result[i])
             
         if scheme_num == 0:     
             with open(result_save_file, 'w', newline='') as csvfile:
                 fieldnames=list()
                 test_result_dict=dict()
-                for i in range(len(test_result)):
-                    fieldnames.append(model.metrics_names[i])
-                    test_result_dict[model.metrics_names[i]]=test_result[i]
+                if FT_evaluate:
+                    for key in test_result.keys():
+                        fieldnames.append(key)
+                        test_result_dict[key]=test_result[key]
+                else:
+                    for i in range(len(test_result)):
+                        fieldnames.append(model.metrics_names[i])
+                        test_result_dict[model.metrics_names[i]]=test_result[i]
                 writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerow(test_result_dict)
         else:
             with open(result_save_file, 'a', newline='') as csvfile:
-                    test_result_dict=dict()
+                test_result_dict=dict()
+                if FT_evaluate:
+                    for key in test_result.keys():
+                        test_result_dict[key]=test_result[key]
+                else:
                     for i in range(len(test_result)):
                         test_result_dict[model.metrics_names[i]]=test_result[i]
                     writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -117,6 +149,6 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
             
         K.clear_session()
                             
-        print('\n-==============================================\n')
+        print('\n===============================================\n')
 
 

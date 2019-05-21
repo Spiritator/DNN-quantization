@@ -42,9 +42,9 @@ def call_model():
 # test
 compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
-dataset_augment={'dataset':'mnist'}
+dataset_augment={'dataset':'cifar10'}
 
-FT_augment={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20]}    
+FT_augment={'model_name':'4c2f','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20]}    
 
 for fr in fault_rate_list:
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')

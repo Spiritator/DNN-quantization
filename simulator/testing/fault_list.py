@@ -132,6 +132,43 @@ def fault_num_gen_wght(data_shape,fault_rate,model_word_length):
     fault_num=[int(np.prod(shapes) * model_word_length * fault_rate) for shapes in data_shape]
     return fault_num 
 
+def get_model_total_bits(model,batch_size,model_word_length):
+    model_depth=len(model.layers)
+    total_ifmap_bits=0
+    total_ofmap_bits=0
+    total_weight_bits=0
+    
+    for layer_num in range(1,model_depth):
+        layer=model.layers[layer_num]
+        layer_input_shape=layer.input_shape
+        layer_output_shape=layer.output_shape
+        layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
+        
+        if len(layer_weight_shape)==0:
+            continue
+        
+        if isinstance(layer_input_shape,list):
+            for i in range(len(layer_input_shape)):
+                bits_tmp=int(np.prod(layer_input_shape[i][1:]) * batch_size * model_word_length)
+                total_ifmap_bits+=bits_tmp
+        else:
+            bits_tmp=int(np.prod(layer_input_shape[1:]) * batch_size * model_word_length)
+            total_ifmap_bits+=bits_tmp
+            
+        if isinstance(layer_output_shape,list):
+            for i in range(len(layer_output_shape)):
+                bits_tmp=int(np.prod(layer_output_shape[i][1:]) * batch_size * model_word_length)
+                total_ofmap_bits+=bits_tmp
+        else:
+            bits_tmp=int(np.prod(layer_output_shape[1:]) * batch_size * model_word_length)
+            total_ofmap_bits+=bits_tmp
+            
+        for i in range(len(layer_weight_shape)):
+            bits_tmp=int(np.prod(layer_weight_shape[i][1:]) * batch_size * model_word_length)
+            total_weight_bits+=bits_tmp
+            
+    return total_ifmap_bits,total_ofmap_bits,total_weight_bits
+
 def fault_num_gen_model(model,fault_rate,batch_size,model_word_length):
     model_depth=len(model.layers)
     ifmap_param_bits=[0 for _ in range(model_depth)]

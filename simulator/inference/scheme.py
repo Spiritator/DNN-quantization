@@ -143,8 +143,8 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                 else:
                     for i in range(len(test_result)):
                         test_result_dict[model.metrics_names[i]]=test_result[i]
-                    writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
-                    writer.writerow(test_result_dict)
+                writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writerow(test_result_dict)
                     
             
         K.clear_session()

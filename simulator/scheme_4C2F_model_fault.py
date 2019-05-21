@@ -8,7 +8,7 @@ An example of using inference scheme to arange analysis and save result.
 """
 
 from inference.scheme import inference_scheme
-from models.model_library import quantized_lenet5
+from models.model_library import quantized_4C2F
 from metrics.topk_metrics import top2_acc
 from metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20
 from keras.losses import categorical_crossentropy
@@ -18,11 +18,11 @@ from testing.fault_list import generate_model_stuck_fault
 #%%
 # setting parameter
 
-result_save_folder='../../test_result/mnist_lenet5_model_fault_rate'
-weight_name='../../mnist_lenet5_weight.h5'
+result_save_folder='../../test_result/cifar10_4C2F_model_fault_rate'
+weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
 test_rounds=200
-model_word_length=8
-model_factorial_bit=3
+model_word_length=16
+model_factorial_bit=12
 batch_size=20
 # memory fault simulation parameter
 fault_rate_list=[1e-9,2e-9,5e-9,1e-8,2e-8,5e-8,1e-7,2e-7,5e-7,1e-6,2e-6,5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
@@ -32,10 +32,10 @@ fault_rate_list=[1e-9,2e-9,5e-9,1e-8,2e-8,5e-8,1e-7,2e-7,5e-7,1e-6,2e-6,5e-6,1e-
 
 # model for get configuration
 def call_model():
-    return quantized_lenet5(nbits=model_word_length,
-                            fbits=model_factorial_bit,
-                            batch_size=batch_size,
-                            quant_mode=None)
+    return quantized_4C2F(nbits=model_word_length,
+                         fbits=model_factorial_bit,
+                         batch_size=batch_size,
+                         quant_mode=None)
 
 
 #%%
@@ -78,6 +78,6 @@ for fr in fault_rate_list:
                               'weight_fault_dict_list':model_weight_fdl})
 
     result_save_file=result_save_folder+'/'+str(fr)+'.csv'
-    inference_scheme(quantized_lenet5, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=True, weight_name=weight_name, FT_evaluate=True, FT_augment=FT_augment)
+    inference_scheme(quantized_4C2F, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=True, weight_name=weight_name, FT_evaluate=True, FT_augment=FT_augment)
 
 

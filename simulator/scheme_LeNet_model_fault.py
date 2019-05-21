@@ -78,6 +78,15 @@ for fr in fault_rate_list:
                               'weight_fault_dict_list':model_weight_fdl})
 
     result_save_file=result_save_folder+'/'+str(fr)+'.csv'
-    inference_scheme(quantized_lenet5, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=True, weight_name=weight_name, FT_evaluate=True, FT_augment=FT_augment)
+    inference_scheme(quantized_lenet5, 
+                     model_augment, 
+                     compile_augment, 
+                     dataset_augment, 
+                     result_save_file, 
+                     weight_load=True, 
+                     weight_name=weight_name, 
+                     FT_evaluate=True, 
+                     FT_augment=FT_augment, 
+                     name_tag='fault rate '+str(fr))
 
 

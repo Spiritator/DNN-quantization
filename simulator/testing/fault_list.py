@@ -222,9 +222,11 @@ def fault_num_gen_model(model,fault_rate,batch_size,model_word_length):
     ofmap_fault_num=int(total_ofmap_bits*fault_rate)
     weight_fault_num=int(total_weight_bits*fault_rate)
     
-    ifmap_fault_list=np.random.randint(total_ifmap_bits,size=ifmap_fault_num)
-    ofmap_fault_list=np.random.randint(total_ofmap_bits,size=ofmap_fault_num)
-    weight_fault_list=np.random.randint(total_weight_bits,size=weight_fault_num)
+    dtind=np.max(np.array([total_ifmap_bits,total_ofmap_bits,total_weight_bits]))
+    
+    ifmap_fault_list=np.random.randint(total_ifmap_bits,size=ifmap_fault_num,dtype=dtind.dtype)
+    ofmap_fault_list=np.random.randint(total_ofmap_bits,size=ofmap_fault_num,dtype=dtind.dtype)
+    weight_fault_list=np.random.randint(total_weight_bits,size=weight_fault_num,dtype=dtind.dtype)
     
     ifmap_fault_num_list=[0]
     ofmap_fault_num_list=[0]

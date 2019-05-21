@@ -20,7 +20,7 @@ from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
-from metrics.FT_metrics import FT_metric_setup,acc_loss, relative_acc, pred_miss, top2_pred_miss, pred_vary_10, pred_vary_20
+from metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, pred_vary_10, pred_vary_20
 from approximation.estimate import comp_num_estimate
 from inference.evaluate import evaluate_FT
 
@@ -44,7 +44,6 @@ model.load_weights(weight_name)
 print('orginal weight loaded')
 
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
-#FT_metric_setup('lenet')
 #model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20])
 
 # multi GPU

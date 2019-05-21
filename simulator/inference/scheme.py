@@ -15,7 +15,7 @@ from utils_tool.dataset_setup import dataset_setup
 from inference.evaluate import evaluate_FT
 import time
 
-def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, FT_evaluate=False, FT_augment=None, show_summary=False, multi_gpu=False, gpu_num=2):
+def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, FT_evaluate=False, FT_augment=None, show_summary=False, multi_gpu=False, gpu_num=2, name_tag=None):
     """Take scheme as input and run different setting of inference automaticly. Write the results into a csv file.
 
     # Arguments
@@ -44,7 +44,9 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         
     
     for scheme_num in range(len(model_augment)):
-        print('Running inference scheme %d/%d'%(scheme_num+1,len(model_augment)))
+        if name_tag is None:
+            name_tag=' '
+        print('Running inference scheme %s %d/%d'%(name_tag,scheme_num+1,len(model_augment)))
         
         print('Building model...')
         

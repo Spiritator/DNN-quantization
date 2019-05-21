@@ -83,7 +83,7 @@ def relative_acc(y_true,y_pred,ff_score):
     return K.clip(tf.divide(pred_acc,ff_score[1]),0.0,1.0)
 
 def pred_miss(y_true,y_pred,ff_pred):
-    return tf.subtract(1.0,K.mean(K.equal(K.argmax(y_true, axis=-1),K.argmax(ff_pred, axis=-1))))
+    return tf.subtract(1.0,K.mean(K.equal(K.argmax(y_pred, axis=-1),K.argmax(ff_pred, axis=-1))))
 
 def top2_pred_miss(y_true,y_pred,ff_pred):
     return tf.subtract(1.0,K.mean(K.in_top_k(y_pred, K.argmax(ff_pred, axis=-1), 2), axis=-1))

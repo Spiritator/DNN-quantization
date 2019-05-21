@@ -328,7 +328,10 @@ class QuantizedBatchNormalization(BatchNormalization):
         super(QuantizedBatchNormalization, self).__init__(**kwargs)
         self.quantizer=quantizers
         self.quant_mode = quant_mode
-        self.weight_sa_fault_injection=weight_sa_fault_injection
+        if (isinstance(weight_sa_fault_injection,list) and len(weight_sa_fault_injection)==2) or weight_sa_fault_injection is None:
+            self.weight_sa_fault_injection=[None, None, None, None]
+        else:            
+            self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
         self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
 

@@ -16,21 +16,28 @@ import tensorflow as tf
 def evaluate_FT(model_name,prediction,test_label,loss_function,metrics,fuseBN=None,setsize=50,score=None,fault_free_pred=None):
     ff_score,ff_pred=FT_metric_setup(model_name,fuseBN=fuseBN,setsize=setsize,score=score,fault_free_pred=fault_free_pred)
     
-    test_result=dict()
+    test_output=list()
+    test_result=['loss']
     
-    test_result['loss']=K.eval(K.mean(loss_function(tf.Variable(test_label),tf.Variable(prediction))))
+    test_output.append(K.mean(loss_function(tf.Variable(test_label),tf.Variable(prediction))))
     
     for metric in metrics:
         if metric in ('accuracy', 'acc'):
-            test_result['accuracy']=K.eval(K.mean(categorical_accuracy(test_label,prediction)))
+            test_output.append(K.mean(categorical_accuracy(test_label,prediction)))
+            test_result.append(metric)
         else:
+            test_result.append(metric.__name__)
             if 'ff_score' in inspect.signature(metric).parameters and 'ff_pred' in inspect.signature(metric).parameters:
-                test_result[metric.__name__]=K.eval(K.mean(metric(test_label,prediction,ff_score,ff_pred)))
+                test_output.append(K.mean(metric(test_label,prediction,ff_score,ff_pred)))
             elif 'ff_score' in inspect.signature(metric).parameters:
-                test_result[metric.__name__]=K.eval(K.mean(metric(test_label,prediction,ff_score)))
+                test_output.append(K.mean(metric(test_label,prediction,ff_score)))
             elif 'ff_pred' in inspect.signature(metric).parameters:
-                test_result[metric.__name__]=K.eval(K.mean(metric(test_label,prediction,ff_pred)))
+                test_output.append(K.mean(metric(test_label,prediction,ff_pred)))
             else:
-                test_result[metric.__name__]=K.eval(K.mean(metric(test_label,prediction)))
-
+                test_output.append(K.mean(metric(test_label,prediction)))
+     
+    test_output=K.eval(K.stack(test_output,axis=0))
+    
+    test_result=dict(zip(test_result,test_output))
+    
     return test_result

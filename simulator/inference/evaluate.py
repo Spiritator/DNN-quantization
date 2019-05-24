@@ -16,25 +16,30 @@ import tensorflow as tf
 def evaluate_FT(model_name,prediction,test_label,loss_function,metrics,fuseBN=None,setsize=50,score=None,fault_free_pred=None):
     ff_score,ff_pred=FT_metric_setup(model_name,fuseBN=fuseBN,setsize=setsize,score=score,fault_free_pred=fault_free_pred)
     
+    test_label_tf=tf.Variable(test_label)
+    prediction_tf=tf.Variable(prediction)
+    ff_score=tf.Variable(ff_score)
+    ff_pred=tf.Variable(ff_pred)
+    
     test_output=list()
     test_result=['loss']
     
-    test_output.append(K.mean(loss_function(tf.Variable(test_label),tf.Variable(prediction))))
+    test_output.append(K.mean(loss_function(test_label_tf,prediction_tf)))
     
     for metric in metrics:
         if metric in ('accuracy', 'acc'):
-            test_output.append(K.mean(categorical_accuracy(test_label,prediction)))
+            test_output.append(K.mean(categorical_accuracy(test_label_tf,prediction_tf)))
             test_result.append(metric)
         else:
             test_result.append(metric.__name__)
             if 'ff_score' in inspect.signature(metric).parameters and 'ff_pred' in inspect.signature(metric).parameters:
-                test_output.append(K.mean(metric(test_label,prediction,ff_score,ff_pred)))
+                test_output.append(K.mean(metric(test_label_tf,prediction_tf,ff_score,ff_pred)))
             elif 'ff_score' in inspect.signature(metric).parameters:
-                test_output.append(K.mean(metric(test_label,prediction,ff_score)))
+                test_output.append(K.mean(metric(test_label_tf,prediction_tf,ff_score)))
             elif 'ff_pred' in inspect.signature(metric).parameters:
-                test_output.append(K.mean(metric(test_label,prediction,ff_pred)))
+                test_output.append(K.mean(metric(test_label_tf,prediction_tf,ff_pred)))
             else:
-                test_output.append(K.mean(metric(test_label,prediction)))
+                test_output.append(K.mean(metric(test_label_tf,prediction_tf)))
      
     test_output=K.eval(K.stack(test_output,axis=0))
     

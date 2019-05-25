@@ -7,6 +7,7 @@ Created on Wed Sep 12 16:39:57 2018
 weight fault injection
 """
 
+import numpy as np
 import tensorflow as tf
 import keras.backend as K
 
@@ -47,13 +48,13 @@ def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,t
     fault_value=tf.cast(fault_value,tf.int32)
     
     if stuck_at=='1':
-        modulator=tf.bitwise.left_shift(1,fault_bit)
+        modulator=np.left_shift(1,fault_bit)
         fault_value=tf.bitwise.bitwise_or(fault_value,modulator)
     elif stuck_at=='0':
-        modulator=-(tf.bitwise.left_shift(1,fault_bit)+1)
+        modulator=-(np.left_shift(1,fault_bit)+1)
         fault_value=tf.bitwise.bitwise_and(fault_value,modulator)
     elif stuck_at=='flip':
-        modulator=tf.bitwise.left_shift(1,fault_bit)
+        modulator=np.left_shift(1,fault_bit)
         fault_value=tf.bitwise.bitwise_xor(fault_value,modulator)
     
     fault_value=tf.cast(fault_value,tf.float32)    
@@ -103,17 +104,26 @@ def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer
     fault_value=quantizer.quantize_1half(original_value)
     fault_value=tf.cast(fault_value,tf.int32)
     
-    modulator=0
+    modulator0=-1
+    modulator1=0
+    modulatorF=0
     for i in range(len(fault_bit)):
         if stuck_at[i]=='1':
-            modulator=tf.bitwise.left_shift(1,fault_bit[i])
-            fault_value=tf.bitwise.bitwise_or(fault_value,modulator)
+            modulator=np.left_shift(1,fault_bit[i])
+            modulator1=np.bitwise_or(modulator1,modulator)
         elif stuck_at[i]=='0':
-            modulator=-(tf.bitwise.left_shift(1,fault_bit[i])+1)
-            fault_value=tf.bitwise.bitwise_and(fault_value,modulator)
+            modulator=-(np.left_shift(1,fault_bit[i])+1)
+            modulator0=np.bitwise_and(modulator0,modulator)
         elif stuck_at[i]=='flip':
-            modulator=tf.bitwise.left_shift(1,fault_bit[i])
-            fault_value=tf.bitwise.bitwise_xor(fault_value,modulator)
+            modulator=np.left_shift(1,fault_bit[i])
+            modulatorF=np.bitwise_xor(modulatorF,modulator)
+    
+    if modulator0 != -1:
+        fault_value=tf.bitwise.bitwise_and(fault_value,modulator0)
+    if modulator1 != 0:
+        fault_value=tf.bitwise.bitwise_or(fault_value,modulator1)
+    if modulatorF != 0:
+        fault_value=tf.bitwise.bitwise_xor(fault_value,modulatorF)
     
     fault_value=tf.cast(fault_value,tf.float32)    
     fault_value=quantizer.quantize_2half(fault_value)
@@ -135,9 +145,6 @@ def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck
     # Returns
         The fault modulator of SA0, SA1 and invert bit respectively.
     """
-    if word_width<=fractional_bits-1:
-        raise ValueError('Not enough word width %d for fractional bits %d'%(word_width,fractional_bits))
-    
     if isinstance(fault_bit,list):
         if any([fault_bit_iter<0 or fault_bit_iter>word_width or not isinstance(fault_bit_iter,int) for fault_bit_iter in fault_bit]):
             raise ValueError('Fault bit must be integer between (include) %d and 0, %d is MSB, 0 is LSB.'%(word_width-1,word_width-1))
@@ -161,29 +168,104 @@ def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck
     if isinstance(fault_bit,list):
         for i in range(len(fault_bit)):
             if stuck_at[i]=='1':
-                modulator=tf.bitwise.left_shift(1,fault_bit[i])
-                modulator1=tf.bitwise.bitwise_or(modulator1,modulator)
+                modulator=np.left_shift(1,fault_bit[i])
+                modulator1=np.bitwise_or(modulator1,modulator)
             elif stuck_at[i]=='0':
-                modulator=-(tf.bitwise.left_shift(1,fault_bit[i])+1)
-                modulator0=tf.bitwise.bitwise_and(modulator0,modulator)
+                modulator=-(np.left_shift(1,fault_bit[i])+1)
+                modulator0=np.bitwise_and(modulator0,modulator)
             elif stuck_at[i]=='flip':
-                modulator=tf.bitwise.left_shift(1,fault_bit[i])
-                modulatorF=tf.bitwise.bitwise_or(modulatorF,modulator)
+                modulator=np.left_shift(1,fault_bit[i])
+                modulatorF=np.bitwise_or(modulatorF,modulator)
     else:
         if stuck_at=='1':
-            modulator1=tf.bitwise.left_shift(1,fault_bit)
+            modulator1=np.left_shift(1,fault_bit)
         elif stuck_at=='0':
-            modulator0=-(tf.bitwise.left_shift(1,fault_bit)+1)
+            modulator0=-(np.left_shift(1,fault_bit)+1)
         elif stuck_at=='flip':
-            modulatorF=tf.bitwise.left_shift(1,fault_bit)
+            modulatorF=np.left_shift(1,fault_bit)
             
-    if modulator0==2**word_width-1:
+    if modulator0==-1:
         modulator0=None
-        
     if modulator1==0:
         modulator1=None
-        
     if modulatorF==0:
         modulatorF=None
     
     return modulator0, modulator1, modulatorF
+
+def generate_tensor_modulator(shape,nb,fb,fault_dict):
+    tensor_modulator0=-np.ones(shape,dtype=np.int32)
+    tensor_modulator1=np.zeros(shape,dtype=np.int32)
+    tensor_modulatorF=np.zeros(shape,dtype=np.int32)
+    
+    inject0=False
+    inject1=False
+    injectF=False
+    
+    for key in fault_dict.keys():
+        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(nb,fb,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'])
+        if modulator0 is not None:
+            tensor_modulator0[key]=modulator0
+            inject0=True
+        if modulator1 is not None:
+            tensor_modulator1[key]=modulator1
+            inject1=True
+        if modulatorF is not None:
+            tensor_modulatorF[key]=modulatorF
+            injectF=True
+            
+    if not inject0:
+        tensor_modulator0=None
+    if not inject1:
+        tensor_modulator1=None
+    if not injectF:
+        tensor_modulatorF=None
+            
+    return [tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+
+def generate_layer_modulator(layer,word_length,fractional_bit,ifmap_fault_dict,ofmap_fault_dict,wght_fault_dict):
+    layer_input_shape=layer.input_shape
+    layer_output_shape=layer.output_shape
+    layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
+    
+    if ifmap_fault_dict is None:
+        ifmap_modulator=None
+    else:
+        ifmap_modulator=generate_tensor_modulator(layer_input_shape,word_length,fractional_bit,ifmap_fault_dict)
+    
+    if ofmap_fault_dict is None:
+        ofmap_modulator=None
+    else:
+        ofmap_modulator=generate_tensor_modulator(layer_output_shape,word_length,fractional_bit,ofmap_fault_dict)
+    wght_modulator=list()
+    for i,shape in enumerate(layer_weight_shape):
+        if wght_fault_dict[i] is None:
+            wght_modulator.append(None)
+        else:
+            wght_modulator.append(generate_tensor_modulator(shape,word_length,fractional_bit,wght_fault_dict[i]))
+    
+    return ifmap_modulator,ofmap_modulator,wght_modulator
+
+def generate_model_modulator(model,word_length,fractional_bit,ifmap_fault_dict_list,ofmap_fault_dict_list,wght_fault_dict_list):
+    model_depth=len(model.layers)
+    model_ifmap_fault_modulator_list=[None for _ in range(model_depth)]
+    model_ofmap_fault_modulator_list=[None for _ in range(model_depth)]
+    model_wght_fault_modulator_list=[[None,None] for _ in range(model_depth)]
+
+    for layer_num in range(1,model_depth):
+        ifmap_modulator,ofmap_modulator,wght_modulator\
+        =generate_layer_modulator(model.layers[layer_num],
+                                  word_length,
+                                  fractional_bit,
+                                  ifmap_fault_dict_list[layer_num],
+                                  ofmap_fault_dict_list[layer_num],
+                                  wght_fault_dict_list[layer_num])
+        
+        model_ifmap_fault_modulator_list[layer_num]=ifmap_modulator
+        model_ofmap_fault_modulator_list[layer_num]=ofmap_modulator
+        model_wght_fault_modulator_list[layer_num]=wght_modulator
+        
+    return model_ifmap_fault_modulator_list,model_ofmap_fault_modulator_list,model_wght_fault_modulator_list
+
+
+

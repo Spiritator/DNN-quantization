@@ -30,7 +30,7 @@ from memory.tile import tile, tile_FC, generate_layer_memory_mapping
 
 weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
 model_word_length=16
-model_factorial_bit=12
+model_fractional_bit=12
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter
@@ -48,7 +48,7 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 
 # model for get configuration
 model=quantized_4C2F(nbits=model_word_length,
-                     fbits=model_factorial_bit,
+                     fbits=model_fractional_bit,
                      rounding_method=rounding_method,
                      batch_size=batch_size,
                      quant_mode=None)
@@ -188,7 +188,7 @@ model_ifmap_fault_dict_list[13],model_ofmap_fault_dict_list[13],model_weight_fau
 
 t = time.time()
 model=quantized_4C2F(nbits=model_word_length,
-                     fbits=model_factorial_bit,
+                     fbits=model_fractional_bit,
                      rounding_method=rounding_method,
                      batch_size=batch_size,
                      quant_mode='hybrid',

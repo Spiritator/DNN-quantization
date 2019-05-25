@@ -22,6 +22,7 @@ from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
 from testing.fault_list import generate_model_stuck_fault
+from testing.fault_core import generate_model_modulator
 from metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, pred_vary_10, pred_vary_20
 from inference.evaluate import evaluate_FT
 
@@ -30,7 +31,7 @@ from inference.evaluate import evaluate_FT
 
 weight_name='../../mnist_lenet5_weight.h5'
 model_word_length=8
-model_factorial_bit=4
+model_fractional_bit=4
 rounding_method='nearest'
 batch_size=20
 fault_rate=0.0001
@@ -40,7 +41,7 @@ fault_rate=0.0001
 
 # model for get configuration
 model=quantized_lenet5(nbits=model_word_length,
-                       fbits=model_factorial_bit,
+                       fbits=model_fractional_bit,
                        rounding_method=rounding_method,
                        batch_size=batch_size,
                        quant_mode=None)
@@ -53,20 +54,28 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                             bit_loc_pois_lam=None,
                             fault_type='flip')
 
+model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+=generate_model_modulator(model,
+                          model_word_length,
+                          model_fractional_bit,
+                          model_ifmap_fault_dict_list, 
+                          model_ofmap_fault_dict_list, 
+                          model_weight_fault_dict_list)
+
 # FC layer no fault
-model_weight_fault_dict_list[6]=[None,None]
-model_weight_fault_dict_list[7]=[None,None]
-model_ifmap_fault_dict_list[6]=None
-model_ifmap_fault_dict_list[7]=None
-model_ofmap_fault_dict_list[6]=None
-model_ofmap_fault_dict_list[7]=None
+#model_weight_fault_dict_list[6]=[None,None]
+#model_weight_fault_dict_list[7]=[None,None]
+#model_ifmap_fault_dict_list[6]=None
+#model_ifmap_fault_dict_list[7]=None
+#model_ofmap_fault_dict_list[6]=None
+#model_ofmap_fault_dict_list[7]=None
 
 #%%
 # model setup
 
 t = time.time()
 model=quantized_lenet5(nbits=model_word_length,
-                       fbits=model_factorial_bit,
+                       fbits=model_fractional_bit,
                        rounding_method=rounding_method,
                        batch_size=batch_size,
                        quant_mode='hybrid',

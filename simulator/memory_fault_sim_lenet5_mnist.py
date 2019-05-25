@@ -30,7 +30,7 @@ from memory.tile import tile, tile_FC, generate_layer_memory_mapping
 
 weight_name='../../mnist_lenet5_weight.h5'
 model_word_length=8
-model_factorial_bit=4
+model_fractional_bit=4
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter
@@ -49,7 +49,7 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 
 # model for get configuration
 model=quantized_lenet5(nbits=model_word_length,
-                       fbits=model_factorial_bit,
+                       fbits=model_fractional_bit,
                        rounding_method=rounding_method,
                        batch_size=batch_size,
                        quant_mode=None)
@@ -115,7 +115,7 @@ model_ifmap_fault_dict_list[7],model_ofmap_fault_dict_list[7],model_weight_fault
 
 t = time.time()
 model=quantized_lenet5(nbits=model_word_length,
-                       fbits=model_factorial_bit,
+                       fbits=model_fractional_bit,
                        rounding_method=rounding_method,
                        batch_size=batch_size,
                        quant_mode='hybrid',

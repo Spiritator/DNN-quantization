@@ -21,7 +21,7 @@ result_save_file='../../test_result/mnist_lenet5_mem_fault.csv'
 weight_name='../../mnist_lenet5_weight.h5'
 test_rounds=100
 model_word_length=8
-model_factorial_bit=3
+model_fractional_bit=3
 batch_size=20
 # memory fault simulation parameter
 fault_rate=0.0001
@@ -39,7 +39,7 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 
 # model for get configuration
 ref_model=quantized_lenet5(nbits=model_word_length,
-                       fbits=model_factorial_bit,
+                       fbits=model_fractional_bit,
                        batch_size=batch_size,
                        quant_mode=None)
 
@@ -127,7 +127,7 @@ model_augment=list()
 for i in range(test_rounds):
     model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=gen_model_mem_fault_dict()
     model_augment.append({'nbits':model_word_length,
-                          'fbits':model_factorial_bit,
+                          'fbits':model_fractional_bit,
                           'rounding_method':'nearest',
                           'batch_size':batch_size,
                           'quant_mode':'hybrid',

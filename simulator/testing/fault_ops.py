@@ -11,7 +11,7 @@ inject stuck at fault during model build phase
 import tensorflow as tf
 import keras.backend as K
 import numpy as np
-from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_stuck_at_fault_modulator
+from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_stuck_at_fault_modulator, generate_tensor_modulator
 
 def check_fault_dict(data, fault_dict):
     """Check the fault dictionary is valid for the data or not.
@@ -24,8 +24,17 @@ def check_fault_dict(data, fault_dict):
         if any([key[i]>=data.shape[i] for i in range(len(key))]):
             raise ValueError('fault location %s is out of data index with shape %s'%(key,data.shape))
             
-#        if len(fault_dict[key]['fault_type'])!=len(fault_dict[key]['SA_bit']):
-#            raise ValueError('fault location %s has different number of fault types and fault bits'%key)
+def check_fault_modulator(data, fault_modulator):
+    """Check the fault dictionary is valid for the data or not.
+    If not, raise error.
+    """
+    if not isinstance(fault_modulator,list) or len(fault_modulator)!=3:
+        raise ValueError('augment fault_modulator must be datatype list and length 3. [modulator0, modulator1, modulatorF]')
+        
+    for i in range(3):
+        if fault_modulator[i] is not None:
+            if data.shape != fault_modulator[i].shape:
+                raise ValueError('fault modulator must have the same shape as data. Expect %s but get %s'%(str(data.shape,str(fault_modulator[i].shape))))
 
 
 def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
@@ -52,12 +61,12 @@ def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
             
     return data
 
-def inject_layer_sa_fault_tensor(data_in, fault_dict, quantizer):
+def inject_layer_sa_fault_tensor(data, fault_list, quantizer):
     """Inject fault dictionary to Tensor.
 
     # Arguments
-        data_in: Tensor. The Tensor to be injected fault.
-        fault_dict: Dictionary. The dictionary contain fault list information.
+        data: Tensor. The Tensor to be injected fault.
+        fault_list: Dictionary or List. The dictionary contain fault list information. Or the list of fault modulator [modulator0, modulator1, modulatorF].
         quantizer: Class. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
@@ -66,54 +75,25 @@ def inject_layer_sa_fault_tensor(data_in, fault_dict, quantizer):
     # Returns
         The faulty Tensor.
     """
-    data=data_in
-    if isinstance(fault_dict,dict):
-        shape=data.shape
-    elif isinstance(fault_dict,list):
-        # for the bypass method of keras flatten layer batch number bug
-        shape=fault_dict[1]
-        fault_dict=fault_dict[0]
-    else:
-        raise TypeError('wrong type of fault list being injected. The fault list is either dict (normal injection) or list (index 0 fault list, index 1 the data shape of being injected tensor.)')
-
-        
-    check_fault_dict(data,fault_dict)
-    fault_indices=[np.zeros((1,len(shape)),dtype='int32') for i in range(3)]
-    fault_modulators=[tf.constant([0],dtype='int32') for i in range(3)]
-    
-    for key in fault_dict.keys():
-        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(quantizer.nb,quantizer.fb,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'])
-        if modulator0 is not None:
-            fault_indices[0]=np.append(fault_indices[0],[key],axis=0)
-            fault_modulators[0]=tf.concat([fault_modulators[0],[modulator0]],0)
-        if modulator1 is not None:
-            fault_indices[1]=np.append(fault_indices[1],[key],axis=0)
-            fault_modulators[1]=tf.concat([fault_modulators[1],[modulator1]],0)
-        if modulatorF is not None:
-            fault_indices[2]=np.append(fault_indices[2],[key],axis=0)
-            fault_modulators[2]=tf.concat([fault_modulators[2],[modulatorF]],0)
-    
-    for i in range(3):
-        fault_indices[i]=fault_indices[i][1:]
-        fault_modulators[i]=tf.slice(fault_modulators[i],[1],[len(fault_indices[i])])
-        fault_indices[i]=tf.constant(fault_indices[i],dtype='int32')
+    if isinstance(fault_list,dict):
+        check_fault_dict(data,fault_list)
+        tensor_modulator0,tensor_modulator1,tensor_modulatorF=generate_tensor_modulator(data.shape,quantizer.nb,quantizer.fb,fault_list)
+    elif isinstance(fault_list,list):
+        check_fault_modulator(data, fault_list)
+        tensor_modulator0=fault_list[0]
+        tensor_modulator1=fault_list[1]
+        tensor_modulatorF=fault_list[2]
         
         
     data=quantizer.quantize_1half(data)
     data=tf.cast(data,tf.int32)
     
-    if fault_indices[0].shape[0]>0:
-        modulater_tensor0=tf.Variable(np.ones(shape,dtype='int32')*(-1),dtype='int32')
-        modulater_tensor0=tf.scatter_nd_update(modulater_tensor0,fault_indices[0],fault_modulators[0])
-        data=tf.bitwise.bitwise_and(data,modulater_tensor0)
-    if fault_indices[1].shape[0]>0:
-        modulater_tensor1=tf.Variable(np.zeros(shape,dtype='int32'))
-        modulater_tensor1=tf.scatter_nd_update(modulater_tensor1,fault_indices[1],fault_modulators[1])
-        data=tf.bitwise.bitwise_or(data,modulater_tensor1)
-    if fault_indices[2].shape[0]>0:
-        modulater_tensorF=tf.Variable(np.zeros(shape,dtype='int32'))
-        modulater_tensorF=tf.scatter_nd_update(modulater_tensorF,fault_indices[2],fault_modulators[2])
-        data=tf.bitwise.bitwise_xor(data,modulater_tensorF)        
+    if tensor_modulator0 is not None:
+        data=tf.bitwise.bitwise_and(data,tensor_modulator0)
+    if tensor_modulator1 is not None:
+        data=tf.bitwise.bitwise_or(data,tensor_modulator1)
+    if tensor_modulatorF is not None:
+        data=tf.bitwise.bitwise_xor(data,tensor_modulatorF)        
 
     data=tf.cast(data,tf.float32)    
     data=quantizer.quantize_2half(data)

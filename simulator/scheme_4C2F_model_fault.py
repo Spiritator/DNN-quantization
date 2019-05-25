@@ -13,6 +13,7 @@ from metrics.topk_metrics import top2_acc
 from metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20
 from keras.losses import categorical_crossentropy
 from testing.fault_list import generate_model_stuck_fault
+from testing.fault_core import generate_model_modulator
 
 
 #%%
@@ -22,7 +23,7 @@ result_save_folder='../../test_result/cifar10_4C2F_model_fault_rate'
 weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
 test_rounds=200
 model_word_length=16
-model_factorial_bit=12
+model_fractional_bit=12
 batch_size=20
 # memory fault simulation parameter
 fault_rate_list=[5e-8,1e-7,2e-7,5e-7,1e-6,2e-6,5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
@@ -33,7 +34,7 @@ fault_rate_list=[5e-8,1e-7,2e-7,5e-7,1e-6,2e-6,5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-
 # model for get configuration
 def call_model():
     return quantized_4C2F(nbits=model_word_length,
-                         fbits=model_factorial_bit,
+                         fbits=model_fractional_bit,
                          batch_size=batch_size,
                          quant_mode=None)
 
@@ -68,8 +69,17 @@ for fr in fault_rate_list:
     model_augment=list()
     for i in range(test_rounds):
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
+        
+        model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\
+        =generate_model_modulator(ref_model,
+                                  model_word_length,
+                                  model_fractional_bit,
+                                  model_ifmap_fdl, 
+                                  model_ofmap_fdl, 
+                                  model_weight_fdl)
+        
         model_augment.append({'nbits':model_word_length,
-                              'fbits':model_factorial_bit,
+                              'fbits':model_fractional_bit,
                               'rounding_method':'nearest',
                               'batch_size':batch_size,
                               'quant_mode':'hybrid',

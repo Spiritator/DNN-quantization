@@ -15,6 +15,7 @@ from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top5_acc
 import time
 from testing.fault_list import generate_model_stuck_fault
+from testing.fault_core import generate_model_modulator
 from metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, pred_vary_10, pred_vary_20
 from inference.evaluate import evaluate_FT
 
@@ -24,7 +25,7 @@ img_width, img_height = 224, 224
 class_number=1000
 batch_size=40
 model_word_length=16
-model_factorial_bit=9
+model_fractional_bit=9
 rounding_method='nearest'
 fault_rate=1e-6
 validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_2'
@@ -36,7 +37,7 @@ validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_
 # model for get configuration
 model = QuantizedMobileNetV1FusedBN(weights='../../mobilenet_1_0_224_tf_fused_BN.h5', 
                                     nbits=model_word_length,
-                                    fbits=model_factorial_bit, 
+                                    fbits=model_fractional_bit, 
                                     rounding_method=rounding_method,
                                     batch_size=batch_size,
                                     quant_mode=None)
@@ -49,6 +50,14 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                             bit_loc_distribution='poisson',
                             bit_loc_pois_lam=2)
 
+model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+=generate_model_modulator(model,
+                          model_word_length,
+                          model_fractional_bit,
+                          model_ifmap_fault_dict_list, 
+                          model_ofmap_fault_dict_list, 
+                          model_weight_fault_dict_list)
+
 
 #%%
 # model setup
@@ -59,7 +68,7 @@ t = time.time()
 
 model = QuantizedMobileNetV1FusedBN(weights='../../mobilenet_1_0_224_tf_fused_BN.h5', 
                                     nbits=model_word_length,
-                                    fbits=model_factorial_bit, 
+                                    fbits=model_fractional_bit, 
                                     rounding_method=rounding_method,
                                     batch_size=batch_size,
                                     quant_mode='hybrid',

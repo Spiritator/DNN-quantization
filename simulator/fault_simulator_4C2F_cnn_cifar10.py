@@ -22,15 +22,16 @@ from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
 from testing.fault_list import generate_model_stuck_fault
+from testing.fault_core import generate_model_modulator
 from metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, pred_vary_10, pred_vary_20
 from inference.evaluate import evaluate_FT
 
 #%%
 # setting parameter
 
-weight_name='../../cifar10_4C2F_weight.h5'
-model_word_length=10
-model_factorial_bit=5
+weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
+model_word_length=16
+model_fractional_bit=12
 rounding_method='nearest'
 batch_size=20
 fault_rate=0.0001
@@ -40,7 +41,7 @@ fault_rate=0.0001
 
 # model for get configuration
 model=quantized_4C2F(nbits=model_word_length,
-                     fbits=model_factorial_bit,
+                     fbits=model_fractional_bit,
                      rounding_method=rounding_method,
                      batch_size=batch_size,
                      quant_mode=None)
@@ -50,16 +51,25 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                             fault_rate,
                             batch_size,
                             model_word_length,
-                            bit_loc_distribution='poisson',
+                            bit_loc_distribution='uniform',
                             bit_loc_pois_lam=2)
 
+
+model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+=generate_model_modulator(model,
+                          model_word_length,
+                          model_fractional_bit,
+                          model_ifmap_fault_dict_list, 
+                          model_ofmap_fault_dict_list, 
+                          model_weight_fault_dict_list)
+
 # FC layer no fault
-model_weight_fault_dict_list[10]=[None,None]
-model_weight_fault_dict_list[13]=[None,None]
-model_ifmap_fault_dict_list[10]=None
-model_ifmap_fault_dict_list[13]=None
-model_ofmap_fault_dict_list[10]=None
-model_ofmap_fault_dict_list[13]=None
+#model_weight_fault_dict_list[10]=[None,None]
+#model_weight_fault_dict_list[13]=[None,None]
+#model_ifmap_fault_dict_list[10]=None
+#model_ifmap_fault_dict_list[13]=None
+#model_ofmap_fault_dict_list[10]=None
+#model_ofmap_fault_dict_list[13]=None
 
 
 #%%
@@ -67,7 +77,7 @@ model_ofmap_fault_dict_list[13]=None
 
 t = time.time()
 model=quantized_4C2F(nbits=model_word_length,
-                     fbits=model_factorial_bit,
+                     fbits=model_fractional_bit,
                      rounding_method=rounding_method,
                      batch_size=batch_size,
                      quant_mode='hybrid',

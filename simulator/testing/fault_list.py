@@ -412,7 +412,7 @@ def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,fault_num=N
         
     return fault_dict,fault_num
 
-def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fault_num=None,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
+def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fault_num=None,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
     """Generate the fault dictionary list of a layer base on its shape and with specific distibution type.
 
     # Arguments
@@ -448,7 +448,8 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
     layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
     
     if len(layer_weight_shape)==0:
-        print('    no weight layer Skipped!')
+        if print_detail:
+            print('    no weight layer Skipped!')
         return None, None, [None,None]
     
     
@@ -465,7 +466,8 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
                                                                     bit_loc_pois_lam=bit_loc_pois_lam,
                                                                     fault_type=fault_type,
                                                                     **kwargs)
-    print('    generated layer ifmap %s faults'%(str(layer_ifmap_fault_num)))
+    if print_detail:
+        print('    generated layer ifmap %s faults'%(str(layer_ifmap_fault_num)))
     
     
     # ofmap fault generation
@@ -480,7 +482,8 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
                                                                     bit_loc_pois_lam=bit_loc_pois_lam,
                                                                     fault_type=fault_type,
                                                                     **kwargs)
-    print('    generated layer ofmap %s faults'%(str(layer_ofmap_fault_num)))
+    if print_detail:
+        print('    generated layer ofmap %s faults'%(str(layer_ofmap_fault_num)))
     
     # weight fault generation
     weight_fault_dict,layer_weight_fault_num=gen_fault_dict_list_wght(layer_weight_shape,
@@ -493,12 +496,13 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
                                                                       bit_loc_pois_lam=bit_loc_pois_lam,
                                                                       fault_type=fault_type,
                                                                       **kwargs)
-    print('    generated layer weight %s faults'%(str(layer_weight_fault_num)))
+    if print_detail:
+        print('    generated layer weight %s faults'%(str(layer_weight_fault_num)))
             
     return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 
 
-def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,layer_wise=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
+def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,layer_wise=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
     """Generate the fault dictionary list of a model base on its shape and with specific distibution type.
 
     # Arguments
@@ -562,145 +566,48 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
                                     bit_loc_distribution=bit_loc_distribution,
                                     bit_loc_pois_lam=bit_loc_pois_lam,
                                     fault_type=fault_type,
+                                    print_detail=print_detail
                                     **kwargs)
         
-        print('    layer %d Done!'%layer_num)
+        if print_detail:
+            print('    layer %d Done!'%layer_num)
         
     return model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list
 
-    
-# old function to be deprecated
-def generate_model_random_stuck_fault(model,fault_rate,batch_size,model_word_length):
+# TODO
+# inefficient function to be deprecated
+def multi_gpu_fault_dict_convert(model, gpus=2):
     model_depth=len(model.layers)
-    model_ifmap_fault_dict_list=[None]
-    model_ofmap_fault_dict_list=[None]
-    model_weight_fault_dict_list=[[None,None]]
     for layer_num in range(1,model_depth):
-        print('\nGenerating fault on layer %d ...'%layer_num)
-        
-        layer_input_shape=model.layers[layer_num].input_shape
-        layer_output_shape=model.layers[layer_num].output_shape
         layer_weight_shape=[weight_shape.shape for weight_shape in model.layers[layer_num].get_weights()]
-        
-        if len(layer_weight_shape)==0:
-            model_ifmap_fault_dict_list.append(None)
-            model_ofmap_fault_dict_list.append(None)
-            model_weight_fault_dict_list.append([None,None])
-            print('    no weight layer Skipped!')
-            continue
-        
-        ifmap_fault_dict=dict()
-        ofmap_fault_dict=dict()
-        weight_fault_dict=[dict() for i in range(len(layer_weight_shape))]
-        
-        layer_ifmap_fault_num=int(np.prod(layer_input_shape[1:]) * batch_size * model_word_length * fault_rate)
-        layer_ofmap_fault_num=int(np.prod(layer_output_shape[1:]) * batch_size * model_word_length * fault_rate)
-        layer_weight_fault_num=[int(np.prod(shapes) * model_word_length * fault_rate) for shapes in layer_weight_shape]
-        
-        
-        # ifmap fault generation
-        fault_count=0
-        while fault_count<layer_ifmap_fault_num:
-            coordinate=list()
-            coordinate.append(np.random.randint(batch_size))
-            for j in range(1,len(layer_input_shape)):
-                coordinate.append(np.random.randint(layer_input_shape[j]))
-            coordinate=tuple(coordinate)
-            fault_bit=np.random.randint(model_word_length)
-            
-            if coordinate in ifmap_fault_dict.keys():
-                if isinstance(ifmap_fault_dict[coordinate]['SA_bit'],list):
-                    if fault_bit in ifmap_fault_dict[coordinate]['SA_bit']:
-                        continue
-                    else:
-                        ifmap_fault_dict[coordinate]['SA_type'].append('flip')
-                        ifmap_fault_dict[coordinate]['SA_bit'].append(fault_bit)
-                        fault_count += 1
-                else:
-                    if fault_bit == ifmap_fault_dict[coordinate]['SA_bit']:
-                        continue
-                    else:
-                        ifmap_fault_dict[coordinate]['SA_type']=[ifmap_fault_dict[coordinate]['SA_type'],'flip']
-                        ifmap_fault_dict[coordinate]['SA_bit']=[ifmap_fault_dict[coordinate]['SA_bit'],fault_bit]
-                        fault_count += 1
-            else:
-                ifmap_fault_dict[coordinate]={'SA_type':'flip',
-                                              'SA_bit' : fault_bit}
-                fault_count += 1
-        
-        model_ifmap_fault_dict_list.append(ifmap_fault_dict)    
-        print('    generated layer %d ifmap %d faults'%(layer_num,layer_ifmap_fault_num))
-        
-        
-        # ofmap fault generation
-        fault_count=0
-        while fault_count<layer_ofmap_fault_num:
-            coordinate=list()
-            coordinate.append(np.random.randint(batch_size))
-            for j in range(1,len(layer_output_shape)):
-                coordinate.append(np.random.randint(layer_output_shape[j]))
-            coordinate=tuple(coordinate)
-            fault_bit=np.random.randint(model_word_length)
-            
-            if coordinate in ofmap_fault_dict.keys():
-                if isinstance(ofmap_fault_dict[coordinate]['SA_bit'],list):
-                    if fault_bit in ofmap_fault_dict[coordinate]['SA_bit']:
-                        continue
-                    else:
-                        ofmap_fault_dict[coordinate]['SA_type'].append('flip')
-                        ofmap_fault_dict[coordinate]['SA_bit'].append(fault_bit)
-                        fault_count += 1
-                else:
-                    if fault_bit == ofmap_fault_dict[coordinate]['SA_bit']:
-                        continue
-                    else:
-                        ofmap_fault_dict[coordinate]['SA_type']=[ofmap_fault_dict[coordinate]['SA_type'],'flip']
-                        ofmap_fault_dict[coordinate]['SA_bit']=[ofmap_fault_dict[coordinate]['SA_bit'],fault_bit]
-                        fault_count += 1
-            else:
-                ofmap_fault_dict[coordinate]={'SA_type':'flip',
-                                              'SA_bit' : fault_bit}
-                fault_count += 1
-        
-        model_ofmap_fault_dict_list.append(ofmap_fault_dict)    
-        print('    generated layer %d ofmap %d faults'%(layer_num,layer_ofmap_fault_num))
-        
-        # weight fault generation
-        for i in range(len(layer_weight_fault_num)):
-            fault_count=0
-            while fault_count<layer_weight_fault_num[i]:
-                coordinate=list()
-                for j in range(len(layer_weight_shape[i])):
-                    coordinate.append(np.random.randint(layer_weight_shape[i][j]))
-                coordinate=tuple(coordinate)
-                fault_bit=np.random.randint(model_word_length)
+        if len(layer_weight_shape)!=0:
+            if model.layers[layer_num].ifmap_sa_fault_injection is not None:
+                fault_dict_original=model.layers[layer_num].ifmap_sa_fault_injection
+                fault_dict_convert=dict()
+                for key in fault_dict_original.keys():
+                    if key[0]<model.layers[layer_num].inputs.shape.dims[0]/gpus:
+                        fault_dict_convert[key]=fault_dict_original[key]
                 
-                if coordinate in weight_fault_dict[i].keys():
-                    if isinstance(weight_fault_dict[i][coordinate]['SA_bit'],list):
-                        if fault_bit in weight_fault_dict[i][coordinate]['SA_bit']:
-                            #print('error 1')
-                            continue
-                        else:
-                            weight_fault_dict[i][coordinate]['SA_type'].append('flip')
-                            weight_fault_dict[i][coordinate]['SA_bit'].append(fault_bit)
-                            fault_count += 1
-                    else:
-                        if fault_bit == weight_fault_dict[i][coordinate]['SA_bit']:
-                            #print('error 2')
-                            continue
-                        else:
-                            weight_fault_dict[i][coordinate]['SA_type']=[weight_fault_dict[i][coordinate]['SA_type'],'flip']
-                            weight_fault_dict[i][coordinate]['SA_bit']=[weight_fault_dict[i][coordinate]['SA_bit'],fault_bit]
-                            fault_count += 1
-                else:
-                    weight_fault_dict[i][coordinate]={'SA_type':'flip',
-                                                  'SA_bit' : fault_bit}
-                    fault_count += 1
-            
-        model_weight_fault_dict_list.append(weight_fault_dict)    
-        print('    generated layer %d weight %s faults'%(layer_num,str(layer_weight_fault_num)))
-        
-        print('    layer %d Done!'%layer_num)
-        
-    return model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list
+                model.layers[layer_num].ifmap_sa_fault_injection=fault_dict_convert
+                
+            if model.layers[layer_num].ofmap_sa_fault_injection is not None:
+                fault_dict_original=model.layers[layer_num].ofmap_sa_fault_injection
+                fault_dict_convert=dict()
+                for key in fault_dict_original.keys():
+                    if key[0]<model.layers[layer_num].inputs.shape.dims[0]/gpus:
+                        fault_dict_convert[key]=fault_dict_original[key]
+                
+                model.layers[layer_num].ofmap_sa_fault_injection=fault_dict_convert
+                
+            for i in range(len(layer_weight_shape)):
+                if model.layers[layer_num].weight_sa_fault_injection[i] is not None:
+                    fault_dict_original=model.layers[layer_num].weight_sa_fault_injection[i]
+                    fault_dict_convert=dict()
+                    for key in fault_dict_original.keys():
+                        if key[0]<model.layers[layer_num].inputs.shape.dims[0]/gpus:
+                            fault_dict_convert[key]=fault_dict_original[key]
+                    
+                    model.layers[layer_num].weight_sa_fault_injection[i]=fault_dict_convert
+                    
+    return model
 

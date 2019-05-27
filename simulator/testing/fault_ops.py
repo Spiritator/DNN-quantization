@@ -9,20 +9,24 @@ inject stuck at fault during model build phase
 """
 
 import tensorflow as tf
-import keras.backend as K
-import numpy as np
-from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_stuck_at_fault_modulator, generate_tensor_modulator
+from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_tensor_modulator
 
 def check_fault_dict(data, fault_dict):
     """Check the fault dictionary is valid for the data or not.
         If not, raise error.
     """
+    fault_dict_filt=dict
     for key in fault_dict.keys():
         if len(key)!=len(data.shape):
             raise ValueError('fault location %s has different length with data shape %s'%(key,data.shape))
             
-        if any([key[i]>=data.shape[i] for i in range(len(key))]):
+        if any([key[i]>=data.shape[i] for i in range(1,len(key))]):
             raise ValueError('fault location %s is out of data index with shape %s'%(key,data.shape))
+            
+        if key[0] < data.shape[0]:
+            fault_dict_filt[key]=fault_dict[key]
+    
+    return fault_dict_filt
             
 def check_fault_modulator(data, fault_modulator):
     """Check the fault dictionary is valid for the data or not.
@@ -33,9 +37,13 @@ def check_fault_modulator(data, fault_modulator):
         
     for i in range(3):
         if fault_modulator[i] is not None:
-            if data.shape != fault_modulator[i].shape:
-                raise ValueError('fault modulator must have the same shape as data. Expect %s but get %s'%(str(data.shape,str(fault_modulator[i].shape))))
-
+            if data.shape[1:] != fault_modulator[i].shape[1:]:
+                raise ValueError('fault modulator must have the same shape as data. Expect %s but get %s'%(str(data.shape),str(fault_modulator[i].shape)))
+            
+            if fault_modulator[i].shape[0] > data.shape[0]:
+                fault_modulator[i]=fault_modulator[i][:data.shape[0]]
+                
+    return fault_modulator
 
 def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
     """Inject fault dictionary to numpy array.
@@ -46,7 +54,7 @@ def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
         quantizer: Class. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
 
     # Returns
         The faulty numpy array.
@@ -61,6 +69,8 @@ def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
             
     return data
 
+# TODO
+# inefficient function to be deprecated
 def inject_layer_sa_fault_tensor(data, fault_list, quantizer):
     """Inject fault dictionary to Tensor.
 
@@ -70,16 +80,16 @@ def inject_layer_sa_fault_tensor(data, fault_list, quantizer):
         quantizer: Class. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
 
     # Returns
         The faulty Tensor.
     """
     if isinstance(fault_list,dict):
-        check_fault_dict(data,fault_list)
+        fault_list=check_fault_dict(data,fault_list)
         tensor_modulator0,tensor_modulator1,tensor_modulatorF=generate_tensor_modulator(data.shape,quantizer.nb,quantizer.fb,fault_list)
     elif isinstance(fault_list,list):
-        check_fault_modulator(data, fault_list)
+        fault_list=check_fault_modulator(data, fault_list)
         tensor_modulator0=fault_list[0]
         tensor_modulator1=fault_list[1]
         tensor_modulatorF=fault_list[2]

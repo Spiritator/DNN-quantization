@@ -267,5 +267,23 @@ def generate_model_modulator(model,word_length,fractional_bit,ifmap_fault_dict_l
         
     return model_ifmap_fault_modulator_list,model_ofmap_fault_modulator_list,model_wght_fault_modulator_list
 
+def multi_gpu_fault_modulator_convert(model, gpus=2):
+    new_batch=model.input_shape[0]//gpus
+    model_depth=len(model.layers)
+    for layer_num in range(1,model_depth):
+        layer_weight_shape=[weight_shape.shape for weight_shape in model.layers[layer_num].get_weights()]
+        if len(layer_weight_shape)!=0:
+            for i in range(3):
+                if model.layers[layer_num].ifmap_sa_fault_injection[i] is not None:
+                    model.layers[layer_num].ifmap_sa_fault_injection[i]=model.layers[layer_num].ifmap_sa_fault_injection[i][:new_batch]
+                
+                if model.layers[layer_num].ofmap_sa_fault_injection[i] is not None:
+                    model.layers[layer_num].ofmap_sa_fault_injection[i]=model.layers[layer_num].ofmap_sa_fault_injection[i][:new_batch]
+                
+                for j in range(len(layer_weight_shape)):
+                    if model.layers[layer_num].weight_sa_fault_injection[j][i] is not None:
+                        model.layers[layer_num].weight_sa_fault_injection[j][i]=model.layers[layer_num].weight_sa_fault_injection[j][i][:new_batch]
+                    
+    return model
 
 

@@ -701,7 +701,7 @@ class tile_FC(tile):
         
         
         
-def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,ifmap_tile,wght_tile,ofmap_tile,**kwargs):
+def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,ifmap_tile,wght_tile,ofmap_tile,print_detail=True,**kwargs):
     """Generate the fault dictionary list of a layer base on its memory mapping and buffer fault information.
 
     # Arguments
@@ -723,7 +723,8 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
     
     if len(layer_weight_shape)==0:
-        print('    no weight layer Skipped!')
+        if print_detail:
+            print('    no weight layer Skipped!')
         return None, None, [None,None]
     
     # ifmap memory mapping
@@ -733,7 +734,8 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     else:
         ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape,ifmap_buffer)
     
-        print('    mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
+        if print_detail:
+            print('    mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
     
     
     # ofmap memory mapping
@@ -743,7 +745,8 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     else:
         ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape,ofmap_buffer)
     
-        print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
+        if print_detail:
+            print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
     
     # weight memory mapping
     if len(wght_buffer.fault_dict) == 0:
@@ -757,7 +760,8 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         
         weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0],wght_buffer,use_bias=use_bias)
         
-        print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
+        if print_detail:
+            print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
                 
     return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 

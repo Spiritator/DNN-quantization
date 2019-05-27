@@ -8,7 +8,7 @@ evaluate quantized testing result with custom Keras quantize layer
 """
 
 import keras
-from keras.utils import multi_gpu_model
+from keras.utils import multi_gpu_model,to_categorical
 from models.mobilenet import QuantizedMobileNetV1FusedBN
 from utils_tool.dataset_setup import dataset_setup
 from utils_tool.confusion_matrix import show_confusion_matrix
@@ -22,13 +22,17 @@ from inference.evaluate import evaluate_FT
 # dimensions of our images.
 img_width, img_height = 224, 224
 
+set_size=2
 class_number=1000
 batch_size=40
 model_word_length=16
 model_fractional_bit=9
 rounding_method='nearest'
 fault_rate=1e-6
-validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_2'
+if set_size in [50,'full',None]:
+    validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator'
+else:
+    validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_%d'%set_size
 
 
 #%%
@@ -79,16 +83,16 @@ model = QuantizedMobileNetV1FusedBN(weights='../../mobilenet_1_0_224_tf_fused_BN
 #model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
 
 t = time.time()-t
-print('model build time: %f s'%t)
 
 model.summary()
+
+print('model build time: %f s'%t)
 
 # multi GPU model
 
 print('Building multi GPU model...')
 
 t = time.time()
-
 parallel_model = multi_gpu_model(model, gpus=2)
 parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
 
@@ -114,7 +118,7 @@ print('evaluating...')
 
 from keras.losses import categorical_crossentropy
 prediction = parallel_model.predict_generator(datagen, verbose=1, steps=len(datagen))
-test_result = evaluate_FT('mobilenet',prediction=prediction,test_label=datagen.classes,loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50])
+test_result = evaluate_FT('mobilenet',prediction=prediction,test_label=to_categorical(datagen.classes,1000),loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],fuseBN=True,setsize=set_size)
 
 t = time.time()-t
 print('\nruntime: %f s'%t)

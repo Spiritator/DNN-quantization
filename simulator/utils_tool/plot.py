@@ -108,18 +108,17 @@ def plot_FT_analysis(stat_dir=None,report_filename=None):
         avg=[stat_data[xid][metric]['avg'] for xid in x]
 
         maxx=[stat_data[xid][metric]['max'] for xid in x]
-        plt.plot(x, maxx, label='max', c='dodgerblue', linestyle='--')
+        plt.plot(x, maxx, label='max', c='dodgerblue', linestyle='--', marker='.')
         
         minn=[stat_data[xid][metric]['min'] for xid in x]
-        plt.plot(x, minn, label='min', c='dodgerblue', linestyle='-.')
+        plt.plot(x, minn, label='min', c='dodgerblue', linestyle='-.', marker='.')
         
         var_up=[stat_data[xid][metric]['var_up'] for xid in x]
         var_down=[stat_data[xid][metric]['var_down'] for xid in x]
         
-        plt.fill_between(x, avg, var_up, facecolor = 'lightgray', label='variance')
-        plt.fill_between(x, avg, var_down, facecolor = 'lightgray')
+        plt.fill_between(x, var_up, var_down, facecolor = 'lightgray', label='variance')
         
-        plt.plot(x, avg, label='average', c='darkblue')
+        plt.plot(x, avg, label='average', c='darkblue', marker='.')
             
         plt.title(metric)
         plt.ylabel(metric)

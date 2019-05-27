@@ -63,7 +63,8 @@ for fr in fault_rate_list:
            'coor_pois_lam':None,
            'bit_loc_distribution':'uniform',
            'bit_loc_pois_lam':None,
-           'fault_type':'flip'}
+           'fault_type':'flip',
+           'print_detail':False}
     
     # fault generation
     model_augment=list()

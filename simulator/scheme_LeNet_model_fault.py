@@ -10,7 +10,7 @@ An example of using inference scheme to arange analysis and save result.
 from inference.scheme import inference_scheme
 from models.model_library import quantized_lenet5
 from metrics.topk_metrics import top2_acc
-from metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20
+from metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50
 from keras.losses import categorical_crossentropy
 from testing.fault_list import generate_model_stuck_fault
 from testing.fault_core import generate_model_modulator
@@ -45,7 +45,7 @@ compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':
 
 dataset_augment={'dataset':'mnist'}
 
-FT_augment={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,pred_vary_10,pred_vary_20]}    
+FT_augment={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
 
 for fr in fault_rate_list:
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')

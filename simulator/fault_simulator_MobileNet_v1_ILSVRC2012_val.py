@@ -16,7 +16,7 @@ from metrics.topk_metrics import top5_acc
 import time
 from testing.fault_list import generate_model_stuck_fault
 from testing.fault_core import generate_model_modulator
-from metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, pred_vary_10, pred_vary_20
+from metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
 from inference.evaluate import evaluate_FT
 
 # dimensions of our images.
@@ -114,7 +114,7 @@ print('evaluating...')
 
 from keras.losses import categorical_crossentropy
 prediction = parallel_model.predict_generator(datagen, verbose=1, steps=len(datagen))
-test_result = evaluate_FT('mobilenet',prediction=prediction,test_label=datagen.classes,loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,pred_vary_10,pred_vary_20])
+test_result = evaluate_FT('mobilenet',prediction=prediction,test_label=datagen.classes,loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50])
 
 t = time.time()-t
 print('\nruntime: %f s'%t)

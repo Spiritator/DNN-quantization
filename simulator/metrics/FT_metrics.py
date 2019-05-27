@@ -94,15 +94,20 @@ def top3_pred_miss(y_true,y_pred,ff_pred):
 def top5_pred_miss(y_true,y_pred,ff_pred):
     return tf.subtract(1.0,K.mean(K.in_top_k(y_pred, K.argmax(ff_pred, axis=-1), 5), axis=-1))
 
-def pred_vary_10(y_true,y_pred,ff_pred):
+def conf_score_vary_10(y_true,y_pred,ff_pred):
     ff_indices=K.concatenate([K.reshape(tf.range(y_pred.shape.dims[0].value,dtype=tf.int64),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
     ff_pred_class=tf.gather_nd(ff_pred,ff_indices)
     return K.greater(K.abs(tf.divide(tf.subtract(K.max(y_pred,axis=-1),ff_pred_class),ff_pred_class)),0.1)
 
-def pred_vary_20(y_true,y_pred,ff_pred):
+def conf_score_vary_20(y_true,y_pred,ff_pred):
     ff_indices=K.concatenate([K.reshape(tf.range(y_pred.shape.dims[0].value,dtype=tf.int64),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
     ff_pred_class=tf.gather_nd(ff_pred,ff_indices)
     return K.greater(K.abs(tf.divide(tf.subtract(K.max(y_pred,axis=-1),ff_pred_class),ff_pred_class)),0.2)
     
+def conf_score_vary_50(y_true,y_pred,ff_pred):
+    ff_indices=K.concatenate([K.reshape(tf.range(y_pred.shape.dims[0].value,dtype=tf.int64),[-1,1]),K.reshape(K.argmax(y_pred,axis=-1),[-1,1])],axis=1)
+    ff_pred_class=tf.gather_nd(ff_pred,ff_indices)
+    return K.greater(K.abs(tf.divide(tf.subtract(K.max(y_pred,axis=-1),ff_pred_class),ff_pred_class)),0.5)
+
 
     

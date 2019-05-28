@@ -110,5 +110,7 @@ for fr in fault_rate_list:
                      FT_evaluate=True, 
                      FT_augment=FT_augment, 
                      name_tag='fault rate '+str(fr))
+    
+    del model_augment
 
 

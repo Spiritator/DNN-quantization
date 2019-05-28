@@ -9,22 +9,23 @@ An example of using inference scheme to arange analysis and save result.
 
 from inference.scheme import inference_scheme
 from models.model_library import quantized_4C2F
-from metrics.topk_metrics import top2_acc,top5_acc
+from metrics.topk_metrics import top2_acc
+from metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50
+from keras.losses import categorical_crossentropy
 from memory.mem_bitmap import bitmap
 from memory.tile import tile, tile_FC, generate_layer_memory_mapping
+from testing.fault_core import generate_model_modulator
 
 
 #%%
 # setting parameter
 
-result_save_file='../../test_result/cifar10_4C2F_mem_fault.csv'
+result_save_folder='../../test_result/cifar10_4C2F_memory_fault_rate'
 weight_name='../../cifar10_4C2FBN_weight_fused_BN.h5'
-test_rounds=100
+test_rounds=200
 model_word_length=16
 model_fractional_bit=12
 batch_size=20
-# memory fault simulation parameter
-fault_rate=0.00001
 # buffer size 25.6KB
 row=80
 col=40
@@ -37,12 +38,16 @@ model_wl=model_word_length
 memory_column_priority=['Tm','Tc','Tr','Tn']
 memory_row_priority=['Tr','Tm','Tc','Tn']
 
+# memory fault simulation parameter
+fault_rate_list=[5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
+
 
 #%%
 # fault generation
 
 # model for get configuration
-ref_model=quantized_4C2F(nbits=model_word_length,
+def call_model():
+    return quantized_4C2F(nbits=model_word_length,
                          fbits=model_fractional_bit,
                          batch_size=batch_size,
                          quant_mode=None)
@@ -113,7 +118,7 @@ wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
 #wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
 
 
-def gen_model_mem_fault_dict():
+def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False):
     model_ifmap_fault_dict_list=[None for i in range(14)]
     model_ofmap_fault_dict_list=[None for i in range(14)] 
     model_weight_fault_dict_list=[[None,None] for i in range(14)]
@@ -150,56 +155,89 @@ def gen_model_mem_fault_dict():
     model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault_dict_list[1]\
     =generate_layer_memory_mapping(ref_model.layers[1],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
-                                   ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1)
+                                   ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,
+                                   print_detail=print_detail)
     
     model_ifmap_fault_dict_list[2],model_ofmap_fault_dict_list[2],model_weight_fault_dict_list[2]\
     =generate_layer_memory_mapping(ref_model.layers[2],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
-                                   ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2)
+                                   ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,
+                                   print_detail=print_detail)
     
     model_ifmap_fault_dict_list[5],model_ofmap_fault_dict_list[5],model_weight_fault_dict_list[5]\
     =generate_layer_memory_mapping(ref_model.layers[5],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
-                                   ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3)
+                                   ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3,
+                                   print_detail=print_detail)
     
     model_ifmap_fault_dict_list[6],model_ofmap_fault_dict_list[6],model_weight_fault_dict_list[6]\
     =generate_layer_memory_mapping(ref_model.layers[6],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
-                                   ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4)
+                                   ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4,
+                                   print_detail=print_detail)
     
     model_ifmap_fault_dict_list[10],model_ofmap_fault_dict_list[10],model_weight_fault_dict_list[10]\
     =generate_layer_memory_mapping(ref_model.layers[10],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
-                                   ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1)
+                                   ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,
+                                   print_detail=print_detail)
     
     model_ifmap_fault_dict_list[13],model_ofmap_fault_dict_list[13],model_weight_fault_dict_list[13]\
     =generate_layer_memory_mapping(ref_model.layers[13],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
-                                   ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2)
+                                   ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,
+                                   print_detail=print_detail)
     
     return model_ifmap_fault_dict_list,model_ofmap_fault_dict_list,model_weight_fault_dict_list
 
 #%%
 # test
-
-model_augment=list()
-
-for i in range(test_rounds):
-    model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=gen_model_mem_fault_dict()
-    model_augment.append({'nbits':model_word_length,
-                          'fbits':model_fractional_bit,
-                          'rounding_method':'nearest',
-                          'batch_size':batch_size,
-                          'quant_mode':'hybrid',
-                          'ifmap_fault_dict_list':model_ifmap_fdl,
-                          'ofmap_fault_dict_list':model_ofmap_fdl,
-                          'weight_fault_dict_list':model_weight_fdl})
-
+# test
 compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
 dataset_augment={'dataset':'cifar10'}
 
+FT_augment={'model_name':'4c2f','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
 
-inference_scheme(quantized_4C2F, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=True, weight_name=weight_name)
+for fr in fault_rate_list:
+    print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
+    print('|=|        Test Bit Fault Rate %s'%str(fr))
+    print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
+    ref_model=call_model()
+        
+    # fault generation
+    model_augment=list()
+    for i in range(test_rounds):
+        print('Generating fault for test round %d...'%i)
+        model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=gen_model_mem_fault_dict(ref_model,fr)
+        
+        model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\
+        =generate_model_modulator(ref_model,
+                                  model_word_length,
+                                  model_fractional_bit,
+                                  model_ifmap_fdl, 
+                                  model_ofmap_fdl, 
+                                  model_weight_fdl)
+        
+        model_augment.append({'nbits':model_word_length,
+                              'fbits':model_fractional_bit,
+                              'rounding_method':'nearest',
+                              'batch_size':batch_size,
+                              'quant_mode':'hybrid',
+                              'ifmap_fault_dict_list':model_ifmap_fdl,
+                              'ofmap_fault_dict_list':model_ofmap_fdl,
+                              'weight_fault_dict_list':model_weight_fdl})
+
+    result_save_file=result_save_folder+'/'+str(fr)+'.csv'
+    inference_scheme(quantized_4C2F, 
+                     model_augment, 
+                     compile_augment, 
+                     dataset_augment, 
+                     result_save_file, 
+                     weight_load=True, 
+                     weight_name=weight_name, 
+                     FT_evaluate=True, 
+                     FT_augment=FT_augment,
+                     name_tag='fault rate '+str(fr))
 
 

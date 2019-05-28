@@ -24,11 +24,11 @@ img_width, img_height = 224, 224
 
 set_size=2
 class_number=1000
-batch_size=40
+batch_size=20
 model_word_length=16
 model_fractional_bit=9
 rounding_method='nearest'
-fault_rate=1e-6
+fault_rate=1e-8
 if set_size in [50,'full',None]:
     validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator'
 else:
@@ -51,8 +51,9 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                             fault_rate,
                             batch_size,
                             model_word_length,
-                            bit_loc_distribution='poisson',
-                            bit_loc_pois_lam=2)
+                            bit_loc_distribution='uniform',
+                            bit_loc_pois_lam=None,
+                            fault_type='flip')
 
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
 =generate_model_modulator(model,
@@ -90,17 +91,17 @@ print('model build time: %f s'%t)
 
 # multi GPU model
 
-print('Building multi GPU model...')
-
-t = time.time()
-parallel_model = multi_gpu_model(model, gpus=2)
-parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
-
-parallel_model.summary()
-
-t = time.time()-t
-
-print('multi GPU model build time: %f s'%t)
+#print('Building multi GPU model...')
+#
+#t = time.time()
+#parallel_model = multi_gpu_model(model, gpus=2)
+#parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
+#
+#parallel_model.summary()
+#
+#t = time.time()-t
+#
+#print('multi GPU model build time: %f s'%t)
 
 #%%
 #dataset setup
@@ -117,7 +118,8 @@ t = time.time()
 print('evaluating...')
 
 from keras.losses import categorical_crossentropy
-prediction = parallel_model.predict_generator(datagen, verbose=1, steps=len(datagen))
+#prediction = parallel_model.predict_generator(datagen, verbose=1, steps=len(datagen))
+prediction = model.predict_generator(datagen, verbose=1, steps=len(datagen))
 test_result = evaluate_FT('mobilenet',prediction=prediction,test_label=to_categorical(datagen.classes,1000),loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],fuseBN=True,setsize=set_size)
 
 t = time.time()-t

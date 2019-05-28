@@ -69,6 +69,7 @@ for fr in fault_rate_list:
     # fault generation
     model_augment=list()
     for i in range(test_rounds):
+        print('Generating fault for test round %d...'%i)
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
         
         model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\

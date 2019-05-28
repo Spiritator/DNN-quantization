@@ -9,7 +9,7 @@ Plan for multiple inferece setting and write into file
 
 import keras, os, csv
 import keras.backend as K
-from keras.utils import multi_gpu_model
+from keras.utils import multi_gpu_model,to_categorical
 from utils_tool.weight_conversion import convert_original_weight_layer_name
 from utils_tool.dataset_setup import dataset_setup
 from inference.evaluate import evaluate_FT
@@ -87,26 +87,34 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
             if datagen is None:
                 if FT_evaluate:
                     prediction = parallel_model.predict(x_test, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
-                    test_result = evaluate_FT(model_name=FT_augment['model_name'],prediction=prediction,test_label=y_test,loss_function=FT_augment['loss_function'],metrics=FT_augment['metrics'])
+                    FT_augment['prediction']=prediction
+                    FT_augment['test_label']=y_test
+                    test_result = evaluate_FT( **FT_augment)
                 else:
                     test_result = parallel_model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
             else:
                 if FT_evaluate:
-                    prediction = parallel_model.predict_generator(datagen, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
-                    test_result = evaluate_FT(model_name=FT_augment['model_name'],prediction=prediction,test_label=datagen.classes,loss_function=FT_augment['loss_function'],metrics=FT_augment['metrics'])
+                    prediction = parallel_model.predict_generator(datagen, verbose=1,steps=len(datagen))
+                    FT_augment['prediction']=prediction
+                    FT_augment['test_label']=to_categorical(datagen.classes,len(datagen.class_indices))
+                    test_result = evaluate_FT( **FT_augment)
                 else:
                     test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
         else:
             if datagen is None:
                 if FT_evaluate:
                     prediction = model.predict(x_test, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
-                    test_result = evaluate_FT(model_name=FT_augment['model_name'],prediction=prediction,test_label=y_test,loss_function=FT_augment['loss_function'],metrics=FT_augment['metrics'])
+                    FT_augment['prediction']=prediction
+                    FT_augment['test_label']=y_test
+                    test_result = evaluate_FT( **FT_augment)
                 else:
                     test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
             else:
                 if FT_evaluate:
-                    prediction = model.predict_generator(datagen, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
-                    test_result = evaluate_FT(model_name=FT_augment['model_name'],prediction=prediction,test_label=datagen.classes,loss_function=FT_augment['loss_function'],metrics=FT_augment['metrics'])
+                    prediction = model.predict_generator(datagen, verbose=1,steps=len(datagen))
+                    FT_augment['prediction']=prediction
+                    FT_augment['test_label']=to_categorical(datagen.classes,len(datagen.class_indices))
+                    test_result = evaluate_FT( **FT_augment)
                 else:
                     test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
         

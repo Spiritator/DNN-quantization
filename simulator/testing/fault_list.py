@@ -537,7 +537,8 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
             raise ValueError('Poisson distribution lambda setting must be a list has the same length as model layer number.')
     
     for layer_num in range(1,model_depth):
-        print('\nGenerating fault on layer %d ...'%layer_num)
+        if print_detail:
+            print('\nGenerating fault on layer %d ...'%layer_num)
         
         if coor_distribution == 'poisson':
             lam_index=layer_num
@@ -547,7 +548,8 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
         layer_weight_shape=[weight_shape.shape for weight_shape in model.layers[layer_num].get_weights()]
         
         if len(layer_weight_shape)==0:
-            print('    no weight layer Skipped!')
+            if print_detail:
+                print('    no weight layer Skipped!')
             continue
         
         if layer_wise:
@@ -566,7 +568,7 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
                                     bit_loc_distribution=bit_loc_distribution,
                                     bit_loc_pois_lam=bit_loc_pois_lam,
                                     fault_type=fault_type,
-                                    print_detail=print_detail
+                                    print_detail=print_detail,
                                     **kwargs)
         
         if print_detail:

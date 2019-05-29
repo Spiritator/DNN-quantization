@@ -716,7 +716,8 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         The fault information Dictionary List.
     """
     
-    print('\nMapping memory fault on layer ...')
+    if print_detail:
+        print('\nMapping memory fault on layer ...')
     
     layer_input_shape=layer.input_shape
     layer_output_shape=layer.output_shape

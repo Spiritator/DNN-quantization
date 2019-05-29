@@ -47,8 +47,17 @@ import keras.utils as keras_utils
 
 
 
-def identity_block(input_tensor, kernel_size, filters, stage, block, 
-                   layer_quantizer, layer_BN_quantizer, quant_mode='hybrid'):
+def identity_block(input_tensor, 
+                   kernel_size, 
+                   filters, 
+                   stage, 
+                   block, 
+                   layer_quantizer, 
+                   layer_BN_quantizer, 
+                   quant_mode='hybrid',
+                   ifmap_fault_dict_list=None, 
+                   ofmap_fault_dict_list=None, 
+                   weight_fault_dict_list=None):
     """The identity block is the block that has no conv layer at shortcut.
 
     # Arguments
@@ -70,16 +79,29 @@ def identity_block(input_tensor, kernel_size, filters, stage, block,
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
     
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for _ in range(10)]
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for _ in range(10)]
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for _ in range(10)]
+    
     print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
                         kernel_size=(1, 1),
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2a',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[0],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[0],
+                        weight_sa_fault_injection=weight_fault_dict_list[0],
                         quant_mode=quant_mode)(input_tensor)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
                                     name=bn_name_base + '2a',
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
+                                    weight_sa_fault_injection=weight_fault_dict_list[1],
                                     quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
@@ -88,10 +110,16 @@ def identity_block(input_tensor, kernel_size, filters, stage, block,
                         quantizers=layer_quantizer,
                         padding='same', 
                         name=conv_name_base + '2b',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
+                        weight_sa_fault_injection=weight_fault_dict_list[3],
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
                                     name=bn_name_base + '2b',
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
+                                    weight_sa_fault_injection=weight_fault_dict_list[4],
                                     quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
@@ -99,10 +127,16 @@ def identity_block(input_tensor, kernel_size, filters, stage, block,
                         kernel_size=(1, 1), 
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2c',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
+                        weight_sa_fault_injection=weight_fault_dict_list[6],
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
                                     name=bn_name_base + '2c',
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[7],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[7],
+                                    weight_sa_fault_injection=weight_fault_dict_list[7],
                                     quant_mode=quant_mode)(x)
 
     x = layers.add([x, input_tensor])
@@ -118,7 +152,10 @@ def conv_block(input_tensor,
                layer_quantizer, 
                layer_BN_quantizer,
                strides=(2, 2),
-               quant_mode='hybrid'):
+               quant_mode='hybrid',
+               ifmap_fault_dict_list=None, 
+               ofmap_fault_dict_list=None, 
+               weight_fault_dict_list=None):
     """A block that has a conv layer at shortcut.
 
     # Arguments
@@ -145,6 +182,13 @@ def conv_block(input_tensor,
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
     
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for _ in range(12)]
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for _ in range(12)]
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for _ in range(12)]
+    
     print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
@@ -152,10 +196,16 @@ def conv_block(input_tensor,
                         strides=strides,
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2a',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[0],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[0],
+                        weight_sa_fault_injection=weight_fault_dict_list[0],
                         quant_mode=quant_mode)(input_tensor)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
                                     name=bn_name_base + '2a',
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
+                                    weight_sa_fault_injection=weight_fault_dict_list[1],
                                     quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
@@ -164,10 +214,16 @@ def conv_block(input_tensor,
                         padding='same',
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2b',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
+                        weight_sa_fault_injection=weight_fault_dict_list[3],
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
                                     name=bn_name_base + '2b',
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
+                                    weight_sa_fault_injection=weight_fault_dict_list[4],
                                     quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
@@ -175,10 +231,16 @@ def conv_block(input_tensor,
                         kernel_size=(1, 1), 
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2c',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
+                        weight_sa_fault_injection=weight_fault_dict_list[6],
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
                                     name=bn_name_base + '2c',
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[8],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[8],
+                                    weight_sa_fault_injection=weight_fault_dict_list[8],
                                     quant_mode=quant_mode)(x)
 
     shortcut = QuantizedConv2D(filters3, 
@@ -186,10 +248,16 @@ def conv_block(input_tensor,
                                strides=strides,
                                quantizers=layer_quantizer,
                                name=conv_name_base + '1',
+                               ifmap_sa_fault_injection=ifmap_fault_dict_list[7],
+                               ofmap_sa_fault_injection=ofmap_fault_dict_list[7],
+                               weight_sa_fault_injection=weight_fault_dict_list[7],
                                quant_mode=quant_mode)(input_tensor)
     shortcut = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                            axis=bn_axis, 
                                            name=bn_name_base + '1',
+                                           ifmap_sa_fault_injection=ifmap_fault_dict_list[9],
+                                           ofmap_sa_fault_injection=ofmap_fault_dict_list[9],
+                                           weight_sa_fault_injection=weight_fault_dict_list[9],
                                            quant_mode=quant_mode)(shortcut)
 
     x = layers.add([x, shortcut])
@@ -210,6 +278,9 @@ def QuantizedResNet50(include_top=True,
              BN_fbits=None,
              rounding_method='nearest',
              quant_mode='hybrid',
+             ifmap_fault_dict_list=None, 
+             ofmap_fault_dict_list=None, 
+             weight_fault_dict_list=None,
              overflow_mode=False,
              stop_gradient=False):
     """Instantiates the ResNet50 architecture.
@@ -266,6 +337,19 @@ def QuantizedResNet50(include_top=True,
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)            
             
     layer_BN_quantizer=build_layer_quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
+    
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for _ in range(177)]
+    else:
+        print('Inject input fault')
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for _ in range(177)]
+    else:
+        print('Inject output fault')
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for _ in range(177)]
+    else:
+        print('Inject weight fault')
 
     
     if not (weights in {'imagenet', None} or os.path.exists(weights)):
@@ -307,47 +391,151 @@ def QuantizedResNet50(include_top=True,
                         padding='valid',
                         quantizers=layer_quantizer,
                         name='conv1',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
+                        weight_sa_fault_injection=weight_fault_dict_list[2],
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
                                     name='bn_conv1',
+                                    ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
+                                    ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
+                                    weight_sa_fault_injection=weight_fault_dict_list[3],
                                     quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
     print('building stage 2 ...')
 
-    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), 
+                   layer_quantizer=layer_quantizer, 
+                   layer_BN_quantizer=layer_BN_quantizer, 
+                   ifmap_fault_dict_list=ifmap_fault_dict_list[6:18],
+                   ofmap_fault_dict_list=ofmap_fault_dict_list[6:18],
+                   weight_fault_dict_list=weight_fault_dict_list[6:18],
+                   quant_mode=quant_mode)
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[18:28],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[18:28],
+                       weight_fault_dict_list=weight_fault_dict_list[18:28],
+                       quant_mode=quant_mode)
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[28:38],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[28:38],
+                       weight_fault_dict_list=weight_fault_dict_list[28:38],
+                       quant_mode=quant_mode)
 
     print('building stage 3 ...')
 
-    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a', 
+                   layer_quantizer=layer_quantizer, 
+                   layer_BN_quantizer=layer_BN_quantizer, 
+                   ifmap_fault_dict_list=ifmap_fault_dict_list[38:50],
+                   ofmap_fault_dict_list=ofmap_fault_dict_list[38:50],
+                   weight_fault_dict_list=weight_fault_dict_list[38:50],
+                   quant_mode=quant_mode)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[50:60],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[50:60],
+                       weight_fault_dict_list=weight_fault_dict_list[50:60],quant_mode=quant_mode)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[60:70],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[60:70],
+                       weight_fault_dict_list=weight_fault_dict_list[60:70],
+                       quant_mode=quant_mode)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[70:80],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[70:80],
+                       weight_fault_dict_list=weight_fault_dict_list[70:80],
+                       quant_mode=quant_mode)
 
     print('building stage 4 ...')
     
-    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a', 
+                   layer_quantizer=layer_quantizer, 
+                   layer_BN_quantizer=layer_BN_quantizer, 
+                   ifmap_fault_dict_list=ifmap_fault_dict_list[80:92],
+                   ofmap_fault_dict_list=ofmap_fault_dict_list[80:92],
+                   weight_fault_dict_list=weight_fault_dict_list[80:92],
+                   quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[92:102],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[92:102],
+                       weight_fault_dict_list=weight_fault_dict_list[92:102],
+                       quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[102:112],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[102:112],
+                       weight_fault_dict_list=weight_fault_dict_list[102:112],
+                       quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[112:122],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[112:122],
+                       weight_fault_dict_list=weight_fault_dict_list[112:122],
+                       quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[122:132],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[122:132],
+                       weight_fault_dict_list=weight_fault_dict_list[122:132],
+                       quant_mode=quant_mode)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[132:142],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[132:142],
+                       weight_fault_dict_list=weight_fault_dict_list[132:142],
+                       quant_mode=quant_mode)
 
     print('building stage 5 ...')
 
-    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
-    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c', layer_quantizer=layer_quantizer, layer_BN_quantizer=layer_BN_quantizer, quant_mode=quant_mode)
+    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a', 
+                   layer_quantizer=layer_quantizer, 
+                   layer_BN_quantizer=layer_BN_quantizer, 
+                   ifmap_fault_dict_list=ifmap_fault_dict_list[142:154],
+                   ofmap_fault_dict_list=ofmap_fault_dict_list[142:154],
+                   weight_fault_dict_list=weight_fault_dict_list[142:154],
+                   quant_mode=quant_mode)
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[154:164],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[154:164],
+                       weight_fault_dict_list=weight_fault_dict_list[154:164],
+                       quant_mode=quant_mode)
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c', 
+                       layer_quantizer=layer_quantizer, 
+                       layer_BN_quantizer=layer_BN_quantizer, 
+                       ifmap_fault_dict_list=ifmap_fault_dict_list[164:174],
+                       ofmap_fault_dict_list=ofmap_fault_dict_list[164:174],
+                       weight_fault_dict_list=weight_fault_dict_list[164:174],
+                       quant_mode=quant_mode)
 
     if include_top:
         x = layers.AveragePooling2D((7, 7), name='avg_pool')(x)
         x = QuantizedFlatten()(x)
         x = QuantizedDense(classes, activation='softmax', name='fc1000',
                            quantizers=layer_quantizer,
+                           ifmap_sa_fault_injection=ifmap_fault_dict_list[176],
+                           ofmap_sa_fault_injection=ofmap_fault_dict_list[176],
+                           weight_sa_fault_injection=weight_fault_dict_list[176],
                            quant_mode=quant_mode)(x)
     else:
         if pooling == 'avg':
@@ -395,8 +583,16 @@ def QuantizedResNet50(include_top=True,
 #    FUSED BATCHNORMALIZATION MODEL
 #==============================================================================
 
-def identity_block_fused_BN(input_tensor, kernel_size, filters, stage, block, 
-                            layer_quantizer, quant_mode='hybrid'):
+def identity_block_fused_BN(input_tensor, 
+                            kernel_size, 
+                            filters, 
+                            stage, 
+                            block, 
+                            layer_quantizer, 
+                            quant_mode='hybrid',
+                            ifmap_fault_dict_list=None, 
+                            ofmap_fault_dict_list=None, 
+                            weight_fault_dict_list=None):
     """The identity block is the block that has no conv layer at shortcut.
 
     # Arguments
@@ -413,12 +609,22 @@ def identity_block_fused_BN(input_tensor, kernel_size, filters, stage, block,
     filters1, filters2, filters3 = filters
     conv_name_base = 'res' + str(stage) + block + '_branch'
     
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for _ in range(7)]
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for _ in range(7)]
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for _ in range(7)]
+    
     print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
                         kernel_size=(1, 1),
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2a',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[0],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[0],
+                        weight_sa_fault_injection=weight_fault_dict_list[0],
                         quant_mode=quant_mode)(input_tensor)
     x = layers.Activation('relu')(x)
 
@@ -427,6 +633,9 @@ def identity_block_fused_BN(input_tensor, kernel_size, filters, stage, block,
                         quantizers=layer_quantizer,
                         padding='same', 
                         name=conv_name_base + '2b',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
+                        weight_sa_fault_injection=weight_fault_dict_list[2],
                         quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
@@ -434,6 +643,9 @@ def identity_block_fused_BN(input_tensor, kernel_size, filters, stage, block,
                         kernel_size=(1, 1), 
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2c',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
+                        weight_sa_fault_injection=weight_fault_dict_list[4],
                         quant_mode=quant_mode)(x)
 
     x = layers.add([x, input_tensor])
@@ -448,7 +660,10 @@ def conv_block_fused_BN(input_tensor,
                block,
                layer_quantizer,
                strides=(2, 2),
-               quant_mode='hybrid'):
+               quant_mode='hybrid',
+               ifmap_fault_dict_list=None, 
+               ofmap_fault_dict_list=None, 
+               weight_fault_dict_list=None):
     """A block that has a conv layer at shortcut.
 
     # Arguments
@@ -470,6 +685,13 @@ def conv_block_fused_BN(input_tensor,
     filters1, filters2, filters3 = filters
     conv_name_base = 'res' + str(stage) + block + '_branch'
     
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for _ in range(8)]
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for _ in range(8)]
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for _ in range(8)]
+    
     print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
@@ -477,6 +699,9 @@ def conv_block_fused_BN(input_tensor,
                         strides=strides,
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2a',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[0],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[0],
+                        weight_sa_fault_injection=weight_fault_dict_list[0],
                         quant_mode=quant_mode)(input_tensor)
     x = layers.Activation('relu')(x)
 
@@ -485,6 +710,9 @@ def conv_block_fused_BN(input_tensor,
                         padding='same',
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2b',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
+                        weight_sa_fault_injection=weight_fault_dict_list[2],
                         quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
@@ -492,6 +720,9 @@ def conv_block_fused_BN(input_tensor,
                         kernel_size=(1, 1), 
                         quantizers=layer_quantizer,
                         name=conv_name_base + '2c',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
+                        weight_sa_fault_injection=weight_fault_dict_list[4],
                         quant_mode=quant_mode)(x)
 
     shortcut = QuantizedConv2D(filters3, 
@@ -499,6 +730,9 @@ def conv_block_fused_BN(input_tensor,
                                strides=strides,
                                quantizers=layer_quantizer,
                                name=conv_name_base + '1',
+                               ifmap_sa_fault_injection=ifmap_fault_dict_list[5],
+                               ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
+                               weight_sa_fault_injection=weight_fault_dict_list[5],
                                quant_mode=quant_mode)(input_tensor)
 
     x = layers.add([x, shortcut])
@@ -517,6 +751,9 @@ def QuantizedResNet50FusedBN(include_top=True,
              fbits=9, 
              rounding_method='nearest',
              quant_mode='hybrid',
+             ifmap_fault_dict_list=None, 
+             ofmap_fault_dict_list=None, 
+             weight_fault_dict_list=None,
              overflow_mode=False,
              stop_gradient=False,):
     """Instantiates the ResNet50 architecture.
@@ -566,6 +803,20 @@ def QuantizedResNet50FusedBN(include_top=True,
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
     
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for _ in range(124)]
+    else:
+        print('Inject input fault')
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for _ in range(124)]
+    else:
+        print('Inject output fault')
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for _ in range(124)]
+    else:
+        print('Inject weight fault')
+
+    
     if not os.path.exists(weights):
         raise ValueError('The `weights` argument must be the path to the weights file to be loaded. File not found!')
 
@@ -598,43 +849,128 @@ def QuantizedResNet50FusedBN(include_top=True,
                         padding='valid',
                         quantizers=layer_quantizer,
                         name='conv1',
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
+                        weight_sa_fault_injection=weight_fault_dict_list[2],
                         quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
     print('building stage 2 ...')
 
-    x = conv_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='b', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='c', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = conv_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), 
+                            layer_quantizer=layer_quantizer, 
+                            ifmap_fault_dict_list=ifmap_fault_dict_list[5:13],
+                            ofmap_fault_dict_list=ofmap_fault_dict_list[5:13],
+                            weight_fault_dict_list=weight_fault_dict_list[5:13],
+                            quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='b', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[13:20],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[13:20],
+                                weight_fault_dict_list=weight_fault_dict_list[13:20],
+                                quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='c', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[20:27],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[20:27],
+                                weight_fault_dict_list=weight_fault_dict_list[20:27],
+                                quant_mode=quant_mode)
 
     print('building stage 3 ...')
 
-    x = conv_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='a', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='b', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='c', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='d', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = conv_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='a', 
+                            layer_quantizer=layer_quantizer, 
+                            ifmap_fault_dict_list=ifmap_fault_dict_list[27:35],
+                            ofmap_fault_dict_list=ofmap_fault_dict_list[27:35],
+                            weight_fault_dict_list=weight_fault_dict_list[27:35],
+                            quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='b', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[35:42],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[35:42],
+                                weight_fault_dict_list=weight_fault_dict_list[35:42],
+                                quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='c', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[42:49],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[42:49],
+                                weight_fault_dict_list=weight_fault_dict_list[42:49],
+                                quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='d', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[49:56],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[49:56],
+                                weight_fault_dict_list=weight_fault_dict_list[49:56],
+                                quant_mode=quant_mode)
 
     print('building stage 4 ...')
     
-    x = conv_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='a', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='b', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='c', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='d', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='e', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='f', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = conv_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='a', 
+                            ifmap_fault_dict_list=ifmap_fault_dict_list[56:64],
+                            ofmap_fault_dict_list=ofmap_fault_dict_list[56:64],
+                            weight_fault_dict_list=weight_fault_dict_list[56:64],
+                            layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='b', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[64:71],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[64:71],
+                                weight_fault_dict_list=weight_fault_dict_list[64:71],
+                                quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='c', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[71:78],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[71:78],
+                                weight_fault_dict_list=weight_fault_dict_list[71:78],
+                                quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='d', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[78:85],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[78:85],
+                                weight_fault_dict_list=weight_fault_dict_list[78:85],
+                                quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='e', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[85:92],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[85:92],
+                                weight_fault_dict_list=weight_fault_dict_list[85:92],
+                                quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='f', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[92:99],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[92:99],
+                                weight_fault_dict_list=weight_fault_dict_list[92:99],
+                                quant_mode=quant_mode)
 
     print('building stage 5 ...')
 
-    x = conv_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='a', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='b', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
-    x = identity_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='c', layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+    x = conv_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='a', 
+                            ifmap_fault_dict_list=ifmap_fault_dict_list[99:107],
+                            ofmap_fault_dict_list=ofmap_fault_dict_list[99:107],
+                            weight_fault_dict_list=weight_fault_dict_list[99:107],
+                            layer_quantizer=layer_quantizer, 
+                            quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='b', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[107:114],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[107:114],
+                                weight_fault_dict_list=weight_fault_dict_list[107:114],
+                                quant_mode=quant_mode)
+    x = identity_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='c', 
+                                layer_quantizer=layer_quantizer, 
+                                ifmap_fault_dict_list=ifmap_fault_dict_list[114:121],
+                                ofmap_fault_dict_list=ofmap_fault_dict_list[114:121],
+                                weight_fault_dict_list=weight_fault_dict_list[114:121],
+                                quant_mode=quant_mode)
 
     if include_top:
         x = layers.AveragePooling2D((7, 7), name='avg_pool')(x)
         x = QuantizedFlatten()(x)
         x = QuantizedDense(classes, activation='softmax', name='fc1000',
                            quantizers=layer_quantizer,
+                           ifmap_sa_fault_injection=ifmap_fault_dict_list[123],
+                           ofmap_sa_fault_injection=ofmap_fault_dict_list[123],
+                           weight_sa_fault_injection=weight_fault_dict_list[123],
                            quant_mode=quant_mode)(x)
     else:
         if pooling == 'avg':

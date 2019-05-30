@@ -15,7 +15,7 @@ def check_fault_dict(data, fault_dict):
     """Check the fault dictionary is valid for the data or not.
         If not, raise error.
     """
-    fault_dict_filt=dict
+    fault_dict_filt=dict()
     for key in fault_dict.keys():
         if len(key)!=len(data.shape):
             raise ValueError('fault location %s has different length with data shape %s'%(key,data.shape))
@@ -69,8 +69,6 @@ def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
             
     return data
 
-# TODO
-# inefficient function to be deprecated
 def inject_layer_sa_fault_tensor(data, fault_list, quantizer):
     """Inject fault dictionary to Tensor.
 

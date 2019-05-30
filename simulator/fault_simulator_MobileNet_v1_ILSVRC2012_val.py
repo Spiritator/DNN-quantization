@@ -51,6 +51,8 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                             fault_rate,
                             batch_size,
                             model_word_length,
+                            param_filter=[True,True,True],
+                            fast_gen=True,
                             bit_loc_distribution='uniform',
                             bit_loc_pois_lam=None,
                             fault_type='flip')

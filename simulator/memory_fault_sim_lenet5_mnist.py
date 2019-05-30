@@ -64,9 +64,9 @@ GLB_ifmap=bitmap(row, col*word*model_wl, wl=model_wl)
 GLB_ofmap=bitmap(row, col*word*model_wl, wl=model_wl)
 
 # assign fault dictionary
-GLB_wght.gen_bitmap_SA_fault_dict(fault_rate)
-GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate)
-GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate)
+GLB_wght.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
+GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
+GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
 
 # conv1
 ofmap_tile_conv1=tile((1,28,28,8),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)

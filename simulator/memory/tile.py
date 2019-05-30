@@ -52,6 +52,7 @@ class tile:
         self.bias_fault_dict=dict()
         self.bias_range=None
         self.shape_len=4
+        self.print_detail=True
         
     def check_prior(self):
         if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=self.shape_len or len(self.col_prior)!=self.shape_len:
@@ -303,8 +304,9 @@ class tile:
             coor,bit=self.coor_tile_move(coor_head,self.wl-1,addr[1],increase=True)
         except Exception as ValueError:
             if self.check_tile_overflow(bitmap,addr):
-                print(addr)
-                print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
+                if self.print_detail:
+                    print(addr)
+                    print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
                 n_move=addr[1]-(self.tile_size-self.get_numtag(coor_head,self.wl-1))
                 coor_head=self.slice_head_list[self.slice_head_order[addr[0]+1]]
                 coor,bit=self.coor_tile_move(coor_head,self.wl-1,n_move,increase=True)
@@ -363,7 +365,8 @@ class tile:
                     self.fault_dict[fault_coor]={'SA_type':fault_type,
                                                  'SA_bit' : fault_bit}
             elif self.check_within_bias_range(bitmap,addr) and not self.is_fmap:
-                print('bias fault %s'%str(addr))
+                if self.print_detail:
+                    print('bias fault %s'%str(addr))
                 fault_type=bitmap.fault_dict[addr]
                 bias_numtag=bitmap.get_numtag(addr)-self.tile_size+1
                 self.bias_fault_dict[(bias_numtag//self.wl,)]={'SA_type':fault_type,
@@ -436,7 +439,8 @@ class tile:
                     fault_addr[0]+=fault_addr[1]//bitmap.col
                     fault_addr[1]=fault_addr[1]%bitmap.col
                 fault_addr=tuple(fault_addr)
-                print('bias fault %s'%str(fault_addr))
+                if self.print_detail:
+                    print('bias fault %s'%str(fault_addr))
                 
                 bitmap.fault_dict[fault_addr]=fault_type
                 
@@ -709,8 +713,10 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         ifmap_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of input feature maps.
         ofmap_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of output feature maps.
         wght_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of weights.
-        batch_size: Integer. The batch size of fault tolerance evaluation process.
-        model_word_length: Integer. The word length of model parameters.
+        ifmap_tile: Class (tile or tile_FC). The tile or tile_FC class for memory fault tolerance analysis of input feature maps.
+        ofmap_tile: Class (tile or tile_FC). The tile or tile_FC class for memory fault tolerance analysis of output feature maps.
+        wght_tile: Class (tile or tile_FC). The tile or tile_FC class for memory fault tolerance analysis of weight feature maps.
+        print_detail: Bool. Print generation detail or not.
 
     # Returns
         The fault information Dictionary List.
@@ -718,6 +724,10 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     
     if print_detail:
         print('\nMapping memory fault on layer ...')
+    else:
+        ifmap_tile.print_detail=False
+        ofmap_tile.print_detail=False
+        wght_tile.print_detail=False
     
     layer_input_shape=layer.input_shape
     layer_output_shape=layer.output_shape

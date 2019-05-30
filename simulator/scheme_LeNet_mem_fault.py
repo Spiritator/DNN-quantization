@@ -98,9 +98,9 @@ def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False):
     wght_tile_fc2.clear()
     
     # assign fault dictionary
-    GLB_wght.gen_bitmap_SA_fault_dict(fault_rate)
-    GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate)
-    GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate)
+    GLB_wght.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
+    GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
+    GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
             
     # generate fault dictionary
     model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault_dict_list[1]\

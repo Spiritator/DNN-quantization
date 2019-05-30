@@ -77,7 +77,45 @@ class bitmap:
         
         return (row_tmp,col_tmp)
     
-    def gen_bitmap_SA_fault_dict(self,fault_rate,addr_distribution='uniform',addr_pois_lam=None,fault_type='flip',**kwargs):
+    def addr_gen_mem_fast(self,fault_num,distribution='uniform',poisson_lam=None):
+        """Genenerate the fault location in a memory
+           Faster generation may have repetitive fault addr.
+
+        # Arguments
+            distribution: String. The distribution type of locaton in memory. Must be one of 'uniform', 'poisson', 'normal'.
+            poisson_lam: Integer. The lambda of poisson distribution.
+    
+        # Returns
+            The location index Tuple(Integer).
+        """
+        if distribution=='uniform':
+            row_tmp=np.random.randint(self.row,size=fault_num)
+            col_tmp=np.random.randint(self.col,size=fault_num)
+        elif distribution=='poisson':
+            if not isinstance(poisson_lam,tuple) or len(poisson_lam)!=2:
+                raise TypeError('Poisson distribution lambda setting must be a tuple has length of 2 (row, col).')
+            
+            if isinstance(poisson_lam[0],int) and poisson_lam[0]>=0 and poisson_lam[0]<self.row:
+                row_tmp=np.random.poisson(poisson_lam[0],size=fault_num)
+                row_tmp=np.clip(row_tmp,0,self.row-1)
+            else:
+                raise ValueError('Poisson distribution Lambda must within feature map shape. Feature map shape %s but got lambda input %s'%(str((self.row,self.col)),str(poisson_lam)))
+            
+            if isinstance(poisson_lam[1],int) and poisson_lam[1]>=0 and poisson_lam[1]<self.col:
+                col_tmp=np.random.poisson(poisson_lam[1],size=fault_num)
+                col_tmp=np.clip(col_tmp,0,self.col-1)
+            else:
+                raise ValueError('Poisson distribution Lambda must within feature map shape. Feature map shape %s but got lambda input %s'%(str((self.row,self.col)),str(poisson_lam)))
+    
+        elif distribution=='normal':
+            pass 
+            '''TO BE DONE'''   
+        else:
+            raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
+        
+        return zip(row_tmp,col_tmp)
+
+    def gen_bitmap_SA_fault_dict(self,fault_rate,fast_gen=False,addr_distribution='uniform',addr_pois_lam=None,fault_type='flip',**kwargs):
         """Generate the fault dictionary of memory base on its shape and with specific distibution type.
 
         # Arguments
@@ -93,14 +131,18 @@ class bitmap:
         fault_dict=dict()
         self.fault_num_gen_mem(fault_rate)
                 
-        while fault_count<self.fault_num:
-            addr=self.addr_gen_mem(distribution=addr_distribution,poisson_lam=addr_pois_lam,**kwargs)
-            
-            if addr in fault_dict.keys():
-                continue
-            else:
-                fault_dict[addr]=fault_type
-                fault_count += 1
+        if fast_gen:
+            addr=self.addr_gen_mem_fast(self.fault_num,distribution=addr_distribution,poisson_lam=addr_pois_lam,**kwargs)
+            fault_dict=dict(zip(addr,[fault_type for _ in range(self.fault_num)]))
+        else:
+            while fault_count<self.fault_num:
+                addr=self.addr_gen_mem(distribution=addr_distribution,poisson_lam=addr_pois_lam,**kwargs)
+                
+                if addr in fault_dict.keys():
+                    continue
+                else:
+                    fault_dict[addr]=fault_type
+                    fault_count += 1
             
         self.fault_dict=fault_dict
         

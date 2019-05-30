@@ -59,6 +59,8 @@ for fr in fault_rate_list:
            'batch_size':batch_size,
            'model_word_length':model_word_length,
            'layer_wise':False,
+           'param_filter':[True,True,True],
+           'fast_gen':True,
            'coor_distribution':'uniform',
            'coor_pois_lam':None,
            'bit_loc_distribution':'uniform',

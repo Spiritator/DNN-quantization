@@ -35,9 +35,9 @@ def coordinate_gen_fmap(data_shape,batch_size,distribution='uniform',poisson_lam
             raise TypeError('Poisson distribution lambda setting must be a tuple same length as input data shape which indicates the lamda of poisson distribution.')
         
         if isinstance(poisson_lam[0],int) and poisson_lam[0]>=0 and poisson_lam[0]<batch_size:
-            coor_tmp=np.random.poisson(poisson_lam[j])
+            coor_tmp=np.random.poisson(poisson_lam[0])
             while coor_tmp>=batch_size:
-                coor_tmp=np.random.poisson(poisson_lam[j])
+                coor_tmp=np.random.poisson(poisson_lam[0])
             coordinate.append(coor_tmp) 
         for j in range(1,len(data_shape)):
             if isinstance(poisson_lam[j],int) and poisson_lam[j]>=0 and poisson_lam[j]<data_shape[j]:
@@ -54,6 +54,50 @@ def coordinate_gen_fmap(data_shape,batch_size,distribution='uniform',poisson_lam
         raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
     
     coordinate=tuple(coordinate)
+    return coordinate
+
+def coordinate_gen_fmap_fast(data_shape,batch_size,fault_num,distribution='uniform',poisson_lam=None):
+    """Generate the coordinate of a feature map base on its shape and with specific distibution type.
+       Faster generation version not multiple fault in a parameter.
+
+    # Arguments
+        data_shape: Tuple. The shape of feature map.
+        batch_size: Integer. The batch size of fault tolerance evaluation process.
+        fault_num: Integer. The number of faults in fmap.
+        distribution: String. The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
+        poisson_lam: Integer. The lambda of poisson distribution.
+
+    # Returns
+        The coordinate Tuple.
+    """
+    coordinate=list()
+    
+    if distribution=='uniform':
+        coordinate.append(np.random.randint(batch_size,size=fault_num))
+        for j in range(1,len(data_shape)):
+            coordinate.append(np.random.randint(data_shape[j],size=fault_num))
+    elif distribution=='poisson':
+        if not isinstance(poisson_lam,tuple) or len(poisson_lam)!=len(data_shape):
+            raise TypeError('Poisson distribution lambda setting must be a tuple same length as input data shape which indicates the lamda of poisson distribution.')
+        
+        if isinstance(poisson_lam[0],int) and poisson_lam[0]>=0 and poisson_lam[0]<batch_size:
+            coor_tmp=np.random.poisson(poisson_lam[0],size=fault_num)
+            coor_tmp=np.clip(coor_tmp,0,data_shape[0]-1)
+            coordinate.append(coor_tmp) 
+        for j in range(1,len(data_shape)):
+            if isinstance(poisson_lam[j],int) and poisson_lam[j]>=0 and poisson_lam[j]<data_shape[j]:
+                coor_tmp=np.random.poisson(poisson_lam[j],size=fault_num)
+                coor_tmp=np.clip(coor_tmp,0,data_shape[j]-1)
+                coordinate.append(coor_tmp)
+            else:
+                raise ValueError('Poisson distribution Lambda must within feature map shape. Feature map shape %s but got lambda input %s'%(str(data_shape),str(poisson_lam)))
+    elif distribution=='normal':
+        pass 
+        #TODO '''TO BE DONE'''
+    else:
+        raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
+    
+    coordinate=list(zip(*coordinate))
     return coordinate
 
 def coordinate_gen_wght(data_shape,distribution='uniform',poisson_lam=None):
@@ -94,6 +138,46 @@ def coordinate_gen_wght(data_shape,distribution='uniform',poisson_lam=None):
     coordinate=tuple(coordinate)
     return coordinate
 
+def coordinate_gen_wght_fast(data_shape,fault_num,distribution='uniform',poisson_lam=None):
+    """Generate the coordinate of a weights base on its shape and with specific distibution type.
+       Faster generation version not multiple fault in a parameter.
+       
+    # Arguments
+        data_shape: Tuple. The shape of weights.
+        fault_num: Integer. The number of faults in weight.
+        distribution: String. The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
+        poisson_lam: Integer. The lambda of poisson distribution.
+
+    # Returns
+        The coordinate Tuple.
+    """
+
+    coordinate=list()
+    
+    if distribution=='uniform':
+        for j in range(len(data_shape)):
+            coordinate.append(np.random.randint(data_shape[j],size=fault_num))
+    elif distribution=='poisson':
+        if not isinstance(poisson_lam,tuple) or len(poisson_lam)!=len(data_shape):
+            raise TypeError('Poisson distribution lambda setting must be a tuple same length as input data shape which indicates the lamda of poisson distribution.')
+        
+        for j in range(len(data_shape)):
+            if isinstance(poisson_lam[j],int) and poisson_lam[j]>=0 and poisson_lam[j]<data_shape[j]:
+                coor_tmp=np.random.poisson(poisson_lam[j],size=fault_num)
+                coor_tmp=np.clip(coor_tmp,0,data_shape[j]-1)
+                coordinate.append(coor_tmp)
+            else:
+                raise ValueError('Poisson distribution Lambda must within feature map shape. Feature map shape %s but got lambda input %s'%(str(data_shape),str(poisson_lam)))
+    elif distribution=='normal':
+        pass 
+        #TODO '''TO BE DONE'''   
+    else:
+        raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
+    
+    coordinate=list(zip(*coordinate))
+    return coordinate
+
+
 def fault_bit_loc_gen(model_word_length,distribution='uniform',poisson_lam=None):
     """Generate the location of a fault bit in a parameter base on its word length and with specific distibution type.
 
@@ -113,6 +197,34 @@ def fault_bit_loc_gen(model_word_length,distribution='uniform',poisson_lam=None)
             fault_bit=np.random.poisson(poisson_lam)
             while fault_bit>=model_word_length:
                 fault_bit=np.random.poisson(poisson_lam)
+        else:
+            raise ValueError('Poisson distribution Lambda must within model word length.')
+    elif distribution=='normal':
+        pass    
+    else:
+        raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
+    return fault_bit
+
+def fault_bit_loc_gen_fast(model_word_length,fault_num,distribution='uniform',poisson_lam=None):
+    """Generate the location of a fault bit in a parameter base on its word length and with specific distibution type.
+       Faster generation version not multiple fault in a parameter.
+
+    # Arguments
+        model_word_length: Integer. The word length of model parameters.
+        fault_num: Integer. The number of faults in parameter.
+        distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+        poisson_lam: Integer. The lambda of poisson distribution.
+
+    # Returns
+        The location index (Integer).
+    """
+
+    if distribution=='uniform':
+        fault_bit=np.random.randint(model_word_length,size=fault_num)
+    elif distribution=='poisson':
+        if isinstance(poisson_lam,int) and poisson_lam>=0 and poisson_lam<model_word_length:
+            fault_bit=np.random.poisson(poisson_lam,size=fault_num)
+            fault_bit=np.clip(fault_bit,0,model_word_length-1)
         else:
             raise ValueError('Poisson distribution Lambda must within model word length.')
     elif distribution=='normal':
@@ -267,14 +379,11 @@ def fault_num_gen_model(model,fault_rate,batch_size,model_word_length):
             layer_weight_fault_num.append(np.sum(np.prod(np.where([weight_fault_list>filter_fault_num_weight_low,weight_fault_list<filter_fault_num_weight_high],1,0),axis=0,keepdims=False)))
             filter_fault_num_weight_low=filter_fault_num_weight_high
         weight_fault_num_list.append(layer_weight_fault_num)
-
-
-
-        
+ 
     return ifmap_fault_num_list,ofmap_fault_num_list,weight_fault_num_list,total_ifmap_bits,total_ofmap_bits,total_weight_bits
     
 
-def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,fault_num=None,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
+def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,fault_num=None,fast_gen=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
     """Generate the fault dictionary list of a feature map base on its shape and with specific distibution type.
 
     # Arguments
@@ -283,6 +392,7 @@ def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,
         batch_size: Integer. The batch size of fault tolerance evaluation process.
         model_word_length: Integer. The word length of model parameters.
         fault_num: Integer. The number of faults in fmap.
+        fast_gen: Bool. Use fast generation or not.
         coor_distribution: String. The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
         coor_pois_lam: Integer. The lambda of poisson distribution of feature map coordinate.
         bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
@@ -302,12 +412,110 @@ def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,
     if fault_num is None:
         fault_num=fault_num_gen_fmap(data_shape,fault_rate,batch_size,model_word_length)
     
+    if fast_gen:
+        if isinstance(data_shape,list):
+            for i in range(len(fault_num)):
+                coordinate=coordinate_gen_fmap_fast(data_shape[i],batch_size,fault_num[i],distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
+                fault_bit=fault_bit_loc_gen_fast(model_word_length,fault_num[i],distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
+                fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+                fault_dict[i]=dict(zip(coordinate,fault_bit))
+        else:
+            coordinate=coordinate_gen_fmap_fast(data_shape,batch_size,fault_num,distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
+            fault_bit=fault_bit_loc_gen_fast(model_word_length,fault_num,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
+            fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+            fault_dict=dict(zip(coordinate,fault_bit))
+    else:
+        if isinstance(data_shape,list):
+            for i in range(len(fault_num)):
+                fault_count=0
+                while fault_count<fault_num[i]:
+                    coordinate=coordinate_gen_fmap(data_shape[i],batch_size,distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
+                    fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
+                    
+                    if coordinate in fault_dict[i].keys():
+                        if isinstance(fault_dict[i][coordinate]['SA_bit'],list):
+                            if fault_bit in fault_dict[i][coordinate]['SA_bit']:
+                                #print('error 1')
+                                continue
+                            else:
+                                fault_dict[i][coordinate]['SA_type'].append(fault_type)
+                                fault_dict[i][coordinate]['SA_bit'].append(fault_bit)
+                                fault_count += 1
+                        else:
+                            if fault_bit == fault_dict[i][coordinate]['SA_bit']:
+                                #print('error 2')
+                                continue
+                            else:
+                                fault_dict[i][coordinate]['SA_type']=[fault_dict[i][coordinate]['SA_type'],fault_type]
+                                fault_dict[i][coordinate]['SA_bit']=[fault_dict[i][coordinate]['SA_bit'],fault_bit]
+                                fault_count += 1
+                    else:
+                        fault_dict[i][coordinate]={'SA_type':fault_type,
+                                                      'SA_bit' : fault_bit}
+                        fault_count += 1
+        else: 
+            while fault_count<fault_num:
+                coordinate=coordinate_gen_fmap(data_shape,batch_size,distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
+                fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
+                
+                if coordinate in fault_dict.keys():
+                    if isinstance(fault_dict[coordinate]['SA_bit'],list):
+                        if fault_bit in fault_dict[coordinate]['SA_bit']:
+                            continue
+                        else:
+                            fault_dict[coordinate]['SA_type'].append(fault_type)
+                            fault_dict[coordinate]['SA_bit'].append(fault_bit)
+                            fault_count += 1
+                    else:
+                        if fault_bit == fault_dict[coordinate]['SA_bit']:
+                            continue
+                        else:
+                            fault_dict[coordinate]['SA_type']=[fault_dict[coordinate]['SA_type'],fault_type]
+                            fault_dict[coordinate]['SA_bit']=[fault_dict[coordinate]['SA_bit'],fault_bit]
+                            fault_count += 1
+                else:
+                    fault_dict[coordinate]={'SA_type':fault_type,
+                                              'SA_bit' : fault_bit}
+                    fault_count += 1
+        
+    return fault_dict,fault_num
     
-    if isinstance(data_shape,list):
+def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,fault_num=None,fast_gen=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
+    """Generate the fault dictionary list of a feature map base on its shape and with specific distibution type.
+
+    # Arguments
+        data_shape: Tuple. The shape of weights.
+        fault_rate: Float. The probability of fault occurance in weights.
+        batch_size: Integer. The batch size of fault tolerance evaluation process.
+        model_word_length: Integer. The word length of model parameters.
+        fault_num: List of integer. The number of faults in [kernel,bias] respectively.
+        fast_gen: Bool. Use fast generation or not.
+        coor_distribution: String. The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
+        coor_pois_lam: Integer. The lambda of poisson distribution of weights coordinate.
+        bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+        bit_loc_pois_lam: Integer. The lambda of poisson distribution.
+        fault_type: String. The type of fault.
+
+    # Returns
+        The fault information Dictionary. The number of fault generated Integer.
+    """
+
+    fault_count=0        
+    fault_dict=[dict() for _ in range(len(data_shape))]
+    if fault_num is None:
+        fault_num=fault_num_gen_wght(data_shape,fault_rate,model_word_length)
+            
+    if fast_gen:
+        for i in range(len(fault_num)):
+            coordinate=coordinate_gen_wght_fast(data_shape[i],fault_num[i],distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
+            fault_bit=fault_bit_loc_gen_fast(model_word_length,fault_num[i],distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
+            fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+            fault_dict[i]=dict(zip(coordinate,fault_bit))
+    else:
         for i in range(len(fault_num)):
             fault_count=0
             while fault_count<fault_num[i]:
-                coordinate=coordinate_gen_fmap(data_shape[i],batch_size,distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
+                coordinate=coordinate_gen_wght(data_shape[i],distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
                 fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
                 
                 if coordinate in fault_dict[i].keys():
@@ -331,88 +539,10 @@ def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,
                     fault_dict[i][coordinate]={'SA_type':fault_type,
                                                   'SA_bit' : fault_bit}
                     fault_count += 1
-    else: 
-        while fault_count<fault_num:
-            coordinate=coordinate_gen_fmap(data_shape,batch_size,distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
-            fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
-            
-            if coordinate in fault_dict.keys():
-                if isinstance(fault_dict[coordinate]['SA_bit'],list):
-                    if fault_bit in fault_dict[coordinate]['SA_bit']:
-                        continue
-                    else:
-                        fault_dict[coordinate]['SA_type'].append(fault_type)
-                        fault_dict[coordinate]['SA_bit'].append(fault_bit)
-                        fault_count += 1
-                else:
-                    if fault_bit == fault_dict[coordinate]['SA_bit']:
-                        continue
-                    else:
-                        fault_dict[coordinate]['SA_type']=[fault_dict[coordinate]['SA_type'],fault_type]
-                        fault_dict[coordinate]['SA_bit']=[fault_dict[coordinate]['SA_bit'],fault_bit]
-                        fault_count += 1
-            else:
-                fault_dict[coordinate]={'SA_type':fault_type,
-                                          'SA_bit' : fault_bit}
-                fault_count += 1
-        
-    return fault_dict,fault_num
-    
-def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,fault_num=None,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
-    """Generate the fault dictionary list of a feature map base on its shape and with specific distibution type.
-
-    # Arguments
-        data_shape: Tuple. The shape of weights.
-        fault_rate: Float. The probability of fault occurance in weights.
-        batch_size: Integer. The batch size of fault tolerance evaluation process.
-        model_word_length: Integer. The word length of model parameters.
-        fault_num: List of integer. The number of faults in [kernel,bias] respectively.
-        coor_distribution: String. The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
-        coor_pois_lam: Integer. The lambda of poisson distribution of weights coordinate.
-        bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        bit_loc_pois_lam: Integer. The lambda of poisson distribution.
-        fault_type: String. The type of fault.
-
-    # Returns
-        The fault information Dictionary. The number of fault generated Integer.
-    """
-
-    fault_count=0        
-    fault_dict=[dict() for _ in range(len(data_shape))]
-    if fault_num is None:
-        fault_num=fault_num_gen_wght(data_shape,fault_rate,model_word_length)
-            
-    for i in range(len(fault_num)):
-        fault_count=0
-        while fault_count<fault_num[i]:
-            coordinate=coordinate_gen_wght(data_shape[i],distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
-            fault_bit=fault_bit_loc_gen(model_word_length,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
-            
-            if coordinate in fault_dict[i].keys():
-                if isinstance(fault_dict[i][coordinate]['SA_bit'],list):
-                    if fault_bit in fault_dict[i][coordinate]['SA_bit']:
-                        #print('error 1')
-                        continue
-                    else:
-                        fault_dict[i][coordinate]['SA_type'].append(fault_type)
-                        fault_dict[i][coordinate]['SA_bit'].append(fault_bit)
-                        fault_count += 1
-                else:
-                    if fault_bit == fault_dict[i][coordinate]['SA_bit']:
-                        #print('error 2')
-                        continue
-                    else:
-                        fault_dict[i][coordinate]['SA_type']=[fault_dict[i][coordinate]['SA_type'],fault_type]
-                        fault_dict[i][coordinate]['SA_bit']=[fault_dict[i][coordinate]['SA_bit'],fault_bit]
-                        fault_count += 1
-            else:
-                fault_dict[i][coordinate]={'SA_type':fault_type,
-                                              'SA_bit' : fault_bit}
-                fault_count += 1
         
     return fault_dict,fault_num
 
-def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fault_num=None,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
+def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fault_num=None,param_filter=[True,True,True],fast_gen=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
     """Generate the fault dictionary list of a layer base on its shape and with specific distibution type.
 
     # Arguments
@@ -421,11 +551,13 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
         batch_size: Integer. The batch size of fault tolerance evaluation process.
         model_word_length: Integer. The word length of model parameters.
         fault_num: List of integer. The number of faults in [input,weight,output] respectively.
+        fast_gen: Bool. Use fast generation or not.
         coor_distribution: String. The distribution type of coordinate in parameters. Must be one of 'uniform', 'poisson', 'normal'.
         coor_pois_lam: Integer. The lambda of poisson distribution of parameters coordinate.
         bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
         bit_loc_pois_lam: Integer. The lambda of poisson distribution.
         fault_type: String. The type of fault.
+        print_detail: Bool. Print generation detail or not.
 
     # Returns
         The fault information Dictionary. The number of fault generated Integer.
@@ -455,54 +587,72 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
     
     
     # ifmap fault generation
-    ifmap_fault_dict,layer_ifmap_fault_num=gen_fault_dict_list_fmap(layer_input_shape,
-                                                                    fault_rate,
-                                                                    batch_size,
-                                                                    model_word_length,
-                                                                    fault_num=fault_num[0],
-                                                                    coor_distribution=coor_distribution,
-                                                                    coor_pois_lam=coor_pois_lam[0],
-                                                                    bit_loc_distribution=bit_loc_distribution,
-                                                                    bit_loc_pois_lam=bit_loc_pois_lam,
-                                                                    fault_type=fault_type,
-                                                                    **kwargs)
+    if param_filter[0]:
+        ifmap_fault_dict,layer_ifmap_fault_num=gen_fault_dict_list_fmap(layer_input_shape,
+                                                                        fault_rate,
+                                                                        batch_size,
+                                                                        model_word_length,
+                                                                        fault_num=fault_num[0],
+                                                                        fast_gen=fast_gen,
+                                                                        coor_distribution=coor_distribution,
+                                                                        coor_pois_lam=coor_pois_lam[0],
+                                                                        bit_loc_distribution=bit_loc_distribution,
+                                                                        bit_loc_pois_lam=bit_loc_pois_lam,
+                                                                        fault_type=fault_type,
+                                                                        **kwargs)
+    else:
+        ifmap_fault_dict=None
+        layer_ifmap_fault_num=0
+        
     if print_detail:
         print('    generated layer ifmap %s faults'%(str(layer_ifmap_fault_num)))
     
     
     # ofmap fault generation
-    ofmap_fault_dict,layer_ofmap_fault_num=gen_fault_dict_list_fmap(layer_output_shape,
-                                                                    fault_rate,
-                                                                    batch_size,
-                                                                    model_word_length,
-                                                                    fault_num=fault_num[2],
-                                                                    coor_distribution=coor_distribution,
-                                                                    coor_pois_lam=coor_pois_lam[2],
-                                                                    bit_loc_distribution=bit_loc_distribution,
-                                                                    bit_loc_pois_lam=bit_loc_pois_lam,
-                                                                    fault_type=fault_type,
-                                                                    **kwargs)
+    if param_filter[2]:
+        ofmap_fault_dict,layer_ofmap_fault_num=gen_fault_dict_list_fmap(layer_output_shape,
+                                                                        fault_rate,
+                                                                        batch_size,
+                                                                        model_word_length,
+                                                                        fault_num=fault_num[2],
+                                                                        fast_gen=fast_gen,
+                                                                        coor_distribution=coor_distribution,
+                                                                        coor_pois_lam=coor_pois_lam[2],
+                                                                        bit_loc_distribution=bit_loc_distribution,
+                                                                        bit_loc_pois_lam=bit_loc_pois_lam,
+                                                                        fault_type=fault_type,
+                                                                        **kwargs)
+    else:
+        ofmap_fault_dict=None
+        layer_ofmap_fault_num=0
+        
     if print_detail:
         print('    generated layer ofmap %s faults'%(str(layer_ofmap_fault_num)))
     
     # weight fault generation
-    weight_fault_dict,layer_weight_fault_num=gen_fault_dict_list_wght(layer_weight_shape,
-                                                                      fault_rate,
-                                                                      model_word_length,
-                                                                      fault_num=fault_num[1],
-                                                                      coor_distribution=coor_distribution,
-                                                                      coor_pois_lam=coor_pois_lam[1],
-                                                                      bit_loc_distribution=bit_loc_distribution,
-                                                                      bit_loc_pois_lam=bit_loc_pois_lam,
-                                                                      fault_type=fault_type,
-                                                                      **kwargs)
+    if param_filter[1]:
+        weight_fault_dict,layer_weight_fault_num=gen_fault_dict_list_wght(layer_weight_shape,
+                                                                          fault_rate,
+                                                                          model_word_length,
+                                                                          fault_num=fault_num[1],
+                                                                          fast_gen=fast_gen,
+                                                                          coor_distribution=coor_distribution,
+                                                                          coor_pois_lam=coor_pois_lam[1],
+                                                                          bit_loc_distribution=bit_loc_distribution,
+                                                                          bit_loc_pois_lam=bit_loc_pois_lam,
+                                                                          fault_type=fault_type,
+                                                                          **kwargs)
+    else:
+        weight_fault_dict=[None,None]
+        layer_weight_fault_num=0
+        
     if print_detail:
         print('    generated layer weight %s faults'%(str(layer_weight_fault_num)))
             
     return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 
 
-def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,layer_wise=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
+def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,layer_wise=False,param_filter=[True,True,True],fast_gen=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
     """Generate the fault dictionary list of a model base on its shape and with specific distibution type.
 
     # Arguments
@@ -510,12 +660,15 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
         fault_rate: Float. The probability of fault occurance in a layer.
         batch_size: Integer. The batch size of fault tolerance evaluation process.
         model_word_length: Integer. The word length of model parameters.
-        layer_wise: Bool. If true, generate fault lists on each layer individually for the given fault rate. Else, generate fault lists uniformly across all layer with given 
+        layer_wise: Bool. If true, generate fault lists on each layer individually.
+        param_filter: List of Bools. The indicator for generate fault on ifmap, weight, ofmap individually. [input,weight,output]
+        fast_gen: Bool. Use fast generation or not.
         coor_distribution: String. The distribution type of coordinate in parameters. Must be one of 'uniform', 'poisson', 'normal'.
         coor_pois_lam: Integer. The lambda of poisson distribution of parameters coordinate.
         bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
         bit_loc_pois_lam: Integer. The lambda of poisson distribution.
         fault_type: String. The type of fault.
+        print_detail: Bool. Print generation detail or not.
 
     # Returns
         The fault information Dictionary List.
@@ -563,6 +716,8 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
                                     batch_size,
                                     model_word_length,
                                     fault_num=fault_num,
+                                    param_filter=param_filter,
+                                    fast_gen=fast_gen,
                                     coor_distribution=coor_distribution,
                                     coor_pois_lam=coor_pois_lam[lam_index],
                                     bit_loc_distribution=bit_loc_distribution,
@@ -575,41 +730,4 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
             print('    layer %d Done!'%layer_num)
         
     return model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list
-
-# TODO
-# inefficient function to be deprecated
-def multi_gpu_fault_dict_convert(model, gpus=2):
-    model_depth=len(model.layers)
-    for layer_num in range(1,model_depth):
-        layer_weight_shape=[weight_shape.shape for weight_shape in model.layers[layer_num].get_weights()]
-        if len(layer_weight_shape)!=0:
-            if model.layers[layer_num].ifmap_sa_fault_injection is not None:
-                fault_dict_original=model.layers[layer_num].ifmap_sa_fault_injection
-                fault_dict_convert=dict()
-                for key in fault_dict_original.keys():
-                    if key[0]<model.layers[layer_num].inputs.shape.dims[0]/gpus:
-                        fault_dict_convert[key]=fault_dict_original[key]
-                
-                model.layers[layer_num].ifmap_sa_fault_injection=fault_dict_convert
-                
-            if model.layers[layer_num].ofmap_sa_fault_injection is not None:
-                fault_dict_original=model.layers[layer_num].ofmap_sa_fault_injection
-                fault_dict_convert=dict()
-                for key in fault_dict_original.keys():
-                    if key[0]<model.layers[layer_num].inputs.shape.dims[0]/gpus:
-                        fault_dict_convert[key]=fault_dict_original[key]
-                
-                model.layers[layer_num].ofmap_sa_fault_injection=fault_dict_convert
-                
-            for i in range(len(layer_weight_shape)):
-                if model.layers[layer_num].weight_sa_fault_injection[i] is not None:
-                    fault_dict_original=model.layers[layer_num].weight_sa_fault_injection[i]
-                    fault_dict_convert=dict()
-                    for key in fault_dict_original.keys():
-                        if key[0]<model.layers[layer_num].inputs.shape.dims[0]/gpus:
-                            fault_dict_convert[key]=fault_dict_original[key]
-                    
-                    model.layers[layer_num].weight_sa_fault_injection[i]=fault_dict_convert
-                    
-    return model
 

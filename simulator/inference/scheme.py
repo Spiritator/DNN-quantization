@@ -40,6 +40,9 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         
     print('preparing dataset...')
     x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup( **dataset_augment)
+    if datagen is not None:
+        y_test=to_categorical(datagen.classes,datagen.num_classes)
+    
     print('dataset ready')
         
     
@@ -94,12 +97,12 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                     test_result = parallel_model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
             else:
                 if FT_evaluate:
-                    prediction = parallel_model.predict_generator(datagen, verbose=1,steps=len(datagen))
+                    prediction = parallel_model.predict_generator(datagen, verbose=1,steps=len(datagen), use_multiprocessing=True)
                     FT_augment['prediction']=prediction
-                    FT_augment['test_label']=to_categorical(datagen.classes,len(class_indices))
+                    FT_augment['test_label']=y_test
                     test_result = evaluate_FT( **FT_augment)
                 else:
-                    test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
+                    test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen), use_multiprocessing=True)
         else:
             if datagen is None:
                 if FT_evaluate:
@@ -111,12 +114,12 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                     test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
             else:
                 if FT_evaluate:
-                    prediction = model.predict_generator(datagen, verbose=1,steps=len(datagen))
+                    prediction = model.predict_generator(datagen, verbose=1,steps=len(datagen), use_multiprocessing=True)
                     FT_augment['prediction']=prediction
-                    FT_augment['test_label']=to_categorical(datagen.classes,len(class_indices))
+                    FT_augment['test_label']=y_test
                     test_result = evaluate_FT( **FT_augment)
                 else:
-                    test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
+                    test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen), use_multiprocessing=True)
         
         t = time.time()-t
         print('evaluate done')

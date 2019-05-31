@@ -96,7 +96,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                 if FT_evaluate:
                     prediction = parallel_model.predict_generator(datagen, verbose=1,steps=len(datagen))
                     FT_augment['prediction']=prediction
-                    FT_augment['test_label']=to_categorical(datagen.classes,len(datagen.class_indices))
+                    FT_augment['test_label']=to_categorical(datagen.classes,len(class_indices))
                     test_result = evaluate_FT( **FT_augment)
                 else:
                     test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
@@ -113,7 +113,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                 if FT_evaluate:
                     prediction = model.predict_generator(datagen, verbose=1,steps=len(datagen))
                     FT_augment['prediction']=prediction
-                    FT_augment['test_label']=to_categorical(datagen.classes,len(datagen.class_indices))
+                    FT_augment['test_label']=to_categorical(datagen.classes,len(class_indices))
                     test_result = evaluate_FT( **FT_augment)
                 else:
                     test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen))

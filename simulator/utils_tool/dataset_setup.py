@@ -1,23 +1,11 @@
-# Copyright 2017 Bert Moons
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb 27 16:46:08 2019
 
-# This file is part of QNN.
+@author: Yung-Yu Tsai
 
-# QNN is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# QNN is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# The code for QNN is based on BinaryNet: https://github.com/MatthieuCourbariaux/BinaryNet
-
-# You should have received a copy of the GNU General Public License
-# along with QNN.  If not, see <http://www.gnu.org/licenses/>.
-
-# reference https://github.com/BertMoons/QuantizedNeuralNetworks-Keras-Tensorflow
+An example of using inference scheme to arange analysis and save result.
+"""
 
 import numpy as np
 import keras

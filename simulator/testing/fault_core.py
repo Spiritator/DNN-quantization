@@ -214,6 +214,9 @@ def generate_tensor_modulator(shape,nb,fb,fault_dict):
             tensor_modulatorF[key]=modulatorF
             injectF=True
             
+    if all([not inject0,not inject1,not injectF]):
+        return None
+        
     if not inject0:
         tensor_modulator0=None
     if not inject1:
@@ -237,12 +240,15 @@ def generate_layer_modulator(layer,word_length,fractional_bit,ifmap_fault_dict,o
         ofmap_modulator=None
     else:
         ofmap_modulator=generate_tensor_modulator(layer_output_shape,word_length,fractional_bit,ofmap_fault_dict)
+    
     wght_modulator=list()
     for i,shape in enumerate(layer_weight_shape):
         if wght_fault_dict[i] is None:
             wght_modulator.append(None)
         else:
             wght_modulator.append(generate_tensor_modulator(shape,word_length,fractional_bit,wght_fault_dict[i]))
+    if len(wght_modulator)==0:
+        wght_modulator=[None,None]
     
     return ifmap_modulator,ofmap_modulator,wght_modulator
 

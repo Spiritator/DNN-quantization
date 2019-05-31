@@ -24,12 +24,10 @@ result_save_folder='../../test_result/imagenet_mobilenet_model_fault_rate'
 weight_name='../../mobilenet_1_0_224_tf_fused_BN.h5'
 test_rounds=200
 set_size=2
-class_number=1000
 batch_size=40
 model_word_length=16
 model_fractional_bit=9
 rounding_method='nearest'
-fault_rate=1e-8
 if set_size in [50,'full',None]:
     validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator'
 else:
@@ -96,7 +94,7 @@ for fr in fault_rate_list:
         model_augment.append({'weights':weight_name,
                               'nbits':model_word_length,
                               'fbits':model_fractional_bit,
-                              'rounding_method':'nearest',
+                              'rounding_method':rounding_method,
                               'batch_size':batch_size,
                               'quant_mode':'hybrid',
                               'ifmap_fault_dict_list':model_ifmap_fdl,

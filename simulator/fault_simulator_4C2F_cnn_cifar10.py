@@ -46,6 +46,8 @@ model=quantized_4C2F(nbits=model_word_length,
                      batch_size=batch_size,
                      quant_mode=None)
 
+t = time.time()
+
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
 =generate_model_stuck_fault(model,
                             fault_rate,
@@ -53,17 +55,22 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                             model_word_length,
                             param_filter=[True,True,True],
                             fast_gen=True,
+                            return_modulator=True,
                             bit_loc_distribution='uniform',
                             bit_loc_pois_lam=2)
 
 
-model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
-=generate_model_modulator(model,
-                          model_word_length,
-                          model_fractional_bit,
-                          model_ifmap_fault_dict_list, 
-                          model_ofmap_fault_dict_list, 
-                          model_weight_fault_dict_list)
+#model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+#=generate_model_modulator(model,
+#                          model_word_length,
+#                          model_fractional_bit,
+#                          model_ifmap_fault_dict_list, 
+#                          model_ofmap_fault_dict_list, 
+#                          model_weight_fault_dict_list,
+#                          fast_gen=True)
+
+t = time.time()-t
+print('\nfault gen time: %f s'%t)
 
 # FC layer no fault
 #model_weight_fault_dict_list[10]=[None,None]

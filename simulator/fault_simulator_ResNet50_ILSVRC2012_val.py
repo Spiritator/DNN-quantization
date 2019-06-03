@@ -52,17 +52,19 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                             model_word_length,
                             param_filter=[True,True,True],
                             fast_gen=True,
+                            return_modulator=True,
                             bit_loc_distribution='uniform',
                             bit_loc_pois_lam=None,
                             fault_type='flip')
 
-model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
-=generate_model_modulator(model,
-                          model_word_length,
-                          model_fractional_bit,
-                          model_ifmap_fault_dict_list, 
-                          model_ofmap_fault_dict_list, 
-                          model_weight_fault_dict_list)
+#model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+#=generate_model_modulator(model,
+#                          model_word_length,
+#                          model_fractional_bit,
+#                          model_ifmap_fault_dict_list, 
+#                          model_ofmap_fault_dict_list, 
+#                          model_weight_fault_dict_list,
+#                          fast_gen=True)
 
 
 #%%

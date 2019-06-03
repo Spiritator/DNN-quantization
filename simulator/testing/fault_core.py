@@ -193,27 +193,69 @@ def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck
     
     return modulator0, modulator1, modulatorF
 
-def generate_tensor_modulator(shape,nb,fb,fault_dict):
-    tensor_modulator0=-np.ones(shape,dtype=np.int32)
-    tensor_modulator1=np.zeros(shape,dtype=np.int32)
-    tensor_modulatorF=np.zeros(shape,dtype=np.int32)
+def generate_stuck_at_fault_modulator_fast(shape,coor,fault_type,fault_bit):
+    if len(coor) == 0:
+        return None
+    
+    coor=np.array(coor)
+    
+    modulator=np.ones((coor.shape[0],),dtype=np.int32)
+    modulator=np.left_shift(modulator,fault_bit)
+    
+    coor=np.transpose(coor)
+    coor=tuple(np.split(coor,coor.shape[0],axis=0))
+    
+    if fault_type == '0':
+        tensor_modulator=-np.ones(shape,dtype=np.int32)
+        np.add.at(tensor_modulator,coor,modulator)
+    elif fault_type == '1':
+        tensor_modulator=np.zeros(shape,dtype=np.int32)
+        np.add.at(tensor_modulator,coor,modulator)
+    elif fault_type == 'flip':
+        tensor_modulator=np.zeros(shape,dtype=np.int32)
+        np.add.at(tensor_modulator,coor,modulator)
+        
+    return tensor_modulator
+
+def generate_tensor_modulator(shape,nb,fb,fault_dict,fast_gen=False): 
+    if len(fault_dict)==0:
+        return None
     
     inject0=False
     inject1=False
     injectF=False
     
-    for key in fault_dict.keys():
-        modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(nb,fb,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'])
-        if modulator0 is not None:
-            tensor_modulator0[key]=modulator0
+    if fast_gen:
+        coor=list(fault_dict.keys())
+        fault_type=fault_dict[coor[0]]['SA_type']
+        fault_bit=[fault['SA_bit'] for fault in fault_dict.values()]
+                
+        if fault_type == '0':
+            tensor_modulator0=generate_stuck_at_fault_modulator_fast(shape,coor,fault_type,fault_bit)
             inject0=True
-        if modulator1 is not None:
-            tensor_modulator1[key]=modulator1
+        elif fault_type == '1':
+            tensor_modulator1=generate_stuck_at_fault_modulator_fast(shape,coor,fault_type,fault_bit)
             inject1=True
-        if modulatorF is not None:
-            tensor_modulatorF[key]=modulatorF
+        elif fault_type == 'flip':
+            tensor_modulatorF=generate_stuck_at_fault_modulator_fast(shape,coor,fault_type,fault_bit)
             injectF=True
-            
+    else:
+        tensor_modulator0=-np.ones(shape,dtype=np.int32)
+        tensor_modulator1=np.zeros(shape,dtype=np.int32)
+        tensor_modulatorF=np.zeros(shape,dtype=np.int32)
+        
+        for key in fault_dict.keys():
+            modulator0,modulator1,modulatorF=generate_stuck_at_fault_modulator(nb,fb,fault_dict[key]['SA_bit'],fault_dict[key]['SA_type'])
+            if modulator0 is not None:
+                tensor_modulator0[key]=modulator0
+                inject0=True
+            if modulator1 is not None:
+                tensor_modulator1[key]=modulator1
+                inject1=True
+            if modulatorF is not None:
+                tensor_modulatorF[key]=modulatorF
+                injectF=True
+                
     if all([not inject0,not inject1,not injectF]):
         return None
         
@@ -226,7 +268,7 @@ def generate_tensor_modulator(shape,nb,fb,fault_dict):
             
     return [tensor_modulator0,tensor_modulator1,tensor_modulatorF]
 
-def generate_layer_modulator(layer,word_length,fractional_bit,ifmap_fault_dict,ofmap_fault_dict,wght_fault_dict):
+def generate_layer_modulator(layer,word_length,fractional_bit,ifmap_fault_dict,ofmap_fault_dict,wght_fault_dict,fast_gen=False):
     layer_input_shape=layer.input_shape
     layer_output_shape=layer.output_shape
     layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
@@ -234,25 +276,25 @@ def generate_layer_modulator(layer,word_length,fractional_bit,ifmap_fault_dict,o
     if ifmap_fault_dict is None:
         ifmap_modulator=None
     else:
-        ifmap_modulator=generate_tensor_modulator(layer_input_shape,word_length,fractional_bit,ifmap_fault_dict)
+        ifmap_modulator=generate_tensor_modulator(layer_input_shape,word_length,fractional_bit,ifmap_fault_dict,fast_gen=fast_gen)
     
     if ofmap_fault_dict is None:
         ofmap_modulator=None
     else:
-        ofmap_modulator=generate_tensor_modulator(layer_output_shape,word_length,fractional_bit,ofmap_fault_dict)
+        ofmap_modulator=generate_tensor_modulator(layer_output_shape,word_length,fractional_bit,ofmap_fault_dict,fast_gen=fast_gen)
     
     wght_modulator=list()
     for i,shape in enumerate(layer_weight_shape):
         if wght_fault_dict[i] is None:
             wght_modulator.append(None)
         else:
-            wght_modulator.append(generate_tensor_modulator(shape,word_length,fractional_bit,wght_fault_dict[i]))
+            wght_modulator.append(generate_tensor_modulator(shape,word_length,fractional_bit,wght_fault_dict[i],fast_gen=fast_gen))
     if len(wght_modulator)==0:
         wght_modulator=[None,None]
     
     return ifmap_modulator,ofmap_modulator,wght_modulator
 
-def generate_model_modulator(model,word_length,fractional_bit,ifmap_fault_dict_list,ofmap_fault_dict_list,wght_fault_dict_list):
+def generate_model_modulator(model,word_length,fractional_bit,ifmap_fault_dict_list,ofmap_fault_dict_list,wght_fault_dict_list,fast_gen=False):
     model_depth=len(model.layers)
     model_ifmap_fault_modulator_list=[None for _ in range(model_depth)]
     model_ofmap_fault_modulator_list=[None for _ in range(model_depth)]
@@ -265,7 +307,8 @@ def generate_model_modulator(model,word_length,fractional_bit,ifmap_fault_dict_l
                                   fractional_bit,
                                   ifmap_fault_dict_list[layer_num],
                                   ofmap_fault_dict_list[layer_num],
-                                  wght_fault_dict_list[layer_num])
+                                  wght_fault_dict_list[layer_num],
+                                  fast_gen=fast_gen)
         
         model_ifmap_fault_modulator_list[layer_num]=ifmap_modulator
         model_ofmap_fault_modulator_list[layer_num]=ofmap_modulator

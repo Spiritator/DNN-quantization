@@ -31,7 +31,7 @@ from inference.evaluate import evaluate_FT
 
 weight_name='../../mnist_lenet5_weight.h5'
 model_word_length=8
-model_fractional_bit=4
+model_fractional_bit=3
 rounding_method='nearest'
 batch_size=20
 fault_rate=0.0001
@@ -45,6 +45,7 @@ model=quantized_lenet5(nbits=model_word_length,
                        rounding_method=rounding_method,
                        batch_size=batch_size,
                        quant_mode=None)
+t = time.time()
 
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
 =generate_model_stuck_fault(model,fault_rate,
@@ -52,17 +53,21 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                             model_word_length,
                             param_filter=[True,True,True],
                             fast_gen=True,
+                            return_modulator=True,
                             bit_loc_distribution='uniform',
                             bit_loc_pois_lam=None,
                             fault_type='flip')
 
-model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
-=generate_model_modulator(model,
-                          model_word_length,
-                          model_fractional_bit,
-                          model_ifmap_fault_dict_list, 
-                          model_ofmap_fault_dict_list, 
-                          model_weight_fault_dict_list)
+#model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+#=generate_model_modulator(model,
+#                          model_word_length,
+#                          model_fractional_bit,
+#                          model_ifmap_fault_dict_list, 
+#                          model_ofmap_fault_dict_list, 
+#                          model_weight_fault_dict_list,
+#                          fast_gen=True)
+t = time.time()-t
+print('\nfault gen time: %f s'%t)
 
 # FC layer no fault
 #model_weight_fault_dict_list[6]=[None,None]

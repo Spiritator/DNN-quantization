@@ -18,9 +18,9 @@ from keras import constraints
 from keras import initializers
 from keras.utils import conv_utils
 
-from layers.quantized_ops import quantizer
+from .quantized_ops import quantizer
 from testing.fault_ops import inject_layer_sa_fault_tensor
-from layers.intra_layer_ops import QuantizedDenseCore, QuantizedConv2DCore, QuantizedBatchNormalizationCore, QuantizedDepthwiseConv2DCore, DistributedConv2D, QuantizedDistributedConv2DCore
+from .intra_layer_ops import QuantizedDenseCore, QuantizedConv2DCore, QuantizedBatchNormalizationCore, QuantizedDepthwiseConv2DCore, DistributedConv2D, QuantizedDistributedConv2DCore
 
 
 class Clip(constraints.Constraint):

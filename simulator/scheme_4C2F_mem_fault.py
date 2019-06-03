@@ -39,8 +39,8 @@ memory_column_priority=['Tm','Tc','Tr','Tn']
 memory_row_priority=['Tr','Tm','Tc','Tn']
 
 # memory fault simulation parameter
-fault_rate_list=[5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
-
+fault_rate_list=  [5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
+test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,200 ,100 ,100 ,100 ,50  ,20  ,20  ,10  ,10  ]
 
 #%%
 # fault generation
@@ -199,7 +199,7 @@ dataset_augment={'dataset':'cifar10'}
 
 FT_augment={'model_name':'4c2f','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
 
-for fr in fault_rate_list:
+for test_rounds,fr in enumerate(fault_rate_list):
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
     print('|=|        Test Bit Fault Rate %s'%str(fr))
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
@@ -207,8 +207,8 @@ for fr in fault_rate_list:
         
     # fault generation
     model_augment=list()
-    for i in range(test_rounds):
-        print('Generating fault for test round %d...'%i)
+    for i in range(test_rounds_lists[test_rounds]):
+        print('Generating fault for test round %d...'%(i+1))
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=gen_model_mem_fault_dict(ref_model,fr)
         
         model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\

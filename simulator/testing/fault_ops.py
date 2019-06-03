@@ -9,7 +9,7 @@ inject stuck at fault during model build phase
 """
 
 import tensorflow as tf
-from testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_tensor_modulator
+from .fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault, generate_tensor_modulator
 
 def check_fault_dict(data, fault_dict):
     """Check the fault dictionary is valid for the data or not.

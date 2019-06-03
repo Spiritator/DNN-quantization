@@ -33,8 +33,8 @@ if set_size in [50,'full',None]:
 else:
     validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_%d'%set_size
     
-fault_rate_list=[1e-9,2e-9,5e-9,1e-8,2e-8,5e-8,1e-7,2e-7,5e-7,1e-6,2e-6,5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
-
+fault_rate_list=  [1e-9,2e-9,5e-9,1e-8,2e-8,5e-8,1e-7,2e-7,5e-7,1e-6,2e-6,5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
+test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,100 ,100 ,100 ,100 ,50  ,50  ,50  ,10  ,10  ,10  ,4   ,2   ,2   ,2   ]
 
 #%%
 
@@ -56,7 +56,7 @@ dataset_augment={'dataset':'ImageDataGenerator','img_rows':img_width,'img_cols':
 
 FT_augment={'model_name':'mobilenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],'fuseBN':True,'setsize':set_size}    
 
-for fr in fault_rate_list:
+for test_rounds,fr in enumerate(fault_rate_list):
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
     print('|=|        Test Bit Fault Rate %s'%str(fr))
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
@@ -79,8 +79,8 @@ for fr in fault_rate_list:
     
     # fault generation
     model_augment=list()
-    for i in range(test_rounds):
-        print('Generating fault for test round %d...'%i)
+    for i in range(test_rounds_lists[test_rounds]):
+        print('Generating fault for test round %d...'%(i+1))
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
         
         model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\
@@ -89,7 +89,8 @@ for fr in fault_rate_list:
                                   model_fractional_bit,
                                   model_ifmap_fdl, 
                                   model_ofmap_fdl, 
-                                  model_weight_fdl)
+                                  model_weight_fdl,
+                                  fast_gen=True)
         
         model_augment.append({'weights':weight_name,
                               'nbits':model_word_length,

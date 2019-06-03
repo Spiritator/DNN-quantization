@@ -11,6 +11,7 @@ support different type of fault distribution
 """
 
 import numpy as np
+from .fault_core import generate_stuck_at_fault_modulator_fast
 
 def coordinate_gen_fmap(data_shape,batch_size,distribution='uniform',poisson_lam=None):
     """Generate the coordinate of a feature map base on its shape and with specific distibution type.
@@ -383,7 +384,7 @@ def fault_num_gen_model(model,fault_rate,batch_size,model_word_length):
     return ifmap_fault_num_list,ofmap_fault_num_list,weight_fault_num_list,total_ifmap_bits,total_ofmap_bits,total_weight_bits
     
 
-def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,fault_num=None,fast_gen=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
+def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,fault_num=None,fast_gen=False,return_modulator=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
     """Generate the fault dictionary list of a feature map base on its shape and with specific distibution type.
 
     # Arguments
@@ -392,7 +393,8 @@ def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,
         batch_size: Integer. The batch size of fault tolerance evaluation process.
         model_word_length: Integer. The word length of model parameters.
         fault_num: Integer. The number of faults in fmap.
-        fast_gen: Bool. Use fast generation or not.
+        fast_gen: Bool. Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
+        return_modulator: Bool. Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
         coor_distribution: String. The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
         coor_pois_lam: Integer. The lambda of poisson distribution of feature map coordinate.
         bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
@@ -417,13 +419,39 @@ def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,
             for i in range(len(fault_num)):
                 coordinate=coordinate_gen_fmap_fast(data_shape[i],batch_size,fault_num[i],distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
                 fault_bit=fault_bit_loc_gen_fast(model_word_length,fault_num[i],distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
-                fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
-                fault_dict[i]=dict(zip(coordinate,fault_bit))
+                if return_modulator:
+                    tensor_modulator0=None
+                    tensor_modulator1=None
+                    tensor_modulatorF=None
+                    modulator=generate_stuck_at_fault_modulator_fast(data_shape[i],coordinate,fault_type,fault_bit)
+                    if fault_type == '0':
+                        tensor_modulator0=modulator
+                    elif fault_type == '1':
+                        tensor_modulator1=modulator
+                    elif fault_type == 'flip':
+                        tensor_modulatorF=modulator
+                    fault_dict[i]=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+                else:
+                    fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+                    fault_dict[i]=dict(zip(coordinate,fault_bit))
         else:
             coordinate=coordinate_gen_fmap_fast(data_shape,batch_size,fault_num,distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
             fault_bit=fault_bit_loc_gen_fast(model_word_length,fault_num,distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
-            fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
-            fault_dict=dict(zip(coordinate,fault_bit))
+            if return_modulator:
+                tensor_modulator0=None
+                tensor_modulator1=None
+                tensor_modulatorF=None
+                modulator=generate_stuck_at_fault_modulator_fast(data_shape,coordinate,fault_type,fault_bit)
+                if fault_type == '0':
+                    tensor_modulator0=modulator
+                elif fault_type == '1':
+                    tensor_modulator1=modulator
+                elif fault_type == 'flip':
+                    tensor_modulatorF=modulator
+                fault_dict=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+            else:
+                fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+                fault_dict=dict(zip(coordinate,fault_bit))
     else:
         if isinstance(data_shape,list):
             for i in range(len(fault_num)):
@@ -480,7 +508,7 @@ def gen_fault_dict_list_fmap(data_shape,fault_rate,batch_size,model_word_length,
         
     return fault_dict,fault_num
     
-def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,fault_num=None,fast_gen=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
+def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,fault_num=None,fast_gen=False,return_modulator=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',**kwargs):
     """Generate the fault dictionary list of a feature map base on its shape and with specific distibution type.
 
     # Arguments
@@ -489,7 +517,8 @@ def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,fault_num=N
         batch_size: Integer. The batch size of fault tolerance evaluation process.
         model_word_length: Integer. The word length of model parameters.
         fault_num: List of integer. The number of faults in [kernel,bias] respectively.
-        fast_gen: Bool. Use fast generation or not.
+        fast_gen: Bool. Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
+        return_modulator: Bool. Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
         coor_distribution: String. The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
         coor_pois_lam: Integer. The lambda of poisson distribution of weights coordinate.
         bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
@@ -509,8 +538,21 @@ def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,fault_num=N
         for i in range(len(fault_num)):
             coordinate=coordinate_gen_wght_fast(data_shape[i],fault_num[i],distribution=coor_distribution,poisson_lam=coor_pois_lam,**kwargs)
             fault_bit=fault_bit_loc_gen_fast(model_word_length,fault_num[i],distribution=bit_loc_distribution,poisson_lam=bit_loc_pois_lam,**kwargs)
-            fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
-            fault_dict[i]=dict(zip(coordinate,fault_bit))
+            if return_modulator:
+                tensor_modulator0=None
+                tensor_modulator1=None
+                tensor_modulatorF=None
+                modulator=generate_stuck_at_fault_modulator_fast(data_shape[i],coordinate,fault_type,fault_bit)
+                if fault_type == '0':
+                    tensor_modulator0=modulator
+                elif fault_type == '1':
+                    tensor_modulator1=modulator
+                elif fault_type == 'flip':
+                    tensor_modulatorF=modulator
+                fault_dict[i]=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+            else:
+                fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+                fault_dict[i]=dict(zip(coordinate,fault_bit))
     else:
         for i in range(len(fault_num)):
             fault_count=0
@@ -542,7 +584,7 @@ def gen_fault_dict_list_wght(data_shape,fault_rate,model_word_length,fault_num=N
         
     return fault_dict,fault_num
 
-def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fault_num=None,param_filter=[True,True,True],fast_gen=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
+def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fault_num=None,param_filter=[True,True,True],fast_gen=False,return_modulator=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
     """Generate the fault dictionary list of a layer base on its shape and with specific distibution type.
 
     # Arguments
@@ -551,7 +593,8 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
         batch_size: Integer. The batch size of fault tolerance evaluation process.
         model_word_length: Integer. The word length of model parameters.
         fault_num: List of integer. The number of faults in [input,weight,output] respectively.
-        fast_gen: Bool. Use fast generation or not.
+        fast_gen: Bool. Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
+        return_modulator: Bool. Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
         coor_distribution: String. The distribution type of coordinate in parameters. Must be one of 'uniform', 'poisson', 'normal'.
         coor_pois_lam: Integer. The lambda of poisson distribution of parameters coordinate.
         bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
@@ -594,6 +637,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
                                                                         model_word_length,
                                                                         fault_num=fault_num[0],
                                                                         fast_gen=fast_gen,
+                                                                        return_modulator=return_modulator,
                                                                         coor_distribution=coor_distribution,
                                                                         coor_pois_lam=coor_pois_lam[0],
                                                                         bit_loc_distribution=bit_loc_distribution,
@@ -616,6 +660,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
                                                                         model_word_length,
                                                                         fault_num=fault_num[2],
                                                                         fast_gen=fast_gen,
+                                                                        return_modulator=return_modulator,
                                                                         coor_distribution=coor_distribution,
                                                                         coor_pois_lam=coor_pois_lam[2],
                                                                         bit_loc_distribution=bit_loc_distribution,
@@ -636,6 +681,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
                                                                           model_word_length,
                                                                           fault_num=fault_num[1],
                                                                           fast_gen=fast_gen,
+                                                                          return_modulator=return_modulator,
                                                                           coor_distribution=coor_distribution,
                                                                           coor_pois_lam=coor_pois_lam[1],
                                                                           bit_loc_distribution=bit_loc_distribution,
@@ -652,7 +698,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
     return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 
 
-def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,layer_wise=False,param_filter=[True,True,True],fast_gen=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
+def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,layer_wise=False,param_filter=[True,True,True],fast_gen=False,return_modulator=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
     """Generate the fault dictionary list of a model base on its shape and with specific distibution type.
 
     # Arguments
@@ -662,7 +708,8 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
         model_word_length: Integer. The word length of model parameters.
         layer_wise: Bool. If true, generate fault lists on each layer individually.
         param_filter: List of Bools. The indicator for generate fault on ifmap, weight, ofmap individually. [input,weight,output]
-        fast_gen: Bool. Use fast generation or not.
+        fast_gen: Bool. Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
+        return_modulator: Bool. Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
         coor_distribution: String. The distribution type of coordinate in parameters. Must be one of 'uniform', 'poisson', 'normal'.
         coor_pois_lam: Integer. The lambda of poisson distribution of parameters coordinate.
         bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
@@ -718,6 +765,7 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
                                     fault_num=fault_num,
                                     param_filter=param_filter,
                                     fast_gen=fast_gen,
+                                    return_modulator=return_modulator,
                                     coor_distribution=coor_distribution,
                                     coor_pois_lam=coor_pois_lam[lam_index],
                                     bit_loc_distribution=bit_loc_distribution,

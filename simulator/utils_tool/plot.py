@@ -127,7 +127,7 @@ def plot_FT_analysis(stat_dir=None,report_filename=None):
         plt.legend(loc='upper left')
         plt.tight_layout()
         if stat_dir is not None:
-            pic_path=os.path.split(stat_dir)[0]+'/'+metric+'.png'
+            pic_path=stat_dir+'/'+metric+'.png'
         elif report_filename is not None:
             pic_path=os.path.split(report_filename)[0]+'/'+metric+'.png'
         plt.savefig(pic_path,dpi=250)

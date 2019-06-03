@@ -70,6 +70,7 @@ for test_rounds,fr in enumerate(fault_rate_list):
            'layer_wise':False,
            'param_filter':[True,True,True],
            'fast_gen':True,
+           'return_modulator':True,
            'coor_distribution':'uniform',
            'coor_pois_lam':None,
            'bit_loc_distribution':'uniform',
@@ -83,14 +84,14 @@ for test_rounds,fr in enumerate(fault_rate_list):
         print('Generating fault for test round %d...'%(i+1))
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
         
-        model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\
-        =generate_model_modulator(ref_model,
-                                  model_word_length,
-                                  model_fractional_bit,
-                                  model_ifmap_fdl, 
-                                  model_ofmap_fdl, 
-                                  model_weight_fdl,
-                                  fast_gen=True)
+#        model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\
+#        =generate_model_modulator(ref_model,
+#                                  model_word_length,
+#                                  model_fractional_bit,
+#                                  model_ifmap_fdl, 
+#                                  model_ofmap_fdl, 
+#                                  model_weight_fdl,
+#                                  fast_gen=True)
         
         model_augment.append({'weights':weight_name,
                               'nbits':model_word_length,

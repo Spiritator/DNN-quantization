@@ -11,7 +11,7 @@ from utils_tool.plot import make_FT_report_csv,plot_FT_analysis
 
 #%%
 
-stat_folder_dir='cifar10_4C2F_memory_fault_rate_small_full_fmap'
+stat_folder_dir='imagenet_mobilenet_model_fault_rate_wght'
 stat_data=make_FT_report_csv('../../test_result/'+stat_folder_dir,stat_folder_dir)
 stat_data=plot_FT_analysis(stat_dir='../../test_result/'+stat_folder_dir)
 

@@ -52,6 +52,7 @@ class tile:
         self.bias_fault_dict=dict()
         self.bias_range=None
         self.shape_len=4
+        self.base_coor=None
         self.print_detail=True
         
     def check_prior(self):
@@ -462,48 +463,69 @@ class tile:
             self.use_bias=use_bias
             
         layer_shape=list(layer_shape)
-        if self.is_fmap:
-            tile_shape=[self.Tn,self.Tr,self.Tc,self.Tm]
-        else:
-            tile_shape=[self.Tr,self.Tc,self.Tm,self.Tn]
-            
-        restore_multiple=np.floor_divide(layer_shape,tile_shape)
         
-        base_coor=np.array([[0,0,0,0]])
-        
-        def gen_coor(coor,index):
-            if coor[index] < restore_multiple[index]:
-                coor[index]+=1
+        if self.base_coor is None:
+            if self.is_fmap:
+                tile_shape=[self.Tn,self.Tr,self.Tc,self.Tm]
             else:
-                if index != 0:
-                    coor[index]=0
-                    coor=gen_coor(coor,index-1)
-            return coor
+                tile_shape=[self.Tr,self.Tc,self.Tm,self.Tn]
                 
-        coor_tmp=[0,0,0,0]
-        
-        for i in range(np.prod(np.add(restore_multiple,[1,1,1,1]))-1):
-            coor_tmp=gen_coor(coor_tmp,3)
-            base_coor=np.append(base_coor,[coor_tmp],axis=0)
+            restore_multiple=np.floor_divide(layer_shape,tile_shape)
             
-        base_coor=np.multiply(base_coor,np.tile(tile_shape,[len(base_coor),1]))
+            base_coor=list(np.ndindex(*np.add(restore_multiple,[1,1,1,1])))            
+                            
+            base_coor=np.multiply(base_coor,np.tile(tile_shape,[len(base_coor),1]))
+            
+            self.base_coor=base_coor
         
-        layer_fault_dict=dict()
         
-        for i in range(len(base_coor)):
-            for tile_fault_coor in self.fault_dict.keys():
-                layer_fault_coor=np.add(base_coor[i],list(tile_fault_coor))
-                if all(layer_shape>layer_fault_coor):
-                    layer_fault_dict[tuple(layer_fault_coor)]=self.fault_dict[tile_fault_coor]
+        if len(self.fault_dict)!=0:
+            tile_fault_coor=list(self.fault_dict.keys())
+            layer_fault_coor=np.add(np.tile(self.base_coor,[len(tile_fault_coor),1]),np.tile(tile_fault_coor,[len(self.base_coor),1]))
+            
+            tile_fault_info=list(self.fault_dict.values())
+            layer_fault_info=np.tile(tile_fault_info,[len(self.base_coor)])
+    
+            outside_element_index=list()
+            for i in range(4):
+                outside_element_index.append(np.argwhere(layer_fault_coor[:,i]>=layer_shape[i]))
+            outside_element_index=np.reshape(np.concatenate(outside_element_index),[1,-1])
+                
+            layer_fault_coor=np.delete(layer_fault_coor,outside_element_index,0)
+            layer_fault_info=np.delete(layer_fault_info,outside_element_index,0)
+            
+            layer_fault_coor=np.split(np.transpose(layer_fault_coor),4,axis=0)
+            layer_fault_coor=[axis[0] for axis in layer_fault_coor]
+            layer_fault_coor=list(zip(*layer_fault_coor))
+            layer_fault_info=list(layer_fault_info)
+            layer_fault_dict=dict(zip(layer_fault_coor,layer_fault_info))
+        else:
+            layer_fault_dict=dict()
                   
+        
         layer_fault_dict_bias=dict()
                     
         if self.use_bias:
-            for i in range(layer_shape[-1]//self.Tn+1):
-                for bias_fault_coor in self.bias_fault_dict.keys():
-                    bias_fault_coor_layer=i*self.Tn+bias_fault_coor[0]
-                    if bias_fault_coor_layer<layer_shape[-1]:
-                        layer_fault_dict_bias[(bias_fault_coor_layer,)]=self.bias_fault_dict[bias_fault_coor]
+            if len(self.bias_fault_dict)==0:
+                return [layer_fault_dict,layer_fault_dict_bias]
+            
+            bias_fault_coor=list(self.bias_fault_dict.keys())
+            bias_fault_coor=np.reshape(bias_fault_coor,[-1])
+
+            bias_restore_multiple=layer_shape[-1]//self.Tn+1
+            bias_base_coor=np.multiply(np.arange(bias_restore_multiple),self.Tn)
+            bias_fault_coor=np.reshape(np.add.outer(bias_base_coor,bias_fault_coor),[-1])
+            #bias_fault_coor=np.add(np.tile(bias_base_coor,[1,len(bias_fault_coor)]),np.tile(bias_fault_coor,[1,bias_restore_multiple]))
+            
+            bias_fault_info=list(self.bias_fault_dict.values())
+            bias_fault_info=np.tile(bias_fault_info,[bias_restore_multiple])
+
+            bias_outside_index=np.argwhere(bias_fault_coor>=layer_shape[-1])
+            
+            bias_fault_coor=np.delete(bias_fault_coor,bias_outside_index)
+            bias_fault_info=np.delete(bias_fault_info,bias_outside_index)
+            
+            layer_fault_dict_bias=dict(zip(bias_fault_coor,bias_fault_info))
                     
             return [layer_fault_dict,layer_fault_dict_bias]
 
@@ -585,7 +607,9 @@ class tile_FC(tile):
         self.use_bias=False
         self.bias_fault_dict=dict()
         self.bias_range=None
+        self.base_coor=None
         self.shape_len=2
+        self.print_detail=True
                         
     def priorexchange(self,prior):
         if prior not in self.prior_element:
@@ -654,48 +678,68 @@ class tile_FC(tile):
             self.use_bias=use_bias
             
         layer_shape=list(layer_shape)
-        if self.is_fmap:
-            tile_shape=[self.Tn,self.Tm]
-        else:
-            tile_shape=[self.Tm,self.Tn]
-            
-        restore_multiple=np.floor_divide(layer_shape,tile_shape)
         
-        base_coor=np.array([[0,0]])
-        
-        def gen_coor(coor,index):
-            if coor[index] < restore_multiple[index]:
-                coor[index]+=1
+        if self.base_coor is None:
+            if self.is_fmap:
+                tile_shape=[self.Tn,self.Tm]
             else:
-                if index != 0:
-                    coor[index]=0
-                    coor=gen_coor(coor,index-1)
-            return coor
+                tile_shape=[self.Tm,self.Tn]
                 
-        coor_tmp=[0,0]
-        
-        for i in range(np.prod(np.add(restore_multiple,[1,1]))-1):
-            coor_tmp=gen_coor(coor_tmp,1)
-            base_coor=np.append(base_coor,[coor_tmp],axis=0)
+            restore_multiple=np.floor_divide(layer_shape,tile_shape)
             
-        base_coor=np.multiply(base_coor,np.tile(tile_shape,[len(base_coor),1]))
+            base_coor=list(np.ndindex(*np.add(restore_multiple,[1,1])))            
+                
+            base_coor=np.multiply(base_coor,np.tile(tile_shape,[len(base_coor),1]))
+            
+            self.base_coor=base_coor
         
-        layer_fault_dict=dict()
-        
-        for i in range(len(base_coor)):
-            for tile_fault_coor in self.fault_dict.keys():
-                layer_fault_coor=np.add(base_coor[i],list(tile_fault_coor))
-                if all(layer_shape>layer_fault_coor):
-                    layer_fault_dict[tuple(layer_fault_coor)]=self.fault_dict[tile_fault_coor]
+        if len(self.fault_dict)!=0:
+            tile_fault_coor=list(self.fault_dict.keys())
+            layer_fault_coor=np.add(np.tile(self.base_coor,[len(tile_fault_coor),1]),np.tile(tile_fault_coor,[len(self.base_coor),1]))
+            
+            tile_fault_info=list(self.fault_dict.values())
+            layer_fault_info=np.tile(tile_fault_info,[len(self.base_coor)])
+    
+            outside_element_index=list()
+            for i in range(2):
+                outside_element_index.append(np.argwhere(layer_fault_coor[:,i]>=layer_shape[i]))
+            outside_element_index=np.reshape(np.concatenate(outside_element_index),[1,-1])
+                
+            layer_fault_coor=np.delete(layer_fault_coor,outside_element_index,0)
+            layer_fault_info=np.delete(layer_fault_info,outside_element_index,0)
+            
+            layer_fault_coor=np.split(np.transpose(layer_fault_coor),2,axis=0)
+            layer_fault_coor=[axis[0] for axis in layer_fault_coor]
+            layer_fault_coor=list(zip(*layer_fault_coor))
+            layer_fault_info=list(layer_fault_info)
+            layer_fault_dict=dict(zip(layer_fault_coor,layer_fault_info))
+        else:
+            layer_fault_dict=dict()
                   
+        
         layer_fault_dict_bias=dict()
                     
         if self.use_bias:
-            for i in range(layer_shape[-1]//self.Tn+1):
-                for bias_fault_coor in self.bias_fault_dict.keys():
-                    bias_fault_coor_layer=i*self.Tn+bias_fault_coor[0]
-                    if bias_fault_coor_layer<layer_shape[-1]:
-                        layer_fault_dict_bias[(bias_fault_coor_layer,)]=self.bias_fault_dict[bias_fault_coor]
+            if len(self.bias_fault_dict)==0:
+                return [layer_fault_dict,layer_fault_dict_bias]
+            
+            bias_fault_coor=list(self.bias_fault_dict.keys())
+            bias_fault_coor=np.reshape(bias_fault_coor,[-1])
+
+            bias_restore_multiple=layer_shape[-1]//self.Tn+1
+            bias_base_coor=np.multiply(np.arange(bias_restore_multiple),self.Tn)
+            bias_fault_coor=np.reshape(np.add.outer(bias_base_coor,bias_fault_coor),[-1])
+            #bias_fault_coor=np.add(np.tile(bias_base_coor,[1,len(bias_fault_coor)]),np.tile(bias_fault_coor,[1,bias_restore_multiple]))
+            
+            bias_fault_info=list(self.bias_fault_dict.values())
+            bias_fault_info=np.tile(bias_fault_info,[bias_restore_multiple])
+
+            bias_outside_index=np.argwhere(bias_fault_coor>=layer_shape[-1])
+            
+            bias_fault_coor=np.delete(bias_fault_coor,bias_outside_index)
+            bias_fault_info=np.delete(bias_fault_info,bias_outside_index)
+            
+            layer_fault_dict_bias=dict(zip(bias_fault_coor,bias_fault_info))
                     
             return [layer_fault_dict,layer_fault_dict_bias]
 

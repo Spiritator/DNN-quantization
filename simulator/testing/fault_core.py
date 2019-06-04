@@ -219,7 +219,7 @@ def generate_stuck_at_fault_modulator_fast(shape,coor,fault_type,fault_bit):
 
 def generate_tensor_modulator(shape,nb,fb,fault_dict,fast_gen=False): 
     if len(fault_dict)==0:
-        return None
+        return [None,None,None]
     
     inject0=False
     inject1=False
@@ -255,10 +255,7 @@ def generate_tensor_modulator(shape,nb,fb,fault_dict,fast_gen=False):
             if modulatorF is not None:
                 tensor_modulatorF[key]=modulatorF
                 injectF=True
-                
-    if all([not inject0,not inject1,not injectF]):
-        return None
-        
+                        
     if not inject0:
         tensor_modulator0=None
     if not inject1:

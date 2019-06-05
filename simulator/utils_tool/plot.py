@@ -124,7 +124,12 @@ def plot_FT_analysis(stat_dir=None,report_filename=None):
         plt.ylabel(metric)
         plt.xlabel('bit fault rate')
         plt.xscale('log')
-        plt.legend(loc='upper left')
+        if 'loss' in metric:
+            plt.legend(loc='lower right')
+        elif 'acc' in metric:
+            plt.legend(loc='upper right')
+        else:
+            plt.legend(loc='lower right')
         plt.tight_layout()
         if stat_dir is not None:
             pic_path=stat_dir+'/'+metric+'.png'
@@ -133,6 +138,60 @@ def plot_FT_analysis(stat_dir=None,report_filename=None):
         plt.savefig(pic_path,dpi=250)
     
     return stat_data
+
+def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label_list):
+    '''
+        plot_color_list: List of Dictionarys. 
+                         Dictionary in format {'max':'color_of_max_line','min':'color_of_min_line','avg':'color_of_avg_line','var':'color_of_var_line'}. 
+                         The dictionary values are string of the matplotlib.pyplot color scheme.
+    
+    '''
+    if not isinstance(stat_data_list,list):
+        raise TypeError('augment stat_data_list should be type list consist of dictionary of stat_data of a FT analysis.')
+    if not isinstance(plot_color_list,list):
+        raise TypeError('augment plot_color_list should be type list consist of dictionary of color sheme of a FT analysis in pyplot color format string.')
+    if len(stat_data_list)!=len(plot_color_list):
+        raise ValueError('stat_data_list not equal to plot_color_list please check your data.')        
+        
+    x=list(stat_data_list[0].keys())
+    metrics=list(stat_data_list[0][x[0]].keys())
+
+    for iterr,metric in enumerate(metrics):
+        fig = plt.figure()
+        
+        for i in range(len(stat_data_list)):
+            x=list(stat_data_list[i].keys())
+            metrics_i=list(stat_data_list[i][x[0]].keys())
+            
+            avg=[stat_data_list[i][xid][metrics_i[iterr]]['avg'] for xid in x]
+    
+            maxx=[stat_data_list[i][xid][metrics_i[iterr]]['max'] for xid in x]
+            plt.plot(x, maxx, c=plot_color_list[i]['max'], linestyle='-', marker='^')
+            
+            minn=[stat_data_list[i][xid][metrics_i[iterr]]['min'] for xid in x]
+            plt.plot(x, minn, c=plot_color_list[i]['min'], linestyle='-', marker='v')
+            
+            var_up=[stat_data_list[i][xid][metrics_i[iterr]]['var_up'] for xid in x]
+            var_down=[stat_data_list[i][xid][metrics_i[iterr]]['var_down'] for xid in x]
+            
+            plt.fill_between(x, var_up, var_down, facecolor = plot_color_list[i]['var'], alpha=0.5)
+            
+            plt.plot(x, avg, label=label_list[i], c=plot_color_list[i]['avg'], marker='.')
+            
+        plt.title(metric)
+        plt.ylabel(metric)
+        plt.xlabel('bit fault rate')
+        plt.xscale('log')
+        if 'loss' in metric:
+            plt.legend(loc='lower right')
+        elif 'acc' in metric:
+            plt.legend(loc='upper right')
+        else:
+            plt.legend(loc='lower right')
+        plt.tight_layout()
+        pic_path=plot_save_dir+'/'+metric+'.png'
+        plt.savefig(pic_path,dpi=250)
+    
 
     
                 

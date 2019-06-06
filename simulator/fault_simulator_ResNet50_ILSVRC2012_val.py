@@ -9,7 +9,7 @@ evaluate quantized testing result with custom Keras quantize layer
 
 import keras
 from keras.utils import multi_gpu_model,to_categorical
-from models.resnet50 import QuantizedResNet50FusedBN
+from models.resnet50 import QuantizedResNet50FusedBN,preprocess_input
 from utils_tool.dataset_setup import dataset_setup
 from metrics.topk_metrics import top5_acc
 import time
@@ -27,7 +27,7 @@ batch_size=20
 model_word_length=20
 model_fractional_bit=10
 rounding_method='nearest'
-fault_rate=1e-8
+fault_rate=1e-6
 if set_size in [50,'full',None]:
     validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator'
 else:
@@ -110,7 +110,7 @@ print('model build time: %f s'%t)
 #dataset setup
 
 print('preparing dataset...')
-x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, batch_size = batch_size, data_augmentation = False, data_dir = validation_data_dir)
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, batch_size = batch_size, data_augmentation = False, data_dir = validation_data_dir, preprocessing_function = preprocess_input)
 print('dataset ready')
 
 

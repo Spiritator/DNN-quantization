@@ -27,7 +27,7 @@ batch_size=20
 model_word_length=20
 model_fractional_bit=10
 rounding_method='nearest'
-fault_rate=1e-6
+fault_rate=1e-7
 if set_size in [50,'full',None]:
     validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator'
 else:

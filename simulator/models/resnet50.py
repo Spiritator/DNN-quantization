@@ -536,7 +536,8 @@ def QuantizedResNet50(include_top=True,
                            ifmap_sa_fault_injection=ifmap_fault_dict_list[176],
                            ofmap_sa_fault_injection=ofmap_fault_dict_list[176],
                            weight_sa_fault_injection=weight_fault_dict_list[176],
-                           quant_mode=quant_mode)(x)
+                           quant_mode=quant_mode,
+                           last_layer=True)(x)
     else:
         if pooling == 'avg':
             x = layers.GlobalAveragePooling2D()(x)
@@ -971,7 +972,8 @@ def QuantizedResNet50FusedBN(include_top=True,
                            ifmap_sa_fault_injection=ifmap_fault_dict_list[123],
                            ofmap_sa_fault_injection=ofmap_fault_dict_list[123],
                            weight_sa_fault_injection=weight_fault_dict_list[123],
-                           quant_mode=quant_mode)(x)
+                           quant_mode=quant_mode,
+                           last_layer=True)(x)
     else:
         if pooling == 'avg':
             x = layers.GlobalAveragePooling2D()(x)

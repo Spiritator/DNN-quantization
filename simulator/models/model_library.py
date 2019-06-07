@@ -86,7 +86,8 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[7],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[7],
                        weight_sa_fault_injection=weight_fault_dict_list[7],
-                       quant_mode=quant_mode)(x)
+                       quant_mode=quant_mode,
+                       last_layer=True)(x)
 
     model=Model(inputs=input_shape, outputs=x, name='quantized_lenet5')
     
@@ -193,7 +194,8 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
                        weight_sa_fault_injection=weight_fault_dict_list[13],
-                       quant_mode=quant_mode)(x)
+                       quant_mode=quant_mode,
+                       last_layer=True)(x)
     
     model=Model(inputs=input_shape, outputs=x, name='quantized_4C2F')
     
@@ -357,7 +359,8 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[22],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[22],
                        weight_sa_fault_injection=weight_fault_dict_list[22],
-                       quant_mode=quant_mode)(x)
+                       quant_mode=quant_mode,
+                       last_layer=True)(x)
     
     model=Model(inputs=input_shape, outputs=x, name='quantized_4C2FBN')
     

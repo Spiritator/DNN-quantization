@@ -413,7 +413,8 @@ def QuantizedMobileNetV1(input_shape=None,
                             ifmap_sa_fault_injection=ifmap_fault_dict_list[99],
                             ofmap_sa_fault_injection=ofmap_fault_dict_list[99],
                             weight_sa_fault_injection=weight_fault_dict_list[99],
-                            quant_mode=quant_mode)(x)
+                            quant_mode=quant_mode,
+                            last_layer=True)(x)
         x = layers.Activation('softmax', name='act_softmax')(x)
         x = layers.Reshape((classes,), name='reshape_2')(x)
     else:
@@ -973,7 +974,8 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                             ifmap_sa_fault_injection=ifmap_fault_dict_list[72],
                             ofmap_sa_fault_injection=ofmap_fault_dict_list[72],
                             weight_sa_fault_injection=weight_fault_dict_list[72],
-                            quant_mode=quant_mode)(x)
+                            quant_mode=quant_mode,
+                            last_layer=True)(x)
         x = layers.Activation('softmax', name='act_softmax')(x)
         x = layers.Reshape((classes,), name='reshape_2')(x)
     else:

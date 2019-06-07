@@ -48,13 +48,14 @@ class QuantizedDense(Dense):
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
     def __init__(self, units, quantizers, quant_mode='hybrid',
-                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None], **kwargs):
+                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],last_layer=False, **kwargs):
         super(QuantizedDense, self).__init__(units, **kwargs)
         self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
         self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
+        self.last_layer=last_layer
         super(QuantizedDense, self).__init__(units, **kwargs)
     
     def build(self, input_shape):
@@ -132,10 +133,10 @@ class QuantizedDense(Dense):
         if self.activation is not None:
             output = self.activation(output)
         
-        if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
+        if self.quant_mode in ['extrinsic','hybrid','intrinsic'] and not self.last_layer:
             output = quantizer_output.quantize(output)
             
-        if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
+        if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
             output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, quantizer_output)
 
 
@@ -167,13 +168,14 @@ class QuantizedConv2D(Conv2D):
     "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
     '''
     def __init__(self, filters, quantizers, quant_mode='hybrid',
-                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],**kwargs):
+                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],last_layer=False,**kwargs):
         super(QuantizedConv2D, self).__init__(filters, **kwargs)
         self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
         self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
+        self.last_layer=last_layer
         
     def build(self, input_shape):
         if self.data_format == 'channels_first':
@@ -286,10 +288,10 @@ class QuantizedConv2D(Conv2D):
         if self.activation is not None:
             outputs = self.activation(outputs)
         
-        if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
+        if self.quant_mode in ['extrinsic','hybrid','intrinsic'] and not self.last_layer:
             outputs = quantizer_output.quantize(outputs)
         
-        if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
+        if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
             outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
 
 

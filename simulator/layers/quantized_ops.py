@@ -153,12 +153,16 @@ def build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradien
     if isinstance(nbits,list) or isinstance(fbits,list) or isinstance(rounding_method,list) or isinstance(overflow_mode,list) or isinstance(stop_gradient,list):
         multi_setting=True
         
-    if isinstance(nbits,list) and isinstance(fbits,list) and len(nbits)==3 and len(fbits)==3:
+    if isinstance(nbits,list) and len(nbits)==3:
         nb_qt=nbits
-        fb_qt=fbits
     elif multi_setting:
         nb_qt=[nbits, nbits, nbits]
+        
+    if isinstance(fbits,list) and len(fbits)==3:
+        fb_qt=fbits
+    elif multi_setting:
         fb_qt=[fbits, fbits, fbits]
+
     
     if isinstance(rounding_method,list) and len(rounding_method)==3:
         rm_qt=rounding_method

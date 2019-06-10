@@ -290,7 +290,9 @@ def fault_num_gen_model(model,fault_rate,batch_size,model_word_length):
     total_ifmap_bits=0
     total_ofmap_bits=0
     total_weight_bits=0
-    
+    if not isinstance(model_word_length,list):
+        model_word_length=[model_word_length,model_word_length,model_word_length]
+        
     for layer_num in range(1,model_depth):
         layer=model.layers[layer_num]
         layer_input_shape=layer.input_shape
@@ -303,30 +305,30 @@ def fault_num_gen_model(model,fault_rate,batch_size,model_word_length):
         if isinstance(layer_input_shape,list):
             layer_ifmap_param_bits=list()
             for i in range(len(layer_input_shape)):
-                bits_tmp=int(np.prod(layer_input_shape[i][1:]) * batch_size * model_word_length)
+                bits_tmp=int(np.prod(layer_input_shape[i][1:]) * batch_size * model_word_length[0])
                 layer_ifmap_param_bits.append(bits_tmp)
                 total_ifmap_bits+=bits_tmp
             ifmap_param_bits[layer_num]=layer_ifmap_param_bits
         else:
-            bits_tmp=int(np.prod(layer_input_shape[1:]) * batch_size * model_word_length)
+            bits_tmp=int(np.prod(layer_input_shape[1:]) * batch_size * model_word_length[0])
             ifmap_param_bits[layer_num]=bits_tmp
             total_ifmap_bits+=bits_tmp
             
         if isinstance(layer_output_shape,list):
             layer_ofmap_param_bits=list()
             for i in range(len(layer_output_shape)):
-                bits_tmp=int(np.prod(layer_output_shape[i][1:]) * batch_size * model_word_length)
+                bits_tmp=int(np.prod(layer_output_shape[i][1:]) * batch_size * model_word_length[2])
                 layer_ofmap_param_bits.append(bits_tmp)
                 total_ofmap_bits+=bits_tmp
             ofmap_param_bits[layer_num]=layer_ofmap_param_bits
         else:
-            bits_tmp=int(np.prod(layer_output_shape[1:]) * batch_size * model_word_length)
+            bits_tmp=int(np.prod(layer_output_shape[1:]) * batch_size * model_word_length[2])
             ofmap_param_bits[layer_num]=bits_tmp
             total_ofmap_bits+=bits_tmp
             
         layer_weight_param_bits=list()
         for i in range(len(layer_weight_shape)):
-            bits_tmp=int(np.prod(layer_weight_shape[i][1:]) * batch_size * model_word_length)
+            bits_tmp=int(np.prod(layer_weight_shape[i][1:]) * batch_size * model_word_length[1])
             layer_weight_param_bits.append(bits_tmp)
             total_weight_bits+=bits_tmp
         wght_param_bits[layer_num]=layer_weight_param_bits
@@ -627,14 +629,16 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
             print('    no weight layer Skipped!')
         return None, None, [None,None]
     
-    
+    if not isinstance(model_word_length,list):
+        model_word_length=[model_word_length,model_word_length,model_word_length]
+
     
     # ifmap fault generation
     if param_filter[0]:
         ifmap_fault_dict,layer_ifmap_fault_num=gen_fault_dict_list_fmap(layer_input_shape,
                                                                         fault_rate,
                                                                         batch_size,
-                                                                        model_word_length,
+                                                                        model_word_length[0],
                                                                         fault_num=fault_num[0],
                                                                         fast_gen=fast_gen,
                                                                         return_modulator=return_modulator,
@@ -657,7 +661,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
         ofmap_fault_dict,layer_ofmap_fault_num=gen_fault_dict_list_fmap(layer_output_shape,
                                                                         fault_rate,
                                                                         batch_size,
-                                                                        model_word_length,
+                                                                        model_word_length[2],
                                                                         fault_num=fault_num[2],
                                                                         fast_gen=fast_gen,
                                                                         return_modulator=return_modulator,
@@ -678,7 +682,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
     if param_filter[1]:
         weight_fault_dict,layer_weight_fault_num=gen_fault_dict_list_wght(layer_weight_shape,
                                                                           fault_rate,
-                                                                          model_word_length,
+                                                                          model_word_length[1],
                                                                           fault_num=fault_num[1],
                                                                           fast_gen=fast_gen,
                                                                           return_modulator=return_modulator,

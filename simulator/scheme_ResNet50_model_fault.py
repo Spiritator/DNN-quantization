@@ -25,8 +25,8 @@ weight_name='../../resnet50_weights_tf_dim_ordering_tf_kernels_fused_BN.h5'
 test_rounds=200
 set_size=2
 batch_size=40
-model_word_length=20
-model_fractional_bit=10
+model_word_length=[16,16,16]
+model_fractional_bit=[8,12,8]
 rounding_method='nearest'
 if set_size in [50,'full',None]:
     validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator'

@@ -24,8 +24,8 @@ img_width, img_height = 224, 224
 set_size=2
 class_number=1000
 batch_size=20
-model_word_length=20
-model_fractional_bit=10
+model_word_length=[16,16,16]
+model_fractional_bit=[8,12,8]
 rounding_method='nearest'
 fault_rate=1e-7
 if set_size in [50,'full',None]:

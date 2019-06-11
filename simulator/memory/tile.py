@@ -203,6 +203,7 @@ class tile:
     
         # Returns
             The numtag (Integer)
+            Numtag array (Ndarray)
         """
         
                    
@@ -225,7 +226,7 @@ class tile:
                 raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,coor.shape[-1]))
                 
             numtag=np.ravel_multi_index(coor.T[axis_index],dims_prior)
-            numtag=np.multiply(numtag,self.wl)
+            numtag=np.multiply(numtag+1,self.wl)
             numtag=np.subtract(np.subtract(numtag,bit),1)
         
         return numtag
@@ -244,23 +245,31 @@ class tile:
         else:
             prior_list=self.col_prior
 
+        dims_prior,axis_index=self.get_tile_dims_prior(prior_list)
         
-        coor=[0 for i in range(self.shape_len)]
+        bit=np.remainder(numtag,self.wl)
+        bit=np.subtract(self.wl-1,bit)
+        numtag_tmp=np.floor_divide(numtag,self.wl)
         
-        bit=self.wl-(numtag % self.wl)-1
-        numtag_tmp=numtag//self.wl
+        restore_index=np.zeros((self.shape_len,),dtype=int)
+        for i in range(self.shape_len):
+            restore_index[axis_index[i]]=i
         
-        for i in reversed(range(self.shape_len)):
-            T_size,T_index=self.priorexchange(prior_list[i])
-            coef_tmp=1
-            for j in reversed(range(i)):
-                T_size,garbage=self.priorexchange(prior_list[j])
-                coef_tmp*=T_size
-            coor[T_index]=numtag_tmp//coef_tmp
-            numtag_tmp=numtag_tmp % coef_tmp
+        if isinstance(numtag_tmp,np.int64) and isinstance(bit,np.int64):
+            coor=np.unravel_index(numtag_tmp,dims_prior)
+            coor=np.array(coor)[restore_index]
+            
+            return tuple(coor),bit
         
-        return tuple(coor),bit
-    
+        elif isinstance(numtag,np.ndarray) and isinstance(bit,np.ndarray):
+            coor=np.unravel_index(numtag_tmp,dims_prior)
+            coor=np.array(coor)[restore_index]
+
+            return coor.T,bit
+        
+        else:
+            raise TypeError('get numtag and bit of type ',type(numtag),' and ',type(bit),', invalid datatype.')
+                
     def tile2bitmap(self,coor,bit,bitmap):
         """Convert the tile coordinate to its corresponding address on memory bitmap.
 

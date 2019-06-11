@@ -60,6 +60,13 @@ coor_fmap_increased,bit_increased=fmap_tile.coor_tile_move(coor_fmap_test,5,1+5+
 numtag_tile_wght=wght_tile.get_numtag(coor_wght_test,3)
 coor_wght_val,bit_val=wght_tile.numtag2coor(numtag_tile_wght)
 
+coor_wght_test_multi=np.array([[0,2,13,27],
+                               [1,1,8,16]])
+bit_wght_test_multi=np.array([3,7])
+numtag_tile_wght_multi=wght_tile.get_numtag(coor_wght_test_multi,bit_wght_test_multi)
+coor_wght_val_multi,bit_val_multi=wght_tile.numtag2coor(numtag_tile_wght_multi)
+
+
 # example of memory mapping to tile
 addr_fault=wght_tile.tile2bitmap(coor_wght_test,3,GLB_wght)
 coor_fault,bit_fault=wght_tile.bitmap2tile(addr_fault,GLB_wght)

@@ -83,6 +83,30 @@ class tile:
         elif prior == 'Tc':
             return self.Tc,axis_idex[3]
         
+    def get_tile_dims_prior(self,prior_list):
+        if self.is_fmap:
+            axis_idex=[3,0,1,2]
+        else:
+            axis_idex=[2,3,0,1]
+
+        dims_prior=list()
+        dims_reorder=list()
+        for prior in reversed(prior_list):
+            if prior == 'Tm':
+                dims_prior.append(self.Tm)
+                dims_reorder.append(axis_idex[0])
+            elif prior == 'Tn':
+                dims_prior.append(self.Tn)
+                dims_reorder.append(axis_idex[1])
+            elif prior == 'Tr':
+                dims_prior.append(self.Tr)
+                dims_reorder.append(axis_idex[2])
+            elif prior == 'Tc':
+                dims_prior.append(self.Tc)
+                dims_reorder.append(axis_idex[3])
+                
+        return tuple(dims_prior),dims_reorder
+        
     def coor_tile_recursive_call(self,coor,prior_list,prior_index,increase=False):
         T_size,T_index=self.priorexchange(prior_list[prior_index])
         if increase:
@@ -173,29 +197,36 @@ class tile:
         """Get the bitmap and tile conversion index numtag.
 
         # Arguments
-            coor: Tuple. The tile coordinate wanted to be converted to memory address.
-            bit: Integer. The bit location in a parameer.
+            coor: Tuple or 2D ndarray. The tile coordinate wanted to be converted to memory address.
+            bit: Integer or List of Integer or 1D Ndarray. The bit location in a parameer.
             row_mode: True or False. Using column or row priority to generate numtag.
     
         # Returns
             The numtag (Integer)
         """
-        if len(coor)!=self.shape_len:
-            raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,len(coor)))
+        
                    
         if row_mode:
             prior_list=self.row_prior
         else:
             prior_list=self.col_prior
 
-        numtag=0
-        coef_tmp=1
-        for i in range(self.shape_len):
-            T_size,T_index=self.priorexchange(prior_list[i])
-            numtag+=coef_tmp*coor[T_index]
-            coef_tmp*=T_size
+        dims_prior,axis_index=self.get_tile_dims_prior(prior_list)
+        
+        if isinstance(coor,tuple) and isinstance(bit,int):
+            if len(coor)!=self.shape_len:
+                raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,len(coor)))
 
-        numtag=numtag*self.wl+self.wl-bit-1
+            numtag=np.ravel_multi_index(np.array(coor)[axis_index],dims_prior)
+            numtag=numtag*self.wl+self.wl-bit-1
+            
+        elif isinstance(coor,np.ndarray) and (isinstance(bit,np.ndarray) or isinstance(bit,list)):
+            if coor.shape[-1]!=self.shape_len:
+                raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,coor.shape[-1]))
+                
+            numtag=np.ravel_multi_index(coor.T[axis_index],dims_prior)
+            numtag=np.multiply(numtag,self.wl)
+            numtag=np.subtract(np.subtract(numtag,bit),1)
         
         return numtag
         
@@ -624,6 +655,16 @@ class tile_FC(tile):
             return self.Tm,axis_idex[0]
         elif prior == 'Tn':
             return self.Tn,axis_idex[1]
+    
+    def get_tile_dims_prior(self,prior):
+        dims_prior=list()
+        for element in reversed(prior):
+            if prior == 'Tm':
+                dims_prior.append(self.Tm)
+            elif prior == 'Tn':
+                dims_prior.append(self.Tn)
+                
+        return tuple(dims_prior)
         
     def check_tile_overflow(self,bitmap,addr=None):
         if addr is None:

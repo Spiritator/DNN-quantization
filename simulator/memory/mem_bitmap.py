@@ -152,27 +152,40 @@ class bitmap:
         """Get the bitmap and tile conversion index numtag.
 
         # Arguments
-            addr: Tuple. The address of memory bit oriented representation. Length 2 i.e. 2D representation of memory.
+            addr: Tuple. The address of memory bit oriented representation. Length 2 i.e. 2D representation of memory. (row,col)
+            addr: Ndarray. N number of (row,col) addrs in ndarray of shape (N,2) in dtype integer.
     
         # Returns
             The numtag (Integer)
+            Numtag array (Ndarray)
         """
-
-        if len(addr)!=2:
-            raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
-            
-        return addr[0]*self.col+addr[1]
+        if isinstance(addr,tuple):
+            if len(addr)!=2:
+                raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
+                
+            return addr[0]*self.col+addr[1]
+        elif isinstance(addr,np.ndarray):
+            return np.ravel_multi_index(addr.T,(self.row,self.col))
+        else:
+            raise TypeError('addr must be eithr tuple of length 2 which represent a addr in memory (row,col) or ndarray of shape (n,2) which represent n number of (row,col) addrs.')
     
     def numtag2addr(self,numtag):
         """Convert the numtag to its corresponding address.
 
         # Arguments
             numtag: Integer. The bitmap and tile conversion index numtag.
+            numtag: Ndarray. The bitmap and tile conversion index numtag array 1D.
     
         # Returns
             The memory address (Tuple)
+            Memory address array (Ndarray) shape (N,2)
         """
-        return (numtag//self.col, numtag % self.col)
+        if isinstance(numtag,int):                
+            return (numtag//self.col, numtag % self.col)
+        elif isinstance(numtag,np.ndarray) or isinstance(numtag,list):
+            return np.transpose(np.unravel_index(numtag,(self.row,self.col)))
+        else:
+            raise TypeError('addr must be eithr tuple of length 2 which represent a addr in memory (row,col) or ndarray of shape (n,2) which represent n number of (row,col) addrs.')
     
     def clear(self):
         """Clear the fault information of tile"""

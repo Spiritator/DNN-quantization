@@ -10,6 +10,8 @@ Memory mapping example
 from memory.mem_bitmap import bitmap
 from memory.tile import tile, tile_FC
 
+import numpy as np
+
 #%%
 
 fault_rate=0.001
@@ -30,6 +32,10 @@ mem_fault_dict,mem_fault_num=GLB_wght.gen_bitmap_SA_fault_dict(fault_rate)
 # example of number tag conversion in memory
 numtag_mem=GLB_wght.get_numtag((2,3))
 addr_mem=GLB_wght.numtag2addr(numtag_mem)
+
+numtag_mem_multi=GLB_wght.get_numtag(np.array([[2,3],
+                                               [3,4]]))
+addr_mem_multi=GLB_wght.numtag2addr(numtag_mem_multi)
 
 # priority of memory mapping for tile
 memory_column_priority=['Tm','Tc','Tr','Tn']

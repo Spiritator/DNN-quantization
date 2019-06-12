@@ -160,7 +160,10 @@ class tile:
         if addr is None:
             bitmap_size=bitmap.row*bitmap.col
         else:
-            bitmap_size=bitmap.get_numtag(addr)+1
+            if isinstance(addr,tuple):
+                bitmap_size=bitmap.get_numtag(addr)+1
+            elif isinstance(addr,np.ndarray):
+                bitmap_size=np.max(bitmap.get_numtag(addr))+1
             
             
         if self.tile_size is None:
@@ -193,6 +196,22 @@ class tile:
         else:
             return False
     
+    def build_slice_head(self,bitmap):
+        slice_head_list=np.multiply(np.arange(bitmap.row),bitmap.col)
+        if self.tile_size is None:
+            self.tile_size=self.Tm*self.Tn*self.Tr*self.Tc*self.wl
+        slice_head_list=slice_head_list[slice_head_list<self.tile_size]
+        slice_head_list=self.numtag2coor(slice_head_list)[0]
+        bit__=np.multiply(np.ones(len(slice_head_list),dtype=int),self.wl-1)
+        self.slice_head_list=self.get_numtag(slice_head_list,bit__,row_mode=True)
+        
+        self.slice_head_order=np.argsort(self.slice_head_list)
+        slice_head_list,bit_val=self.numtag2coor(self.slice_head_list,row_mode=True)
+        if np.sum(bit_val)%(self.wl-1)!=0:
+            raise ValueError('coordinate slice head is not the MSB of a word. There might be some error.')
+        self.slice_head_list=slice_head_list
+
+    
     def get_numtag(self,coor,bit,row_mode=False):
         """Get the bitmap and tile conversion index numtag.
 
@@ -214,7 +233,7 @@ class tile:
 
         dims_prior,axis_index=self.get_tile_dims_prior(prior_list)
         
-        if isinstance(coor,tuple) and isinstance(bit,int):
+        if (isinstance(coor,tuple) or (isinstance(coor,np.ndarray) and len(coor.shape)==1))and isinstance(bit,int):
             if len(coor)!=self.shape_len:
                 raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,len(coor)))
 
@@ -235,10 +254,11 @@ class tile:
         """Convert the numtag to its corresponding coordinate.
 
         # Arguments
-            numtag: Integer. The bitmap and tile conversion index numtag.
+            numtag: Integer or 1D ndarray. The bitmap and tile conversion index numtag.
     
         # Returns
-            The tile coordinate (Tuple)
+            The tile coordinate (Tuple), bit location (Integer)
+            The array of tile coordinates (2D Ndarray), array of bit locations (1D Ndarray)
         """
         if row_mode:
             prior_list=self.row_prior
@@ -274,85 +294,111 @@ class tile:
         """Convert the tile coordinate to its corresponding address on memory bitmap.
 
         # Arguments
-            coor: Tuple. The tile coordinate wanted to be converted to memory address.
-            bit: Integer. The bit location in a parameer.
+            coor: Tuple or 2D ndarray. The tile coordinate wanted to be converted to memory address.
+            bit: Integer or List of Integer or 1D Ndarray. The bit location in a parameer.
             bitmap: Class. The bitmap class for memory fault tolerance analysis.
     
         # Returns
             The memory address (Tuple) in the bitmap.
+            The array of memory addresses (2D Ndarray)
         """
 
         numtag=self.get_numtag(coor,bit)
-        col_addr=numtag % bitmap.col
-        coor_slice_head,bit_val=self.coor_tile_move(coor,bit,col_addr,increase=False)
-        
-        if bit_val is not self.wl-1:
-            raise ValueError('coordinate slice head is not the MSB of a word. There might be some error.')
+        col_addr=np.remainder(numtag , bitmap.col)
             
-        numtag_slice_head=numtag-col_addr
-        row_addr_psuedo=numtag_slice_head//bitmap.col
+        numtag_slice_head=np.subtract(numtag,col_addr)
+        row_addr_psuedo=np.floor_divide(numtag_slice_head,bitmap.col)
         
-        if self.slice_head_list is None:
-            slice_head_list=[self.numtag2coor(bitmap.col*i)[0] for i in range(bitmap.row)]
-            self.slice_head_list=[self.get_numtag(head,self.wl-1,row_mode=True) for head in slice_head_list]
+        if self.slice_head_list is None or self.slice_head_order is None:
+            self.build_slice_head(bitmap)
             
-        if self.slice_head_order is None:
-            self.slice_head_order=np.argsort(self.slice_head_list)
-            slice_head_list=[]
-            for numtag_head in self.slice_head_list:
-                coor_head,bit_val=self.numtag2coor(numtag_head,row_mode=True)
-                if bit_val is not self.wl-1:
-                    raise ValueError('coordinate slice head is not the MSB of a word. There might be some error.')
-                slice_head_list.append(coor_head)
-                
-            self.slice_head_list=slice_head_list
-
         row_addr=self.slice_head_order[row_addr_psuedo]
         
-        return (row_addr,col_addr)
+        if isinstance(row_addr,np.int64) and isinstance(col_addr,np.int64):
+            return (row_addr,col_addr)
+        elif isinstance(row_addr,np.ndarray) and isinstance(col_addr,np.ndarray):
+            return np.transpose([row_addr,col_addr])
 
     def bitmap2tile(self,addr,bitmap):
         """Convert the address on memory bitmap to its corresponding tile coordinate.
 
         # Arguments
-            addr: Tuple. The address of memory wanted to be converted to tile coordinate.
+            addr: Tuple or Ndarray. The address of memory wanted to be converted to tile coordinate.
             bitmap: Class. The bitmap class for memory fault tolerance analysis.
     
         # Returns
             The tile coordinate (Tuple). The corresponding bit in parameter (Integer).
+            The array of tile coordinates (2D Ndarray), array of bit locations (1D Ndarray)
         """
-        if len(addr)!=2:
-            raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
+        if isinstance(addr,tuple):
+            if len(addr)!=2:
+                raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
+            addr0=addr[0]
+            addr1=addr[1]
+            bit__=self.wl-1
+        elif isinstance(addr,np.ndarray):
+            if addr.shape[-1]!=2:
+                raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
+            addr0=addr[:,0]
+            addr1=addr[:,1]
+            bit__=np.multiply(np.ones(addr.shape[1],dtype=int),self.wl-1)
 
-        if self.slice_head_list is None:
-            slice_head_list=[self.numtag2coor(bitmap.col*i)[0] for i in range(bitmap.row)]
-            self.slice_head_list=[self.get_numtag(head,self.wl-1,row_mode=True) for head in slice_head_list]
-        
-        if self.slice_head_order is None:
-            self.slice_head_order=np.argsort(self.slice_head_list)
-            slice_head_list=[]
-            for numtag_head in self.slice_head_list:
-                coor_head,bit_val=self.numtag2coor(numtag_head,row_mode=True)
-                if bit_val is not self.wl-1:
-                    raise ValueError('coordinate slice head is not the MSB of a word. There might be some error.')
-                slice_head_list.append(coor_head)
                 
-            self.slice_head_list=slice_head_list
-            
+        if self.slice_head_list is None or self.slice_head_order is None:
+            self.build_slice_head(bitmap)            
         
-        coor_head=self.slice_head_list[self.slice_head_order[addr[0]]]
-        try:
-            coor,bit=self.coor_tile_move(coor_head,self.wl-1,addr[1],increase=True)
-        except Exception as ValueError:
-            if self.check_tile_overflow(bitmap,addr):
-                if self.print_detail:
-                    print(addr)
-                    print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
-                n_move=addr[1]-(self.tile_size-self.get_numtag(coor_head,self.wl-1))
-                coor_head=self.slice_head_list[self.slice_head_order[addr[0]+1]]
-                coor,bit=self.coor_tile_move(coor_head,self.wl-1,n_move,increase=True)
+        coor_head=self.slice_head_list[self.slice_head_order[addr0]]
+        
+        coor_numtag=self.get_numtag(coor_head,bit__)
+        coor_numtag=np.add(coor_numtag,addr1)
+        
+        if isinstance(addr,tuple):
+            if coor_numtag>=self.tile_size:
+                if self.check_tile_overflow(bitmap,addr):
+                    if self.print_detail:
+                        print(addr)
+                        print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
+                    n_move=addr[1]-(self.tile_size-self.get_numtag(coor_head,self.wl-1))
+                    coor_head=self.slice_head_list[self.slice_head_order[addr[0]+1]]
+                    coor,bit=self.coor_tile_move(coor_head,bit__,n_move,increase=True)
+                else:
+                    raise ValueError('Index out of tile range !!')
             else:
-                raise ValueError('Index out of tile range !!')
+                coor,bit=self.numtag2coor(coor_numtag)
+        elif isinstance(addr,np.ndarray):
+            coor_reorder_idx=np.reshape(np.argwhere(coor_numtag>=self.tile_size),-1)
+            coor_numtag=coor_numtag[coor_numtag<self.tile_size]
+        
+            coor,bit=self.numtag2coor(coor_numtag)
+        
+            if len(coor_reorder_idx)>0:
+                addr_reorder=addr[coor_reorder_idx]
+                if self.check_tile_overflow(bitmap,addr_reorder):
+                    if self.print_detail:
+                        for addrr in addr_reorder:
+                            print(addrr)
+                            print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
+                    reorder_diff=self.tile_size-self.get_numtag(coor_head[-2],self.wl-1)
+                    n_move=np.subtract(addr_reorder[:,1],reorder_diff)
+                    coor_head=self.slice_head_list[self.slice_head_order[np.add(addr_reorder[:,0],1)]]
+                    coor_numtag_reorder=self.get_numtag(coor_head,bit__[:len(coor_reorder_idx)])
+                    coor_reorder,bit_reorder=self.numtag2coor(coor_numtag_reorder)
+                    coor=np.concatenate((coor,coor_reorder))
+                    bit=np.concatenate((bit,bit_reorder))
+                else:
+                    raise ValueError('Index out of tile range !!')
+#        try:
+#            coor,bit=self.coor_tile_move(coor_head,bit__,addr1,increase=True)
+#        except Exception as ValueError:
+#            if self.check_tile_overflow(bitmap,addr):
+#                if self.print_detail:
+#                    print(addr)
+#                    print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
+#                n_move=addr[1]-(self.tile_size-self.get_numtag(coor_head,self.wl-1))
+#                coor_head=self.slice_head_list[self.slice_head_order[addr[0]+1]]
+#                coor,bit=self.coor_tile_move(coor_head,bit__,n_move,increase=True)
+#            else:
+#                raise ValueError('Index out of tile range !!')
         
         return coor,bit
         
@@ -602,6 +648,15 @@ class tile:
         """Clear the fault information of tile"""
         self.fault_dict=dict()
         self.bias_fault_dict=dict()
+        
+    def clear_bitmap(self):
+        '''Clear bitmap information of tile'''
+        self.slice_head_list=None
+        self.slice_head_order=None
+        
+    def clear_layer(self):
+        '''Clear layer information of tile'''
+        self.base_coor=None
         
     
         

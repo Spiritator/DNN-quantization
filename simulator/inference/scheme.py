@@ -165,6 +165,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                     
             
         K.clear_session()
+        del model
                             
         print('\n===============================================\n')
 

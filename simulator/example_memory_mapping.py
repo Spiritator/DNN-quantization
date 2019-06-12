@@ -66,10 +66,12 @@ bit_wght_test_multi=np.array([3,7])
 numtag_tile_wght_multi=wght_tile.get_numtag(coor_wght_test_multi,bit_wght_test_multi)
 coor_wght_val_multi,bit_val_multi=wght_tile.numtag2coor(numtag_tile_wght_multi)
 
-
 # example of memory mapping to tile
 addr_fault=wght_tile.tile2bitmap(coor_wght_test,3,GLB_wght)
 coor_fault,bit_fault=wght_tile.bitmap2tile(addr_fault,GLB_wght)
+
+addr_fault_multi=wght_tile.tile2bitmap(coor_wght_test_multi,bit_wght_test_multi,GLB_wght)
+coor_fault_multi,bit_fault_multi=wght_tile.bitmap2tile(addr_fault_multi,GLB_wght)
 
 # example of memory mapping to tile using fault dictionary
 tile_fault_dict_wght=wght_tile.fault_dict_bitmap2tile(GLB_wght,use_bias=True)

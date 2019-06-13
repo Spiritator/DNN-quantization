@@ -498,6 +498,9 @@ class tile:
         if self.check_tile_overflow(bitmap):
             raise ValueError('The tile is bigger than the memory !')
             
+        coor=np.array(list(self.fault_dict.keys()))
+        fault_type=np.array([typee['SA_type'] for typee in self.fault_dict.values()])
+        fault_addr=np.array([typee['SA_bit'] for typee in self.fault_dict.values()])
         
         for coor in self.fault_dict.keys():                
             if not isinstance(self.fault_dict[coor]['SA_bit'],list):

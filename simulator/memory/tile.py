@@ -338,7 +338,7 @@ class tile:
                 raise ValueError('The length of address Tuple in memory must be 2 but got %d.'%(len(addr)))
             addr0=addr[:,0]
             addr1=addr[:,1]
-            bit__=np.multiply(np.ones(addr.shape[1],dtype=int),self.wl-1)
+            bit__=np.multiply(np.ones(addr.shape[0],dtype=int),self.wl-1)
 
                 
         if self.slice_head_list is None or self.slice_head_order is None:
@@ -438,7 +438,7 @@ class tile:
 
         if fast_mode:
             addr=np.array(list(bitmap.fault_dict.keys()))
-            fault_type=np.array(bitmap.fault_dict.values())
+            fault_type=np.array(list(bitmap.fault_dict.values()))
             
             addr_numtag=bitmap.get_numtag(addr)
             if self.use_bias:
@@ -460,15 +460,16 @@ class tile:
             fault_info=[{'SA_type':typee,'SA_bit':bit} for typee,bit in zip(fault_type,fault_bit)]
             self.fault_dict=dict(zip(fault_coor,fault_info))
             
-            if len(addr_bias)>0 and len(fault_type_bias)>0 and len(numtag_bias)>0:
-                if self.print_detail:
-                    print('bias fault ',addr_bias)
-                numtag_bias=np.subtract(numtag_bias,self.tile_size+1)
-                bias_coor=np.floor_divide(numtag_bias,self.wl)
-                bias_bit=np.subtract(self.wl-1,np.remainder(numtag_bias,self.wl))
-                bias_info=[{'SA_type':typee,'SA_bit':bit} for typee,bit in zip(fault_type_bias,bias_bit)]
-                
-                self.bias_fault_dict=dict(zip(bias_coor,bias_info))
+            if self.use_bias:
+                if len(addr_bias)>0 and len(fault_type_bias)>0 and len(numtag_bias)>0:
+                    if self.print_detail:
+                        print('bias fault ',addr_bias)
+                    numtag_bias=np.subtract(numtag_bias,self.tile_size-1)
+                    bias_coor=np.floor_divide(numtag_bias,self.wl)
+                    bias_bit=np.subtract(self.wl-1,np.remainder(numtag_bias,self.wl))
+                    bias_info=[{'SA_type':typee,'SA_bit':bit} for typee,bit in zip(fault_type_bias,bias_bit)]
+                    
+                    self.bias_fault_dict=dict(zip(bias_coor,bias_info))
             
         else:
             for addr in bitmap.fault_dict.keys():
@@ -551,7 +552,7 @@ class tile:
             fault_addr=self.tile2bitmap(coor,fault_bit,bitmap)
                         
             fault_addr=list(zip(*fault_addr.T))
-            bitmap.fault_dict=dict(zip(fault_addr,fault_bit))
+            bitmap.fault_dict=dict(zip(fault_addr,fault_type))
         
 #        for coor in self.fault_dict.keys():                
 #            if not isinstance(self.fault_dict[coor]['SA_bit'],list):
@@ -587,7 +588,7 @@ class tile:
                 fault_bit=np.hstack(fault_bit.flat)
                 fault_type=np.hstack(fault_type.flat)
             
-            n_move=np.add(np.multiply(coor,self.wl+1),np.reshape(fault_bit,(-1,1)))
+            n_move=np.add(np.subtract(np.multiply(coor,self.wl),np.reshape(fault_bit,(-1,1))),self.wl-1)
             fault_addr1=np.add(kernel_end_addr[1],n_move)
             fault_addr0=np.add(kernel_end_addr[0],np.floor_divide(fault_addr1,bitmap.col))
             fault_addr1=np.remainder(fault_addr1,bitmap.col)
@@ -599,7 +600,7 @@ class tile:
                     print('bias fault ',fault_addr)
             else:
                 fault_addr=list(zip(*fault_addr.T))
-                bias_fd_addr=dict(zip(fault_addr,fault_bit))
+                bias_fd_addr=dict(zip(fault_addr,fault_type))
                 bitmap.fault_dict.update(bias_fd_addr)
                 if self.print_detail:
                     print('bias fault ',bias_fd_addr)

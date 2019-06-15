@@ -275,21 +275,18 @@ class tile:
         for i in range(self.shape_len):
             restore_index[axis_index[i]]=i
         
-        if isinstance(numtag_tmp,np.int64) and isinstance(bit,np.int64):
-            coor=np.unravel_index(numtag_tmp,dims_prior)
-            coor=np.array(coor)[restore_index]
-            
-            return tuple(coor),bit
-        
-        elif isinstance(numtag,np.ndarray) and isinstance(bit,np.ndarray):
+        if isinstance(numtag,np.ndarray) and isinstance(bit,np.ndarray):
             coor=np.unravel_index(numtag_tmp,dims_prior)
             coor=np.array(coor)[restore_index]
 
             return coor.T,bit
         
         else:
-            raise TypeError('get numtag and bit of type ',type(numtag),' and ',type(bit),', invalid datatype.')
-                
+            coor=np.unravel_index(numtag_tmp,dims_prior)
+            coor=np.array(coor)[restore_index]
+            
+            return tuple(coor),bit
+                        
     def tile2bitmap(self,coor,bit,bitmap):
         """Convert the tile coordinate to its corresponding address on memory bitmap.
 
@@ -403,7 +400,7 @@ class tile:
         return coor,bit
         
 
-    def fault_dict_bitmap2tile(self,bitmap,use_bias=None,row_prior=None,col_prior=None):
+    def fault_dict_bitmap2tile(self,bitmap,use_bias=None,row_prior=None,col_prior=None,fast_mode=False):
         """Mapping the fault on the memory bitmap to tile coordinate
 
         # Arguments
@@ -434,30 +431,68 @@ class tile:
 
         if self.check_tile_overflow(bitmap):
             raise ValueError('The tile is bigger than the memory !')
-
         
-        for addr in bitmap.fault_dict.keys():
-            if self.check_tile_overflow(bitmap,addr):
-                fault_type=bitmap.fault_dict[addr]
-                fault_coor,fault_bit=self.bitmap2tile(addr,bitmap)
-                
-                if fault_coor in self.fault_dict.keys():
-                    if isinstance(self.fault_dict[fault_coor]['SA_bit'],list):
-                        self.fault_dict[fault_coor]['SA_type'].append(fault_type)
-                        self.fault_dict[fault_coor]['SA_bit'].append(fault_bit)
-                    else:
-                        self.fault_dict[fault_coor]['SA_type']=[self.fault_dict[fault_coor]['SA_type'],fault_type]
-                        self.fault_dict[fault_coor]['SA_bit']=[self.fault_dict[fault_coor]['SA_bit'],fault_bit]
-                else:
-                    self.fault_dict[fault_coor]={'SA_type':fault_type,
-                                                 'SA_bit' : fault_bit}
-            elif self.check_within_bias_range(bitmap,addr) and not self.is_fmap:
+        if self.use_bias:
+            if self.check_within_bias_range(bitmap):
+                raise ValueError('The tile is bigger than the memory !')
+
+        if fast_mode:
+            addr=np.array(list(bitmap.fault_dict.keys()))
+            fault_type=np.array(bitmap.fault_dict.values())
+            
+            addr_numtag=bitmap.get_numtag(addr)
+            if self.use_bias:
+                addr_idx=np.reshape(np.argwhere(addr_numtag<self.bias_range),-1)
+                addr=addr[addr_idx]
+                fault_type=fault_type[addr_idx]
+                addr_numtag=addr_numtag[addr_numtag<self.bias_range]
+                addr_bias_idx=np.reshape(np.argwhere(addr_numtag>=self.tile_size),-1)
+                addr_bias=addr[addr_bias_idx]
+                fault_type_bias=fault_type[addr_bias_idx]
+                numtag_bias=addr_numtag[addr_bias_idx]
+            addr_idx=np.reshape(np.argwhere(addr_numtag<self.tile_size),-1)
+            addr=addr[addr_idx]
+            fault_type=fault_type[addr_idx]
+            
+            fault_coor,fault_bit=self.bitmap2tile(addr,bitmap)
+            
+            fault_coor=list(zip(*fault_coor.T))
+            fault_info=[{'SA_type':typee,'SA_bit':bit} for typee,bit in zip(fault_type,fault_bit)]
+            self.fault_dict=dict(zip(fault_coor,fault_info))
+            
+            if len(addr_bias)>0 and len(fault_type_bias)>0 and len(numtag_bias)>0:
                 if self.print_detail:
-                    print('bias fault %s'%str(addr))
-                fault_type=bitmap.fault_dict[addr]
-                bias_numtag=bitmap.get_numtag(addr)-self.tile_size+1
-                self.bias_fault_dict[(bias_numtag//self.wl,)]={'SA_type':fault_type,
-                                                               'SA_bit' :self.wl - bias_numtag % self.wl -1}
+                    print('bias fault ',addr_bias)
+                numtag_bias=np.subtract(numtag_bias,self.tile_size+1)
+                bias_coor=np.floor_divide(numtag_bias,self.wl)
+                bias_bit=np.subtract(self.wl-1,np.remainder(numtag_bias,self.wl))
+                bias_info=[{'SA_type':typee,'SA_bit':bit} for typee,bit in zip(fault_type_bias,bias_bit)]
+                
+                self.bias_fault_dict=dict(zip(bias_coor,bias_info))
+            
+        else:
+            for addr in bitmap.fault_dict.keys():
+                if self.check_tile_overflow(bitmap,addr):
+                    fault_type=bitmap.fault_dict[addr]
+                    fault_coor,fault_bit=self.bitmap2tile(addr,bitmap)
+                    
+                    if fault_coor in self.fault_dict.keys():
+                        if isinstance(self.fault_dict[fault_coor]['SA_bit'],list):
+                            self.fault_dict[fault_coor]['SA_type'].append(fault_type)
+                            self.fault_dict[fault_coor]['SA_bit'].append(fault_bit)
+                        else:
+                            self.fault_dict[fault_coor]['SA_type']=[self.fault_dict[fault_coor]['SA_type'],fault_type]
+                            self.fault_dict[fault_coor]['SA_bit']=[self.fault_dict[fault_coor]['SA_bit'],fault_bit]
+                    else:
+                        self.fault_dict[fault_coor]={'SA_type':fault_type,
+                                                     'SA_bit' : fault_bit}
+                elif self.check_within_bias_range(bitmap,addr) and not self.is_fmap:
+                    if self.print_detail:
+                        print('bias fault %s'%str(addr))
+                    fault_type=bitmap.fault_dict[addr]
+                    bias_numtag=bitmap.get_numtag(addr)-self.tile_size+1
+                    self.bias_fault_dict[(bias_numtag//self.wl,)]={'SA_type':fault_type,
+                                                                   'SA_bit' :self.wl - bias_numtag % self.wl -1}
         
         if self.is_fmap:
             return self.fault_dict
@@ -498,41 +533,92 @@ class tile:
         if self.check_tile_overflow(bitmap):
             raise ValueError('The tile is bigger than the memory !')
             
-        coor=np.array(list(self.fault_dict.keys()))
-        fault_type=np.array([typee['SA_type'] for typee in self.fault_dict.values()])
-        fault_addr=np.array([typee['SA_bit'] for typee in self.fault_dict.values()])
+        if len(self.fault_dict)!=0:
+            coor=np.array(list(self.fault_dict.keys()))
+            fault_type=np.array([typee['SA_type'] for typee in self.fault_dict.values()])
+            fault_bit=np.array([typee['SA_bit'] for typee in self.fault_dict.values()])
+            multi_fault_index=np.array([isinstance(bit_,list) for bit_ in fault_bit])
+            
+            if np.sum(multi_fault_index) > 0:
+                multi_fault_index=np.reshape(np.argwhere(multi_fault_index>0),-1)
+                multi_fault_num=np.array([len(fault_bit[idx]) for idx in multi_fault_index])
+                multi_fault_num=[i for i in range(len(multi_fault_num)) for _ in range(multi_fault_num[i]-2)]
+                multi_fault_index=np.insert(multi_fault_index,multi_fault_num,multi_fault_index[multi_fault_num])
+                coor=np.insert(coor,multi_fault_index,coor[multi_fault_index],axis=0)
+                fault_bit=np.hstack(fault_bit.flat)
+                fault_type=np.hstack(fault_type.flat)
+            
+            fault_addr=self.tile2bitmap(coor,fault_bit,bitmap)
+                        
+            fault_addr=list(zip(*fault_addr.T))
+            bitmap.fault_dict=dict(zip(fault_addr,fault_bit))
         
-        for coor in self.fault_dict.keys():                
-            if not isinstance(self.fault_dict[coor]['SA_bit'],list):
-                fault_type=self.fault_dict[coor]['SA_type']
-                fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'],bitmap)
-                
-                bitmap.fault_dict[fault_addr]=fault_type
-            else:
-                for i in range(len(self.fault_dict[coor]['SA_bit'])):
-                    fault_type=self.fault_dict[coor]['SA_type'][i]
-                    fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'][i],bitmap)
-                    
-                    bitmap.fault_dict[fault_addr]=fault_type
+#        for coor in self.fault_dict.keys():                
+#            if not isinstance(self.fault_dict[coor]['SA_bit'],list):
+#                fault_type=self.fault_dict[coor]['SA_type']
+#                fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'],bitmap)
+#                
+#                bitmap.fault_dict[fault_addr]=fault_type
+#            else:
+#                for i in range(len(self.fault_dict[coor]['SA_bit'])):
+#                    fault_type=self.fault_dict[coor]['SA_type'][i]
+#                    fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'][i],bitmap)
+#                    
+#                    bitmap.fault_dict[fault_addr]=fault_type
                     
         if self.use_bias:
-            #kernel_end_coor=[self.Tr-1,self.Tc-1,self.Tm-1,self.Tn-1]
+            if len(self.bias_fault_dict)==0:
+                return bitmap.fault_dict
+            
             kernel_end_coor=self.numtag2coor(self.tile_size-1)[0]
             kernel_end_addr=self.tile2bitmap(kernel_end_coor,0,bitmap)
-            for coor in self.bias_fault_dict.keys():
-                fault_type=self.bias_fault_dict[coor]['SA_type']
-                fault_addr=kernel_end_addr
-                n_move=coor[0]*self.wl+self.wl-self.bias_fault_dict[coor]['SA_bit']
-                fault_addr=list(fault_addr)
-                fault_addr[1]+=n_move
-                if fault_addr[1]>=bitmap.col:
-                    fault_addr[0]+=fault_addr[1]//bitmap.col
-                    fault_addr[1]=fault_addr[1]%bitmap.col
-                fault_addr=tuple(fault_addr)
+            
+            coor=np.array(list(self.bias_fault_dict.keys()))
+            fault_type=np.array([typee['SA_type'] for typee in self.bias_fault_dict.values()])
+            fault_bit=np.array([typee['SA_bit'] for typee in self.bias_fault_dict.values()])
+            multi_fault_index=np.array([isinstance(bit_,list) for bit_ in fault_bit])
+            
+            if np.sum(multi_fault_index) > 0:
+                multi_fault_index=np.reshape(np.argwhere(multi_fault_index>0),-1)
+                multi_fault_num=np.array([len(fault_bit[idx]) for idx in multi_fault_index])
+                multi_fault_num=[i for i in range(len(multi_fault_num)) for _ in range(multi_fault_num[i]-2)]
+                multi_fault_index=np.insert(multi_fault_index,multi_fault_num,multi_fault_index[multi_fault_num])
+                coor=np.insert(coor,multi_fault_index,coor[multi_fault_index],axis=0)
+                fault_bit=np.hstack(fault_bit.flat)
+                fault_type=np.hstack(fault_type.flat)
+            
+            n_move=np.add(np.multiply(coor,self.wl+1),np.reshape(fault_bit,(-1,1)))
+            fault_addr1=np.add(kernel_end_addr[1],n_move)
+            fault_addr0=np.add(kernel_end_addr[0],np.floor_divide(fault_addr1,bitmap.col))
+            fault_addr1=np.remainder(fault_addr1,bitmap.col)
+            fault_addr=np.concatenate((fault_addr0,fault_addr1),axis=1)
+            
+            if len(fault_addr)<=1:
+                bitmap.fault_dict[tuple(fault_addr[0])]=fault_type[0]
                 if self.print_detail:
-                    print('bias fault %s'%str(fault_addr))
-                
-                bitmap.fault_dict[fault_addr]=fault_type
+                    print('bias fault ',fault_addr)
+            else:
+                fault_addr=list(zip(*fault_addr.T))
+                bias_fd_addr=dict(zip(fault_addr,fault_bit))
+                bitmap.fault_dict.update(bias_fd_addr)
+                if self.print_detail:
+                    print('bias fault ',bias_fd_addr)
+                    
+            
+#            for coor in self.bias_fault_dict.keys():
+#                fault_type=self.bias_fault_dict[coor]['SA_type']
+#                fault_addr=kernel_end_addr
+#                n_move=coor[0]*self.wl+self.wl-self.bias_fault_dict[coor]['SA_bit']
+#                fault_addr=list(fault_addr)
+#                fault_addr[1]+=n_move
+#                if fault_addr[1]>=bitmap.col:
+#                    fault_addr[0]+=fault_addr[1]//bitmap.col
+#                    fault_addr[1]=fault_addr[1]%bitmap.col
+#                fault_addr=tuple(fault_addr)
+#                if self.print_detail:
+#                    print('bias fault %s'%str(fault_addr))
+#                
+#                bitmap.fault_dict[fault_addr]=fault_type
                 
         return bitmap.fault_dict
     
@@ -620,7 +706,7 @@ class tile:
 
         return layer_fault_dict
     
-    def gen_layer_fault_dict(self,layer_shape,bitmap,use_bias=None,col_prior=None,row_prior=None):
+    def gen_layer_fault_dict(self,layer_shape,bitmap,use_bias=None,col_prior=None,row_prior=None,fast_mode=False):
         """Generate the fault dictionary of a layer from bitmap fault dictionary
 
         # Arguments
@@ -643,7 +729,7 @@ class tile:
         if use_bias is not None:
             self.use_bias=use_bias
             
-        self.fault_dict_bitmap2tile(bitmap)
+        self.fault_dict_bitmap2tile(bitmap,fast_mode=fast_mode)
     
         return self.fault_dict_tile2layer(layer_shape)
     
@@ -723,15 +809,23 @@ class tile_FC(tile):
         elif prior == 'Tn':
             return self.Tn,axis_idex[1]
     
-    def get_tile_dims_prior(self,prior):
+    def get_tile_dims_prior(self,prior_list):
+        if self.is_fmap:
+            axis_idex=[1,0]
+        else:
+            axis_idex=[0,1]
+
         dims_prior=list()
-        for element in reversed(prior):
+        dims_reorder=list()
+        for prior in reversed(prior_list):
             if prior == 'Tm':
                 dims_prior.append(self.Tm)
+                dims_reorder.append(axis_idex[0])
             elif prior == 'Tn':
                 dims_prior.append(self.Tn)
+                dims_reorder.append(axis_idex[1])
                 
-        return tuple(dims_prior)
+        return tuple(dims_prior),dims_reorder
         
     def check_tile_overflow(self,bitmap,addr=None):
         if addr is None:

@@ -77,6 +77,12 @@ coor_fault_multi,bit_fault_multi=wght_tile.bitmap2tile(addr_fault_multi,GLB_wght
 tile_fault_dict_wght=wght_tile.fault_dict_bitmap2tile(GLB_wght,use_bias=True)
 tile_fault_dict_fmap=fmap_tile.fault_dict_bitmap2tile(GLB_wght)
 
+wght_tile.clear()
+fmap_tile.clear()
+
+tile_fault_dict_wght_fast=wght_tile.fault_dict_bitmap2tile(GLB_wght,use_bias=True,fast_mode=True)
+tile_fault_dict_fmap_fast=fmap_tile.fault_dict_bitmap2tile(GLB_wght,fast_mode=True)
+
 # example of tile mapping to memory using fault dictionary
 GLB_wght.fault_dict=dict()
 mem_fault_dict_wght=wght_tile.fault_dict_tile2bitmap(GLB_wght)
@@ -87,7 +93,13 @@ layer_shape=(30,30,40,64)
 layer_fault_dict=wght_tile.fault_dict_tile2layer(layer_shape)
 
 # example of memory fault dictionary restore to layer fault dictionary 
+wght_tile.clear()
+
 layer_fault_dict_val=wght_tile.gen_layer_fault_dict(layer_shape,GLB_wght)
+
+wght_tile.clear()
+
+layer_fault_dict_val_fast=wght_tile.gen_layer_fault_dict(layer_shape,GLB_wght,fast_mode=True)
 
 #%%
 
@@ -106,7 +118,13 @@ mem_fault_dict_b=wght_tile_b.fault_dict_tile2bitmap(GLB_wght_b,use_bias=True)
 wght_tile_b.bias_fault_dict=dict()
 
 tile_fault_dict_wght_b=wght_tile_b.fault_dict_bitmap2tile(GLB_wght_b,use_bias=True)
+wght_tile_b.bias_fault_dict=dict()
+tile_fault_dict_wght_b_fast=wght_tile_b.fault_dict_bitmap2tile(GLB_wght_b,use_bias=True,fast_mode=True)
+wght_tile_b.bias_fault_dict=dict()
+
 layer_fault_dict_bias=wght_tile_b.gen_layer_fault_dict(layer_shape,GLB_wght_b)
+wght_tile_b.bias_fault_dict=dict()
+layer_fault_dict_bias_fast=wght_tile_b.gen_layer_fault_dict(layer_shape,GLB_wght_b,fast_mode=True)
 
 
 #%% 
@@ -125,5 +143,8 @@ mem_fault_dict_fc,mem_fault_num=GLB_wght_fc.gen_bitmap_SA_fault_dict(fault_rate)
 layer_fault_dict_fc=wght_tile_fc.gen_layer_fault_dict((1764,128),GLB_wght_fc,use_bias=True)
 tile_fault_dict_fc=wght_tile_fc.fault_dict
 tile_fault_dict_fc_bias=wght_tile_fc.bias_fault_dict
+wght_tile_fc.clear()
+layer_fault_dict_fc_fast=wght_tile_fc.gen_layer_fault_dict((1764,128),GLB_wght_fc,use_bias=True,fast_mode=True)
+
 
 

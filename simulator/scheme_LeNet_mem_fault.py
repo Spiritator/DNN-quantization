@@ -75,7 +75,7 @@ ifmap_tile_fc2=tile_FC((1,128),is_fmap=True,wl=model_wl)
 wght_tile_fc2 =tile_FC((128,10),is_fmap=False,wl=model_wl)
 
 
-def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False):
+def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False,fast_mode=True):
     model_ifmap_fault_dict_list=[None for i in range(8)]
     model_ofmap_fault_dict_list=[None for i in range(8)] 
     model_weight_fault_dict_list=[[None,None] for i in range(8)]
@@ -107,25 +107,29 @@ def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False):
     =generate_layer_memory_mapping(ref_model.layers[1],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,
-                                   print_detail=print_detail)
+                                   print_detail=print_detail,
+                                   fast_mode=fast_mode)
     
     model_ifmap_fault_dict_list[3],model_ofmap_fault_dict_list[3],model_weight_fault_dict_list[3]\
     =generate_layer_memory_mapping(ref_model.layers[3],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,
-                                   print_detail=print_detail)
+                                   print_detail=print_detail,
+                                   fast_mode=fast_mode)
     
     model_ifmap_fault_dict_list[6],model_ofmap_fault_dict_list[6],model_weight_fault_dict_list[6]\
     =generate_layer_memory_mapping(ref_model.layers[6],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,
-                                   print_detail=print_detail)
+                                   print_detail=print_detail,
+                                   fast_mode=fast_mode)
     
     model_ifmap_fault_dict_list[7],model_ofmap_fault_dict_list[7],model_weight_fault_dict_list[7]\
     =generate_layer_memory_mapping(ref_model.layers[7],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,
-                                   print_detail=print_detail)
+                                   print_detail=print_detail,
+                                   fast_mode=fast_mode)
     
     return model_ifmap_fault_dict_list,model_ofmap_fault_dict_list,model_weight_fault_dict_list
 
@@ -155,7 +159,8 @@ for test_rounds,fr in enumerate(fault_rate_list):
                                   model_fractional_bit,
                                   model_ifmap_fdl, 
                                   model_ofmap_fdl, 
-                                  model_weight_fdl)
+                                  model_weight_fdl,
+                                  fast_gen=True)
         
         model_augment.append({'nbits':model_word_length,
                               'fbits':model_fractional_bit,

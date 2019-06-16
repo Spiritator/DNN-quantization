@@ -23,6 +23,7 @@ from utils_tool.confusion_matrix import show_confusion_matrix
 from metrics.topk_metrics import top2_acc
 from memory.mem_bitmap import bitmap
 from memory.tile import tile, tile_FC, generate_layer_memory_mapping
+from testing.fault_core import generate_model_modulator
 #from testing.fault_list import generate_model_stuck_fault
 
 #%%
@@ -34,7 +35,7 @@ model_fractional_bit=12
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter
-fault_rate=0.00001
+fault_rate=0.1
 
 word=4
 model_wl=model_word_length
@@ -42,6 +43,7 @@ model_wl=model_word_length
 memory_column_priority=['Tm','Tc','Tr','Tn']
 memory_row_priority=['Tr','Tm','Tc','Tn']
 
+fast_mode=True
 
 #%%
 # fault generation
@@ -155,33 +157,50 @@ wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
 model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault_dict_list[1]\
 =generate_layer_memory_mapping(model.layers[1],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1)
+                               ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,
+                               fast_mode=fast_mode)
 
 model_ifmap_fault_dict_list[2],model_ofmap_fault_dict_list[2],model_weight_fault_dict_list[2]\
 =generate_layer_memory_mapping(model.layers[2],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2)
+                               ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,
+                               fast_mode=fast_mode)
 
 model_ifmap_fault_dict_list[5],model_ofmap_fault_dict_list[5],model_weight_fault_dict_list[5]\
 =generate_layer_memory_mapping(model.layers[5],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3)
+                               ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3,
+                               fast_mode=fast_mode)
 
 model_ifmap_fault_dict_list[6],model_ofmap_fault_dict_list[6],model_weight_fault_dict_list[6]\
 =generate_layer_memory_mapping(model.layers[6],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4)
+                               ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4,
+                               fast_mode=fast_mode)
 
 model_ifmap_fault_dict_list[10],model_ofmap_fault_dict_list[10],model_weight_fault_dict_list[10]\
 =generate_layer_memory_mapping(model.layers[10],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1)
+                               ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,
+                               fast_mode=fast_mode)
 
 model_ifmap_fault_dict_list[13],model_ofmap_fault_dict_list[13],model_weight_fault_dict_list[13]\
 =generate_layer_memory_mapping(model.layers[13],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2)
+                               ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,
+                               fast_mode=fast_mode)
 
+#%%
+# generate modulator
+
+model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
+=generate_model_modulator(model,
+                          model_word_length,
+                          model_fractional_bit,
+                          model_ifmap_fault_dict_list, 
+                          model_ofmap_fault_dict_list, 
+                          model_weight_fault_dict_list,
+                          fast_gen=True)
 
 #%%
 # model setup

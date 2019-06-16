@@ -384,18 +384,6 @@ class tile:
                     bit=np.concatenate((bit,bit_reorder))
                 else:
                     raise ValueError('Index out of tile range !!')
-#        try:
-#            coor,bit=self.coor_tile_move(coor_head,bit__,addr1,increase=True)
-#        except Exception as ValueError:
-#            if self.check_tile_overflow(bitmap,addr):
-#                if self.print_detail:
-#                    print(addr)
-#                    print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
-#                n_move=addr[1]-(self.tile_size-self.get_numtag(coor_head,self.wl-1))
-#                coor_head=self.slice_head_list[self.slice_head_order[addr[0]+1]]
-#                coor,bit=self.coor_tile_move(coor_head,bit__,n_move,increase=True)
-#            else:
-#                raise ValueError('Index out of tile range !!')
         
         return coor,bit
         
@@ -468,6 +456,7 @@ class tile:
                     bias_coor=np.floor_divide(numtag_bias,self.wl)
                     bias_bit=np.subtract(self.wl-1,np.remainder(numtag_bias,self.wl))
                     bias_info=[{'SA_type':typee,'SA_bit':bit} for typee,bit in zip(fault_type_bias,bias_bit)]
+                    bias_coor=list(zip(*np.expand_dims(bias_coor,0)))
                     
                     self.bias_fault_dict=dict(zip(bias_coor,bias_info))
             
@@ -553,20 +542,7 @@ class tile:
                         
             fault_addr=list(zip(*fault_addr.T))
             bitmap.fault_dict=dict(zip(fault_addr,fault_type))
-        
-#        for coor in self.fault_dict.keys():                
-#            if not isinstance(self.fault_dict[coor]['SA_bit'],list):
-#                fault_type=self.fault_dict[coor]['SA_type']
-#                fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'],bitmap)
-#                
-#                bitmap.fault_dict[fault_addr]=fault_type
-#            else:
-#                for i in range(len(self.fault_dict[coor]['SA_bit'])):
-#                    fault_type=self.fault_dict[coor]['SA_type'][i]
-#                    fault_addr=self.tile2bitmap(coor,self.fault_dict[coor]['SA_bit'][i],bitmap)
-#                    
-#                    bitmap.fault_dict[fault_addr]=fault_type
-                    
+                            
         if self.use_bias:
             if len(self.bias_fault_dict)==0:
                 return bitmap.fault_dict
@@ -605,22 +581,6 @@ class tile:
                 if self.print_detail:
                     print('bias fault ',bias_fd_addr)
                     
-            
-#            for coor in self.bias_fault_dict.keys():
-#                fault_type=self.bias_fault_dict[coor]['SA_type']
-#                fault_addr=kernel_end_addr
-#                n_move=coor[0]*self.wl+self.wl-self.bias_fault_dict[coor]['SA_bit']
-#                fault_addr=list(fault_addr)
-#                fault_addr[1]+=n_move
-#                if fault_addr[1]>=bitmap.col:
-#                    fault_addr[0]+=fault_addr[1]//bitmap.col
-#                    fault_addr[1]=fault_addr[1]%bitmap.col
-#                fault_addr=tuple(fault_addr)
-#                if self.print_detail:
-#                    print('bias fault %s'%str(fault_addr))
-#                
-#                bitmap.fault_dict[fault_addr]=fault_type
-                
         return bitmap.fault_dict
     
     def fault_dict_tile2layer(self,layer_shape,use_bias=None):
@@ -700,7 +660,8 @@ class tile:
             
             bias_fault_coor=np.delete(bias_fault_coor,bias_outside_index)
             bias_fault_info=np.delete(bias_fault_info,bias_outside_index)
-            
+            bias_fault_coor=list(zip(*np.expand_dims(bias_fault_coor,0)))
+
             layer_fault_dict_bias=dict(zip(bias_fault_coor,bias_fault_info))
                     
             return [layer_fault_dict,layer_fault_dict_bias]
@@ -932,7 +893,6 @@ class tile_FC(tile):
             bias_restore_multiple=layer_shape[-1]//self.Tn+1
             bias_base_coor=np.multiply(np.arange(bias_restore_multiple),self.Tn)
             bias_fault_coor=np.reshape(np.add.outer(bias_base_coor,bias_fault_coor),[-1])
-            #bias_fault_coor=np.add(np.tile(bias_base_coor,[1,len(bias_fault_coor)]),np.tile(bias_fault_coor,[1,bias_restore_multiple]))
             
             bias_fault_info=list(self.bias_fault_dict.values())
             bias_fault_info=np.tile(bias_fault_info,[bias_restore_multiple])
@@ -941,7 +901,8 @@ class tile_FC(tile):
             
             bias_fault_coor=np.delete(bias_fault_coor,bias_outside_index)
             bias_fault_info=np.delete(bias_fault_info,bias_outside_index)
-            
+            bias_fault_coor=list(zip(*np.expand_dims(bias_fault_coor,0)))
+
             layer_fault_dict_bias=dict(zip(bias_fault_coor,bias_fault_info))
                     
             return [layer_fault_dict,layer_fault_dict_bias]
@@ -952,7 +913,7 @@ class tile_FC(tile):
         
         
         
-def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,ifmap_tile,wght_tile,ofmap_tile,print_detail=True,**kwargs):
+def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,ifmap_tile,wght_tile,ofmap_tile,print_detail=True,fast_mode=False,**kwargs):
     """Generate the fault dictionary list of a layer base on its memory mapping and buffer fault information.
 
     # Arguments
@@ -990,7 +951,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         print('The input feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
         ifmap_fault_dict=None
     else:
-        ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape,ifmap_buffer)
+        ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape,ifmap_buffer,fast_mode=fast_mode)
     
         if print_detail:
             print('    mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
@@ -1001,7 +962,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         print('The output feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
         ofmap_fault_dict=None
     else:
-        ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape,ofmap_buffer)
+        ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape,ofmap_buffer,fast_mode=fast_mode)
     
         if print_detail:
             print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
@@ -1016,7 +977,7 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
         else:
             use_bias=False
         
-        weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0],wght_buffer,use_bias=use_bias)
+        weight_fault_dict=wght_tile.gen_layer_fault_dict(layer_weight_shape[0],wght_buffer,use_bias=use_bias,fast_mode=fast_mode)
         
         if print_detail:
             print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))

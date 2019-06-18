@@ -13,7 +13,6 @@ import keras
 import numpy as np
 import keras.backend as K
 import time
-import scipy
 
 
 from models.model_library import quantized_4C2F
@@ -24,6 +23,8 @@ from metrics.topk_metrics import top2_acc
 from memory.mem_bitmap import bitmap
 from memory.tile import tile, tile_FC, generate_layer_memory_mapping
 from testing.fault_core import generate_model_modulator
+from metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, conf_score_vary_10, conf_score_vary_50
+from inference.evaluate import evaluate_FT
 #from testing.fault_list import generate_model_stuck_fault
 
 #%%
@@ -35,7 +36,7 @@ model_fractional_bit=12
 rounding_method='nearest'
 batch_size=20
 # memory fault simulation parameter
-fault_rate=0.1
+fault_rate=0.00001
 
 word=4
 model_wl=model_word_length
@@ -233,20 +234,21 @@ x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_
 
 t = time.time()
 
-test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+#test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+from keras.losses import categorical_crossentropy
+prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
+test_result = evaluate_FT('cifar10',prediction=prediction,test_label=y_test,loss_function=categorical_crossentropy,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50])
 
 t = time.time()-t
-  
 print('\nruntime: %f s'%t)
-print('\nTest loss:', test_result[0])
-print('Test top1 accuracy:', test_result[1])
-print('Test top2 accuracy:', test_result[2])
+for key in test_result.keys():
+    print('Test %s\t:'%key, test_result[key])
 
 #%%
 # draw confusion matrix
 
 print('\n')
-prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
+#prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
 prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',figsize=(8,6),normalize=False)

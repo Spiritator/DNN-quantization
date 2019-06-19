@@ -36,9 +36,19 @@ else:
 
 # memory fault simulation parameter
 fault_rate=0.0001
-row=80
-col=20
-word=4
+
+row_ifmap=98
+col_ifmap=16*8
+word_ifmap=4
+
+row_ofmap=98
+col_ofmap=16*8
+word_ofmap=4
+
+row_wght=64+1
+col_wght=16*8
+word_wght=4
+
 model_wl=model_word_length
 
 memory_column_priority=['Tm','Tc','Tr','Tn']
@@ -62,21 +72,273 @@ model_ofmap_fault_dict_list=[None for i in range(75)]
 model_weight_fault_dict_list=[[None,None] for i in range(75)]
 
 # memory mapping
-GLB_wght=bitmap(row, col*word*model_wl, wl=model_wl)  # 109KB
-GLB_ifmap=bitmap(row, col*word*model_wl, wl=model_wl) # 98KB
-GLB_ofmap=bitmap(row, col*word*model_wl, wl=model_wl) # 49KB
+GLB_wght=bitmap(row_wght, col_wght*word_wght*model_wl, wl=model_wl)  # 65KB
+GLB_ifmap=bitmap(row_ifmap, col_ifmap*word_ifmap*model_wl, wl=model_wl) # 98KB
+GLB_ofmap=bitmap(row_ofmap, col_ofmap*word_ofmap*model_wl, wl=model_wl) # 98KB
 
 # assign fault dictionary
 GLB_wght.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
 GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
 GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
 
+#%%
+# tile setting
+
 # standard conv1
 ofmap_tile_conv1=tile((1,38,38,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-ifmap_tile_conv1=tile((1,28,28,1),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-wght_tile_conv1 =tile((3,3,3,32),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_conv1=tile((1,76,76,4),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_conv1 =tile((3,3,4,32),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv2
+ofmap_tile_DW2=tile((1,112,112,4),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW2=tile((1,112,112,4),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW2 =tile((3,3,4,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv3
+ofmap_tile_PW3=tile((1,38,38,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW3=tile((1,38,38,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW3 =tile((1,1,16,32),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv4
+ofmap_tile_DW4=tile((1,28,28,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW4=tile((1,56,56,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW4 =tile((3,3,16,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv5
+ofmap_tile_PW5=tile((1,28,28,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW5=tile((1,28,28,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW5 =tile((1,1,64,64),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv6
+ofmap_tile_DW6=tile((1,56,56,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW6=tile((1,56,56,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW6 =tile((3,3,16,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv7
+ofmap_tile_PW7=tile((1,56,56,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW7=tile((1,56,56,8),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW7 =tile((1,1,8,16),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv8
+ofmap_tile_DW8=tile((1,28,28,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW8=tile((1,56,56,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW8 =tile((3,3,16,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv9
+ofmap_tile_PW9=tile((1,28,28,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW9=tile((1,28,28,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW9 =tile((1,1,64,32),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv10
+ofmap_tile_DW10=tile((1,28,28,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW10=tile((1,28,28,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW10 =tile((3,3,64,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv11
+ofmap_tile_PW11=tile((1,28,28,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW11=tile((1,28,28,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW11 =tile((1,1,64,32),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv12
+ofmap_tile_DW12=tile((1,14,14,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW12=tile((1,28,28,64),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW12 =tile((3,3,64,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv13
+ofmap_tile_PW13=tile((1,14,14,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW13=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW13 =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv14
+ofmap_tile_DW14=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW14=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW14 =tile((3,3,256,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv15
+ofmap_tile_PW15=tile((1,14,14,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW15=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW15 =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv16
+ofmap_tile_DW16=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW16=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW16 =tile((3,3,256,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv17
+ofmap_tile_PW17=tile((1,14,14,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW17=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW17 =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv18
+ofmap_tile_DW18=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW18=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW18 =tile((3,3,256,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv19
+ofmap_tile_PW19=tile((1,14,14,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW19=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW19 =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv20
+ofmap_tile_DW20=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW20=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW20 =tile((3,3,256,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv21
+ofmap_tile_PW21=tile((1,14,14,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW21=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW21 =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv22
+ofmap_tile_DW22=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW22=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW22 =tile((3,3,256,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv23
+ofmap_tile_PW23=tile((1,14,14,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW23=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW23 =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv24
+ofmap_tile_DW24=tile((1,7,7,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW24=tile((1,14,14,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW24 =tile((3,3,256,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv25
+ofmap_tile_PW25=tile((1,7,7,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW25=tile((1,7,7,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW25 =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# DW conv26
+ofmap_tile_DW26=tile((1,7,7,512),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_DW26=tile((1,7,7,512),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_DW26 =tile((3,3,512,1),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# PW conv27
+ofmap_tile_PW27=tile((1,7,7,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_PW27=tile((1,7,7,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_PW27 =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+# Pred conv (fc1000)
+ofmap_tile_fc=tile((1,1,1,128),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ifmap_tile_fc=tile((1,1,1,256),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+wght_tile_fc =tile((1,1,256,128),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
 
-
+#%%
+# generate fault dictionary
+model_ifmap_fault_dict_list[2],model_ofmap_fault_dict_list[2],model_weight_fault_dict_list[2]\
+=generate_layer_memory_mapping(model.layers[2],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[5],model_ofmap_fault_dict_list[5],model_weight_fault_dict_list[5]\
+=generate_layer_memory_mapping(model.layers[5],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW2,wght_tile_DW2,ofmap_tile_DW2,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[7],model_ofmap_fault_dict_list[7],model_weight_fault_dict_list[7]\
+=generate_layer_memory_mapping(model.layers[7],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW3,wght_tile_PW3,ofmap_tile_PW3,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[10],model_ofmap_fault_dict_list[10],model_weight_fault_dict_list[10]\
+=generate_layer_memory_mapping(model.layers[10],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW4,wght_tile_DW4,ofmap_tile_DW4,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[12],model_ofmap_fault_dict_list[12],model_weight_fault_dict_list[12]\
+=generate_layer_memory_mapping(model.layers[12],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW5,wght_tile_PW5,ofmap_tile_PW5,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[15],model_ofmap_fault_dict_list[15],model_weight_fault_dict_list[15]\
+=generate_layer_memory_mapping(model.layers[15],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW6,wght_tile_DW6,ofmap_tile_DW6,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[17],model_ofmap_fault_dict_list[17],model_weight_fault_dict_list[17]\
+=generate_layer_memory_mapping(model.layers[17],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW7,wght_tile_PW7,ofmap_tile_PW7,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[20],model_ofmap_fault_dict_list[20],model_weight_fault_dict_list[20]\
+=generate_layer_memory_mapping(model.layers[20],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW8,wght_tile_DW8,ofmap_tile_DW8,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[22],model_ofmap_fault_dict_list[22],model_weight_fault_dict_list[22]\
+=generate_layer_memory_mapping(model.layers[22],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW9,wght_tile_PW9,ofmap_tile_PW9,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[25],model_ofmap_fault_dict_list[25],model_weight_fault_dict_list[25]\
+=generate_layer_memory_mapping(model.layers[25],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW10,wght_tile_DW10,ofmap_tile_DW10,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[27],model_ofmap_fault_dict_list[27],model_weight_fault_dict_list[27]\
+=generate_layer_memory_mapping(model.layers[27],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW11,wght_tile_PW11,ofmap_tile_PW11,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[30],model_ofmap_fault_dict_list[30],model_weight_fault_dict_list[30]\
+=generate_layer_memory_mapping(model.layers[30],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW12,wght_tile_DW12,ofmap_tile_DW12,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[32],model_ofmap_fault_dict_list[32],model_weight_fault_dict_list[32]\
+=generate_layer_memory_mapping(model.layers[32],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW13,wght_tile_PW13,ofmap_tile_PW13,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[35],model_ofmap_fault_dict_list[35],model_weight_fault_dict_list[35]\
+=generate_layer_memory_mapping(model.layers[35],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW14,wght_tile_DW14,ofmap_tile_DW14,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[37],model_ofmap_fault_dict_list[37],model_weight_fault_dict_list[37]\
+=generate_layer_memory_mapping(model.layers[37],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW15,wght_tile_PW15,ofmap_tile_PW15,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[40],model_ofmap_fault_dict_list[40],model_weight_fault_dict_list[40]\
+=generate_layer_memory_mapping(model.layers[40],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW16,wght_tile_DW16,ofmap_tile_DW16,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[42],model_ofmap_fault_dict_list[42],model_weight_fault_dict_list[42]\
+=generate_layer_memory_mapping(model.layers[42],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW17,wght_tile_PW17,ofmap_tile_PW17,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[45],model_ofmap_fault_dict_list[45],model_weight_fault_dict_list[45]\
+=generate_layer_memory_mapping(model.layers[45],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW18,wght_tile_DW18,ofmap_tile_DW18,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[47],model_ofmap_fault_dict_list[47],model_weight_fault_dict_list[47]\
+=generate_layer_memory_mapping(model.layers[47],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW19,wght_tile_PW19,ofmap_tile_PW19,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[50],model_ofmap_fault_dict_list[50],model_weight_fault_dict_list[50]\
+=generate_layer_memory_mapping(model.layers[50],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW20,wght_tile_DW20,ofmap_tile_DW20,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[52],model_ofmap_fault_dict_list[52],model_weight_fault_dict_list[52]\
+=generate_layer_memory_mapping(model.layers[52],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW21,wght_tile_PW21,ofmap_tile_PW21,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[55],model_ofmap_fault_dict_list[55],model_weight_fault_dict_list[55]\
+=generate_layer_memory_mapping(model.layers[55],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW22,wght_tile_DW22,ofmap_tile_DW22,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[57],model_ofmap_fault_dict_list[57],model_weight_fault_dict_list[57]\
+=generate_layer_memory_mapping(model.layers[57],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW23,wght_tile_PW23,ofmap_tile_PW23,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[60],model_ofmap_fault_dict_list[60],model_weight_fault_dict_list[60]\
+=generate_layer_memory_mapping(model.layers[60],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW24,wght_tile_DW24,ofmap_tile_DW24,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[62],model_ofmap_fault_dict_list[62],model_weight_fault_dict_list[62]\
+=generate_layer_memory_mapping(model.layers[62],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW25,wght_tile_PW25,ofmap_tile_PW25,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[65],model_ofmap_fault_dict_list[65],model_weight_fault_dict_list[65]\
+=generate_layer_memory_mapping(model.layers[65],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_DW26,wght_tile_DW26,ofmap_tile_DW26,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[67],model_ofmap_fault_dict_list[67],model_weight_fault_dict_list[67]\
+=generate_layer_memory_mapping(model.layers[67],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_PW27,wght_tile_PW27,ofmap_tile_PW27,
+                               fast_mode=fast_mode)
+model_ifmap_fault_dict_list[72],model_ofmap_fault_dict_list[72],model_weight_fault_dict_list[72]\
+=generate_layer_memory_mapping(model.layers[72],
+                               GLB_ifmap,GLB_wght,GLB_ofmap,
+                               ifmap_tile_fc,wght_tile_fc,ofmap_tile_fc,
+                               fast_mode=fast_mode)
 
 #%%
 # generate modulator

@@ -375,7 +375,7 @@ class tile:
                         for addrr in addr_reorder:
                             print(addrr)
                             print('Meet the condition of row of the end of tile is not the last row of data in memory. Due to the different priority setting of column and row. Data being repermutated.')
-                    reorder_diff=self.tile_size-self.get_numtag(coor_head[-2],self.wl-1)
+                    reorder_diff=self.tile_size-self.get_numtag(self.slice_head_list[-2],self.wl-1)
                     n_move=np.subtract(addr_reorder[:,1],reorder_diff)
                     coor_head=self.slice_head_list[self.slice_head_order[np.add(addr_reorder[:,0],1)]]
                     coor_numtag_reorder=self.get_numtag(coor_head,bit__[:len(coor_reorder_idx)])

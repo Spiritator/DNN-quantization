@@ -22,7 +22,6 @@ img_width, img_height = 224, 224
 
 result_save_folder='../../test_result/imagenet_mobilenet_model_fault_rate'
 weight_name='../../mobilenet_1_0_224_tf_fused_BN.h5'
-test_rounds=200
 set_size=2
 batch_size=40
 model_word_length=16

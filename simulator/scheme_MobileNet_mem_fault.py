@@ -295,141 +295,169 @@ def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False,fast_mode=T
     =generate_layer_memory_mapping(ref_model.layers[2],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[5],model_ofmap_fault_dict_list[5],model_weight_fault_dict_list[5]\
     =generate_layer_memory_mapping(ref_model.layers[5],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW2,wght_tile_DW2,ofmap_tile_DW2,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[7],model_ofmap_fault_dict_list[7],model_weight_fault_dict_list[7]\
     =generate_layer_memory_mapping(ref_model.layers[7],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW3,wght_tile_PW3,ofmap_tile_PW3,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[10],model_ofmap_fault_dict_list[10],model_weight_fault_dict_list[10]\
     =generate_layer_memory_mapping(ref_model.layers[10],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW4,wght_tile_DW4,ofmap_tile_DW4,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[12],model_ofmap_fault_dict_list[12],model_weight_fault_dict_list[12]\
     =generate_layer_memory_mapping(ref_model.layers[12],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW5,wght_tile_PW5,ofmap_tile_PW5,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[15],model_ofmap_fault_dict_list[15],model_weight_fault_dict_list[15]\
     =generate_layer_memory_mapping(ref_model.layers[15],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW6,wght_tile_DW6,ofmap_tile_DW6,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[17],model_ofmap_fault_dict_list[17],model_weight_fault_dict_list[17]\
     =generate_layer_memory_mapping(ref_model.layers[17],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW7,wght_tile_PW7,ofmap_tile_PW7,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[20],model_ofmap_fault_dict_list[20],model_weight_fault_dict_list[20]\
     =generate_layer_memory_mapping(ref_model.layers[20],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW8,wght_tile_DW8,ofmap_tile_DW8,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[22],model_ofmap_fault_dict_list[22],model_weight_fault_dict_list[22]\
     =generate_layer_memory_mapping(ref_model.layers[22],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW9,wght_tile_PW9,ofmap_tile_PW9,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[25],model_ofmap_fault_dict_list[25],model_weight_fault_dict_list[25]\
     =generate_layer_memory_mapping(ref_model.layers[25],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW10,wght_tile_DW10,ofmap_tile_DW10,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[27],model_ofmap_fault_dict_list[27],model_weight_fault_dict_list[27]\
     =generate_layer_memory_mapping(ref_model.layers[27],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW11,wght_tile_PW11,ofmap_tile_PW11,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[30],model_ofmap_fault_dict_list[30],model_weight_fault_dict_list[30]\
     =generate_layer_memory_mapping(ref_model.layers[30],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW12,wght_tile_DW12,ofmap_tile_DW12,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[32],model_ofmap_fault_dict_list[32],model_weight_fault_dict_list[32]\
     =generate_layer_memory_mapping(ref_model.layers[32],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW13,wght_tile_PW13,ofmap_tile_PW13,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[35],model_ofmap_fault_dict_list[35],model_weight_fault_dict_list[35]\
     =generate_layer_memory_mapping(ref_model.layers[35],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW14,wght_tile_DW14,ofmap_tile_DW14,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[37],model_ofmap_fault_dict_list[37],model_weight_fault_dict_list[37]\
     =generate_layer_memory_mapping(ref_model.layers[37],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW15,wght_tile_PW15,ofmap_tile_PW15,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[40],model_ofmap_fault_dict_list[40],model_weight_fault_dict_list[40]\
     =generate_layer_memory_mapping(ref_model.layers[40],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW16,wght_tile_DW16,ofmap_tile_DW16,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[42],model_ofmap_fault_dict_list[42],model_weight_fault_dict_list[42]\
     =generate_layer_memory_mapping(ref_model.layers[42],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW17,wght_tile_PW17,ofmap_tile_PW17,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[45],model_ofmap_fault_dict_list[45],model_weight_fault_dict_list[45]\
     =generate_layer_memory_mapping(ref_model.layers[45],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW18,wght_tile_DW18,ofmap_tile_DW18,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[47],model_ofmap_fault_dict_list[47],model_weight_fault_dict_list[47]\
     =generate_layer_memory_mapping(ref_model.layers[47],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW19,wght_tile_PW19,ofmap_tile_PW19,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[50],model_ofmap_fault_dict_list[50],model_weight_fault_dict_list[50]\
     =generate_layer_memory_mapping(ref_model.layers[50],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW20,wght_tile_DW20,ofmap_tile_DW20,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[52],model_ofmap_fault_dict_list[52],model_weight_fault_dict_list[52]\
     =generate_layer_memory_mapping(ref_model.layers[52],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW21,wght_tile_PW21,ofmap_tile_PW21,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[55],model_ofmap_fault_dict_list[55],model_weight_fault_dict_list[55]\
     =generate_layer_memory_mapping(ref_model.layers[55],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW22,wght_tile_DW22,ofmap_tile_DW22,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[57],model_ofmap_fault_dict_list[57],model_weight_fault_dict_list[57]\
     =generate_layer_memory_mapping(ref_model.layers[57],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW23,wght_tile_PW23,ofmap_tile_PW23,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[60],model_ofmap_fault_dict_list[60],model_weight_fault_dict_list[60]\
     =generate_layer_memory_mapping(ref_model.layers[60],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW24,wght_tile_DW24,ofmap_tile_DW24,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[62],model_ofmap_fault_dict_list[62],model_weight_fault_dict_list[62]\
     =generate_layer_memory_mapping(ref_model.layers[62],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW25,wght_tile_PW25,ofmap_tile_PW25,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[65],model_ofmap_fault_dict_list[65],model_weight_fault_dict_list[65]\
     =generate_layer_memory_mapping(ref_model.layers[65],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_DW26,wght_tile_DW26,ofmap_tile_DW26,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[67],model_ofmap_fault_dict_list[67],model_weight_fault_dict_list[67]\
     =generate_layer_memory_mapping(ref_model.layers[67],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_PW27,wght_tile_PW27,ofmap_tile_PW27,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     model_ifmap_fault_dict_list[72],model_ofmap_fault_dict_list[72],model_weight_fault_dict_list[72]\
     =generate_layer_memory_mapping(ref_model.layers[72],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_fc,wght_tile_fc,ofmap_tile_fc,
+                                   print_detail=print_detail,
                                    fast_mode=fast_mode)
     
     return model_ifmap_fault_dict_list,model_ofmap_fault_dict_list,model_weight_fault_dict_list

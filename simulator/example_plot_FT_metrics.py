@@ -12,7 +12,7 @@ from utils_tool.plot import make_FT_report_csv,plot_FT_analysis,plot_FT_analysis
 #%%
 # plot 
 
-stat_folder_dir='imagenet_resnet_model_fault_rate_fmap'
+stat_folder_dir='imagenet_mobilenet_memory_fault_rate'
 stat_data=make_FT_report_csv('../../test_result/'+stat_folder_dir,stat_folder_dir)
 stat_data=plot_FT_analysis(stat_dir='../../test_result/'+stat_folder_dir)
 

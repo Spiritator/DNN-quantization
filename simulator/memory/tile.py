@@ -948,7 +948,8 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     
     # ifmap memory mapping
     if len(ifmap_buffer.fault_dict) == 0:
-        print('The input feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
+        if print_detail:
+            print('The input feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
         ifmap_fault_dict=None
     else:
         ifmap_fault_dict=ifmap_tile.gen_layer_fault_dict(layer_input_shape,ifmap_buffer,fast_mode=fast_mode)
@@ -959,7 +960,8 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     
     # ofmap memory mapping
     if len(ofmap_buffer.fault_dict) == 0:
-        print('The output feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
+        if print_detail:
+            print('The output feature map buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
         ofmap_fault_dict=None
     else:
         ofmap_fault_dict=ofmap_tile.gen_layer_fault_dict(layer_output_shape,ofmap_buffer,fast_mode=fast_mode)
@@ -969,7 +971,8 @@ def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,if
     
     # weight memory mapping
     if len(wght_buffer.fault_dict) == 0:
-        print('The weights buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
+        if print_detail:
+            print('The weights buffer has no fault information. Try bitmap.gen_bitmap_SA_fault_dict or assign fault information.\nProceed without inject fault.')
         weight_fault_dict=[None for i in layer_weight_shape]
     else:
         if len(layer_weight_shape)>1:

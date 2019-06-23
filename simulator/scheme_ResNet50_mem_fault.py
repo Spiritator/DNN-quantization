@@ -54,7 +54,7 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 
 # memory fault simulation parameter
 fault_rate_list=  [5e-7,1e-6,2e-6,5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
-test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,200 ,200 ,100, 100 ,100 ,50 ,50 ,10 ,10 ,10 ,5  ,2  ,2  ,2  ]
+test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,100 ,100 ,100, 50  ,50  ,10  ,10  ,10  ,2   ,2   ,2   ,2   ]
 
 #%%
 # fault generation
@@ -577,6 +577,8 @@ def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False,fast_mode=T
                                    ifmap_tile_fc1000,wght_tile_fc1000,ofmap_tile_fc1000,
                                    print_detail=print_detail,
                                    fast_mode=fast_mode)
+    
+    return model_ifmap_fault_dict_list,model_ofmap_fault_dict_list,model_weight_fault_dict_list
 
 #%%
 # test

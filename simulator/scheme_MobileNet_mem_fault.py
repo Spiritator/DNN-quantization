@@ -34,8 +34,6 @@ else:
     validation_data_dir = '../../../dataset/imagenet_val_imagedatagenerator_setsize_%d'%set_size
 
 # memory fault simulation parameter
-fault_rate=0.0001
-
 row_ifmap=98
 col_ifmap=16*8
 word_ifmap=4

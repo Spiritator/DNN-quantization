@@ -77,8 +77,8 @@ import keras.models as models
 import keras.utils as keras_utils
 
 
-from layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
-from layers.quantized_ops import quantizer,build_layer_quantizer
+from ..layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
+from ..layers.quantized_ops import quantizer,build_layer_quantizer
 
 
 def preprocess_input(x, **kwargs):

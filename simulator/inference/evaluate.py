@@ -8,7 +8,7 @@ Fault tolerance evaluation functions
 """
 
 import inspect
-from metrics.FT_metrics import FT_metric_setup
+from ..metrics.FT_metrics import FT_metric_setup
 import keras.backend as K
 from keras.metrics import categorical_accuracy
 import tensorflow as tf

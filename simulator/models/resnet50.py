@@ -19,8 +19,8 @@ from keras_applications import imagenet_utils
 from keras_applications.imagenet_utils import decode_predictions
 from keras_applications.imagenet_utils import _obtain_input_shape
 
-from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
-from layers.quantized_ops import quantizer,build_layer_quantizer
+from ..layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
+from ..layers.quantized_ops import quantizer,build_layer_quantizer
 
 def preprocess_input(x, **kwargs):
     """Preprocesses a numpy array encoding a batch of images.

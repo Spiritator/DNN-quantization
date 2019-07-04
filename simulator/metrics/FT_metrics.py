@@ -30,10 +30,10 @@ def FT_metric_setup(model,fuseBN=None,setsize=50,score=None,fault_free_pred=None
         
     if model.lower() in ['lenet','lenet5','le']:
         ff_score=lenet5_mnist_stat
-        ff_pred=np.load('../../fault_free_pred/lenet5_mnist_fault_free_pred.npy')
+        ff_pred=np.load('../fault_free_pred/lenet5_mnist_fault_free_pred.npy')
     elif model.lower() in ['4c2f','c4f2','cifar10']:
         ff_score=C4F2fusedBN_cifar10_stat
-        ff_pred=np.load('../../fault_free_pred/C4F2_cifar10_fault_free_pred.npy')
+        ff_pred=np.load('../fault_free_pred/C4F2_cifar10_fault_free_pred.npy')
     elif model.lower() in ['mobile','mobilenet','mobilenetv1','mobilenet-v1']:
         if fuseBN:
             ff_score=mobilenet_fusedBN_imagenet_stat
@@ -41,11 +41,11 @@ def FT_metric_setup(model,fuseBN=None,setsize=50,score=None,fault_free_pred=None
             ff_score=mobilenet_imagenet_stat
             
         if setsize==50:
-            ff_pred=np.load('../../fault_free_pred/mobilenet_imagenet_fault_free_pred.npy')
+            ff_pred=np.load('../fault_free_pred/mobilenet_imagenet_fault_free_pred.npy')
         elif setsize==10:
-            ff_pred=np.load('../../fault_free_pred/mobilenet_imagenet_fault_free_pred_setsize_10.npy')
+            ff_pred=np.load('../fault_free_pred/mobilenet_imagenet_fault_free_pred_setsize_10.npy')
         elif setsize==2:
-            ff_pred=np.load('../../fault_free_pred/mobilenet_imagenet_fault_free_pred_setsize_2.npy')
+            ff_pred=np.load('../fault_free_pred/mobilenet_imagenet_fault_free_pred_setsize_2.npy')
         else:
             raise ValueError('setsize %d doesn\'t exist!'%setsize)
             
@@ -56,11 +56,11 @@ def FT_metric_setup(model,fuseBN=None,setsize=50,score=None,fault_free_pred=None
             ff_score=resnet50_imagenet_stat
             
         if setsize==50:
-            ff_pred=np.load('../../fault_free_pred/resnet50_imagenet_fault_free_pred.npy')
+            ff_pred=np.load('../fault_free_pred/resnet50_imagenet_fault_free_pred.npy')
         elif setsize==10:
-            ff_pred=np.load('../../fault_free_pred/resnet50_imagenet_fault_free_pred_setsize_10.npy')
+            ff_pred=np.load('../fault_free_pred/resnet50_imagenet_fault_free_pred_setsize_10.npy')
         elif setsize==2:
-            ff_pred=np.load('../../fault_free_pred/resnet50_imagenet_fault_free_pred_setsize_2.npy')
+            ff_pred=np.load('../fault_free_pred/resnet50_imagenet_fault_free_pred_setsize_2.npy')
         else:
             raise ValueError('setsize %d doesn\'t exist!'%setsize)        
             

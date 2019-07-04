@@ -10,9 +10,9 @@ Plan for multiple inferece setting and write into file
 import keras, os, csv
 import keras.backend as K
 from keras.utils import multi_gpu_model,to_categorical
-from utils_tool.weight_conversion import convert_original_weight_layer_name
-from utils_tool.dataset_setup import dataset_setup
-from inference.evaluate import evaluate_FT
+from ..utils_tool.weight_conversion import convert_original_weight_layer_name
+from ..utils_tool.dataset_setup import dataset_setup
+from .evaluate import evaluate_FT
 import time
 
 def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, FT_evaluate=False, FT_augment=None, show_summary=False, multi_gpu=False, gpu_num=2, name_tag=None):

@@ -11,7 +11,7 @@ import keras
 from keras.models import Model
 import numpy as np
 
-from layers.quantized_layers import QuantizedDistributedConv2D
+from ..layers.quantized_layers import QuantizedDistributedConv2D
 from keras.layers import Activation, Add
 
 def exchange_distributed_conv(model,target_layer_num,splits,fault_dict_conversion=False,ifmap_fault_dict_list=None,ofmap_fault_dict_list=None,wght_fault_dict_list=[None,None]):

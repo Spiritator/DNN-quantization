@@ -15,8 +15,8 @@ from keras import metrics
 from keras import backend as K
 import numpy as np
 
-from layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
-from layers.quantized_ops import quantizer,build_layer_quantizer
+from ..layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
+from ..layers.quantized_ops import quantizer,build_layer_quantizer
 
 
 def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False,):

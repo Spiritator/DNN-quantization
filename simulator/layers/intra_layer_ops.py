@@ -62,7 +62,7 @@ def QuantizedDenseCore(inputs, kernel, Q_info):
         kernel: [input_neurons, output_neurons]
     '''    
     
-    PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
+    #PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
     
     batch_size = inputs.shape.dims[0].value  
     input_size = inputs.shape.dims[1].value
@@ -70,50 +70,26 @@ def QuantizedDenseCore(inputs, kernel, Q_info):
 
     # work around of tf.slice bug in multi gpu condition
     if batch_size is None:
-        batch_size=tf.shape(inputs)[:1]
-        output=tf.reshape(inputs,shape=[-1,1,input_size])
-    else:
-        output = tf.split(inputs,batch_size)
+        batch_size = tf.shape(inputs)[:1]
+
+    output = tf.expand_dims(inputs,axis=2)
+    output = tf.tile(output,[1,1,output_size])
     
     # work around of tf.slice bug in multi gpu condition
     if not isinstance(batch_size,int):
-        batch_size=batch_size[0]
+        batch_size = batch_size[0]
         
-        
-    def batch_cond(batch, neurons):
-        return batch < batch_size
-
-    def batch_body(batch, neurons):
-        output_tmp = tf.gather(output,batch)
-        output_tmp = tf.reshape(output_tmp,[input_size,1])
-        output_tmp = tf.tile(output_tmp,[1,output_size])
-        
-        output_tmp = tf.multiply(output_tmp,kernel)
-        # quantize after multiplication
-        output_tmp = Q_info.quantize(output_tmp) 
-        
-        output_tmp = tf.reduce_sum(output_tmp,axis=0,keepdims=True)
-        # quantize after accumulation
-        output_tmp = Q_info.quantize(output_tmp) 
-        # concatenate batches (along axis 0).
-        neurons= tf.concat([ neurons,output_tmp], 0)
-        return [tf.add(batch,1), neurons]
-        
-    # prepare outer loop iteration variable 'batch'
-    batch = tf.constant(0)
-    # placeholder 'ofmap', ofmaps from inner loop will be concatenated to this tensor.
-    neurons = tf.constant( 0.0, shape=[1, output_size] )
-    # start loop. pass 'batch' and 'ofmap'.
-    # Take 2nd element [1] as ofmap!
-    neurons = tf.while_loop( batch_cond, batch_body, [batch, neurons],
-                shape_invariants=[ batch.get_shape(), tf.TensorShape(
-                    [None,output_size]) ],
-                parallel_iterations=PARALLEL_ITERATIONS,
-                swap_memory=True )[1]
-    # remove first element from placeholder!
-    output = neurons[1:]
+    kernel_tmp = tf.expand_dims(kernel,axis=0)
+    kernel_tmp = tf.tile(kernel_tmp,[batch_size,1,1])
     
-    output = tf.reshape(output,[batch_size,output_size])
+    output = tf.multiply(output,kernel_tmp)
+        
+    # quantize after multiplication
+    output = Q_info.quantize(output) 
+    
+    output = tf.reduce_sum(output,axis=1,keepdims=False)
+    # quantize after accumulation
+    output = Q_info.quantize(output) 
     
     return output
 
@@ -128,7 +104,7 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_i
         inputs:  [batch_size, image_height, image_width, input_channels] 
         kernel: [kernel_height, kernel_width, input_channels, output_channels]
     '''
-    PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
+    #PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
 
     inputs, tf_data_format = _preprocess_conv2d_input(inputs, data_format)
     if tf_data_format not in ("NHWC", None):
@@ -142,9 +118,6 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_i
     # work around of tf.slice bug in multi gpu condition
     if batch_size is None:
         batch_size=tf.shape(inputs)[:1]
-        output=tf.reshape(inputs,[-1,1,inputs.shape.dims[1].value,inputs.shape.dims[2].value,inputs.shape.dims[3].value])
-    else:
-        output = tf.split(inputs,batch_size)
     
     # work around of tf.slice bug in multi gpu condition
     if not isinstance(batch_size,int):
@@ -152,98 +125,33 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_i
 
     # prepare kernel
     kernel_shape = kernel.get_shape()
-    kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
+    #kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
 
-    # get patch shape, needed for ofmap shape estimation
-    patch = tf.extract_image_patches(output[0], 
-                                           ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
-                                           strides=strides,
-                                           rates=rate,#[1,1,1,1],
-                                           padding=padding )
-    patch_shape = patch.get_shape()
-    #[input channel, ofmap height, ofmap width, num of kernel psum * input channel]
-
-    # inner loop condition and body.
-    # iterates over all output maps
-    def inner_cond(index, outputs, output_patch):
-        return index < kernel_shape.dims[3].value 
-
-    def inner_body(index, outputs, output_patch):
-        kernel_tmp = tf.gather(kernel, index)
-        kernel_tmp = tf.reshape(kernel_tmp, [1,1,1,patch_shape.dims[3].value])
-        kernel_tmp = tf.tile(kernel_tmp,[1,patch_shape.dims[1].value,patch_shape.dims[2].value,1])  
-        
-        out_tmp = tf.multiply(output_patch, kernel_tmp)
-        # quantize after multiplication
-        out_tmp = Q_info.quantize(out_tmp)     
-        
-        out_tmp = tf.reduce_sum(out_tmp,axis=3,keepdims=True)
-        # quantize after accumulation
-        out_tmp = Q_info.quantize(out_tmp)     
-        
-        outputs = tf.concat([outputs,out_tmp],3)
-        
-        return [tf.add(index,1), outputs, output_patch]
-
-    # outer loop condition and body
-    # iterates over all batches
-    def outer_cond(batch, ofmap):
-        return batch < batch_size
-
-    def outer_body(batch, ofmap):
-        # extract patch form global 'output'
-        output_patch = tf.extract_image_patches(tf.gather(output,batch), 
-                                           ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
-                                           strides=strides,
-                                           rates=rate,#[1,1,1,1],
-                                           padding=padding )
-        # prepare inner loop interation variable 'out_kernel'
-        out_kernel=tf.constant(0)
-        # placeholder 'outputs', ofmaps will be concatenated to this tensor. 
-        # Remove first element after all elements are computed!
-        outputs=tf.constant(0.0,
-                            shape=[1, output_patch.shape.dims[1].value,
-                            output_patch.shape.dims[2].value, 1])
-        # start inner loop. pass loop iterator, ofmap placeholder and patch. 
-        # Take 2nd element [1] as ofmap!
-        outputs=tf.while_loop( inner_cond, inner_body, [out_kernel, outputs, output_patch],
-                shape_invariants=[ out_kernel.get_shape(), tf.TensorShape(
-                    [1,output_patch.shape.dims[1].value,output_patch.shape.dims[2].value,None]),
-                    output_patch.get_shape() ],
-                parallel_iterations=PARALLEL_ITERATIONS,
-                swap_memory=True )[1]
-        # concatenate batches (along axis 0).
-        # remove first placeholder element from outputs!
-        ofmap= tf.concat([ ofmap,outputs[:,:,:,1:] ], 0)
-        return [tf.add(batch,1), ofmap]
+    # get output for conv multiply
+    output = tf.extract_image_patches(inputs, 
+                                      ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+                                      strides=strides,
+                                      rates=rate,#[1,1,1,1],
+                                      padding=padding )
+    patch_shape = output.get_shape()
+    #[batch, ofmap height, ofmap width, num of kernel psum * input channel]
     
-    # main
-    # prepare outer loop iteration variable 'batch'
-    batch=tf.constant(0)
-    # placeholder 'ofmap', ofmaps from inner loop will be concatenated to this tensor.
-    ofmap= tf.constant( 0.0,
-                          shape=[1, patch_shape.dims[1].value,
-                          patch_shape.dims[2].value, kernel_shape.dims[3].value] )
-    # start outer loop. pass 'batch' and 'ofmap'.
-    # Take 2nd element [1] as ofmap!
-    ofmap = tf.while_loop( outer_cond, outer_body, [batch, ofmap],
-                shape_invariants=[ batch.get_shape(), tf.TensorShape(
-                    [None,patch_shape.dims[1].value,patch_shape.dims[2].value,kernel_shape.dims[3]]) ],
-                parallel_iterations=PARALLEL_ITERATIONS,
-                swap_memory=True )[1]
-    # remove first element from placeholder!
-    output = ofmap[1:,:,:,:]
+    output = tf.expand_dims(output,axis=-1)
+    output = tf.tile(output,[1,1,1,1,kernel_shape.dims[3].value])
+    #[batch, ofmap height, ofmap width, num of kernel psum * input channel, output channel]
+    
+    kernel_tmp = tf.reshape(kernel, [1,1,1,patch_shape.dims[3].value,kernel_shape.dims[3].value])
+    kernel_tmp = tf.tile(kernel_tmp,[batch_size,patch_shape.dims[1].value,patch_shape.dims[2].value,1,1])  
+    #[batch, ofmap height, ofmap width, num of kernel psum * input channel, output channel]
 
-    # setting shape, since partially ignored by while_loops
-    output = tf.reshape(output,[batch_size, 
-                        output.shape.dims[1].value,
-                        output.shape.dims[2].value,
-                        kernel_shape.dims[3].value]) 
+    output = tf.multiply(output, kernel_tmp)
+    # quantize after multiplication
+    output = Q_info.quantize(output)     
+    
+    output = tf.reduce_sum(output,axis=3,keepdims=False)
+    # quantize after accumulation
+    output = Q_info.quantize(output)     
 
-#    output.set_shape([batch_size[0], 
-#                        output.shape.dims[1].value,
-#                        output.shape.dims[2].value,
-#                        kernel_shape.dims[3].value]) 
     return output
 
 # quantized batch normalization calculation

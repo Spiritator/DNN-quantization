@@ -42,7 +42,7 @@ model = QuantizedMobileNetV1(weights='../mobilenet_1_0_224_tf.h5',
                              batch_size=batch_size,
                              quant_mode='hybrid')
 
-#model = QuantizedMobileNetV1FusedBN(weights='../../mobilenet_1_0_224_tf_fused_BN.h5', 
+#model = QuantizedMobileNetV1FusedBN(weights='../mobilenet_1_0_224_tf_fused_BN.h5', 
 #                                    nbits=16,
 #                                    fbits=8, 
 #                                    rounding_method='nearest',

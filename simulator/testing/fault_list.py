@@ -702,7 +702,7 @@ def generate_layer_stuck_fault(layer,fault_rate,batch_size,model_word_length,fau
     return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 
 
-def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,layer_wise=False,param_filter=[True,True,True],fast_gen=False,return_modulator=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,**kwargs):
+def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,layer_wise=False,param_filter=[True,True,True],fast_gen=False,return_modulator=False,coor_distribution='uniform',coor_pois_lam=None,bit_loc_distribution='uniform',bit_loc_pois_lam=None,fault_type='flip',print_detail=True,layer_gen_list=None,**kwargs):
     """Generate the fault dictionary list of a model base on its shape and with specific distibution type.
 
     # Arguments
@@ -730,6 +730,9 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
     model_ofmap_fault_dict_list=[None for _ in range(model_depth)]
     model_weight_fault_dict_list=[[None,None] for _ in range(model_depth)]
 
+    if layer_gen_list is not None:
+        layer_wise=True
+
     if not layer_wise:
         ifmap_fault_num_list,ofmap_fault_num_list,weight_fault_num_list,_,_,_=fault_num_gen_model(model,fault_rate,batch_size,model_word_length)  
         
@@ -740,7 +743,14 @@ def generate_model_stuck_fault(model,fault_rate,batch_size,model_word_length,lay
         if not isinstance(coor_pois_lam,list) or len(coor_pois_lam)!=model_depth:
             raise ValueError('Poisson distribution lambda setting must be a list has the same length as model layer number.')
     
-    for layer_num in range(1,model_depth):
+    if layer_gen_list is None:
+        layer_iter=range(1,model_depth)
+    elif isinstance(layer_gen_list,list):
+        layer_iter=layer_gen_list
+    else:
+        raise TypeError('layer_gen_list must be None (generate fault on every layer) or List of Integers (the list of indexes for specific layer wanted to generate fault).')
+    
+    for layer_num in layer_iter:
         if print_detail:
             print('\nGenerating fault on layer %d ...'%layer_num)
         

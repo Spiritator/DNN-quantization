@@ -26,7 +26,7 @@ def comp_num_estimate(model,add_topo=None):
     for layer in layer_list:
         layer_config=layer.get_config()
         if len(layer.weights) != 0:
-            if 'conv' in layer.name:
+            if 'conv' in layer.name.lower():
                 if layer_config['data_format']=='channels_last':
                     mult_num=np.prod(layer.output_shape[1:3])*np.prod(layer.weights[0].shape)
                     accum_num=np.prod(layer.output_shape[1:3])*(np.prod(layer.weights[0].shape[:-1])-1)*layer.weights[0].shape[-1]
@@ -50,7 +50,7 @@ def comp_num_estimate(model,add_topo=None):
                         else:
                             accum_bit+=np.prod(layer.output_shape[1:])*layer_config['nb']
                 
-            elif 'dense' in layer.name:
+            elif ('dense' in layer.name.lower()) or ('fc' in layer.name.lower()):
                 mult_num=np.prod(layer.weights[0].shape)
                 accum_num=(layer.weights[0].shape[0]-1)*layer.weights[0].shape[1]
                 
@@ -91,4 +91,53 @@ def comp_num_estimate(model,add_topo=None):
     
     return estimation_report
             
+def get_model_param_size(model,batch_size):
+    '''
+    Inputs
+    model: quantized keras model for number of input, output and weight of each layer
+    '''
+    param_size_report=dict()
+    param_size_report['input_params']=list()
+    param_size_report['input_bits']=list()
+    param_size_report['output_params']=list()
+    param_size_report['output_bits']=list()
+    param_size_report['weight_params']=list()
+    param_size_report['weight_bits']=list()
+    layer_list=model.layers
+    for layer in layer_list:
+        layer_config=layer.get_config()
+        if len(layer.weights) == 0:
+            param_size_report['input_params'].append(0)
+            param_size_report['input_bits'].append(0)
+            param_size_report['output_params'].append(0)
+            param_size_report['output_bits'].append(0)
+            param_size_report['weight_params'].append(0)
+            param_size_report['weight_bits'].append(0)
+        else:
+            layer_input_shape=layer.input_shape
+            layer_output_shape=layer.output_shape
+            layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
             
+            if isinstance(layer_input_shape,list):
+                param_size_report['input_params'].append(np.array([int(np.prod(shapes[1:]) * batch_size) for shapes in layer_input_shape]))
+            else:
+                param_size_report['input_params'].append(int(np.prod(layer_input_shape[1:]) * batch_size))
+                
+            if isinstance(layer_output_shape,list):
+                param_size_report['output_params'].append(np.array([int(np.prod(shapes[1:]) * batch_size) for shapes in layer_output_shape]))
+            else:
+                param_size_report['output_params'].append(int(np.prod(layer_output_shape[1:]) * batch_size))
+        
+            param_size_report['weight_params'].append(np.array([int(np.prod(shapes)) for shapes in layer_weight_shape]))
+            
+            if 'nb' in layer_config.keys():
+                if isinstance(layer_config['nb'],list) and isinstance(layer_config['fb'],list) and len(layer_config['nb'])==3 and len(layer_config['fb'])==3:
+                    param_size_report['input_bits'].append(param_size_report['input_params'][-1]*layer_config['nb'][0])
+                    param_size_report['output_bits'].append(param_size_report['output_params'][-1]*layer_config['nb'][2])
+                    param_size_report['weight_bits'].append(param_size_report['weight_params'][-1]*layer_config['nb'][1])
+                else:
+                    param_size_report['input_bits'].append(param_size_report['input_params'][-1]*layer_config['nb'])
+                    param_size_report['output_bits'].append(param_size_report['output_params'][-1]*layer_config['nb'])
+                    param_size_report['weight_bits'].append(param_size_report['weight_params'][-1]*layer_config['nb'])
+    
+    return param_size_report

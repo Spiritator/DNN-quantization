@@ -14,6 +14,7 @@ from ..utils_tool.weight_conversion import convert_original_weight_layer_name
 from ..utils_tool.dataset_setup import dataset_setup
 from .evaluate import evaluate_FT
 import time
+import numpy as np
 
 def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, FT_evaluate=False, FT_augment=None, show_summary=False, multi_gpu=False, gpu_num=2, name_tag=None):
     """Take scheme as input and run different setting of inference automaticly. Write the results into a csv file.
@@ -169,4 +170,41 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
                             
         print('\n===============================================\n')
 
+
+def gen_test_round_list(num_of_bit,upper_bound,lower_bound,left_bound=-3,right_bound=1):
+    """Genrate test round list with number decade exponentially
+
+    # Arguments
+        num_of_bit_bit: Integer. The total amount of bits in the unit for fault injection.
+        upper_bound: Integer. The maximum number for test rounds.
+        lower_bound: Integer. The minimun number for test rounds.
+        left_bound: Integer. The number for line y=exp(x) left bound. For generate decade number.
+        right_bound: Integer. The number for line y=exp(x) right bound. For generate decade number.
+        
+    # Returns
+        The fault rate list and test round list.
+        (fault rate list is float, test round list is integer)
+    """
+    fault_rate_list=list()
+
+    def append_frl(num_inv,fr):
+        if fr>num_inv:
+            for i in [1,2,5]:
+                fr_tmp=fr/i
+                if fr_tmp>num_inv:
+                    fault_rate_list.append(fr_tmp)
+                    
+            append_frl(num_inv,fr/10)
+            
+    append_frl(1/num_of_bit,0.1)
+    fault_rate_list.reverse()
+    
+    test_rounds_lists=np.linspace(-3,1,num=len(fault_rate_list))
+    test_rounds_lists=-np.exp(test_rounds_lists)
+    scaling_factor=(upper_bound-lower_bound)/(np.max(test_rounds_lists)-np.min(test_rounds_lists))
+    test_rounds_lists=(test_rounds_lists-np.min(test_rounds_lists))*scaling_factor+lower_bound
+    test_rounds_lists=test_rounds_lists.astype(int)
+    return fault_rate_list,test_rounds_lists
+                
+        
 

@@ -19,8 +19,8 @@ from simulator.testing.fault_core import generate_model_modulator
 #%%
 # setting parameter
 
-result_save_folder='../../test_result/mnist_lenet5_model_fault_rate'
-weight_name='../../mnist_lenet5_weight.h5'
+result_save_folder='../test_result/mnist_lenet5_model_fault_rate'
+weight_name='../mnist_lenet5_weight.h5'
 test_rounds=200
 model_word_length=8
 model_fractional_bit=3

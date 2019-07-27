@@ -68,7 +68,8 @@ for layer_id in param_layers:
     
     fault_rate_list,test_rounds_lists=gen_test_round_list(num_bits,test_round_upper_bound,test_round_lower_bound)
     
-    os.mkdir(result_save_folder+'/'+str(layer_id))
+    if not os.path.isdir(result_save_folder+'/'+str(layer_id)):
+        os.mkdir(result_save_folder+'/'+str(layer_id))
     
     for test_rounds,fr in enumerate(fault_rate_list):
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')

@@ -118,7 +118,7 @@ for layer_id in param_layers:
                                   'ofmap_fault_dict_list':model_ofmap_fdl,
                                   'weight_fault_dict_list':model_weight_fdl})
     
-        result_save_file=result_save_folder+'/'+str(fr)+'.csv'
+        result_save_file=result_save_folder+'/'+str(layer_id)+'/'+str(fr)+'.csv'
         inference_scheme(quantized_4C2F, 
                          model_augment, 
                          compile_augment, 

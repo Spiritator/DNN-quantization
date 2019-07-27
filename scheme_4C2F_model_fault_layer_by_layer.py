@@ -23,8 +23,8 @@ from simulator.inference.scheme import gen_test_round_list
 
 result_save_folder='../test_result/cifar10_4C2F_model_fault_rate_lbl'
 weight_name='../cifar10_4C2FBN_weight_fused_BN.h5'
-model_word_length=16
-model_fractional_bit=12
+model_word_length=10
+model_fractional_bit=6
 batch_size=20
 # model fault simulation parameter
 test_round_upper_bound=200

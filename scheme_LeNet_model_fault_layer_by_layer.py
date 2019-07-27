@@ -43,6 +43,11 @@ def call_model():
 ref_model=call_model()
 param_size_report=get_model_param_size(ref_model,batch_size)
 
+param_layers=list()
+for j in range(len(ref_model.layers)):
+    if param_size_report['input_params'][j]!=0:
+        param_layers.append(j)
+
 #%%
 # test
 compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
@@ -51,7 +56,7 @@ dataset_augment={'dataset':'mnist'}
 
 FT_augment={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
 
-for layer_id in range(1,len(ref_model.layers)):
+for layer_id in param_layers:
     input_bits=param_size_report['input_bits'][layer_id]
     if isinstance(input_bits,list):
         input_bits=max(input_bits)
@@ -85,7 +90,8 @@ for layer_id in range(1,len(ref_model.layers)):
                'bit_loc_distribution':'uniform',
                'bit_loc_pois_lam':None,
                'fault_type':'flip',
-               'print_detail':False}
+               'print_detail':False,
+               'layer_gen_list':[layer_id]}
         
         # fault generation
         model_augment=list()

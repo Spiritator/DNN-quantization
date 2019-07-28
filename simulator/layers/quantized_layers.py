@@ -758,9 +758,18 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         return outputs
 
     def get_config(self):
-        config = {'nb': self.nb,
-                  'fb': self.fb,
-                  'rounding_method': self.rounding_method
+        if isinstance(self.quantizer,list):
+            nb=[quant.nb for quant in self.quantizer]
+            fb=[quant.fb for quant in self.quantizer]
+            rounding_method=[quant.rounding_method for quant in self.quantizer]
+        else:
+            nb=self.quantizer.nb
+            fb=self.quantizer.fb
+            rounding_method=self.quantizer.rounding_method
+        config = {'quant_mode': self.quant_mode,
+                  'nb': nb,
+                  'fb': fb,
+                  'rounding_method': rounding_method
                   }
         base_config = super(QuantizedDepthwiseConv2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))

@@ -63,24 +63,28 @@ def coordinate_gen_fmap(data_shape,batch_size,distribution='uniform',poisson_lam
             else:
                 raise ValueError('Normal distribution Mean must within feature map shape. Feature map shape %s but got lambda input %s'%(str(data_shape),str(poisson_lam)))
     elif distribution=='center':
-        if mean<0 or mean>1:
-            raise ValueError('Center distribution mean setting must be within [0,1] (inclusive).')
+        if len(data_shape)<4:
+            return None
+
+        if concentration<0 or concentration>1:
+            raise ValueError('Center distribution concentration setting must be within [0,1] (inclusive).')
         if std is None:
-            std=0.75
+            std=0.075
             
-        #TODO prevent other than conv layer
         coordinate.append(np.random.randint(batch_size))
 
-        dist=np.linalg.norm(data_shape[1:])
-        radius=np.random.normal(1-mean,std)
+        dist=np.linalg.norm(data_shape[1:3])
+        radius=np.random.normal(1-concentration,std)
         theta=np.random.uniform(high=2*np.pi)
         width=radius*np.cos(theta)
         height=radius*np.sin(theta)
-        width=int(np.clip(width*dist/2+data_shape[1]/2,0,data_shape[1]))
-        height=int(np.clip(height*dist/2+data_shape[2]/2,0,data_shape[2]))
+        width=int(np.clip(width*dist/2+data_shape[1]/2,0,data_shape[1]-1))
+        height=int(np.clip(height*dist/2+data_shape[2]/2,0,data_shape[2]-1))
         
         coordinate.append(width)
         coordinate.append(height)
+        
+        coordinate.append(np.random.randint(data_shape[3]))
     else:
         raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
     
@@ -137,24 +141,28 @@ def coordinate_gen_fmap_fast(data_shape,batch_size,fault_num,distribution='unifo
             else:
                 raise ValueError('Normal distribution Mean must within feature map shape. Feature map shape %s but got lambda input %s'%(str(data_shape),str(poisson_lam)))
     elif distribution=='center':
-        if mean<0 or mean>1:
-            raise ValueError('Center distribution mean setting must be within [0,1] (inclusive).')
+        if len(data_shape)<4:
+            return None
+        
+        if concentration<0 or concentration>1:
+            raise ValueError('Center distribution concentration setting must be within [0,1] (inclusive).')
         if std is None:
-            std=0.75
+            std=0.075
             
-        #TODO prevent other than conv layer
         coordinate.append(np.random.randint(batch_size,size=fault_num))
 
-        dist=np.linalg.norm(data_shape[1:])
-        radius=np.random.normal(1-mean,std,size=fault_num)
+        dist=np.linalg.norm(data_shape[1:3])
+        radius=np.random.normal(1-concentration,std,size=fault_num)
         theta=np.random.uniform(high=2*np.pi,size=fault_num)
         width=np.multiply(radius,np.cos(theta))
         height=np.multiply(radius,np.sin(theta))
-        width=(np.clip(width*(dist/2)+data_shape[1]/2,0,data_shape[1])).astype(int)
-        height=(np.clip(height*(dist/2)+data_shape[2]/2,0,data_shape[2])).astype(int)
+        width=(np.clip(width*(dist/2)+data_shape[1]/2,0,data_shape[1]-1)).astype(int)
+        height=(np.clip(height*(dist/2)+data_shape[2]/2,0,data_shape[2]-1)).astype(int)
         
         coordinate.append(width)
         coordinate.append(height)
+        
+        coordinate.append(np.random.randint(data_shape[3],size=fault_num))
     else:
         raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
     
@@ -208,19 +216,21 @@ def coordinate_gen_wght(data_shape,distribution='uniform',poisson_lam=None, mean
             else:
                 raise ValueError('Normal distribution Mean must within feature map shape. Feature map shape %s but got lambda input %s'%(str(data_shape),str(poisson_lam)))
     elif distribution=='center':
-        if mean<0 or mean>1:
-            raise ValueError('Center distribution mean setting must be within [0,1] (inclusive).')
+        if len(data_shape)<4:
+            return None
+
+        if concentration<0 or concentration>1:
+            raise ValueError('Center distribution concentration setting must be within [0,1] (inclusive).')
         if std is None:
-            std=0.75
+            std=0.075
             
-        #TODO prevent other than conv layer
         dist=np.linalg.norm(data_shape[:2])
-        radius=np.random.normal(1-mean,std)
+        radius=np.random.normal(1-concentration,std)
         theta=np.random.uniform(high=2*np.pi)
         width=radius*np.cos(theta)
         height=radius*np.sin(theta)
-        width=int(np.clip(width*dist/2+data_shape[0]/2,0,data_shape[0]))
-        height=int(np.clip(height*dist/2+data_shape[1]/2,0,data_shape[1]))
+        width=int(np.clip(width*dist/2+data_shape[0]/2,0,data_shape[0]-1))
+        height=int(np.clip(height*dist/2+data_shape[1]/2,0,data_shape[1]-1))
         
         coordinate.append(width)
         coordinate.append(height)
@@ -280,19 +290,21 @@ def coordinate_gen_wght_fast(data_shape,fault_num,distribution='uniform' ,poisso
             else:
                 raise ValueError('Normal distribution Mean must within feature map shape. Feature map shape %s but got lambda input %s'%(str(data_shape),str(poisson_lam)))
     elif distribution=='center':
-        if mean<0 or mean>1:
-            raise ValueError('Center distribution mean setting must be within [0,1] (inclusive).')
+        if len(data_shape)<4:
+            return None
+
+        if concentration<0 or concentration>1:
+            raise ValueError('Center distribution concentration setting must be within [0,1] (inclusive).')
         if std is None:
-            std=0.75
+            std=0.075
             
-        #TODO prevent other than conv layer
         dist=np.linalg.norm(data_shape[:2])
-        radius=np.random.normal(1-mean,std,size=fault_num)
+        radius=np.random.normal(1-concentration,std,size=fault_num)
         theta=np.random.uniform(high=2*np.pi,size=fault_num)
         width=radius*np.cos(theta)
         height=radius*np.sin(theta)
-        width=int(np.clip(width*dist/2+data_shape[0]/2,0,data_shape[0]))
-        height=int(np.clip(height*dist/2+data_shape[1]/2,0,data_shape[1]))
+        width=(np.clip(width*dist/2+data_shape[0]/2,0,data_shape[0]-1)).astype(int)
+        height=(np.clip(height*dist/2+data_shape[1]/2,0,data_shape[1]-1)).astype(int)
         
         coordinate.append(width)
         coordinate.append(height)
@@ -597,21 +609,22 @@ def gen_fault_dict_list_fmap(data_shape,
                                                  mean=bit_loc_mean,
                                                  std=bit_loc_std,
                                                  **kwargs)
-                if return_modulator:
-                    tensor_modulator0=None
-                    tensor_modulator1=None
-                    tensor_modulatorF=None
-                    modulator=generate_stuck_at_fault_modulator_fast(data_shape[i],coordinate,fault_type,fault_bit)
-                    if fault_type == '0':
-                        tensor_modulator0=modulator
-                    elif fault_type == '1':
-                        tensor_modulator1=modulator
-                    elif fault_type == 'flip':
-                        tensor_modulatorF=modulator
-                    fault_dict[i]=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
-                else:
-                    fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
-                    fault_dict[i]=dict(zip(coordinate,fault_bit))
+                if coordinate is not None:
+                    if return_modulator:
+                        tensor_modulator0=None
+                        tensor_modulator1=None
+                        tensor_modulatorF=None
+                        modulator=generate_stuck_at_fault_modulator_fast(data_shape[i],coordinate,fault_type,fault_bit)
+                        if fault_type == '0':
+                            tensor_modulator0=modulator
+                        elif fault_type == '1':
+                            tensor_modulator1=modulator
+                        elif fault_type == 'flip':
+                            tensor_modulatorF=modulator
+                        fault_dict[i]=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+                    else:
+                        fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+                        fault_dict[i]=dict(zip(coordinate,fault_bit))
         else:
             coordinate=coordinate_gen_fmap_fast(data_shape,
                                                 batch_size,
@@ -629,21 +642,22 @@ def gen_fault_dict_list_fmap(data_shape,
                                              mean=bit_loc_mean,
                                              std=bit_loc_std,
                                              **kwargs)
-            if return_modulator:
-                tensor_modulator0=None
-                tensor_modulator1=None
-                tensor_modulatorF=None
-                modulator=generate_stuck_at_fault_modulator_fast(data_shape,coordinate,fault_type,fault_bit)
-                if fault_type == '0':
-                    tensor_modulator0=modulator
-                elif fault_type == '1':
-                    tensor_modulator1=modulator
-                elif fault_type == 'flip':
-                    tensor_modulatorF=modulator
-                fault_dict=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
-            else:
-                fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
-                fault_dict=dict(zip(coordinate,fault_bit))
+            if coordinate is not None:
+                if return_modulator:
+                    tensor_modulator0=None
+                    tensor_modulator1=None
+                    tensor_modulatorF=None
+                    modulator=generate_stuck_at_fault_modulator_fast(data_shape,coordinate,fault_type,fault_bit)
+                    if fault_type == '0':
+                        tensor_modulator0=modulator
+                    elif fault_type == '1':
+                        tensor_modulator1=modulator
+                    elif fault_type == 'flip':
+                        tensor_modulatorF=modulator
+                    fault_dict=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+                else:
+                    fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+                    fault_dict=dict(zip(coordinate,fault_bit))
     else:
         if isinstance(data_shape,list):
             for i in range(len(fault_num)):
@@ -663,7 +677,9 @@ def gen_fault_dict_list_fmap(data_shape,
                                                 mean=bit_loc_mean,
                                                 std=bit_loc_std,
                                                 **kwargs)
-                    
+                    if coordinate is None:
+                        break
+
                     if coordinate in fault_dict[i].keys():
                         if isinstance(fault_dict[i][coordinate]['SA_bit'],list):
                             if fault_bit in fault_dict[i][coordinate]['SA_bit']:
@@ -701,6 +717,9 @@ def gen_fault_dict_list_fmap(data_shape,
                                             mean=coor_mean,
                                             std=coor_std,
                                             **kwargs)
+                
+                if coordinate is None:
+                        break
                 
                 if coordinate in fault_dict.keys():
                     if isinstance(fault_dict[coordinate]['SA_bit'],list):
@@ -788,21 +807,22 @@ def gen_fault_dict_list_wght(data_shape,
                                              mean=bit_loc_mean,
                                              std=bit_loc_std,
                                              **kwargs)
-            if return_modulator:
-                tensor_modulator0=None
-                tensor_modulator1=None
-                tensor_modulatorF=None
-                modulator=generate_stuck_at_fault_modulator_fast(data_shape[i],coordinate,fault_type,fault_bit)
-                if fault_type == '0':
-                    tensor_modulator0=modulator
-                elif fault_type == '1':
-                    tensor_modulator1=modulator
-                elif fault_type == 'flip':
-                    tensor_modulatorF=modulator
-                fault_dict[i]=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
-            else:
-                fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
-                fault_dict[i]=dict(zip(coordinate,fault_bit))
+            if coordinate is not None:
+                if return_modulator:
+                    tensor_modulator0=None
+                    tensor_modulator1=None
+                    tensor_modulatorF=None
+                    modulator=generate_stuck_at_fault_modulator_fast(data_shape[i],coordinate,fault_type,fault_bit)
+                    if fault_type == '0':
+                        tensor_modulator0=modulator
+                    elif fault_type == '1':
+                        tensor_modulator1=modulator
+                    elif fault_type == 'flip':
+                        tensor_modulatorF=modulator
+                    fault_dict[i]=[tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+                else:
+                    fault_bit=[{'SA_type':fault_type,'SA_bit':bit} for bit in fault_bit]
+                    fault_dict[i]=dict(zip(coordinate,fault_bit))
     else:
         for i in range(len(fault_num)):
             fault_count=0
@@ -820,7 +840,9 @@ def gen_fault_dict_list_wght(data_shape,
                                             mean=bit_loc_mean,
                                             std=bit_loc_std,
                                             **kwargs)
-                
+                if coordinate is None:
+                        break
+
                 if coordinate in fault_dict[i].keys():
                     if isinstance(fault_dict[i][coordinate]['SA_bit'],list):
                         if fault_bit in fault_dict[i][coordinate]['SA_bit']:

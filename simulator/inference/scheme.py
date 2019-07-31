@@ -171,7 +171,7 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         print('\n===============================================\n')
 
 
-def gen_test_round_list(num_of_bit,upper_bound,lower_bound,left_bound=-3,right_bound=1):
+def gen_test_round_list(num_of_bit,upper_bound,lower_bound,left_bound=-3,right_bound=0):
     """Genrate test round list with number decade exponentially
 
     # Arguments
@@ -199,7 +199,7 @@ def gen_test_round_list(num_of_bit,upper_bound,lower_bound,left_bound=-3,right_b
     append_frl(1/num_of_bit,0.1)
     fault_rate_list.reverse()
     
-    test_rounds_lists=np.linspace(-3,1,num=len(fault_rate_list))
+    test_rounds_lists=np.linspace(left_bound,right_bound,num=len(fault_rate_list))
     test_rounds_lists=-np.exp(test_rounds_lists)
     scaling_factor=(upper_bound-lower_bound)/(np.max(test_rounds_lists)-np.min(test_rounds_lists))
     test_rounds_lists=(test_rounds_lists-np.min(test_rounds_lists))*scaling_factor+lower_bound

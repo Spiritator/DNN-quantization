@@ -63,7 +63,7 @@ for concen in concentration_list:
                'batch_size':batch_size,
                'model_word_length':model_word_length,
                'layer_wise':False,
-               'param_filter':[True,True,True],
+               'param_filter':[True,False,True],
                'fast_gen':True,
                'return_modulator':True,
                'coor_distribution':'center',

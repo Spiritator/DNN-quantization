@@ -14,6 +14,8 @@ from tensorflow.python.ops import math_ops
 
 import keras.backend as K
 
+import numpy as np
+
 PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
 tf_while_loop=False
 
@@ -485,18 +487,33 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
 # where its input feature map channel is too many for input buffer. Divide the convolution
 # into several parallel convolutions to view the partial sum value and inject fault.
     
-def DistributedConv2D(x, kernel, splits, strides=(1, 1), padding='valid',
+def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='valid',
            data_format=None, dilation_rate=(1, 1)):
     """Distributed 2D convolution.
 
     # Arguments
         x: Tensor or variable.
         kernel: kernel tensor.
-        splits: Either a 0-D integer `Tensor` indicating the number of splits 
+        
+        split_type: String or List of String. Choose from 'channel', 'k_height' (kernel_height), 'k_width' (kernel_width), 'k_seq' (kernel_sequential).
+            'k_seq' can't coexist with 'k_height' or 'k_width'.
+        
+        splits: 
+            For one single split the splits augment will be an Integer or List of Integer. 
+            The augment for setting splits on channel axis.
+            Either a 0-D integer `Tensor` indicating the number of splits 
             along split_dim or a 1-D integer `Tensor` containing the sizes of 
             each output tensor along split_dim. If a scalar then it must evenly
             divide `value.shape[axis]`; otherwise the sum of sizes along the 
             split dimension must match that of the `value`.
+            
+            For splits on multiple splits typesthe splits augment will be List of (Integer or List of Integer).
+            List length is the number of split types permute according to the split_type list order.
+            
+            For split on multiple layers the splits augment will be List of (List of (Integer or List of Integer)).
+            List length of first level is the number of target layers.
+            List length of second level is the number of split types permute according to the split_type list order.
+
         strides: strides tuple.
         padding: string, `"same"` or `"valid"`.
         data_format: string, `"channels_last"` or `"channels_first"`.
@@ -507,9 +524,9 @@ def DistributedConv2D(x, kernel, splits, strides=(1, 1), padding='valid',
     # Returns
         A tensor, result of 2D convolution.
 
-    # Raises
-        ValueError: If `data_format` is neither
-            `"channels_last"` nor `"channels_first"`.
+    # Info
+        Split type hierachy. [channel, k_height, k_width, k_seq]
+        Output Tensor list will permute as the flatten coordinate as the priority sequence above.
     """
     if data_format is None:
         data_format = K.image_data_format()
@@ -522,8 +539,62 @@ def DistributedConv2D(x, kernel, splits, strides=(1, 1), padding='valid',
 
     padding = _preprocess_padding(padding)
     
-    x=tf.split(x,splits,axis=3)
-    kernel=tf.split(kernel,splits,axis=2)
+    if ('k_height' in split_type or 'k_width' in split_type) and 'k_seq' in split_type:
+        raise AttributeError('\'k_seq\' can\'t coexist with \'k_height\' or \'k_width\' . You can only choose to split on kernel row/column or flatten kernel sequence.')
+    if isinstance(split_type,list) and isinstance(splits,list):
+        if len(splits)!=len(split_type):
+            raise AttributeError('The number of split_type is %s and number of splits is %d which are inconsistant.'%(len(split_type),len(splits)))
+    
+    split_prior=[]
+    out_hier_shape=[]
+    
+    if 'channel' in split_type:
+        split_tmp=splits[split_type.index('channel')]
+        x=tf.split(x,split_tmp,axis=3)
+        kernel=tf.split(kernel,split_tmp,axis=2)
+        split_prior.append('channel')
+        out_hier_shape.append(len(kernel))
+        
+    def check_split(size,splt):
+        if isinstance(splt, int):
+            if size % splt != 0:
+                raise ValueError('The split is %d which can\' evenly split shape %d'%(splt,size))
+        elif isinstance(splt,list):
+            if sum(splt) != size:
+                raise ValueError('the split is %s which can\'t split shape %d, the number is inconsistant.'%(str(splt),size))
+                
+    if 'k_height' in split_type:
+        split_tmp=splits[split_type.index('k_height')]
+        split_prior.append('k_height')
+        hier=split_prior.index('k_height')
+        if hier>0:
+            shape_h=kernel[0].shape.dims[0].value
+            shape_w=kernel[0].shape.dims[1].value
+        else:
+            shape_h=kernel.shape.dims[0].value
+            shape_w=kernel.shape.dims[1].value
+        check_split(shape_h,split_tmp)
+            
+        if isinstance(split_tmp,int):
+            modulator=np.identity(split_tmp)
+            modulator=np.expand_dims(modulator,2)
+            modulator=np.tile(modulator,[1,1,shape_h/split_tmp])
+            modulator=np.reshape(modulator,[split_tmp,-1])
+            modulator=np.transpose(modulator)
+            modulator=np.split(modulator,split_tmp,axis=1)
+            for i in range(len(modulator)):
+                modulator[i]=np.tile(modulator[i],[1,shape_w])
+        elif isinstance(split_tmp,list):
+            modulator=np.zeros([len(split_tmp),shape_h])
+            accum=0
+            for i,spl in enumerate(split_tmp):
+                modulator[i][accum:accum+spl-1]=np.ones([spl,1])
+                accum=accum+spl
+            modulator=np.transpose(modulator)
+            modulator=np.split(modulator,split_tmp,axis=1)
+            for i in range(len(modulator)):
+                modulator[i]=np.tile(modulator[i],[1,shape_w])
+        
     
     for i in range(len(x)):
         x[i] = tf.nn.convolution(
@@ -533,6 +604,7 @@ def DistributedConv2D(x, kernel, splits, strides=(1, 1), padding='valid',
                 strides=strides,
                 padding=padding,
                 data_format=tf_data_format)
+            
     return x
 
 def QuantizedDistributedConv2DCore(x, kernel, splits, strides, dilation_rate, padding, data_format, Q_info):

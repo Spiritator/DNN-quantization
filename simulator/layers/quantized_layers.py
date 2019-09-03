@@ -810,9 +810,10 @@ class QuantizedDistributedConv2D(Conv2D):
     # where its input feature map channel is too many for input buffer. Divide the convolution
     # into several parallel convolutions to view the partial sum value and inject fault.
 
-    def __init__(self, filters, splits, quantizers, quant_mode='hybrid',
+    def __init__(self, filters, split_type, splits, quantizers, quant_mode='hybrid',
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],**kwargs):
         super(QuantizedDistributedConv2D, self).__init__(filters, **kwargs)
+        self.split_type = split_type
         self.splits = splits
         self.quantizer=quantizers
         self.quant_mode = quant_mode
@@ -885,6 +886,7 @@ class QuantizedDistributedConv2D(Conv2D):
             outputs = QuantizedDistributedConv2DCore(
                     inputs,
                     quantized_kernel,
+                    self.split_type,
                     self.splits,
                     strides, dilation_rate,
                     self.padding,
@@ -894,6 +896,7 @@ class QuantizedDistributedConv2D(Conv2D):
             outputs = DistributedConv2D(
                     inputs,
                     quantized_kernel,
+                    split_type=self.split_type,
                     splits=self.splits,
                     strides=self.strides,
                     padding=self.padding,
@@ -905,6 +908,7 @@ class QuantizedDistributedConv2D(Conv2D):
             outputs = DistributedConv2D(
                     inputs,
                     self.kernel,
+                    split_type=self.split_type,
                     splits=self.splits,
                     strides=self.strides,
                     padding=self.padding,

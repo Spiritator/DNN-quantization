@@ -14,7 +14,40 @@ import numpy as np
 from ..layers.quantized_layers import QuantizedDistributedConv2D
 from keras.layers import Activation, Add
 
-def exchange_distributed_conv(model,target_layer_num,splits,fault_dict_conversion=False,ifmap_fault_dict_list=None,ofmap_fault_dict_list=None,wght_fault_dict_list=[None,None]):
+def exchange_distributed_conv(model,target_layer_num,fault_dict_conversion,split_type,splits,ifmap_fault_dict_list=None,ofmap_fault_dict_list=None,wght_fault_dict_list=None):
+    """Swap original DNN model layers to distributed convolution for emulate hardware partial sum.
+
+    # Arguments
+        model: Keras model. The model wanted to be swapped.
+        target_layer_num: Integer or List. The layers that will be swapped by distributed convolution layer.
+        fault_dict_conversion: Bool. Whether convert the original layer fault dict to distributed convolution or not.
+        
+        split_type: String or List of String. Choose from 'channel', 'k_height' (kernel_height), 'k_width' (kernel_width), 'k_seq' (kernel_sequential).
+            'k_seq' can't coexist with 'k_height' or 'k_width'.
+        
+        splits: 
+            For one single split the splits augment will be an Integer or List of Integer. 
+            The augment for setting splits on channel axis.
+            Either a 0-D integer `Tensor` indicating the number of splits 
+            along split_dim or a 1-D integer `Tensor` containing the sizes of 
+            each output tensor along split_dim. If a scalar then it must evenly
+            divide `value.shape[axis]`; otherwise the sum of sizes along the 
+            split dimension must match that of the `value`.
+            
+            For splits on multiple splits typesthe splits augment will be List of (Integer or List of Integer).
+            List length is the number of split types permute according to the split_type list order.
+            
+            For split on multiple layers the splits augment will be List of (List of (Integer or List of Integer)).
+            List length of first level is the number of target layers.
+            List length of second level is the number of split types permute according to the split_type list order.
+            
+        ifmap_fault_dict_list: List of Dictionarys. The fault dictionary list for input feature maps.
+        ofmap_fault_dict_list: List of Dictionarys. The fault dictionary list for output feature maps.
+        wght_fault_dict_list: List of Dictionarys. The fault dictionary list for weights.
+
+    # Returns
+        A Model, result of distributed convolution swap.
+    """
     layers = [l for l in model.layers]
     if isinstance(target_layer_num,int):
         target_layer_num=[target_layer_num]
@@ -38,6 +71,7 @@ def exchange_distributed_conv(model,target_layer_num,splits,fault_dict_conversio
                         ofmap_fault_dict_list=[original_layer.ofmap_sa_fault_injection for i in range(len(splits_tmp))]
             
             x = QuantizedDistributedConv2D(filters=original_layer.filters,
+                                           split_type=split_type,
                                            splits=splits_tmp,
                                            quantizers=original_layer.quantizer,
                                            kernel_size=original_layer.kernel_size,

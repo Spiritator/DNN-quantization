@@ -552,11 +552,15 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
     k_shape_w=kernel.shape.dims[1].value
     
     if 'channel' in split_type:
-        split_tmp=splits[split_type.index('channel')]
+        if isinstance(split_type,list):
+            split_tmp=splits[split_type.index('channel')]
+        elif isinstance(split_type,str):
+            split_tmp=splits
         x=tf.split(x,split_tmp,axis=3)
         kernel=tf.split(kernel,split_tmp,axis=2)
         split_prior.append('channel')
         out_hier_shape.append(len(kernel))
+        kernel=tf.stack(kernel,axis=0)
         
     def check_split(size,splt):
         if isinstance(splt, int):
@@ -567,7 +571,10 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
                 raise ValueError('the split is %s which can\'t split shape %d, the number is inconsistant.'%(str(splt),size))
                 
     if 'k_height' in split_type:
-        split_tmp=splits[split_type.index('k_height')]
+        if isinstance(split_type,list):
+            split_tmp=splits[split_type.index('k_height')]
+        elif isinstance(split_type,str):
+            split_tmp=splits
         split_prior.append('k_height')
         hier=split_prior.index('k_height')
 
@@ -576,41 +583,38 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
         if isinstance(split_tmp,int):
             modulator=np.identity(split_tmp)
             modulator=np.expand_dims(modulator,2)
-            modulator=np.tile(modulator,[1,1,k_shape_h/split_tmp])
+            modulator=np.tile(modulator,[1,1,k_shape_h//split_tmp])
             modulator=np.reshape(modulator,[split_tmp,-1])
-            modulator=np.transpose(modulator)
-            modulator=np.split(modulator,split_tmp,axis=1)
-            for i in range(len(modulator)):
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
+            
         elif isinstance(split_tmp,list):
             modulator=np.zeros([len(split_tmp),k_shape_h])
             accum=0
             for i,spl in enumerate(split_tmp):
-                modulator[i][accum:accum+spl-1]=np.ones([spl,1])
+                modulator[i][accum:accum+spl]=np.ones(spl)
                 accum=accum+spl
-            modulator=np.transpose(modulator)
-            modulator=np.split(modulator,split_tmp,axis=1)
-            for i in range(len(modulator)):
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
+        
+        modulator=np.transpose(modulator)
+        modulator=np.split(modulator,modulator.shape[1],axis=1)
         
         out_hier_shape.append(len(modulator))
+
+        modulator=np.stack(modulator,axis=0)
+        modulator=np.expand_dims(modulator,-1)
+        modulator=np.expand_dims(modulator,-1)
         
         if hier==0:
-            kernel_out=[]
-            for i in range(len(modulator)):
-                kernel_out.append(tf.multiply(kernel,modulator[i]))
-            kernel=kernel_out
+            kernel=tf.expand_dims(kernel,axis=0)
+            kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            for i in range(len(kernel)):
-                kernel_out=[]
-                for j in range(len(modulator)):
-                    kernel_out.append(tf.multiply(kernel[i],modulator[j]))
-                kernel[i]=kernel_out
+            modulator=np.expand_dims(modulator,axis=0)
+            kernel=tf.expand_dims(kernel,axis=1)
+            kernel=tf.multiply(kernel,modulator)
             
     if 'k_width' in split_type:
-        split_tmp=splits[split_type.index('k_width')]
+        if isinstance(split_type,list):
+            split_tmp=splits[split_type.index('k_width')]
+        elif isinstance(split_type,str):
+            split_tmp=splits
         split_prior.append('k_width')
         hier=split_prior.index('k_width')
 
@@ -619,46 +623,42 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
         if isinstance(split_tmp,int):
             modulator=np.identity(split_tmp)
             modulator=np.expand_dims(modulator,2)
-            modulator=np.tile(modulator,[1,1,k_shape_w/split_tmp])
+            modulator=np.tile(modulator,[1,1,k_shape_w//split_tmp])
             modulator=np.reshape(modulator,[split_tmp,-1])
-            modulator=np.split(modulator,split_tmp)
-            for i in range(len(modulator)):
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
+            
         elif isinstance(split_tmp,list):
             modulator=np.zeros([len(split_tmp),k_shape_w])
             accum=0
             for i,spl in enumerate(split_tmp):
-                modulator[i][accum:accum+spl-1]=np.ones([spl,1])
+                modulator[i][accum:accum+spl]=np.ones(spl)
                 accum=accum+spl
-            modulator=np.split(modulator,split_tmp)
-            for i in range(len(modulator)):
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                
+              
+        modulator=np.split(modulator,modulator.shape[0],axis=0)
+        
         out_hier_shape.append(len(modulator))
+
+        modulator=np.stack(modulator,axis=0)
+        modulator=np.expand_dims(modulator,-1)
+        modulator=np.expand_dims(modulator,-1)
         
         if hier==0:
-            kernel_out=[]
-            for i in range(len(modulator)):
-                kernel_out.append(tf.multiply(kernel,modulator[i]))
-            kernel=kernel_out
+            kernel=tf.expand_dims(kernel,axis=0)
+            kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            for i in range(len(kernel)):
-                kernel_out=[]
-                for j in range(len(modulator)):
-                    kernel_out.append(tf.multiply(kernel[i],modulator[j]))
-                kernel[i]=kernel_out
+            modulator=np.expand_dims(modulator,axis=0)
+            kernel=tf.expand_dims(kernel,axis=1)
+            kernel=tf.multiply(kernel,modulator)
         elif hier==2:
-            for i in range(len(kernel)):
-                for j in range(len(kernel[i])):
-                    kernel_out=[]
-                    for k in range(len(modulator)):
-                        kernel_out.append(tf.multiply(kernel[i][j],modulator[k]))
-                    kernel[i][j]=kernel_out
+            modulator=np.expand_dims(modulator,axis=0)
+            modulator=np.expand_dims(modulator,axis=0)
+            kernel=tf.expand_dims(kernel,axis=2)
+            kernel=tf.multiply(kernel,modulator)
                     
     if 'k_seq' in split_type:
-        split_tmp=splits[split_type.index('k_seq')]
+        if isinstance(split_type,list):
+            split_tmp=splits[split_type.index('k_seq')]
+        elif isinstance(split_type,str):
+            split_tmp=splits
         split_prior.append('k_seq')
         hier=split_prior.index('k_seq')
         k_seq_n=k_shape_h*k_shape_w
@@ -667,41 +667,33 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
         if isinstance(split_tmp,int):
             modulator=np.identity(split_tmp)
             modulator=np.expand_dims(modulator,2)
-            modulator=np.tile(modulator,[1,1,k_seq_n/split_tmp])
+            modulator=np.tile(modulator,[1,1,k_seq_n//split_tmp])
             modulator=np.reshape(modulator,[split_tmp,-1])
-            modulator=np.split(modulator,split_tmp)
-            for i in range(len(modulator)):
-                modulator[i]=np.reshape(modulator[i],[k_shape_h,k_shape_w])
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
 
         elif isinstance(split_tmp,list):
             modulator=np.zeros([len(split_tmp),k_seq_n])
             accum=0
             for i,spl in enumerate(split_tmp):
-                modulator[i][accum:accum+spl-1]=np.ones([spl,1])
+                modulator[i][accum:accum+spl]=np.ones(spl)
                 accum=accum+spl
-            modulator=np.split(modulator,split_tmp)
-            for i in range(len(modulator)):
-                modulator[i]=np.reshape(modulator[i],[k_shape_h,k_shape_w])
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
+        
+        modulator=np.split(modulator,modulator.shape[0],axis=0)
         
         out_hier_shape.append(len(modulator))
         
-        if hier==0:
-            kernel_out=[]
-            for i in range(len(modulator)):
-                kernel_out.append(tf.multiply(kernel,modulator[i]))
-            kernel=kernel_out
-        elif hier==1:
-            for i in range(len(kernel)):
-                kernel_out=[]
-                for j in range(len(modulator)):
-                    kernel_out.append(tf.multiply(kernel[i],modulator[j]))
-                kernel[i]=kernel_out
-
+        modulator=np.stack(modulator,axis=0)
+        modulator=np.reshape(modulator,[-1,k_shape_h,k_shape_w])
+        modulator=np.expand_dims(modulator,-1)
+        modulator=np.expand_dims(modulator,-1)
         
+        if hier==0:
+            kernel=tf.expand_dims(kernel,axis=0)
+            kernel=tf.multiply(kernel,modulator)
+        elif hier==1:
+            modulator=np.expand_dims(modulator,axis=0)
+            kernel=tf.expand_dims(kernel,axis=1)
+            kernel=tf.multiply(kernel,modulator)
+
     output=[]
     
     for idx in np.ndindex(*out_hier_shape):
@@ -711,7 +703,7 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
             x_tmp=x
         out = tf.nn.convolution(
                 input=x_tmp,
-                filter=kernel[idx],
+                filter=tf.gather_nd(kernel,idx),
                 dilation_rate=dilation_rate,
                 strides=strides,
                 padding=padding,
@@ -785,11 +777,15 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
     k_shape_w=kernel.shape.dims[1].value
     
     if 'channel' in split_type:
-        split_tmp=splits[split_type.index('channel')]
+        if isinstance(split_type,list):
+            split_tmp=splits[split_type.index('channel')]
+        elif isinstance(split_type,str):
+            split_tmp=splits
         x=tf.split(x,split_tmp,axis=3)
         kernel=tf.split(kernel,split_tmp,axis=2)
         split_prior.append('channel')
         out_hier_shape.append(len(kernel))
+        kernel=tf.stack(kernel,axis=0)
         
     def check_split(size,splt):
         if isinstance(splt, int):
@@ -800,7 +796,10 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
                 raise ValueError('the split is %s which can\'t split shape %d, the number is inconsistant.'%(str(splt),size))
                 
     if 'k_height' in split_type:
-        split_tmp=splits[split_type.index('k_height')]
+        if isinstance(split_type,list):
+            split_tmp=splits[split_type.index('k_height')]
+        elif isinstance(split_type,str):
+            split_tmp=splits
         split_prior.append('k_height')
         hier=split_prior.index('k_height')
 
@@ -809,41 +808,38 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
         if isinstance(split_tmp,int):
             modulator=np.identity(split_tmp)
             modulator=np.expand_dims(modulator,2)
-            modulator=np.tile(modulator,[1,1,k_shape_h/split_tmp])
+            modulator=np.tile(modulator,[1,1,k_shape_h//split_tmp])
             modulator=np.reshape(modulator,[split_tmp,-1])
-            modulator=np.transpose(modulator)
-            modulator=np.split(modulator,split_tmp,axis=1)
-            for i in range(len(modulator)):
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
+            
         elif isinstance(split_tmp,list):
             modulator=np.zeros([len(split_tmp),k_shape_h])
             accum=0
             for i,spl in enumerate(split_tmp):
-                modulator[i][accum:accum+spl-1]=np.ones([spl,1])
+                modulator[i][accum:accum+spl]=np.ones(spl)
                 accum=accum+spl
-            modulator=np.transpose(modulator)
-            modulator=np.split(modulator,split_tmp,axis=1)
-            for i in range(len(modulator)):
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
+        
+        modulator=np.transpose(modulator)
+        modulator=np.split(modulator,modulator.shape[1],axis=1)
         
         out_hier_shape.append(len(modulator))
+
+        modulator=np.stack(modulator,axis=0)
+        modulator=np.expand_dims(modulator,-1)
+        modulator=np.expand_dims(modulator,-1)
         
         if hier==0:
-            kernel_out=[]
-            for i in range(len(modulator)):
-                kernel_out.append(tf.multiply(kernel,modulator[i]))
-            kernel=kernel_out
+            kernel=tf.expand_dims(kernel,axis=0)
+            kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            for i in range(len(kernel)):
-                kernel_out=[]
-                for j in range(len(modulator)):
-                    kernel_out.append(tf.multiply(kernel[i],modulator[j]))
-                kernel[i]=kernel_out
+            modulator=np.expand_dims(modulator,axis=0)
+            kernel=tf.expand_dims(kernel,axis=1)
+            kernel=tf.multiply(kernel,modulator)
             
     if 'k_width' in split_type:
-        split_tmp=splits[split_type.index('k_width')]
+        if isinstance(split_type,list):
+            split_tmp=splits[split_type.index('k_width')]
+        elif isinstance(split_type,str):
+            split_tmp=splits
         split_prior.append('k_width')
         hier=split_prior.index('k_width')
 
@@ -852,46 +848,42 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
         if isinstance(split_tmp,int):
             modulator=np.identity(split_tmp)
             modulator=np.expand_dims(modulator,2)
-            modulator=np.tile(modulator,[1,1,k_shape_w/split_tmp])
+            modulator=np.tile(modulator,[1,1,k_shape_w//split_tmp])
             modulator=np.reshape(modulator,[split_tmp,-1])
-            modulator=np.split(modulator,split_tmp)
-            for i in range(len(modulator)):
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
+            
         elif isinstance(split_tmp,list):
             modulator=np.zeros([len(split_tmp),k_shape_w])
             accum=0
             for i,spl in enumerate(split_tmp):
-                modulator[i][accum:accum+spl-1]=np.ones([spl,1])
+                modulator[i][accum:accum+spl]=np.ones(spl)
                 accum=accum+spl
-            modulator=np.split(modulator,split_tmp)
-            for i in range(len(modulator)):
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                
+              
+        modulator=np.split(modulator,modulator.shape[0],axis=0)
+        
         out_hier_shape.append(len(modulator))
+
+        modulator=np.stack(modulator,axis=0)
+        modulator=np.expand_dims(modulator,-1)
+        modulator=np.expand_dims(modulator,-1)
         
         if hier==0:
-            kernel_out=[]
-            for i in range(len(modulator)):
-                kernel_out.append(tf.multiply(kernel,modulator[i]))
-            kernel=kernel_out
+            kernel=tf.expand_dims(kernel,axis=0)
+            kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            for i in range(len(kernel)):
-                kernel_out=[]
-                for j in range(len(modulator)):
-                    kernel_out.append(tf.multiply(kernel[i],modulator[j]))
-                kernel[i]=kernel_out
+            modulator=np.expand_dims(modulator,axis=0)
+            kernel=tf.expand_dims(kernel,axis=1)
+            kernel=tf.multiply(kernel,modulator)
         elif hier==2:
-            for i in range(len(kernel)):
-                for j in range(len(kernel[i])):
-                    kernel_out=[]
-                    for k in range(len(modulator)):
-                        kernel_out.append(tf.multiply(kernel[i][j],modulator[k]))
-                    kernel[i][j]=kernel_out
+            modulator=np.expand_dims(modulator,axis=0)
+            modulator=np.expand_dims(modulator,axis=0)
+            kernel=tf.expand_dims(kernel,axis=2)
+            kernel=tf.multiply(kernel,modulator)
                     
     if 'k_seq' in split_type:
-        split_tmp=splits[split_type.index('k_seq')]
+        if isinstance(split_type,list):
+            split_tmp=splits[split_type.index('k_seq')]
+        elif isinstance(split_type,str):
+            split_tmp=splits
         split_prior.append('k_seq')
         hier=split_prior.index('k_seq')
         k_seq_n=k_shape_h*k_shape_w
@@ -900,40 +892,32 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
         if isinstance(split_tmp,int):
             modulator=np.identity(split_tmp)
             modulator=np.expand_dims(modulator,2)
-            modulator=np.tile(modulator,[1,1,k_seq_n/split_tmp])
+            modulator=np.tile(modulator,[1,1,k_seq_n//split_tmp])
             modulator=np.reshape(modulator,[split_tmp,-1])
-            modulator=np.split(modulator,split_tmp)
-            for i in range(len(modulator)):
-                modulator[i]=np.reshape(modulator[i],[k_shape_h,k_shape_w])
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
 
         elif isinstance(split_tmp,list):
             modulator=np.zeros([len(split_tmp),k_seq_n])
             accum=0
             for i,spl in enumerate(split_tmp):
-                modulator[i][accum:accum+spl-1]=np.ones([spl,1])
+                modulator[i][accum:accum+spl]=np.ones(spl)
                 accum=accum+spl
-            modulator=np.split(modulator,split_tmp)
-            for i in range(len(modulator)):
-                modulator[i]=np.reshape(modulator[i],[k_shape_h,k_shape_w])
-                modulator[i]=np.expand_dims(modulator[i],-1)
-                modulator[i]=np.expand_dims(modulator[i],-1)
+        
+        modulator=np.split(modulator,modulator.shape[0],axis=0)
         
         out_hier_shape.append(len(modulator))
         
+        modulator=np.stack(modulator,axis=0)
+        modulator=np.reshape(modulator,[-1,k_shape_h,k_shape_w])
+        modulator=np.expand_dims(modulator,-1)
+        modulator=np.expand_dims(modulator,-1)
+        
         if hier==0:
-            kernel_out=[]
-            for i in range(len(modulator)):
-                kernel_out.append(tf.multiply(kernel,modulator[i]))
-            kernel=kernel_out
+            kernel=tf.expand_dims(kernel,axis=0)
+            kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            for i in range(len(kernel)):
-                kernel_out=[]
-                for j in range(len(modulator)):
-                    kernel_out.append(tf.multiply(kernel[i],modulator[j]))
-                kernel[i]=kernel_out
-
+            modulator=np.expand_dims(modulator,axis=0)
+            kernel=tf.expand_dims(kernel,axis=1)
+            kernel=tf.multiply(kernel,modulator)
         
     output=[]
     
@@ -944,7 +928,7 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
             x_tmp=x
         out = QuantizedConv2DCore(
                 inputs=x_tmp,
-                kernel=kernel[idx],
+                kernel=tf.gather_nd(kernel,idx),
                 strides=strides,
                 rate=dilation_rate,
                 padding=padding,

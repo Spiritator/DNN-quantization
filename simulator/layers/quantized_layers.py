@@ -969,7 +969,13 @@ class QuantizedDistributedConv2D(Conv2D):
             if isinstance(self.splits,int):
                 return [(input_shape[0],) + tuple(new_space) + (self.filters,) for i in range(self.splits)]
             elif isinstance(self.splits,list):
-                return [(input_shape[0],) + tuple(new_space) + (self.filters,) for i in range(len(self.splits))]
+                n_splt=1
+                for splt in self.splits:
+                    if isinstance(splt,int):
+                        n_splt=n_splt*splt
+                    elif isinstance(splt,list):
+                        n_splt=n_splt*len(splt)
+                return [(input_shape[0],) + tuple(new_space) + (self.filters,) for i in range(n_splt)]
             else:
                 raise ValueError('splits augment must be integer or list.')
                 
@@ -987,7 +993,13 @@ class QuantizedDistributedConv2D(Conv2D):
             if isinstance(self.splits,int):
                 return [(input_shape[0],self.filters) + tuple(new_space) for i in range(self.splits)]
             elif isinstance(self.splits,list):
-                return [(input_shape[0],self.filters) + tuple(new_space) for i in range(len(self.splits))]
+                n_splt=1
+                for splt in self.splits:
+                    if isinstance(splt,int):
+                        n_splt=n_splt*splt
+                    elif isinstance(splt,list):
+                        n_splt=n_splt*len(splt)
+                return [(input_shape[0],self.filters) + tuple(new_space) for i in range(n_splt)]
             else:
                 raise ValueError('splits augment must be integer or list.')
         

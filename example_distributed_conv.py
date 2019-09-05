@@ -69,8 +69,8 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     x = MaxPooling2D(pool_size=(2,2))(x)
     print('Building Layer 3')
     x = QuantizedDistributedConv2D(filters=36,
-                                   split_type=['channel','k_seq'],
-                                   splits=[4,5],
+                                   split_type=['channel','k_height','k_width'],
+                                   splits=[[8,4,4],[2,3],5],
                                    quantizers=layer_quantizer,
                                    kernel_size=(5,5),
                                    padding='same',
@@ -110,7 +110,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
     return model
 
 
-model=quantized_lenet5(nbits=8,fbits=3,rounding_method='nearest',batch_size=batch_size,quant_mode=None)
+model=quantized_lenet5(nbits=8,fbits=3,rounding_method='nearest',batch_size=batch_size,quant_mode='hybrid')
 
 weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
@@ -150,60 +150,65 @@ prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',normalize=False)
 
-##%%
-#K.clear_session()
-#
-##%%
-#
-#weight_name='../cifar10_4C2FBN_weight_fused_BN.h5'
-#batch_size=25
-#
-#t = time.time()
-#model=quantized_4C2F(nbits=12,
-#                     fbits=6,
-#                     rounding_method='nearest',
-#                     batch_size=batch_size,
-#                     quant_mode='hybrid',)
-#
-#model=exchange_distributed_conv(model,[2,6],[[11,11,10],2],fault_dict_conversion=True)
-#
-#t = time.time()-t
-#
-#print('\nModel build time: %f s'%t)
-#
-#print('Model compiling...')
-#model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
-#print('Model compiled !')
-#model.load_weights(weight_name)
-#print('orginal weight loaded')
-#
-##%%
-##dataset setup
-#
-#x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('cifar10')
-#
-##%%
-## view test result
-#
-#t = time.time()
-#
-#test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
-#
-#t = time.time()-t
-#  
-#print('\nruntime: %f s'%t)
-#print('\nTest loss:', test_result[0])
-#print('Test top1 accuracy:', test_result[1])
-#print('Test top2 accuracy:', test_result[2])
-#
-##%%
-## draw confusion matrix
-#
-#print('\n')
-#prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
-#prediction = np.argmax(prediction, axis=1)
-#
-#show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',figsize=(8,6),normalize=False)
+#%%
+K.clear_session()
+
+#%%
+
+weight_name='../cifar10_4C2FBN_weight_fused_BN.h5'
+batch_size=25
+
+t = time.time()
+model=quantized_4C2F(nbits=12,
+                     fbits=6,
+                     rounding_method='nearest',
+                     batch_size=batch_size,
+                     quant_mode=None,)
+
+split_type=['channel','k_height','k_width']
+target_layers=[2,6]
+splits=[[[11,11,10],[2,1],3    ],
+         [2        ,3    ,[1,2]]]
+
+model=exchange_distributed_conv(model,target_layers,True,split_type,splits)
+
+t = time.time()-t
+
+print('\nModel build time: %f s'%t)
+
+print('Model compiling...')
+model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
+print('Model compiled !')
+model.load_weights(weight_name)
+print('orginal weight loaded')
+
+#%%
+#dataset setup
+
+x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('cifar10')
+
+#%%
+# view test result
+
+t = time.time()
+
+test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+
+t = time.time()-t
+  
+print('\nruntime: %f s'%t)
+print('\nTest loss:', test_result[0])
+print('Test top1 accuracy:', test_result[1])
+print('Test top2 accuracy:', test_result[2])
+
+#%%
+# draw confusion matrix
+
+print('\n')
+prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
+prediction = np.argmax(prediction, axis=1)
+
+show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',figsize=(8,6),normalize=False)
 
 
 

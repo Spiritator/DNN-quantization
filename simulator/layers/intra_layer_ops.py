@@ -560,7 +560,7 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
         kernel=tf.split(kernel,split_tmp,axis=2)
         split_prior.append('channel')
         out_hier_shape.append(len(kernel))
-        kernel=tf.stack(kernel,axis=0)
+        #kernel=tf.stack(kernel,axis=0)
         
     def check_split(size,splt):
         if isinstance(splt, int):
@@ -606,9 +606,9 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
             kernel=tf.expand_dims(kernel,axis=0)
             kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            modulator=np.expand_dims(modulator,axis=0)
-            kernel=tf.expand_dims(kernel,axis=1)
-            kernel=tf.multiply(kernel,modulator)
+            for i in range(len(kernel)):
+                kernel[i]=tf.expand_dims(kernel[i],axis=0)
+                kernel[i]=tf.multiply(kernel[i],modulator)
             
     if 'k_width' in split_type:
         if isinstance(split_type,list):
@@ -645,14 +645,19 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
             kernel=tf.expand_dims(kernel,axis=0)
             kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            modulator=np.expand_dims(modulator,axis=0)
-            kernel=tf.expand_dims(kernel,axis=1)
-            kernel=tf.multiply(kernel,modulator)
+            if 'channel' in split_type:
+                for i in range(len(kernel)):
+                    kernel[i]=tf.expand_dims(kernel[i],axis=0)
+                    kernel[i]=tf.multiply(kernel[i],modulator)
+            else:
+                modulator=np.expand_dims(modulator,axis=0)
+                kernel=tf.expand_dims(kernel,axis=1)
+                kernel=tf.multiply(kernel,modulator)
         elif hier==2:
             modulator=np.expand_dims(modulator,axis=0)
-            modulator=np.expand_dims(modulator,axis=0)
-            kernel=tf.expand_dims(kernel,axis=2)
-            kernel=tf.multiply(kernel,modulator)
+            for i in range(len(kernel)):
+                kernel[i]=tf.expand_dims(kernel[i],axis=1)
+                kernel[i]=tf.multiply(kernel[i],modulator)
                     
     if 'k_seq' in split_type:
         if isinstance(split_type,list):
@@ -690,20 +695,26 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
             kernel=tf.expand_dims(kernel,axis=0)
             kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            modulator=np.expand_dims(modulator,axis=0)
-            kernel=tf.expand_dims(kernel,axis=1)
-            kernel=tf.multiply(kernel,modulator)
+            for i in range(len(kernel)):
+                kernel[i]=tf.expand_dims(kernel[i],axis=0)
+                kernel[i]=tf.multiply(kernel[i],modulator)
 
     output=[]
     
     for idx in np.ndindex(*out_hier_shape):
         if 'channel' in split_type:
             x_tmp=x[idx[0]]
+            if len(out_hier_shape)>1:
+                k_tmp=tf.gather_nd(kernel[idx[0]],idx[1:])
+            else:
+                k_tmp=kernel[idx[0]]
         else:
             x_tmp=x
+            k_tmp=tf.gather_nd(kernel,idx)
+            
         out = tf.nn.convolution(
                 input=x_tmp,
-                filter=tf.gather_nd(kernel,idx),
+                filter=k_tmp,
                 dilation_rate=dilation_rate,
                 strides=strides,
                 padding=padding,
@@ -785,7 +796,7 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
         kernel=tf.split(kernel,split_tmp,axis=2)
         split_prior.append('channel')
         out_hier_shape.append(len(kernel))
-        kernel=tf.stack(kernel,axis=0)
+        #kernel=tf.stack(kernel,axis=0)
         
     def check_split(size,splt):
         if isinstance(splt, int):
@@ -831,9 +842,9 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
             kernel=tf.expand_dims(kernel,axis=0)
             kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            modulator=np.expand_dims(modulator,axis=0)
-            kernel=tf.expand_dims(kernel,axis=1)
-            kernel=tf.multiply(kernel,modulator)
+            for i in range(len(kernel)):
+                kernel[i]=tf.expand_dims(kernel[i],axis=0)
+                kernel[i]=tf.multiply(kernel[i],modulator)
             
     if 'k_width' in split_type:
         if isinstance(split_type,list):
@@ -870,14 +881,19 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
             kernel=tf.expand_dims(kernel,axis=0)
             kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            modulator=np.expand_dims(modulator,axis=0)
-            kernel=tf.expand_dims(kernel,axis=1)
-            kernel=tf.multiply(kernel,modulator)
+            if 'channel' in split_type:
+                for i in range(len(kernel)):
+                    kernel[i]=tf.expand_dims(kernel[i],axis=0)
+                    kernel[i]=tf.multiply(kernel[i],modulator)
+            else:
+                modulator=np.expand_dims(modulator,axis=0)
+                kernel=tf.expand_dims(kernel,axis=1)
+                kernel=tf.multiply(kernel,modulator)
         elif hier==2:
             modulator=np.expand_dims(modulator,axis=0)
-            modulator=np.expand_dims(modulator,axis=0)
-            kernel=tf.expand_dims(kernel,axis=2)
-            kernel=tf.multiply(kernel,modulator)
+            for i in range(len(kernel)):
+                kernel[i]=tf.expand_dims(kernel[i],axis=1)
+                kernel[i]=tf.multiply(kernel[i],modulator)
                     
     if 'k_seq' in split_type:
         if isinstance(split_type,list):
@@ -915,20 +931,26 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
             kernel=tf.expand_dims(kernel,axis=0)
             kernel=tf.multiply(kernel,modulator)
         elif hier==1:
-            modulator=np.expand_dims(modulator,axis=0)
-            kernel=tf.expand_dims(kernel,axis=1)
-            kernel=tf.multiply(kernel,modulator)
-        
+            for i in range(len(kernel)):
+                kernel[i]=tf.expand_dims(kernel[i],axis=0)
+                kernel[i]=tf.multiply(kernel[i],modulator)
+
     output=[]
     
     for idx in np.ndindex(*out_hier_shape):
         if 'channel' in split_type:
             x_tmp=x[idx[0]]
+            if len(out_hier_shape)>1:
+                k_tmp=tf.gather_nd(kernel[idx[0]],idx[1:])
+            else:
+                k_tmp=kernel[idx[0]]
         else:
             x_tmp=x
+            k_tmp=tf.gather_nd(kernel,idx)
+
         out = QuantizedConv2DCore(
                 inputs=x_tmp,
-                kernel=tf.gather_nd(kernel,idx),
+                kernel=k_tmp,
                 strides=strides,
                 rate=dilation_rate,
                 padding=padding,

@@ -11,12 +11,22 @@ import os,csv
 import matplotlib.pyplot as plt
 import numpy as np
 
+def _preprocess_float_fault_rate_text(fl_fr_text):
+    if 'e-' in fl_fr_text:
+        ed_id=fl_fr_text.find('e-')
+        flfrnew=fl_fr_text[0]+fl_fr_text[ed_id:]
+    else:
+        flfrnew=fl_fr_text
+    
+    return flfrnew
+
 def make_FT_report_csv(stat_dir,report_filename,write_csv=True):
     stat_file_list=os.listdir(stat_dir)
     stat_files=dict()
     for fname in stat_file_list:
         if fname.endswith('.csv'):
             stat,f_ext=os.path.splitext(fname)
+            stat=_preprocess_float_fault_rate_text(stat)
             stat_files[float(stat)]=fname
         
         
@@ -192,6 +202,6 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         pic_path=plot_save_dir+'/'+metric+'.png'
         plt.savefig(pic_path,dpi=250)
     
-
-    
+def plot_FT_2D_heatmap():
+    pass
                 

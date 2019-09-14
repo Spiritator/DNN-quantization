@@ -56,6 +56,7 @@ for dirr in var_dir_list:
 
 # data transformation
 metric_list=list(stat_data_var_dict[var_dir_list[0]][0.1].keys())
+metric_stats=list(stat_data_var_dict[var_dir_list[0]][0.1]['loss'].keys())
 stat_data_metric_dict=dict()
 
 statvd_len=[len(stat_data_var_dict[varr]) for varr in var_dir_list] # get biggest data layer
@@ -64,4 +65,16 @@ argvarlen=statvd_len.index(var_len)
 
 fr_list=list(stat_data_var_dict[var_dir_list[argvarlen]].keys())
 
-
+for mtrc in metric_list:
+    sdmd_tmp=dict()
+    for mtrcstat in metric_stats:
+        if 'acc' in mtrc and 'loss' not in mtrc:
+            data_tmp=np.ones((var_len,len(var_dir_list)),dtype=float)
+        else:
+            data_tmp=np.zeros((var_len,len(var_dir_list)))
+        for i,layer in enumerate(var_dir_list):
+            for j,fr in enumerate(fr_list):
+                if fr in stat_data_var_dict[layer].keys():
+                    data_tmp[j,i]=stat_data_var_dict[layer][fr][mtrc][mtrcstat]
+        sdmd_tmp[mtrcstat]=data_tmp
+    stat_data_metric_dict[mtrc]=sdmd_tmp

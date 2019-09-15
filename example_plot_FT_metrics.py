@@ -7,7 +7,7 @@ Created on Mon Jun  3 09:37:48 2019
 Plot FT metrics and make FT stastistic report
 """
 
-from simulator.utils_tool.plot import make_FT_report_csv,plot_FT_analysis,plot_FT_analysis_multiple,plot_FT_2D_heatmap
+from simulator.utils_tool.plot import make_FT_report_csv,plot_FT_analysis,plot_FT_analysis_multiple,plot_FT_2D_heatmap,dict_format_lfms_to_ms2Dlf
 import os
 import numpy as np
 
@@ -51,30 +51,13 @@ stat_data_var_dict=dict()
 
 var_dir_list=os.listdir(relative_dir+stat_folder_dir)
 
+if 'plot' in var_dir_list:
+    var_dir_list.remove('plot')
+    
 for dirr in var_dir_list:
     stat_data_var_dict[dirr]=make_FT_report_csv(relative_dir+stat_folder_dir+'/'+dirr,None,write_csv=False)
 
 # data transformation
-metric_list=list(stat_data_var_dict[var_dir_list[0]][0.1].keys())
-metric_stats=list(stat_data_var_dict[var_dir_list[0]][0.1]['loss'].keys())
-stat_data_metric_dict=dict()
+stat_data_metric_dict,fr_list=dict_format_lfms_to_ms2Dlf(stat_data_var_dict)
 
-statvd_len=[len(stat_data_var_dict[varr]) for varr in var_dir_list] # get biggest data layer
-var_len=max(statvd_len)
-argvarlen=statvd_len.index(var_len)
-
-fr_list=list(stat_data_var_dict[var_dir_list[argvarlen]].keys())
-
-for mtrc in metric_list:
-    sdmd_tmp=dict()
-    for mtrcstat in metric_stats:
-        if 'acc' in mtrc and 'loss' not in mtrc:
-            data_tmp=np.ones((var_len,len(var_dir_list)),dtype=float)
-        else:
-            data_tmp=np.zeros((var_len,len(var_dir_list)))
-        for i,layer in enumerate(var_dir_list):
-            for j,fr in enumerate(fr_list):
-                if fr in stat_data_var_dict[layer].keys():
-                    data_tmp[j,i]=stat_data_var_dict[layer][fr][mtrc][mtrcstat]
-        sdmd_tmp[mtrcstat]=data_tmp
-    stat_data_metric_dict[mtrc]=sdmd_tmp
+plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,var_dir_list)

@@ -9,6 +9,7 @@ Code for fault tolerance metrics plotting
 
 import os,csv
 import matplotlib.pyplot as plt
+from matplotlib.ticker import StrMethodFormatter
 import numpy as np
 
 def _preprocess_float_fault_rate_text(fl_fr_text):
@@ -203,7 +204,7 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         plt.savefig(pic_path,dpi=250)
     
 def heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw={}, cbarlabel="", **kwargs):
+            cbar_kw={}, cbarlabel="", aspect_ratio=0.4, **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -231,7 +232,8 @@ def heatmap(data, row_labels, col_labels, ax=None,
 
     # Plot the heatmap
     im = ax.imshow(data, **kwargs)
-
+    ax.set_aspect(aspect_ratio)
+    
     # Create colorbar
     cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
     cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
@@ -248,7 +250,7 @@ def heatmap(data, row_labels, col_labels, ax=None,
                    labeltop=True, labelbottom=False)
 
     # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+    plt.setp(ax.get_xticklabels(), rotation=0, ha="right",
              rotation_mode="anchor")
 
     # Turn spines off and create white grid.
@@ -298,7 +300,9 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     if threshold is not None:
         threshold = im.norm(threshold)
     else:
-        threshold = im.norm(data.max())/2.
+        threshold = [0.0,1.0]
+        threshold[0] = im.norm(data.max())*0.2
+        threshold[1] = im.norm(data.max())*0.8
 
     # Set default alignment to center, but allow it to be
     # overwritten by textkw.
@@ -308,26 +312,88 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
     # Get the formatter in case a string is supplied
     if isinstance(valfmt, str):
-        valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+        valfmt = StrMethodFormatter(valfmt)
 
     # Loop over the data and create a `Text` for each "pixel".
     # Change the text's color depending on the data.
     texts = []
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
-            kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold)])
+            kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold[1] or im.norm(data[i, j]) < threshold[0])])
             text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
             texts.append(text)
 
     return texts
 
-def plot_FT_2D_heatmap():
-    fig, ax = plt.subplots()
-
-    im, cbar = heatmap(harvest, vegetables, farmers, ax=ax,
-                       cmap="YlGn", cbarlabel="harvest [t/year]")
-    texts = annotate_heatmap(im, valfmt="{x:.1f} t")
+def plot_FT_2D_heatmap(stat_data_dict,plot_save_dir,fr_list,layer_list, aspect_ratio=0.3, valfmt="{x:.3f}"):
+    if not os.path.isdir(plot_save_dir+'/plot'):
+        os.mkdir(plot_save_dir+'/plot')
     
-    fig.tight_layout()
-    plt.show()
+    for mtrc in stat_data_dict.keys():
+        for mtrcstat in stat_data_dict[mtrc].keys():
+            FT_arr=stat_data_dict[mtrc][mtrcstat]
+            
+            fig, ax = plt.subplots()
+            
+            if 'acc' in mtrc and 'loss' not in mtrc:   
+                if mtrcstat=='std_dev':
+                    colorbar='RdYlGn_r'
+                else:
+                    colorbar='RdYlGn'
+            else:
+                colorbar='RdYlGn_r'
                 
+            im, cbar = heatmap(FT_arr, fr_list, layer_list, ax=ax,
+                               cmap=colorbar, cbarlabel=mtrc, aspect_ratio=aspect_ratio)
+            texts = annotate_heatmap(im, valfmt=valfmt)
+            
+            plt.title(mtrc+'  '+mtrcstat)
+            plt.ylabel('layer index')
+            plt.xlabel('fault rate')
+            fig.tight_layout()
+            plt.show()
+            
+            if not os.path.isdir(plot_save_dir+'/plot/'+mtrcstat):
+                os.mkdir(plot_save_dir+'/plot/'+mtrcstat)
+            
+            pic_path=plot_save_dir+'/plot/'+mtrcstat+'/'+mtrc+'-'+mtrcstat+'.png'
+            fig.savefig(pic_path,dpi=250,bbox_inches='tight')
+                
+    
+def dict_format_lfms_to_ms2Dlf(stat_data_dict):
+    """ 
+        Convert FT data dictionay from format: 
+            data_dict[layer][fault_rate][FT_metric][metric_statistics]
+        to format:
+            data_dict[FT_metric][metric_statistics][fault_rate_x_layer__2D_array]
+    """
+    var_dir_list=list(stat_data_dict.keys())
+    # data transformation
+    metric_list=list(stat_data_dict[var_dir_list[0]][0.1].keys())
+    metric_stats=list(stat_data_dict[var_dir_list[0]][0.1]['loss'].keys())
+    stat_data_metric_dict=dict()
+    
+    statvd_len=[len(stat_data_dict[varr]) for varr in var_dir_list] # get biggest data layer
+    var_len=max(statvd_len)
+    argvarlen=statvd_len.index(var_len)
+    
+    fr_list=list(stat_data_dict[var_dir_list[argvarlen]].keys())
+    
+    for mtrc in metric_list:
+        sdmd_tmp=dict()
+        for mtrcstat in metric_stats:
+            if 'acc' in mtrc and 'loss' not in mtrc:
+                if mtrcstat=='std_dev':
+                    data_tmp=np.zeros((var_len,len(var_dir_list)))
+                else:
+                    data_tmp=np.ones((var_len,len(var_dir_list)),dtype=float)
+            else:
+                data_tmp=np.zeros((var_len,len(var_dir_list)))
+            for i,layer in enumerate(var_dir_list):
+                for j,fr in enumerate(fr_list):
+                    if fr in stat_data_dict[layer].keys():
+                        data_tmp[j,i]=stat_data_dict[layer][fr][mtrc][mtrcstat]
+            sdmd_tmp[mtrcstat]=data_tmp
+        stat_data_metric_dict[mtrc]=sdmd_tmp
+        
+    return stat_data_metric_dict,fr_list

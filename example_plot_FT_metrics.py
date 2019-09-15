@@ -44,7 +44,7 @@ plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_li
 # plot 2D heat map for layer by layer FT or feature map center FT
 
 relative_dir='../test_result/'
-stat_folder_dir='mnist_lenet5_model_fault_rate_lbl'
+stat_folder_dir='imagenet_mobilenet_model_fault_rate_fmc'
 
 # collect data
 stat_data_var_dict=dict()
@@ -54,10 +54,34 @@ var_dir_list=os.listdir(relative_dir+stat_folder_dir)
 if 'plot' in var_dir_list:
     var_dir_list.remove('plot')
     
+#for i in range(len(var_dir_list)):
+#    var_dir_list[i]=int(var_dir_list[i])
+#var_dir_list.sort()
+    
 for dirr in var_dir_list:
-    stat_data_var_dict[dirr]=make_FT_report_csv(relative_dir+stat_folder_dir+'/'+dirr,None,write_csv=False)
+    stat_data_var_dict[dirr]=make_FT_report_csv(relative_dir+stat_folder_dir+'/'+str(dirr),None,write_csv=False)
 
 # data transformation
 stat_data_metric_dict,fr_list=dict_format_lfms_to_ms2Dlf(stat_data_var_dict)
 
-plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,var_dir_list)
+#plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,var_dir_list,
+#                   'layer index','fault rate')
+
+#plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,var_dir_list,
+#                   'layer index','fault rate',
+#                   aspect_ratio='equal',annotate=False,xtick_rot=-60,
+#                   label_redu=2,grid_width=2)
+
+#plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,var_dir_list,
+#                   'layer index','fault rate',
+#                   aspect_ratio=1.5,annotate=False,xtick_rot=-60,
+#                   label_redu=3,grid_width=0.5)
+
+#plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,var_dir_list,
+#                   'concentration','fault rate',
+#                   valfmt='{x:.2f}',aspect_ratio=0.5,grid_width=1)
+
+plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,var_dir_list,
+                   'concentration','fault rate',
+                   valfmt='{x:.2f}',aspect_ratio=0.3,annotate=False,xtick_rot=-60,
+                   label_redu=2,grid_width=1)

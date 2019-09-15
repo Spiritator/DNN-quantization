@@ -204,7 +204,8 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         plt.savefig(pic_path,dpi=250)
     
 def heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw={}, cbarlabel="", aspect_ratio=0.4, **kwargs):
+            cbar_kw={}, cbarlabel="", 
+            aspect_ratio=0.4, xtick_rot=0, label_redu=None, grid_width=3, **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -231,8 +232,7 @@ def heatmap(data, row_labels, col_labels, ax=None,
         ax = plt.gca()
 
     # Plot the heatmap
-    im = ax.imshow(data, **kwargs)
-    ax.set_aspect(aspect_ratio)
+    im = ax.imshow(data, aspect=aspect_ratio, **kwargs)
     
     # Create colorbar
     cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
@@ -241,16 +241,22 @@ def heatmap(data, row_labels, col_labels, ax=None,
     # We want to show all ticks...
     ax.set_xticks(np.arange(data.shape[1]))
     ax.set_yticks(np.arange(data.shape[0]))
-    # ... and label them with the respective list entries.
-    ax.set_xticklabels(col_labels)
-    ax.set_yticklabels(row_labels)
+
+    if label_redu is not None:
+        # reduced amount of tick label for better visualization on large heatmap
+        ax.set_xticklabels([x if i%label_redu==0 else ' ' for i,x in enumerate(col_labels)])
+        ax.set_yticklabels([x if i%label_redu==0 else ' ' for i,x in enumerate(row_labels)])
+    else:
+        # ... and label them with the respective list entries.
+        ax.set_xticklabels(col_labels)
+        ax.set_yticklabels(row_labels)
 
     # Let the horizontal axes labeling appear on top.
     ax.tick_params(top=True, bottom=False,
                    labeltop=True, labelbottom=False)
 
     # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=0, ha="right",
+    plt.setp(ax.get_xticklabels(), rotation=xtick_rot, ha="right",
              rotation_mode="anchor")
 
     # Turn spines off and create white grid.
@@ -259,7 +265,7 @@ def heatmap(data, row_labels, col_labels, ax=None,
 
     ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
     ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-    ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    ax.grid(which="minor", color="w", linestyle='-', linewidth=grid_width)
     ax.tick_params(which="minor", bottom=False, left=False)
 
     return im, cbar
@@ -325,7 +331,11 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
     return texts
 
-def plot_FT_2D_heatmap(stat_data_dict,plot_save_dir,fr_list,layer_list, aspect_ratio=0.3, valfmt="{x:.3f}"):
+def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, fr_list,var_list, 
+                       xlabel, ylabel,
+                       aspect_ratio=0.3, valfmt="{x:.3f}", annotate=True, 
+                       xtick_rot=0, label_redu=None, grid_width=3):
+    
     if not os.path.isdir(plot_save_dir+'/plot'):
         os.mkdir(plot_save_dir+'/plot')
     
@@ -343,13 +353,17 @@ def plot_FT_2D_heatmap(stat_data_dict,plot_save_dir,fr_list,layer_list, aspect_r
             else:
                 colorbar='RdYlGn_r'
                 
-            im, cbar = heatmap(FT_arr, fr_list, layer_list, ax=ax,
-                               cmap=colorbar, cbarlabel=mtrc, aspect_ratio=aspect_ratio)
-            texts = annotate_heatmap(im, valfmt=valfmt)
+            im, cbar = heatmap(FT_arr, fr_list, var_list, ax=ax,
+                               cmap=colorbar, cbarlabel=mtrc, 
+                               aspect_ratio=aspect_ratio, xtick_rot=xtick_rot, 
+                               label_redu=label_redu, grid_width=grid_width)
+            
+            if annotate:
+                texts = annotate_heatmap(im, valfmt=valfmt)
             
             plt.title(mtrc+'  '+mtrcstat)
-            plt.ylabel('layer index')
-            plt.xlabel('fault rate')
+            plt.ylabel(ylabel)
+            plt.xlabel(xlabel)
             fig.tight_layout()
             plt.show()
             

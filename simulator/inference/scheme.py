@@ -13,10 +13,25 @@ from keras.utils import multi_gpu_model,to_categorical
 from ..utils_tool.weight_conversion import convert_original_weight_layer_name
 from ..utils_tool.dataset_setup import dataset_setup
 from .evaluate import evaluate_FT
+from ..testing.fault_list import generate_model_stuck_fault
 import time
 import numpy as np
 
-def inference_scheme(model_func, model_augment, compile_augment, dataset_augment, result_save_file, weight_load=False, weight_name=None, FT_evaluate=False, FT_augment=None, show_summary=False, multi_gpu=False, gpu_num=2, name_tag=None):
+def inference_scheme(model_func, 
+                     model_augment, 
+                     compile_augment, 
+                     dataset_augment, 
+                     result_save_file, 
+                     weight_load=False, 
+                     weight_name=None, 
+                     fault_gen=False, 
+                     fault_param=None,
+                     FT_evaluate=False, 
+                     FT_augment=None, 
+                     show_summary=False, 
+                     multi_gpu=False, 
+                     gpu_num=2, 
+                     name_tag=None):
     """Take scheme as input and run different setting of inference automaticly. Write the results into a csv file.
 
     # Arguments
@@ -27,10 +42,14 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
         result_save_file: String. The file and directory to the result csv file.
         weight_load: Bool. Need load weight proccess outside model_func or not.
         weight_name: String. The weight file to load. (if weight_load is True)
+        fault_gen: Bool. If True, generate fault dict list inside inference_scheme (slower, consume less memory). 
+                         If False, using the fault dict list from model_augment (faster, consume huge memory).
+        fault_param: Dictionay. The augment for fault generation function.
         FT_evaluate: Bool. Doing fault tolerance analysis or not.
         FT_augment: Dictionary. The augments for fault tolerance analysis. (if FT_evaluate is True)
         multi_gpu: Bool. Using multi GPU inference or not.
         gpu_num: Integer. The number of GPUs in your system setup. (for multi_gpu = True only)
+        name_tag: String. The messege to show in terminal represent current simulation
 
     # Returns
         ==================
@@ -59,8 +78,16 @@ def inference_scheme(model_func, model_augment, compile_augment, dataset_augment
             x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup( **dataset_augment)
         
         t = time.time()
+        
+        modelaug_tmp=model_augment[scheme_num]
+        
+        if fault_gen:
+            model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **fault_param)
+            modelaug_tmp['ifmap_fault_dict_list']=model_ifmap_fdl,
+            modelaug_tmp['ofmap_fault_dict_list']=model_ofmap_fdl,
+            modelaug_tmp['weight_fault_dict_list']=model_weight_fdl
 
-        model=model_func( **model_augment[scheme_num])
+        model=model_func( **modelaug_tmp)
         
         if weight_load:
             weight_name_convert=convert_original_weight_layer_name(weight_name)

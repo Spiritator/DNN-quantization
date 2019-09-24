@@ -91,17 +91,17 @@ for concen in concentration_list:
         model_augment=list()
         for i in range(test_rounds_lists[test_rounds]):
             print('Generating fault for test round %d...'%(i+1))
-            model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
+            #model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
                     
             model_augment.append({'weights':weight_name,
                                   'nbits':model_word_length,
                                   'fbits':model_fractional_bit,
                                   'rounding_method':rounding_method,
                                   'batch_size':batch_size,
-                                  'quant_mode':'hybrid',
-                                  'ifmap_fault_dict_list':model_ifmap_fdl,
-                                  'ofmap_fault_dict_list':model_ofmap_fdl,
-                                  'weight_fault_dict_list':model_weight_fdl})
+                                  'quant_mode':'hybrid'})
+                                  #'ifmap_fault_dict_list':model_ifmap_fdl,
+                                  #'ofmap_fault_dict_list':model_ofmap_fdl,
+                                  #'weight_fault_dict_list':model_weight_fdl})
     
         result_save_file=result_save_folder+'/'+str(concen)+'/'+str(fr)+'.csv'
         inference_scheme(QuantizedResNet50FusedBN, 
@@ -109,6 +109,8 @@ for concen in concentration_list:
                          compile_augment, 
                          dataset_augment, 
                          result_save_file, 
+                         fault_gen=True,
+                         fault_param=param,
                          FT_evaluate=True, 
                          FT_augment=FT_augment, 
                          name_tag='fault rate '+str(fr))

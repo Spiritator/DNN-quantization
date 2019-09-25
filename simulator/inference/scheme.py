@@ -83,8 +83,8 @@ def inference_scheme(model_func,
         
         if fault_gen:
             model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **fault_param)
-            modelaug_tmp['ifmap_fault_dict_list']=model_ifmap_fdl,
-            modelaug_tmp['ofmap_fault_dict_list']=model_ofmap_fdl,
+            modelaug_tmp['ifmap_fault_dict_list']=model_ifmap_fdl
+            modelaug_tmp['ofmap_fault_dict_list']=model_ofmap_fdl
             modelaug_tmp['weight_fault_dict_list']=model_weight_fdl
 
         model=model_func( **modelaug_tmp)

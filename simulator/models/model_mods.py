@@ -93,4 +93,45 @@ def exchange_distributed_conv(model,target_layer_num,fault_dict_conversion,split
     return new_model
     
     
+class pseudo_model:
+    '''The class like Keras Model for fault generation.
+        Only store layer Shape information.
     
+    '''
+    def __init__(self,layers=None):
+        if layers is not None:
+            self.layers=layers
+        else:
+            self.layers=list()
+    
+class pseudo_layer:
+    '''The class like Keras Layer for fault generation.
+        Only store layer Shape information.
+    
+    '''
+    def __init__(self,input_shape,output_shape,weight_shape):
+        self.input_shape=input_shape
+        self.output_shape=output_shape
+        self.weight_shape=weight_shape
+        
+    def get_weights(self):
+        weights=list()
+        for shape in self.weight_shape:
+            weights.append(np.zeros(shape))
+        return weights
+        
+def make_ref_model(model):
+    '''Make a reference model of psuedo_model class.
+        With only layer shape information for fault generation.
+        In case of K.clear_session() commmand clear tensor record.
+        Reference model provide shapes for multiple iterative fault generation.
+    
+    '''
+    layer_list=list()
+    for i in len(model.layers):
+        layer=model.layers[i]
+        ref_layer=pseudo_layer(layer.input_shape,layer.output_shape,[weight_shape.shape for weight_shape in layer.get_weights()])
+        layer_list.append(ref_layer)
+        
+    ref_model=pseudo_model(layer_list)
+    return ref_model

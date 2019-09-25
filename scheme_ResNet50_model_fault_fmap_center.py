@@ -15,6 +15,7 @@ from simulator.metrics.topk_metrics import top5_acc
 from keras.losses import categorical_crossentropy
 from simulator.testing.fault_list import generate_model_stuck_fault
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
+from simulator.models.model_mods import make_ref_model
 
 #%%
 # setting parameter
@@ -44,14 +45,13 @@ concentration_list=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 #%%
 
 # model for get configuration
-def call_model():
-    return QuantizedResNet50FusedBN(weights=weight_name, 
-                                    nbits=model_word_length,
-                                    fbits=model_fractional_bit, 
-                                    rounding_method=rounding_method,
-                                    batch_size=batch_size,
-                                    quant_mode=None)
 
+ref_model=make_ref_model(QuantizedResNet50FusedBN(weights=weight_name, 
+                                                  nbits=model_word_length,
+                                                  fbits=model_fractional_bit, 
+                                                  rounding_method=rounding_method,
+                                                  batch_size=batch_size,
+                                                  quant_mode=None))
 
 #%%
 # test
@@ -70,7 +70,6 @@ for concen in concentration_list:
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
         print('|=|        Test Bit Fault Rate %s'%str(fr))
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-        ref_model=call_model()
         
         # fault parameter setting
         param={'model':ref_model,

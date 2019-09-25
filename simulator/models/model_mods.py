@@ -128,7 +128,7 @@ def make_ref_model(model):
     
     '''
     layer_list=list()
-    for i in len(model.layers):
+    for i in range(len(model.layers)):
         layer=model.layers[i]
         ref_layer=pseudo_layer(layer.input_shape,layer.output_shape,[weight_shape.shape for weight_shape in layer.get_weights()])
         layer_list.append(ref_layer)

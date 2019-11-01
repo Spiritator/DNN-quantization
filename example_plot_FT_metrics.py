@@ -55,7 +55,7 @@ stat_vs_folders=['imagenet_mobilenet_model_fault_rate_wght','imagenet_mobilenet_
 for dirr in stat_vs_folders:
     stat_data_list.append(make_FT_report_csv(relative_dir+dirr,None,write_csv=False))
 
-pic_save_dir='vs_imagenet_resnet_model_fault_rate_fvw'
+pic_save_dir='vs_imagenet_mobilenet_model_fault_rate_fvw'
 
 color_dict_list=[{'max':'lightblue','min':'lightblue','avg':'blue','var':'darkgray'},
                  {'max':'peachpuff','min':'peachpuff','avg':'red','var':'darkgray'},]

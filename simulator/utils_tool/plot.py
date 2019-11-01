@@ -78,7 +78,7 @@ def make_FT_report_csv(stat_dir,report_filename,write_csv=True):
             
     return stat_data
 
-def plot_FT_analysis(stat_dir=None,report_filename=None):
+def plot_FT_analysis(stat_dir=None,report_filename=None,save_plot_format='png'):
     if stat_dir is None and report_filename is None:
         raise ValueError('Both augment stat_dir and report_filename are None! Choose one of them as data to draw analysis plot.')
         
@@ -112,6 +112,9 @@ def plot_FT_analysis(stat_dir=None,report_filename=None):
         
     x=list(stat_data.keys())
     metrics=list(stat_data[x[0]].keys())
+    
+    if save_plot_format not in ['png','eps']:
+        raise ValueError('Plot save file must be either png or eps format.')
 
     for metric in metrics:
         fig = plt.figure()
@@ -143,14 +146,18 @@ def plot_FT_analysis(stat_dir=None,report_filename=None):
             plt.legend(loc='lower right')
         plt.tight_layout()
         if stat_dir is not None:
-            pic_path=stat_dir+'/'+metric+'.png'
+            pic_path=stat_dir+'/'+metric+'.'+save_plot_format
         elif report_filename is not None:
-            pic_path=os.path.split(report_filename)[0]+'/'+metric+'.png'
-        plt.savefig(pic_path,dpi=250)
+            pic_path=os.path.split(report_filename)[0]+'/'+metric+'.'+save_plot_format
+            
+        if save_plot_format=='eps':
+            plt.savefig(pic_path, format='eps')
+        else:
+            plt.savefig(pic_path,dpi=250)
     
     return stat_data
 
-def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label_list):
+def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label_list,save_plot_format='png'):
     '''
         plot_color_list: List of Dictionarys. 
                          Dictionary in format {'max':'color_of_max_line','min':'color_of_min_line','avg':'color_of_avg_line','var':'color_of_var_line'}. 
@@ -166,6 +173,9 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         
     x=list(stat_data_list[0].keys())
     metrics=list(stat_data_list[0][x[0]].keys())
+
+    if save_plot_format not in ['png','eps']:
+        raise ValueError('Plot save file must be either png or eps format.')
 
     for iterr,metric in enumerate(metrics):
         fig = plt.figure()
@@ -200,8 +210,12 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         else:
             plt.legend(loc='lower right')
         plt.tight_layout()
-        pic_path=plot_save_dir+'/'+metric+'.png'
-        plt.savefig(pic_path,dpi=250)
+        pic_path=plot_save_dir+'/'+metric+'.'+save_plot_format
+        
+        if save_plot_format=='eps':
+            plt.savefig(pic_path, format='eps')
+        else:
+            plt.savefig(pic_path,dpi=250)
     
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", 
@@ -334,10 +348,14 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, fr_list,var_list, 
                        xlabel, ylabel,
                        aspect_ratio=0.3, valfmt="{x:.3f}", annotate=True, 
-                       xtick_rot=0, label_redu=None, grid_width=3):
+                       xtick_rot=0, label_redu=None, grid_width=3,
+                       save_plot_format='png'):
     
     if not os.path.isdir(plot_save_dir+'/plot'):
         os.mkdir(plot_save_dir+'/plot')
+    
+    if save_plot_format not in ['png','eps']:
+        raise ValueError('Plot save file must be either png or eps format.')
     
     for mtrc in stat_data_dict.keys():
         for mtrcstat in stat_data_dict[mtrc].keys():
@@ -370,8 +388,13 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, fr_list,var_list,
             if not os.path.isdir(plot_save_dir+'/plot/'+mtrcstat):
                 os.mkdir(plot_save_dir+'/plot/'+mtrcstat)
             
-            pic_path=plot_save_dir+'/plot/'+mtrcstat+'/'+mtrc+'-'+mtrcstat+'.png'
-            fig.savefig(pic_path,dpi=250,bbox_inches='tight')
+            pic_path=plot_save_dir+'/plot/'+mtrcstat+'/'+mtrc+'-'+mtrcstat+'.'+save_plot_format
+            
+            if save_plot_format=='eps':
+                plt.savefig(pic_path, format='eps',bbox_inches='tight')
+            else:
+                plt.savefig(pic_path,dpi=250,bbox_inches='tight')
+
                 
     
 def dict_format_lfms_to_ms2Dlf(stat_data_dict):

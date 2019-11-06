@@ -383,7 +383,6 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, fr_list,var_list,
             plt.ylabel(ylabel)
             plt.xlabel(xlabel)
             fig.tight_layout()
-            plt.show()
             
             if not os.path.isdir(plot_save_dir+'/plot/'+mtrcstat):
                 os.mkdir(plot_save_dir+'/plot/'+mtrcstat)
@@ -394,6 +393,8 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, fr_list,var_list,
                 plt.savefig(pic_path, format='eps',bbox_inches='tight')
             else:
                 plt.savefig(pic_path,dpi=250,bbox_inches='tight')
+                
+            plt.show()
 
                 
     

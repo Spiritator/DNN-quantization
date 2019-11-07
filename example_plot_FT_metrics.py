@@ -37,14 +37,15 @@ color_dict_list=[{'max':'lightblue','min':'lightblue','avg':'blue','var':'darkgr
 
 label_list=['lenet (S,8,3)','4C2F (S,10,6)','mobilenet (S,16,9)','resnet (S,16,12-8)']
 
-plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list,save_plot_format='eps')
+plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list)
+#plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list,font_size=14,legend_size=10,save_plot_format='eps')
 
 #%%
 # plot save .eps for latex
 
 stat_folder_dir='mnist_lenet5_model_fault_rate_wght'
 stat_data=make_FT_report_csv('../test_result/'+stat_folder_dir,stat_folder_dir)
-stat_data=plot_FT_analysis(stat_dir='../test_result/'+stat_folder_dir,save_plot_format='eps')
+stat_data=plot_FT_analysis(stat_dir='../test_result/'+stat_folder_dir,font_size=14,save_plot_format='eps')
 
 #%%
 # plot save .eps for latex
@@ -62,7 +63,7 @@ color_dict_list=[{'max':'lightblue','min':'lightblue','avg':'blue','var':'darkgr
 
 label_list=['feature map','weights']
 
-plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list,save_plot_format='eps')
+plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list,font_size=14,save_plot_format='eps')
 
 
 #%%

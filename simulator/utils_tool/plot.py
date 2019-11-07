@@ -78,7 +78,7 @@ def make_FT_report_csv(stat_dir,report_filename,write_csv=True):
             
     return stat_data
 
-def plot_FT_analysis(stat_dir=None,report_filename=None,save_plot_format='png'):
+def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_size=None,save_plot_format='png'):
     if stat_dir is None and report_filename is None:
         raise ValueError('Both augment stat_dir and report_filename are None! Choose one of them as data to draw analysis plot.')
         
@@ -119,6 +119,9 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,save_plot_format='png'):
     for metric in metrics:
         fig = plt.figure()
         
+        if font_size is not None:
+            plt.rcParams.update({'font.size': font_size})
+        
         avg=[stat_data[xid][metric]['avg'] for xid in x]
 
         maxx=[stat_data[xid][metric]['max'] for xid in x]
@@ -138,12 +141,19 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,save_plot_format='png'):
         plt.ylabel(metric)
         plt.xlabel('bit fault rate')
         plt.xscale('log')
+        
+        if legend_size is None:
+            if font_size is None:
+                legend_size=10
+            else:
+                legend_size=font_size
+        
         if 'loss' in metric:
-            plt.legend(loc='lower right')
+            plt.legend(loc='lower right',prop={'size': legend_size})
         elif 'acc' in metric:
-            plt.legend(loc='upper right')
+            plt.legend(loc='upper right',prop={'size': legend_size})
         else:
-            plt.legend(loc='lower right')
+            plt.legend(loc='lower right',prop={'size': legend_size})
         plt.tight_layout()
         if stat_dir is not None:
             pic_path=stat_dir+'/'+metric+'.'+save_plot_format
@@ -157,7 +167,7 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,save_plot_format='png'):
     
     return stat_data
 
-def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label_list,save_plot_format='png'):
+def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label_list,font_size=None,legend_size=None,save_plot_format='png'):
     '''
         plot_color_list: List of Dictionarys. 
                          Dictionary in format {'max':'color_of_max_line','min':'color_of_min_line','avg':'color_of_avg_line','var':'color_of_var_line'}. 
@@ -179,6 +189,10 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
 
     for iterr,metric in enumerate(metrics):
         fig = plt.figure()
+        
+        if font_size is not None:
+            plt.rcParams.update({'font.size': font_size})
+
         
         for i in range(len(stat_data_list)):
             x=list(stat_data_list[i].keys())
@@ -203,12 +217,19 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         plt.ylabel(metric)
         plt.xlabel('bit fault rate')
         plt.xscale('log')
+        
+        if legend_size is None:
+            if font_size is None:
+                legend_size=10
+            else:
+                legend_size=font_size
+       
         if 'loss' in metric:
-            plt.legend(loc='lower right')
+            plt.legend(loc='lower right',prop={'size': legend_size})
         elif 'acc' in metric:
-            plt.legend(loc='upper right')
+            plt.legend(loc='upper right',prop={'size': legend_size})
         else:
-            plt.legend(loc='lower right')
+            plt.legend(loc='lower right',prop={'size': legend_size})
         plt.tight_layout()
         pic_path=plot_save_dir+'/'+metric+'.'+save_plot_format
         

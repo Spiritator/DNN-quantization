@@ -24,6 +24,7 @@ def inference_scheme(model_func,
                      result_save_file, 
                      weight_load=False, 
                      weight_name=None, 
+                     save_runtime=False,
                      fault_gen=False, 
                      fault_param=None,
                      FT_evaluate=False, 
@@ -42,6 +43,7 @@ def inference_scheme(model_func,
         result_save_file: String. The file and directory to the result csv file.
         weight_load: Bool. Need load weight proccess outside model_func or not.
         weight_name: String. The weight file to load. (if weight_load is True)
+        save_runtime: Bool. Save runtime in result file or not.
         fault_gen: Bool. If True, generate fault dict list inside inference_scheme (slower, consume less memory). 
                          If False, using the fault dict list from model_augment (faster, consume huge memory).
         fault_param: Dictionay. The augment for fault generation function.
@@ -172,10 +174,16 @@ def inference_scheme(model_func,
                     for key in test_result.keys():
                         fieldnames.append(key)
                         test_result_dict[key]=test_result[key]
+                    if save_runtime:
+                        fieldnames.append('runtime')
+                        test_result_dict['runtime']=t
                 else:
                     for i in range(len(test_result)):
                         fieldnames.append(model.metrics_names[i])
                         test_result_dict[model.metrics_names[i]]=test_result[i]
+                    if save_runtime:
+                        fieldnames.append('runtime')
+                        test_result_dict['runtime']=t
                 writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerow(test_result_dict)
@@ -185,9 +193,13 @@ def inference_scheme(model_func,
                 if FT_evaluate:
                     for key in test_result.keys():
                         test_result_dict[key]=test_result[key]
+                    if save_runtime:
+                        test_result_dict['runtime']=t
                 else:
                     for i in range(len(test_result)):
                         test_result_dict[model.metrics_names[i]]=test_result[i]
+                    if save_runtime:
+                        test_result_dict['runtime']=t
                 writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writerow(test_result_dict)
                     

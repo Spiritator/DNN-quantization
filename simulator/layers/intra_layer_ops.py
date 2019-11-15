@@ -18,6 +18,7 @@ import numpy as np
 
 PARALLEL_ITERATIONS=4 # number of convolution ops which can run in parallel.
 tf_while_loop=False
+INTRA_BATCH_SPLIT_FACTOR=None # number of split to cut output channel for big model non-while loop intrinsic.
 
 def _preprocess_conv2d_input(x, data_format):
     """Transpose and cast the input before the conv2d.
@@ -72,28 +73,62 @@ def QuantizedDenseCore(inputs, kernel, Q_info):
     output_size = kernel.get_shape().dims[1].value
 
     if not tf_while_loop:
-        # work around of tf.slice bug in multi gpu condition
-        if batch_size is None:
-            batch_size = tf.shape(inputs)[:1]
-    
-        output = tf.expand_dims(inputs,axis=2)
-        output = tf.tile(output,[1,1,output_size])
         
-        # work around of tf.slice bug in multi gpu condition
-        if not isinstance(batch_size,int):
-            batch_size = batch_size[0]
+        if INTRA_BATCH_SPLIT_FACTOR is None:
+            # work around of tf.slice bug in multi gpu condition
+            if batch_size is None:
+                batch_size = tf.shape(inputs)[:1]
             
-        kernel_tmp = tf.expand_dims(kernel,axis=0)
-        kernel_tmp = tf.tile(kernel_tmp,[batch_size,1,1])
-        
-        output = tf.multiply(output,kernel_tmp)
+            output = tf.expand_dims(inputs,axis=2)
+            output = tf.tile(output,[1,1,output_size])
             
-        # quantize after multiplication
-        output = Q_info.quantize(output) 
-        
-        output = tf.reduce_sum(output,axis=1,keepdims=False)
-        # quantize after accumulation
-        output = Q_info.quantize(output) 
+            # work around of tf.slice bug in multi gpu condition
+            if not isinstance(batch_size,int):
+                batch_size = batch_size[0]
+                
+            kernel_tmp = tf.expand_dims(kernel,axis=0)
+            kernel_tmp = tf.tile(kernel_tmp,[batch_size,1,1])
+            
+            output = tf.multiply(output,kernel_tmp)
+                
+            # quantize after multiplication
+            output = Q_info.quantize(output) 
+            
+            output = tf.reduce_sum(output,axis=1,keepdims=False)
+            # quantize after accumulation
+            output = Q_info.quantize(output) 
+            
+        else:
+            # work around of tf.slice bug in multi gpu condition
+            if batch_size is None:
+                batch_size = tf.shape(inputs)[:1]
+            
+            output=list()
+            for i in range(INTRA_BATCH_SPLIT_FACTOR):
+                output_tmp = tf.expand_dims(inputs,axis=2)
+                output.append( tf.tile(output_tmp,[1,1,output_size//INTRA_BATCH_SPLIT_FACTOR]) )
+            
+            # work around of tf.slice bug in multi gpu condition
+            if not isinstance(batch_size,int):
+                batch_size = batch_size[0]
+                
+            
+            kernel_tmp=tf.split(kernel,INTRA_BATCH_SPLIT_FACTOR,axis=1)
+            for i in range(INTRA_BATCH_SPLIT_FACTOR):
+                kernel_tmp[i] = tf.expand_dims(kernel_tmp[i],axis=0)
+                kernel_tmp[i] = tf.tile(kernel_tmp[i],[batch_size,1,1])
+            
+                output[i] = tf.multiply(output[i],kernel_tmp[i])
+                
+                # quantize after multiplication
+                output[i] = Q_info.quantize(output[i]) 
+            
+                output[i] = tf.reduce_sum(output[i],axis=1,keepdims=False)
+                
+            output = tf.concat(output,axis=1)
+            
+            # quantize after accumulation
+            output = Q_info.quantize(output) 
     
     else:
         # work around of tf.slice bug in multi gpu condition
@@ -167,42 +202,92 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_i
     batch_size = inputs.shape.dims[0].value
 
     if not tf_while_loop:
-        # work around of tf.slice bug in multi gpu condition
-        if batch_size is None:
-            batch_size=tf.shape(inputs)[:1]
         
-        # work around of tf.slice bug in multi gpu condition
-        if not isinstance(batch_size,int):
-            batch_size=batch_size[0]
-    
-        # prepare kernel
-        kernel_shape = kernel.get_shape()
-        #kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
-    
-        # get output for conv multiply
-        output = tf.extract_image_patches(inputs, 
-                                          ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
-                                          strides=strides,
-                                          rates=rate,#[1,1,1,1],
-                                          padding=padding )
-        patch_shape = output.get_shape()
-        #[batch, ofmap height, ofmap width, num of kernel psum * input channel]
+        if INTRA_BATCH_SPLIT_FACTOR is None:
+            # work around of tf.slice bug in multi gpu condition
+            if batch_size is None:
+                batch_size=tf.shape(inputs)[:1]
+            
+            # work around of tf.slice bug in multi gpu condition
+            if not isinstance(batch_size,int):
+                batch_size=batch_size[0]
         
-        output = tf.expand_dims(output,axis=-1)
-        output = tf.tile(output,[1,1,1,1,kernel_shape.dims[3].value])
-        #[batch, ofmap height, ofmap width, num of kernel psum * input channel, output channel]
+            # prepare kernel
+            kernel_shape = kernel.get_shape()
+            #kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
         
-        kernel_tmp = tf.reshape(kernel, [1,1,1,patch_shape.dims[3].value,kernel_shape.dims[3].value])
-        kernel_tmp = tf.tile(kernel_tmp,[batch_size,patch_shape.dims[1].value,patch_shape.dims[2].value,1,1])  
-        #[batch, ofmap height, ofmap width, num of kernel psum * input channel, output channel]
-    
-        output = tf.multiply(output, kernel_tmp)
-        # quantize after multiplication
-        output = Q_info.quantize(output)     
+            # get output for conv multiply
+            output = tf.extract_image_patches(inputs, 
+                                              ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+                                              strides=strides,
+                                              rates=rate,#[1,1,1,1],
+                                              padding=padding )
+            patch_shape = output.get_shape()
+            #[batch, ofmap height, ofmap width, num of kernel psum * input channel]
+            
+            output = tf.expand_dims(output,axis=-1)
+            output = tf.tile(output,[1,1,1,1,kernel_shape.dims[3].value])
+            #[batch, ofmap height, ofmap width, num of kernel psum * input channel, output channel]
+            
+            kernel_tmp = tf.reshape(kernel, [1,1,1,patch_shape.dims[3].value,kernel_shape.dims[3].value])
+            kernel_tmp = tf.tile(kernel_tmp,[batch_size,patch_shape.dims[1].value,patch_shape.dims[2].value,1,1])  
+            #[batch, ofmap height, ofmap width, num of kernel psum * input channel, output channel]
         
-        output = tf.reduce_sum(output,axis=3,keepdims=False)
-        # quantize after accumulation
-        output = Q_info.quantize(output)     
+            output = tf.multiply(output, kernel_tmp)
+            # quantize after multiplication
+            output = Q_info.quantize(output)     
+            
+            output = tf.reduce_sum(output,axis=3,keepdims=False)
+            # quantize after accumulation
+            output = Q_info.quantize(output)     
+            
+            
+        else:
+            # work around of tf.slice bug in multi gpu condition
+            if batch_size is None:
+                batch_size=tf.shape(inputs)[:1]
+            
+            # work around of tf.slice bug in multi gpu condition
+            if not isinstance(batch_size,int):
+                batch_size=batch_size[0]
+        
+            # prepare kernel
+            kernel_shape = kernel.get_shape()
+            #kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
+        
+            # get output for conv multiply
+            output = tf.extract_image_patches(inputs, 
+                                              ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+                                              strides=strides,
+                                              rates=rate,#[1,1,1,1],
+                                              padding=padding )
+            patch_shape = output.get_shape()
+            #[batch, ofmap height, ofmap width, num of kernel psum * input channel]
+            
+            output_list = list()
+            for i in range(INTRA_BATCH_SPLIT_FACTOR):
+                output_tmp = tf.expand_dims(output,axis=-1)
+                output_list.append( tf.tile(output_tmp,[1,1,1,1,kernel_shape.dims[3].value//INTRA_BATCH_SPLIT_FACTOR]) )
+                #[batch, ofmap height, ofmap width, num of kernel psum * input channel, output channel // INTRA_BATCH_SPLIT_FACTOR]
+            
+            output=output_list
+            
+            kernel_tmp = tf.reshape(kernel, [1,1,1,patch_shape.dims[3].value,kernel_shape.dims[3].value])
+            kernel_tmp = tf.split(kernel_tmp,INTRA_BATCH_SPLIT_FACTOR,axis=-1)
+            for i in range(INTRA_BATCH_SPLIT_FACTOR):
+                kernel_tmp[i] = tf.tile(kernel_tmp[i],[batch_size,patch_shape.dims[1].value,patch_shape.dims[2].value,1,1])  
+                #[batch, ofmap height, ofmap width, num of kernel psum * input channel, output channel//INTRA_BATCH_SPLIT_FACTOR]
+        
+                output[i] = tf.multiply(output[i], kernel_tmp[i])
+                # quantize after multiplication
+                output[i] = Q_info.quantize(output[i])     
+            
+                output[i] = tf.reduce_sum(output[i],axis=3,keepdims=False)
+                
+            output = tf.concat(output,axis=-1)
+                
+            # quantize after accumulation
+            output = Q_info.quantize(output)     
     
     else:
         # work around of tf.slice bug in multi gpu condition

@@ -96,7 +96,7 @@ model_config={'weights':weight_name,
               'batch_size':batch_size,
               'quant_mode':None}
 
-model_augment_BN=[model_config for i in range(test_rounds)]
+model_augment=[model_config for i in range(test_rounds)]
 
 compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
 
@@ -137,7 +137,7 @@ model_config={'weights':weight_name,
               'batch_size':batch_size,
               'quant_mode':None}
 
-model_augment_BN=[model_config for i in range(test_rounds)]
+model_augment=[model_config for i in range(test_rounds)]
 
 compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
 

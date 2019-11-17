@@ -61,7 +61,7 @@ pic_save_dir='vs_imagenet_mobilenet_model_fault_rate_fvw'
 color_dict_list=[{'max':'lightblue','min':'lightblue','avg':'blue','var':'darkgray'},
                  {'max':'peachpuff','min':'peachpuff','avg':'red','var':'darkgray'},]
 
-label_list=['feature map','weights']
+label_list=['weights','feature map']
 
 plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list,font_size=14,save_plot_format='eps')
 

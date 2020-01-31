@@ -11,7 +11,7 @@ import numpy as np
 from simulator.memory.tile import tile,tile_FC
 
 class tile_PE(tile):
-    def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
+    def __init__(self, tile_shape, is_fmap, required_axes=[], axis_prior=[]):
         """The tile of a DNN feature map or weights
 
         # Arguments
@@ -21,9 +21,13 @@ class tile_PE(tile):
             Tr: Integer. The size of tile on the kernel row dimension or feature map row dimention.
             Tc: Integer. The size of tile on the kernel column dimension or feature map column dimention.
             is_fmap: Bool. The tile is feature map tile or weight tile.
-            wl: Integer. The word length of DNN model parameter.
-            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
-            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+            required_axes: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
+                These axes are the dimension in PE array dataflow model for tile mapping.
+                The order in List is the priority for data mapping in PE array.
+            col_prior: Dictionary of List of Strings. The priority of PE mapping in each PE dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+                The dictionary structure is {'PE_x':['Tm', 'Tn', 'Tr', 'Tc'],
+                                             'PE_y':['Tm', 'Tn', 'Tr', 'Tc'],
+                                             't_clk':['Tm', 'Tn', 'Tr', 'Tc']}
     
         """
         if not isinstance(is_fmap,bool):
@@ -41,17 +45,35 @@ class tile_PE(tile):
             self.Tr=tile_shape[0]
             self.Tc=tile_shape[1]
         self.is_fmap=is_fmap
-        self.wl=wl
-        self.row_prior=row_prior
-        self.col_prior=col_prior
+        self.required_axes=required_axes
+        self.axis_prior=axis_prior
+        self.axis_element=['PE_x','PE_y','t_clk']
         self.prior_element=['Tm','Tn','Tr','Tc']
-        self.slice_head_list=None
-        self.slice_head_order=None
         self.fault_dict=dict()
-        self.tile_size=None
         self.use_bias=False
         self.bias_fault_dict=dict()
-        self.bias_range=None
         self.shape_len=4
-        self.base_coor=None
         self.print_detail=True
+        
+    def check_prior(self):
+        if not isinstance(self.required_axes,list):
+            raise ValueError('The augment required_axes must be in list dtype.')
+            
+        for axis in self.required_axes:
+            if axis not in self.axis_element:
+                raise ValueError('The augment required_axes must be in list %s'%(str(self.axis_element)))
+        
+            if not isinstance(self.axis_prior[axis],list) or len(self.axis_prior[axis])!=self.shape_len:
+                raise ValueError('The augment axis_prior must be in list dtype and have length %d but got length %d'%(self.shape_len,len(self.axis_prior[axis])))
+    
+            for i in range(self.shape_len):
+                if self.axis_prior[axis][i] not in self.prior_element:
+                    raise ValueError('The augment axis_prior must be in list %s'%(str(self.prior_element)))
+
+    def expansion(self, method, shape, slices, permute):
+        """
+        
+        
+        """
+        pass
+    

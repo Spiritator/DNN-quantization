@@ -49,10 +49,19 @@ class tile_PE(tile):
         self.axis_prior=axis_prior
         self.axis_element=['PE_x','PE_y','t_clk']
         self.prior_element=['Tm','Tn','Tr','Tc']
+        
         self.fault_dict=dict()
         self.use_bias=False
         self.bias_fault_dict=dict()
         self.shape_len=4
+        
+        self.expansion=False
+        self.expand_method=None
+        self.expand_shape=None
+        self.slice_shape=None
+        self.slice_permute=None
+        self.fault_dict_expand=dict()
+        
         self.print_detail=True
         
     def check_prior(self):
@@ -70,10 +79,27 @@ class tile_PE(tile):
                 if self.axis_prior[axis][i] not in self.prior_element:
                     raise ValueError('The augment axis_prior must be in list %s'%(str(self.prior_element)))
 
-    def expansion(self, method, shape, slices, permute):
+    def expand_data(self, method, expect_shape, slice_dims, slices_permute):
+        """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 
+            The data may  be cut into many pieces than fit into PE. Different slices calculate in different clock cycle.
+        
+        # Arguments
+            method: String. The expansion method of tile.
+            expect_shape: Tuple. The expected shape to be expand into.
+            slice_dims: Tuple. Indicates the dimension of slices in the expect_shape. A tuple (a,b) size 2, which means
+                the expect_shape[a:b] is the part of slice dimensions. The other parts are for time multiplexed permute.
+            slices_permute: Tuple. Indicates how to permute the time multiplexed part of expect_shape. Tuple (c,d,e) means
+                the order of time multiplexed part dimension to permute. Variable c,d,e are the axis index of expect_shape.
+                
         """
+        self.expansion=True
+        self.expand_method=method
+        self.expand_shape=expect_shape
+        
+        if not isinstance(slice_dims,tuple) or len(slice_dims)!=2:
+            raise TypeError('slice_dims must be in type tuple and length 2, get length %d'%(len(slice_dims)))
+        self.slice_shape=expect_shape[slice_dims[0]:slice_dims[1]]
+        self.slice_permute=slices_permute
         
         
-        """
-        pass
     

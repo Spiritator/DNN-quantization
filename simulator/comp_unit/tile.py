@@ -79,26 +79,40 @@ class tile_PE(tile):
                 if self.axis_prior[axis][i] not in self.prior_element:
                     raise ValueError('The augment axis_prior must be in list %s'%(str(self.prior_element)))
 
+    def reshape_ravel_idx(self,index,source_shape,source_prior,target_shape,targer_prior):
+        """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
+        
+        
+        """
+        pass
+
     def expand_data(self, method, expect_shape, slice_dims, slices_permute):
         """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 
             The data may  be cut into many pieces than fit into PE. Different slices calculate in different clock cycle.
         
         # Arguments
-            method: String. The expansion method of tile.
+            method: String. The expansion method of tile. Either be 'reshape' or 'extract_patches'. Method 'reshape' means 
+                change data shape without any duplication in array. Method 'extract_patches' is the tf.extract_image_patches 
+                method to get ifmap patches.
+                
             expect_shape: Tuple. The expected shape to be expand into.
-            slice_dims: Tuple. Indicates the dimension of slices in the expect_shape. A tuple (a,b) size 2, which means
-                the expect_shape[a:b] is the part of slice dimensions. The other parts are for time multiplexed permute.
-            slices_permute: Tuple. Indicates how to permute the time multiplexed part of expect_shape. Tuple (c,d,e) means
-                the order of time multiplexed part dimension to permute. Variable c,d,e are the axis index of expect_shape.
+            
+            slice_dims: Tuple. Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
+                expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
+                0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
+                
+            slices_permute: Tuple. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
+                the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
                 
         """
         self.expansion=True
         self.expand_method=method
         self.expand_shape=expect_shape
         
-        if not isinstance(slice_dims,tuple) or len(slice_dims)!=2:
-            raise TypeError('slice_dims must be in type tuple and length 2, get length %d'%(len(slice_dims)))
-        self.slice_shape=expect_shape[slice_dims[0]:slice_dims[1]]
+        if not isinstance(slice_dims,tuple) or len(slice_dims)!=len(self.expand_shape):
+            raise TypeError('slice_dims must be in length %d, but get length %d'%(len(self.expand_shape),len(slice_dims)))
+        self.slice_shape=np.array(slice_dims)
+        self.slice_shape=tuple(self.slice_shape[self.slice_shape>0])
         self.slice_permute=slices_permute
         
         

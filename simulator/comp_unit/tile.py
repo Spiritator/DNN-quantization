@@ -82,9 +82,48 @@ class tile_PE(tile):
     def reshape_ravel_idx(self,index,source_shape,source_prior,target_shape,targer_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
         
-        
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+            source_shape: Tuple. The shape of source array before tranformation.
+            source_prior: List or Tuple of Integer. The list for unravel priority of source_shape dimensions. The list is the dimension index.
+            target_shape: Tuple. The shape of target array for tranformation to.
+            targer_prior: List or Tuple of Integer. The list for ravel priority of target_shape dimensions. The list is the dimension index.
+
         """
-        pass
+        if len(source_shape)!=len(source_prior):
+            raise ValueError('The length of source_shape must equals to source_prior, but got %d and %d.'%(len(source_shape),len(source_prior)))
+        
+        
+        if (isinstance(index,tuple) or (isinstance(index,np.ndarray) and len(index.shape)==1)):
+            if len(index)!=len(source_shape):
+                raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,len(index)))
+
+            numtag=np.ravel_multi_index(np.array(index)[source_prior],source_shape)
+            
+                        
+        elif isinstance(index,np.ndarray):
+            if index.shape[-1]!=self.shape_len:
+                raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,index.shape[-1]))
+                
+            numtag=np.ravel_multi_index(index.T[source_prior],source_shape)
+                    
+        
+        restore_index=np.zeros((self.shape_len,),dtype=int)
+        for i in range(len(target_shape)):
+            restore_index[targer_prior[i]]=i
+        
+        if isinstance(numtag,np.ndarray):
+            coor=np.unravel_index(numtag,target_shape)
+            coor=np.array(coor)[restore_index]
+
+            return coor.T
+        
+        else:
+            coor=np.unravel_index(numtag,target_shape)
+            coor=np.array(coor)[restore_index]
+            
+            return tuple(coor)
+
 
     def expand_data(self, method, expect_shape, slice_dims, slices_permute):
         """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 

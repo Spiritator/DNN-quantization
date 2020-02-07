@@ -29,7 +29,8 @@ reshaped_coor=wght_tile.reshape_ravel_idx((2,2,3,10),
                                           target_shape=(144,32),
                                           target_prior=[1,0])
 
-reshaped_coors=wght_tile.reshape_ravel_idx(np.array(list(wght_tile.fault_dict.keys())),
+orig_coors=np.array(list(wght_tile.fault_dict.keys()))
+reshaped_coors=wght_tile.reshape_ravel_idx(orig_coors,
                                            source_shape=wght_tile.tile_shape,
                                            source_prior=[3,2,1,0],
                                            target_shape=(144,32),

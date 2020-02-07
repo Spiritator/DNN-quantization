@@ -64,6 +64,7 @@ class tile_PE(tile):
         
         # Arguments
             index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
             source_shape: Tuple. The shape of source array before tranformation.
             source_prior: List or Tuple of Integer. The list for unravel priority of source_shape dimensions. The list is the dimension index.
             target_shape: Tuple. The shape of target array for tranformation to.
@@ -79,7 +80,7 @@ class tile_PE(tile):
 
         if isinstance(index,tuple) or (isinstance(index,np.ndarray) and len(index.shape)==1):
             if len(index)!=len(source_shape):
-                raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,len(index)))
+                raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(len(source_shape),len(index)))
 
             numtag=np.ravel_multi_index(np.array(index)[source_prior],np.array(source_shape)[source_prior])
             
@@ -89,8 +90,8 @@ class tile_PE(tile):
             return tuple(coor)
                         
         elif isinstance(index,np.ndarray):
-            if index.shape[-1]!=self.shape_len:
-                raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(self.shape_len,index.shape[-1]))
+            if index.shape[-1]!=len(source_shape):
+                raise ValueError('The length of coordinate Tuple in tile must be %d but got %d.'%(len(source_shape),index.shape[-1]))
                 
             numtag=np.ravel_multi_index(index.T[source_prior],np.array(source_shape)[source_prior])
                     
@@ -98,6 +99,56 @@ class tile_PE(tile):
             coor=np.array(coor)[restore_index]
 
             return coor.T
+        
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+            
+    def slice_permute_idx(self, index, orig_shape, slice_dims, slices_permute):
+        """ Index transformation for slice array and permute it into new axis. For slice within tile of PE mapping flow.
+        
+        # Arguments
+        index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+
+        orig_shape: Tuple. The shape of orignal array were going to be sliced.
+        
+        slice_dims: Tuple. Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
+                expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
+                0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
+                
+        slices_permute: List or Tuple of Integer.. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
+                the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+                
+        """        
+        if isinstance(index,tuple):
+            index=np.array(index)
+        elif isinstance(index,np.ndarray):
+            pass
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+
+        div_dims=np.array([],dtype=int)
+        for dim in slice_dims:
+            if dim==0:
+                div_dims=np.append(div_dims,1)
+            else:
+                div_dims=np.append(div_dims,dim)
+                
+        orig_shape=np.array(orig_shape)
+        permute_shape=np.ceil(np.divide(orig_shape,div_dims))
+        permute_shape=permute_shape.astype(int)
+        
+        permute_dims=np.floor_divide(index,div_dims)
+        mapping_dims=np.remainder(index,div_dims)
+        if len(index.shape)==1:
+            mapping_dims=mapping_dims[np.argwhere(np.array(slice_dims)>0)]
+            tclk=np.ravel_multi_index(permute_dims[slices_permute],permute_shape[slices_permute])
+            mapping_dims=np.append(mapping_dims,tclk)
+        else:
+            mapping_dims=mapping_dims[:,np.squeeze(np.argwhere(np.array(slice_dims)>0))]
+            tclk=np.ravel_multi_index(permute_dims.T[slices_permute],permute_shape[slices_permute])
+            mapping_dims=np.append(mapping_dims,np.expand_dims(tclk,-1),axis=-1)
+    
 
     def expand_data(self, method, expect_shape, slice_dims, slices_permute):
         """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 
@@ -119,6 +170,10 @@ class tile_PE(tile):
                 
         """
         self.expansion=True
+        if method not in ['reshape','extract_patches']:
+            raise ValueError('data expand method must be either \'reshape\' or \'extract_patches\'.')
+        if not self.is_fmap and method=='extract_patches':
+            raise ValueError('\'extract_patches\' is for expand input feature maps not for weight.')
         self.expand_method=method
         self.expand_shape=expect_shape
         
@@ -128,5 +183,14 @@ class tile_PE(tile):
         self.slice_shape=tuple(self.slice_shape[self.slice_shape>0])
         self.slice_permute=slices_permute
         
+        if self.expand_method=='reshape':
+            orig_coors=np.array(list(self.fault_dict.keys()))
+            reshaped_coors=self.reshape_ravel_idx(orig_coors,
+                                                  source_shape=self.tile_shape,
+                                                  source_prior=[3,2,1,0],
+                                                  target_shape=expect_shape,
+                                                  target_prior=[1,0])
+        elif self.expand_method=='extract_patches':
+            pass
         
     

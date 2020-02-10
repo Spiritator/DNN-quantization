@@ -148,7 +148,8 @@ class tile_PE(tile):
             mapping_dims=mapping_dims[:,np.squeeze(np.argwhere(np.array(slice_dims)>0))]
             tclk=np.ravel_multi_index(permute_dims.T[slices_permute],permute_shape[slices_permute])
             mapping_dims=np.append(mapping_dims,np.expand_dims(tclk,-1),axis=-1)
-    
+            
+        return mapping_dims
 
     def expand_data(self, method, expect_shape, slice_dims, slices_permute):
         """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 

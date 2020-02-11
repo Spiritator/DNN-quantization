@@ -9,6 +9,7 @@ DNN tiling for computation unit fault mapping
 
 import numpy as np
 from simulator.memory.tile import tile,tile_FC
+from keras.utils import conv_utils
 
 class tile_PE(tile):
     def __init__(self, tile_shape, is_fmap, required_axes=[], axis_prior=[], **kwargs):
@@ -69,7 +70,9 @@ class tile_PE(tile):
             source_prior: List or Tuple of Integer. The list for unravel priority of source_shape dimensions. The list is the dimension index.
             target_shape: Tuple. The shape of target array for tranformation to.
             target_prior: List or Tuple of Integer. The list for ravel priority of target_shape dimensions. The list is the dimension index.
-
+        
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """
         if len(source_shape)!=len(source_prior):
             raise ValueError('The length of source_shape must equals to source_prior, but got %d and %d.'%(len(source_shape),len(source_prior)))
@@ -119,6 +122,8 @@ class tile_PE(tile):
         slices_permute: List or Tuple of Integer.. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
                 the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
                 
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """        
         if isinstance(index,tuple):
             index=np.array(index)
@@ -150,6 +155,67 @@ class tile_PE(tile):
             mapping_dims=np.append(mapping_dims,np.expand_dims(tclk,-1),axis=-1)
             
         return mapping_dims
+    
+    def extract_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding=False, edge_fill=False):
+        """ Index transformation for tf.extract_image_patches for ifmap expansion. 
+            This was used for convert 4D ifmap tile to ofmap column and row with all the partial product input fmap.
+            [batch, row, column, # of kernel 2D * # of ifmap channel]
+            
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            fmap_shape: Tuple. The shape of orignal fmap were going to be extracted.
+            ksize: List of Integer. Length >= 4. The size of the sliding window for each dimension of images. [1, row, col, 1]
+            strides: List of Integer. Length >= 4. How far the centers of two consecutive patches are in the images. [1, stride_rows, stride_cols, 1]
+            dilation_rates: List of Integer. Length >= 4. Must be: [1, rate_rows, rate_cols, 1]. This is the input stride, 
+                specifying how far two consecutive patch samples are in the input.
+            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
+            edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
+                the exceeded area with zero and count as an ofmap pixel or not.
+        
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        """
+        if isinstance(index,tuple):
+            index=np.reshape(np.array(index),[1,-1])
+        elif isinstance(index,np.ndarray):
+            pass
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+            
+        new_dim_row = conv_utils.conv_output_length(
+            fmap_shape[1],
+            ksizes[1],
+            padding=padding,
+            stride=strides[1],
+            dilation=dilation_rates[1])
+        
+        new_dim_col = conv_utils.conv_output_length(
+            fmap_shape[2],
+            ksizes[2],
+            padding=padding,
+            stride=strides[2],
+            dilation=dilation_rates[2])
+        
+        extracted_shape=(fmap_shape[0], new_dim_row, new_dim_col, fmap_shape[3]*ksizes[1]*ksizes[2])
+        
+        dilated_ksize_row = ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1)
+        dilated_ksize_col = ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1)
+        
+        idx_patches_candidate=np.expand_dims(index[:,1:3],1)
+        idx_patches_candidate=np.tile(idx_patches_candidate,[1,ksizes[1]*ksizes[2],1])
+        
+        base_kcoor_reduction=list(np.ndindex(ksizes[1:3]))
+        base_kcoor_reduction.reverse()
+        base_kcoor_reduction=np.multiply(base_kcoor_reduction,np.tile(dilation_rates[1:3],[len(base_kcoor_reduction),1]))
+
+        idx_patches_candidate=np.subtract(idx_patches_candidate,np.expand_dims(base_kcoor_reduction,0))
+        
+        # TODO
+        # eliminate edge (consider edge fill)
+        # elimenate strides
+
+        return extracted_shape, 
 
     def expand_data(self, method, expect_shape, slice_dims, slices_permute):
         """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 

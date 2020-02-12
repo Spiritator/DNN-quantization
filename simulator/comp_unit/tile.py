@@ -9,7 +9,6 @@ DNN tiling for computation unit fault mapping
 
 import numpy as np
 from simulator.memory.tile import tile,tile_FC
-from keras.utils import conv_utils
 
 class tile_PE(tile):
     def __init__(self, tile_shape, is_fmap, required_axes=[], axis_prior=[], **kwargs):
@@ -59,6 +58,38 @@ class tile_PE(tile):
             for i in range(self.shape_len):
                 if self.axis_prior[axis][i] not in self.prior_element:
                     raise ValueError('The augment axis_prior must be in list %s'%(str(self.prior_element)))
+    
+    def conv_output_length(self, input_length, filter_size, padding, stride, dilation=1, edge_fill=False):
+        """Determines output length of a convolution given input length.
+    
+        # Arguments
+            input_length: integer.
+            filter_size: integer.
+            padding: one of `"same"`, `"valid"`, `"full"`.
+            stride: integer.
+            dilation: dilation rate, integer.
+            edge_fill: Bool. Fill the edge(right, down) kernel exceed part with zero and count as ofmap pixel.
+
+        # Returns
+            The output length (integer).
+        """
+        if input_length is None:
+            return None
+        assert padding in {'same', 'valid', 'full', 'causal'}
+        dilated_filter_size = filter_size + (filter_size - 1) * (dilation - 1)
+        if padding == 'same':
+            output_length = input_length
+        elif padding == 'valid':
+            output_length = input_length - dilated_filter_size + 1
+        elif padding == 'causal':
+            output_length = input_length
+        elif padding == 'full':
+            output_length = input_length + dilated_filter_size - 1
+            
+        if edge_fill:
+            return int(np.ceil((output_length + stride - 1) / stride))
+        else:
+            return (output_length + stride - 1) // stride
 
     def reshape_ravel_idx(self,index,source_shape,source_prior,target_shape,target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
@@ -156,7 +187,7 @@ class tile_PE(tile):
             
         return mapping_dims
     
-    def extract_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding=False, edge_fill=False):
+    def extract_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False):
         """ Index transformation for tf.extract_image_patches for ifmap expansion. 
             This was used for convert 4D ifmap tile to ofmap column and row with all the partial product input fmap.
             [batch, row, column, # of kernel 2D * # of ifmap channel]
@@ -183,39 +214,91 @@ class tile_PE(tile):
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
             
-        new_dim_row = conv_utils.conv_output_length(
+        new_dim_row = self.conv_output_length(
             fmap_shape[1],
             ksizes[1],
             padding=padding,
             stride=strides[1],
-            dilation=dilation_rates[1])
+            dilation=dilation_rates[1],
+            edge_fill=edge_fill)
         
-        new_dim_col = conv_utils.conv_output_length(
+        new_dim_col = self.conv_output_length(
             fmap_shape[2],
             ksizes[2],
             padding=padding,
             stride=strides[2],
-            dilation=dilation_rates[2])
+            dilation=dilation_rates[2],
+            edge_fill=edge_fill)
         
         extracted_shape=(fmap_shape[0], new_dim_row, new_dim_col, fmap_shape[3]*ksizes[1]*ksizes[2])
         
         dilated_ksize_row = ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1)
         dilated_ksize_col = ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1)
-        
+                
         idx_patches_candidate=np.expand_dims(index[:,1:3],1)
         idx_patches_candidate=np.tile(idx_patches_candidate,[1,ksizes[1]*ksizes[2],1])
         
         base_kcoor_reduction=list(np.ndindex(ksizes[1:3]))
         base_kcoor_reduction.reverse()
-        base_kcoor_reduction=np.multiply(base_kcoor_reduction,np.tile(dilation_rates[1:3],[len(base_kcoor_reduction),1]))
+        base_kcoor_reduction=np.multiply(base_kcoor_reduction,dilation_rates[1:3])
 
         idx_patches_candidate=np.subtract(idx_patches_candidate,np.expand_dims(base_kcoor_reduction,0))
         
-        # TODO
-        # eliminate edge (consider edge fill)
-        # elimenate strides
+        # condition strides > 1
+        if strides[1]>1 or strides[2]>1:
+            cond_arg=idx_patches_candidate[:,:,0]%strides[1]==0 #row
+            cond_tmp=idx_patches_candidate[:,:,1]%strides[2]==0 #col
+            cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+        else: # stride = 1
+            cond_arg=np.ones(idx_patches_candidate.shape[0:-1],dtype=bool)
+            
+        # condition edge
+        if padding=='valid':
+            cond_tmp=idx_patches_candidate[:,:,0]>=0 # left edge
+            cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+            
+            cond_tmp=idx_patches_candidate[:,:,1]>=0 # up edge
+            cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+            
+            if not edge_fill:
+                cond_tmp=idx_patches_candidate[:,:,0]<(fmap_shape[1]-(dilated_ksize_row-1)) # right edge
+                cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+                
+                cond_tmp=idx_patches_candidate[:,:,1]<(fmap_shape[2]-(dilated_ksize_col-1)) # down edge
+                cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+                
+        elif padding=='same':
+            cond_tmp=idx_patches_candidate[:,:,0]>=0-(dilated_ksize_row-1) # left edge
+            cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+            
+            cond_tmp=idx_patches_candidate[:,:,1]>=0-(dilated_ksize_col-1) # up edge
+            cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+            
+            if not edge_fill:
+                cond_tmp=idx_patches_candidate[:,:,0]<(fmap_shape[1]) # right edge
+                cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+                
+                cond_tmp=idx_patches_candidate[:,:,1]<(fmap_shape[2]) # down edge
+                cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+                
+        else:
+            raise ValueError('padding must be either \'valid\' or \'same\'.')
+            
+        extracted_2D=idx_patches_candidate[cond_arg]
+        if padding=='same':
+            extracted_2D=np.add(extracted_2D,[[dilated_ksize_row-1,dilated_ksize_col-1]])
+        cond_idx=np.argwhere(cond_arg)
+        
+        extracted_batch=index[:,0][cond_idx[:,0]]
+        extracted_batch=np.expand_dims(extracted_batch,-1)
+        
+        extracted_psum=index[:,-1][cond_idx[:,0]]
+        extracted_psum=np.add(np.subtract(np.multiply(extracted_psum,ksizes[1]*ksizes[2]),cond_idx[:,1]),ksizes[1]*ksizes[2]-1)
+        extracted_psum=np.expand_dims(extracted_psum,-1)
+        
+        extracted_index=np.concatenate([extracted_batch,extracted_2D,extracted_psum],axis=1)
 
-        return extracted_shape, 
+        return extracted_shape, extracted_index
 
     def expand_data(self, method, expect_shape, slice_dims, slices_permute):
         """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 

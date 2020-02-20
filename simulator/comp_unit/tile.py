@@ -11,7 +11,7 @@ import numpy as np
 from simulator.memory.tile import tile,tile_FC
 
 class tile_PE(tile):
-    def __init__(self, tile_shape, is_fmap, required_axes=[], axis_prior=[], **kwargs):
+    def __init__(self, tile_shape, is_fmap, required_PE_axes=[], PE_axis_prior=[], mapping_prior=[], **kwargs):
         """The tile of a DNN feature map or weights
 
         # Arguments
@@ -28,14 +28,15 @@ class tile_PE(tile):
                 The dictionary structure is {'PE_x':['Tm', 'Tn', 'Tr', 'Tc'],
                                              'PE_y':['Tm', 'Tn', 'Tr', 'Tc'],
                                              't_clk':['Tm', 'Tn', 'Tr', 'Tc']}
+            mapping_prior: List or Tuple of Integer. The list for ravel priority of slice_shape dimensions. The list is the dimension index.
     
         """
         super(tile_PE, self).__init__(tile_shape, is_fmap, **kwargs)
         self.tile_shape=tile_shape
-        self.required_axes=required_axes
-        self.axis_prior=axis_prior
+        self.required_PE_axes=required_PE_axes
+        self.PE_axis_prior=PE_axis_prior
         self.axis_element=['PE_x','PE_y','t_clk']
-        self.prior_element=['Tm','Tn','Tr','Tc']
+        #self.prior_element=['Tm','Tn','Tr','Tc']
                 
         self.expansion=False
         self.expand_method=None
@@ -44,26 +45,33 @@ class tile_PE(tile):
         self.expand_prior_targ=None
         self.slice_shape=None
         self.slicing_dims=None
-        self.slice_permute=None
+        self.slices_permute=None
         self.permuted_shape=None
         self.reshape_patches=False
         self.fault_dict_rehsaped=dict()
         self.fault_dict_expand=dict()
                 
     def check_prior(self):
-        if not isinstance(self.required_axes,list):
-            raise ValueError('The augment required_axes must be in list dtype.')
+        if not isinstance(self.required_PE_axes,list):
+            raise ValueError('The augment required_PE_axes must be in list dtype.')
             
-        for axis in self.required_axes:
+        for axis in self.required_PE_axes:
             if axis not in self.axis_element:
-                raise ValueError('The augment required_axes must be in list %s'%(str(self.axis_element)))
+                raise ValueError('The augment required_PE_axes must be in list %s'%(str(self.axis_element)))
+                
+        if not isinstance(self.PE_axis_prior,list):
+            raise ValueError('The augment PE_axis_prior must be in list dtype.')
+            
+        for axis in self.PE_axis_prior:
+            if axis not in self.required_PE_axes:
+                raise ValueError('The augment PE_axis_prior must be in list %s'%(str(self.required_PE_axes)))
         
-            if not isinstance(self.axis_prior[axis],list) or len(self.axis_prior[axis])!=self.shape_len:
-                raise ValueError('The augment axis_prior must be in list dtype and have length %d but got length %d'%(self.shape_len,len(self.axis_prior[axis])))
-    
-            for i in range(self.shape_len):
-                if self.axis_prior[axis][i] not in self.prior_element:
-                    raise ValueError('The augment axis_prior must be in list %s'%(str(self.prior_element)))
+#            if not isinstance(self.axis_prior[axis],list) or len(self.axis_prior[axis])!=self.shape_len:
+#                raise ValueError('The augment axis_prior must be in list dtype and have length %d but got length %d'%(self.shape_len,len(self.axis_prior[axis])))
+#    
+#            for i in range(self.shape_len):
+#                if self.axis_prior[axis][i] not in self.prior_element:
+#                    raise ValueError('The augment axis_prior must be in list %s'%(str(self.prior_element)))
     
     def conv_output_length(self, input_length, filter_size, padding, stride, dilation=1, edge_fill=False):
         """Determines output length of a convolution given input length.
@@ -369,10 +377,12 @@ class tile_PE(tile):
         self.slicing_dims=slicing_dims
         self.slice_shape=np.array(slicing_dims)
         self.slice_shape=tuple(self.slice_shape[self.slice_shape>0])
+        tmux,_=self.get_permuted_shape(self.expand_shape, self.slicing_dims)
+        self.slice_shape=self.slice_shape+(np.prod(tmux),)
         
         if len(slices_permute)!=len(self.expand_shape):
-            raise TypeError('slice_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
-        self.slice_permute=slices_permute
+            raise TypeError('slices_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
+        self.slices_permute=slices_permute
         
         orig_coors=np.array(list(self.fault_dict.keys()))
         reshaped_coors=self.reshape_ravel_idx(orig_coors,
@@ -388,8 +398,8 @@ class tile_PE(tile):
         self.permuted_shape,_=self.get_permuted_shape(reshaped_coors,slicing_dims)
         permuted_coors=self.slice_permute_idx(reshaped_coors,
                                               orig_shape=self.expand_shape,
-                                              slicing_dims=slicing_dims,
-                                              slices_permute=slices_permute)
+                                              slicing_dims=self.slicing_dims,
+                                              slices_permute=self.slices_permute)
         
         permuted_coor_fd=list(zip(*permuted_coors.T))
         self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
@@ -471,10 +481,12 @@ class tile_PE(tile):
         self.slicing_dims=slicing_dims
         self.slice_shape=np.array(slicing_dims)
         self.slice_shape=tuple(self.slice_shape[self.slice_shape>0])
+        tmux,_=self.get_permuted_shape(self.expand_shape, self.slicing_dims)
+        self.slice_shape=self.slice_shape+(np.prod(tmux),)
         
         if len(slices_permute)!=len(self.expand_shape):
-            raise TypeError('slice_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
-        self.slice_permute=slices_permute
+            raise TypeError('slices_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
+        self.slices_permute=slices_permute
         
         orig_coors=np.array(list(self.fault_dict.keys()))
         fault_info=list(self.fault_dict.values())
@@ -505,8 +517,8 @@ class tile_PE(tile):
         self.permuted_shape,_=self.get_permuted_shape(reshaped_coors,slicing_dims)
         permuted_coors=self.slice_permute_idx(reshaped_coors,
                                               orig_shape=self.expand_shape,
-                                              slicing_dims=slicing_dims,
-                                              slices_permute=slices_permute)
+                                              slicing_dims=self.slicing_dims,
+                                              slices_permute=self.slices_permute)
         
         permuted_coor_fd=list(zip(*permuted_coors.T))
         self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
@@ -514,7 +526,4 @@ class tile_PE(tile):
         return self.fault_dict_expand
         
 
-        
-# TODO
-# Tilted problem        
-    
+            

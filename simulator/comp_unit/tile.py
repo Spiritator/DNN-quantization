@@ -11,7 +11,7 @@ import numpy as np
 from simulator.memory.tile import tile,tile_FC
 
 class tile_PE(tile):
-    def __init__(self, tile_shape, is_fmap, required_PE_axes=[], PE_axis_prior=[], mapping_prior=[], **kwargs):
+    def __init__(self, tile_shape, is_fmap, PE_required_axes_prior=[], tile_mapping_prior=[], **kwargs):
         """The tile of a DNN feature map or weights
 
         # Arguments
@@ -21,20 +21,16 @@ class tile_PE(tile):
             Tr: Integer. The size of tile on the kernel row dimension or feature map row dimention.
             Tc: Integer. The size of tile on the kernel column dimension or feature map column dimention.
             is_fmap: Bool. The tile is feature map tile or weight tile.
-            required_axes: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
+            PE_required_axes_prior: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
                 These axes are the dimension in PE array dataflow model for tile mapping.
                 The order in List is the priority for data mapping in PE array.
-            axis_prior: Dictionary of List of Strings. The priority of PE mapping in each PE dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
-                The dictionary structure is {'PE_x':['Tm', 'Tn', 'Tr', 'Tc'],
-                                             'PE_y':['Tm', 'Tn', 'Tr', 'Tc'],
-                                             't_clk':['Tm', 'Tn', 'Tr', 'Tc']}
-            mapping_prior: List or Tuple of Integer. The list for ravel priority of slice_shape dimensions. The list is the dimension index.
+            tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of slice_shape dimensions. The list is the dimension index.
     
         """
         super(tile_PE, self).__init__(tile_shape, is_fmap, **kwargs)
         self.tile_shape=tile_shape
-        self.required_PE_axes=required_PE_axes
-        self.PE_axis_prior=PE_axis_prior
+        self.PE_required_axes_prior=PE_required_axes_prior
+        self.tile_mapping_prior=tile_mapping_prior
         self.axis_element=['PE_x','PE_y','t_clk']
         #self.prior_element=['Tm','Tn','Tr','Tc']
                 
@@ -52,20 +48,20 @@ class tile_PE(tile):
         self.fault_dict_expand=dict()
                 
     def check_prior(self):
-        if not isinstance(self.required_PE_axes,list):
-            raise ValueError('The augment required_PE_axes must be in list dtype.')
+        if not isinstance(self.PE_required_axes_prior,list):
+            raise ValueError('The augment PE_required_axes must be in list dtype.')
             
-        for axis in self.required_PE_axes:
+        for axis in self.PE_required_axes_prior:
             if axis not in self.axis_element:
-                raise ValueError('The augment required_PE_axes must be in list %s'%(str(self.axis_element)))
+                raise ValueError('The augment PE_required_axes must be in list %s'%(str(self.axis_element)))
+                        
+        if self.expansion:
+            if len(self.slice_shape)!=len(self.tile_mapping_prior):
+                raise ValueError('The length of slice_shape must equals to tile_mapping_prior, but got %d and %d.'%(len(self.slice_shape),len(self.tile_mapping_prior)))
+        else:
+            if len(self.tile_shape)!=len(self.tile_mapping_prior):
+                raise ValueError('The length of tile_shape must equals to tile_mapping_prior, but got %d and %d.'%(len(self.tile_shape),len(self.tile_mapping_prior)))
                 
-        if not isinstance(self.PE_axis_prior,list):
-            raise ValueError('The augment PE_axis_prior must be in list dtype.')
-            
-        for axis in self.PE_axis_prior:
-            if axis not in self.required_PE_axes:
-                raise ValueError('The augment PE_axis_prior must be in list %s'%(str(self.required_PE_axes)))
-        
 #            if not isinstance(self.axis_prior[axis],list) or len(self.axis_prior[axis])!=self.shape_len:
 #                raise ValueError('The augment axis_prior must be in list dtype and have length %d but got length %d'%(self.shape_len,len(self.axis_prior[axis])))
 #    
@@ -121,7 +117,9 @@ class tile_PE(tile):
         """
         if len(source_shape)!=len(source_prior):
             raise ValueError('The length of source_shape must equals to source_prior, but got %d and %d.'%(len(source_shape),len(source_prior)))
-        
+        if len(target_shape)!=len(target_prior):
+            raise ValueError('The length of target_shape must equals to target_prior, but got %d and %d.'%(len(target_shape),len(target_prior)))
+            
         restore_index=np.zeros((len(target_shape),),dtype=int)
         for i in range(len(target_shape)):
             restore_index[target_prior[i]]=i
@@ -395,7 +393,7 @@ class tile_PE(tile):
         fault_info=list(self.fault_dict.values())
         self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
         
-        self.permuted_shape,_=self.get_permuted_shape(reshaped_coors,slicing_dims)
+        self.permuted_shape,_=self.get_permuted_shape(self.expand_shape,slicing_dims)
         permuted_coors=self.slice_permute_idx(reshaped_coors,
                                               orig_shape=self.expand_shape,
                                               slicing_dims=self.slicing_dims,
@@ -514,7 +512,7 @@ class tile_PE(tile):
         
         self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
         
-        self.permuted_shape,_=self.get_permuted_shape(reshaped_coors,slicing_dims)
+        self.permuted_shape,_=self.get_permuted_shape(self.expand_shape,slicing_dims)
         permuted_coors=self.slice_permute_idx(reshaped_coors,
                                               orig_shape=self.expand_shape,
                                               slicing_dims=self.slicing_dims,

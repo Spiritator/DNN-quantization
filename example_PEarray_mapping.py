@@ -138,5 +138,5 @@ MXU=PEarray(16,16,ofmap_tile=ofmap_tile,wght_tile=wght_tile,ifmap_tile=ifmap_til
 # mapping stationary with out duplication
 # ofmap first mapping to PE
 
-mapped_fault_dict_ofmap=MXU.mapping_tile_stationary(ofmap_tile,tile_mapping_prior=[2,1,0])
+mapped_fault_dict_ofmap=MXU.mapping_tile_stationary('ofmap',ofmap_tile,tile_mapping_prior=[2,1,0])
 

@@ -118,12 +118,44 @@ class PEarray:
         
         """
         return int(np.ceil(np.prod(mapping_shape)/np.prod(non_clk_PE_shape)))
+    
+    def get_PE_prior(self, prior_list, tile_shape):
+        """ Organize PE mapping shape and prior
         
-    def mapping_tile_stationary(self, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
+        """
+        map_shape_pe=list()
+        mpp_ind=dict()
+        mpp_cnt=-1
+        map_prior_pe=list()
+        
+        if 'PE_x' in prior_list:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            mpp_ind['PE_x']=mpp_cnt
+        if 'PE_y' in prior_list:
+            map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+            mpp_ind['PE_y']=mpp_cnt
+        
+        if 't_clk' in prior_list:   
+            mpp_cnt+=1
+            mpp_ind['t_clk']=mpp_cnt
+            if self.n_clk is None:
+                map_shape_pe.append(self.estimate_clk(tile_shape,map_shape_pe))
+            else:
+                map_shape_pe.append(self.n_clk)
+                
+        for prior in prior_list:
+            map_prior_pe.append(mpp_ind[prior])
+            
+        return map_shape_pe,map_prior_pe
+        
+    def mapping_tile_stationary(self, parameter, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
         """ Mapping a tile onto PE array dataflow model. Direct transformation in this function. No data duplication.
             This stationary mapping place data to PE on a certain clock cycle.
         
         # Arguments
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
             tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
             PE_required_axes_prior: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
                 These axes are the dimension in PE array dataflow model for tile mapping.
@@ -142,20 +174,8 @@ class PEarray:
             tile_shape=tile.slice_shape
         else:
             tile_shape=tile.tile_shape
-               
-#        map_shape_pe=list()
-#        map_prior_pe=list()
-#        if 'PE_x' in tile.PE_required_axes_prior:
-#            map_shape_pe.append(self.n_x)
-#            map_prior_pe.append(tile.PE_required_axes_prior.index('PE_x'))
-#        if 'PE_y' in tile.PE_required_axes_prior:
-#            map_shape_pe.append(self.n_y)
-#            map_prior_pe.append(tile.PE_required_axes_prior.index('PE_y'))
-#                    
-#        if self.n_clk is None:
-#            map_shape_pe.append(self.estimate_clk(tile_shape,map_shape_pe))
-#        else:
-#            map_shape_pe.append(self.n_clk)
+            
+        map_shape_pe,map_prior_pe=self.get_PE_prior(tile.PE_required_axes_prior, tile_shape)
 
         if tile.expansion:
             orig_coors=np.array(list(tile.fault_dict_expand.keys()))
@@ -163,24 +183,34 @@ class PEarray:
                                                 source_shape=tile.slice_shape,
                                                 source_prior=tile.tile_mapping_prior,
                                                 target_shape=map_shape_pe,
-                                                target_prior=np.arange(len(map_shape_pe)))
+                                                target_prior=map_prior_pe)
             
             mapped_coors_fd=list(zip(*mapped_coors.T))
             fault_info=list(tile.fault_dict_expand.values())
-            self.ofmap_fault_dict=dict(zip(mapped_coors_fd,fault_info))
+            new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
         else:
             orig_coors=np.array(list(tile.fault_dict.keys()))
             mapped_coors=self.mapping_ravel_idx(orig_coors,
                                                 source_shape=tile.tile_shape,
                                                 source_prior=tile.tile_mapping_prior,
                                                 target_shape=map_shape_pe,
-                                                target_prior=np.arange(len(map_shape_pe)))
+                                                target_prior=map_prior_pe)
             
             mapped_coors_fd=list(zip(*mapped_coors.T))
             fault_info=list(tile.fault_dict.values())
-            self.ofmap_fault_dict=dict(zip(mapped_coors_fd,fault_info))
+            new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
 
-        return self.ofmap_fault_dict
+        if parameter=='ofmap':
+            self.ofmap_fault_dict=new_fault_dict
+            self.mapping_shape_ofmap=map_shape_pe
+        elif parameter=='ifmap':
+            self.ifmap_fault_dict=new_fault_dict
+            self.mapping_shape_ifmap=map_shape_pe
+        elif parameter=='wght':
+            self.wght_fault_dict=new_fault_dict
+            self.mapping_shape_wght=map_shape_pe
+            
+        return new_fault_dict
 
 # TODO
 # gen fault list

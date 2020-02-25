@@ -8,20 +8,6 @@ Processing element array setting for compuation unit fault mapping
 """
 
 import numpy as np
-
-#class array_axis:
-#    """
-#    The dimension in PE array which contains the dataflow information.
-#    
-#    """
-#    
-#    def __init__():
-#        """
-#        # Arguments
-#            
-#        
-#        """
-
     
 class PEarray:
     """
@@ -113,6 +99,27 @@ class PEarray:
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
             
+    def tilt_idx(self, index, axis, direction, shape=None, shift=1):
+        """ Make index tilted for systolic array input
+        
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            shape: Tuple of Integer. The shape of data which the index represents. Needed argument for negative shift.
+            axis: Integer. The axis wanted to be tilted.
+            direction: Integer. The axis of direaction that are tilted to.
+            shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
+        
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.        
+        """
+        new_index=np.copy(index)
+        if shift<0:
+            new_index[:,direction]+=np.subtract(shape[axis]-1, new_index[:,axis])*(-shift)
+        else:
+            new_index[:,direction]+=new_index[:,axis]*shift
+        return new_index
+    
     def estimate_clk(self, mapping_shape, non_clk_PE_shape):
         """ Estimate the needed number of clock cycle by shape of mapping data
         
@@ -162,6 +169,8 @@ class PEarray:
                 The order in List is the priority for data mapping in PE array.
             tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of tile slice_shape dimensions. The list is the dimension index.
         
+        # Returns
+            Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if PE_required_axes_prior is not None:
             tile.PE_required_axes_prior=PE_required_axes_prior
@@ -212,6 +221,21 @@ class PEarray:
             
         return new_fault_dict
 
+    def mapping_tile_streaming(self, parameter, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
+        """ Mapping a tile onto PE array dataflow model. Direct transformation in this function. No data duplication.
+            This streaming mapping lets data stream through PE and record the fault traces.
+        
+        # Arguments
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+            tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
+            PE_required_axes_prior: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
+                These axes are the dimension in PE array dataflow model for tile mapping.
+                The order in List is the priority for data mapping in PE array.
+            tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of tile slice_shape dimensions. The list is the dimension index.
+        
+        """
+        
+        
 # TODO
 # gen fault list
 # read in tiles

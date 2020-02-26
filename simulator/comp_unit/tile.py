@@ -42,7 +42,9 @@ class tile_PE(tile):
         self.slice_shape=None
         self.slicing_dims=None
         self.slices_permute=None
-        self.permuted_shape=None
+        self.slices_cutset=None
+        self.tilting=False
+        self.tilted_slice_shape=None
         self.reshape_patches=False
         self.fault_dict_rehsaped=dict()
         self.fault_dict_expand=dict()
@@ -149,7 +151,7 @@ class tile_PE(tile):
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
             
-    def get_permuted_shape(self, orig_shape, slicing_dims):
+    def get_slices_cutset(self, orig_shape, slicing_dims):
         div_dims=np.array([],dtype=int)
         for dim in slicing_dims:
             if dim==0:
@@ -158,9 +160,9 @@ class tile_PE(tile):
                 div_dims=np.append(div_dims,dim)
                 
         orig_shape=np.array(orig_shape)
-        permute_shape=np.ceil(np.divide(orig_shape,div_dims))
-        permute_shape=permute_shape.astype(int)
-        return permute_shape,div_dims
+        cutset=np.ceil(np.divide(orig_shape,div_dims))
+        cutset=cutset.astype(int)
+        return cutset,div_dims
             
     def slice_permute_idx(self, index, orig_shape, slicing_dims, slices_permute):
         """ Index transformation for slice array and permute it into new axis. For slice within tile of PE mapping flow.
@@ -188,19 +190,19 @@ class tile_PE(tile):
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
 
-        permute_shape,div_dims=self.get_permuted_shape(orig_shape, slicing_dims)
+        cutset,div_dims=self.get_slices_cutset(orig_shape, slicing_dims)
         
         permute_dims=np.floor_divide(index,div_dims)
         mapping_dims=np.remainder(index,div_dims)
         if len(index.shape)==1:
             mapping_dims=mapping_dims[np.argwhere(np.array(slicing_dims)>0)]
-            tclk=np.ravel_multi_index(permute_dims[slices_permute],permute_shape[slices_permute])
+            tclk=np.ravel_multi_index(permute_dims[slices_permute],cutset[slices_permute])
             if len(mapping_dims.shape)==1:
                 mapping_dims=np.expand_dims(mapping_dims,-1)
             mapping_dims=np.append(mapping_dims,tclk)
         else:
             mapping_dims=mapping_dims[:,np.squeeze(np.argwhere(np.array(slicing_dims)>0))]
-            tclk=np.ravel_multi_index(permute_dims.T[slices_permute],permute_shape[slices_permute])
+            tclk=np.ravel_multi_index(permute_dims.T[slices_permute],cutset[slices_permute])
             if len(mapping_dims.shape)==1:
                 mapping_dims=np.expand_dims(mapping_dims,-1)
             mapping_dims=np.append(mapping_dims,np.expand_dims(tclk,-1),axis=-1)
@@ -327,8 +329,35 @@ class tile_PE(tile):
             return extracted_index, cond_idx
         else:
             return extracted_index
+        
+    def tilt_idx(self, index, axis, direction, shape, shift=1):
+        """ Make index tilted for systolic array input
+        
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            shape: Tuple of Integer. The shape of data which the index represents. Needed argument for negative shift.
+            axis: Integer. The axis wanted to be tilted.
+            direction: Integer. The axis of direaction that are tilted to.
+            shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
+        
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.        
+            Shape of tilted index array. Tuple.
+        """
+        new_index=np.copy(index)
+        if shift<0:
+            new_index[:,direction]+=np.subtract(shape[axis]-1, new_index[:,axis])*(-shift)
+            new_shape=list(shape)
+            new_shape[direction]+=new_shape[axis]*(-shift)
+        else:
+            new_index[:,direction]+=new_index[:,axis]*shift
+            new_shape=list(shape)
+            new_shape[direction]+=(new_shape[axis]-1)*shift
+        return new_index,tuple(new_shape)
 
-    def expand_reshape_data(self, orig_prior, expect_shape, reshape_prior, slicing_dims, slices_permute):
+    def expand_reshape_data(self, orig_prior, expect_shape, reshape_prior, slicing_dims, slices_permute,
+                            tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1):
         """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 
             The data may be cut into many pieces than fit into PE. Different slices calculate in different clock cycle.
             Method 'reshape' means change data shape without any duplication in array.
@@ -347,6 +376,11 @@ class tile_PE(tile):
                 
             slices_permute: Tuple. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
                 the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+            
+            tilting: Bool. Tilt the index or not. For PE systolic array input.
+            tilt_axis: Integer. The axis wanted to be tilted.
+            tilt_direction: Integer. The axis of direaction that are tilted to.
+            tilt_shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
                 
         # Returns
             Converted fault dictionary.
@@ -375,8 +409,8 @@ class tile_PE(tile):
         self.slicing_dims=slicing_dims
         self.slice_shape=np.array(slicing_dims)
         self.slice_shape=tuple(self.slice_shape[self.slice_shape>0])
-        tmux,_=self.get_permuted_shape(self.expand_shape, self.slicing_dims)
-        self.slice_shape=self.slice_shape+(np.prod(tmux),)
+        self.slices_cutset,_=self.get_slices_cutset(self.expand_shape, self.slicing_dims)
+        self.slice_shape=self.slice_shape+(np.prod(self.slices_cutset),)
         
         if len(slices_permute)!=len(self.expand_shape):
             raise TypeError('slices_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
@@ -393,11 +427,21 @@ class tile_PE(tile):
         fault_info=list(self.fault_dict.values())
         self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
         
-        self.permuted_shape,_=self.get_permuted_shape(self.expand_shape,slicing_dims)
         permuted_coors=self.slice_permute_idx(reshaped_coors,
                                               orig_shape=self.expand_shape,
                                               slicing_dims=self.slicing_dims,
                                               slices_permute=self.slices_permute)
+        
+        if tilting:
+            self.tilting=True
+            self.tilt_axis=tilt_axis
+            self.tilt_direction=tilt_direction
+            self.tilt_shift=tilt_shift
+            permuted_coors,self.tilted_slice_shape=self.tilt_idx(permuted_coors,
+                                                                 self.tilt_axis,
+                                                                 self.tilt_direction,
+                                                                 self.slice_shape,
+                                                                 self.tilt_shift)
         
         permuted_coor_fd=list(zip(*permuted_coors.T))
         self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
@@ -405,7 +449,8 @@ class tile_PE(tile):
         return self.fault_dict_expand
     
     def expand_extract_patches(self, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, 
-            reshape_patches=False, patches_prior=None, expect_shape=None, reshape_prior=None, slicing_dims=None, slices_permute=None):
+            reshape_patches=False, patches_prior=None, expect_shape=None, reshape_prior=None, slicing_dims=None, slices_permute=None,
+            tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1):
         """ Data expansion before put into PE array. Usually used for ifmap reuse. 
             The data may be cut into many pieces than fit into PE. Different slices calculate in different clock cycle.
             Method 'extract patches' means extract feature patches to output feature maps corresponding kernel multiply.
@@ -439,6 +484,11 @@ class tile_PE(tile):
                 
             slices_permute: Tuple. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
                 the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+                
+            tilting: Bool. Tilt the index or not. For PE systolic array input.
+            tilt_axis: Integer. The axis wanted to be tilted.
+            tilt_direction: Integer. The axis of direaction that are tilted to.
+            tilt_shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
         
         # Returns
             Converted fault dictionary.
@@ -479,8 +529,8 @@ class tile_PE(tile):
         self.slicing_dims=slicing_dims
         self.slice_shape=np.array(slicing_dims)
         self.slice_shape=tuple(self.slice_shape[self.slice_shape>0])
-        tmux,_=self.get_permuted_shape(self.expand_shape, self.slicing_dims)
-        self.slice_shape=self.slice_shape+(np.prod(tmux),)
+        self.slices_cutset,_=self.get_slices_cutset(self.expand_shape, self.slicing_dims)
+        self.slice_shape=self.slice_shape+(np.prod(self.slices_cutset),)
         
         if len(slices_permute)!=len(self.expand_shape):
             raise TypeError('slices_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
@@ -512,16 +562,25 @@ class tile_PE(tile):
         
         self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
         
-        self.permuted_shape,_=self.get_permuted_shape(self.expand_shape,slicing_dims)
         permuted_coors=self.slice_permute_idx(reshaped_coors,
                                               orig_shape=self.expand_shape,
                                               slicing_dims=self.slicing_dims,
                                               slices_permute=self.slices_permute)
+        
+        if tilting:
+            self.tilting=True
+            self.tilt_axis=tilt_axis
+            self.tilt_direction=tilt_direction
+            self.tilt_shift=tilt_shift
+            permuted_coors,self.tilted_slice_shape=self.tilt_idx(permuted_coors,
+                                                                 self.tilt_axis,
+                                                                 self.tilt_direction,
+                                                                 self.slice_shape,
+                                                                 self.tilt_shift)
         
         permuted_coor_fd=list(zip(*permuted_coors.T))
         self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
         
         return self.fault_dict_expand
         
-
             

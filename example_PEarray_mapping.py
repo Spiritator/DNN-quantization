@@ -109,7 +109,10 @@ expand_fault_dict_reshape_o=ofmap_tile.expand_reshape_data(orig_prior=[0,3,2,1],
                                                            expect_shape=(784,32),
                                                            reshape_prior=[1,0],
                                                            slicing_dims=(784,16),
-                                                           slices_permute=[1,0])
+                                                           slices_permute=[1,0],
+                                                           tilting=True, 
+                                                           tilt_axis=1, 
+                                                           tilt_direction=0)
 
 expand_fault_dict_reshape_w=wght_tile.expand_reshape_data(orig_prior=[3,2,1,0],
                                                 expect_shape=(144,32),
@@ -127,7 +130,10 @@ expand_fault_dict_extracted=ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
                                                               expect_shape=(1*26*26,144),
                                                               reshape_prior=[0,1],
                                                               slicing_dims=(1*26*26,16),
-                                                              slices_permute=[0,1])
+                                                              slices_permute=[0,1],
+                                                              tilting=True, 
+                                                              tilt_axis=1, 
+                                                              tilt_direction=0)
 
 #%%
 # test PE array mapping

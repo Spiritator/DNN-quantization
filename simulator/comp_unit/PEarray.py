@@ -9,6 +9,39 @@ Processing element array setting for compuation unit fault mapping
 
 import numpy as np
     
+class PEflow:
+    """
+    The PE flow description class. For information gathering and PE dataflow setup.
+    """
+    def __init__(self, PE_x, PE_y, t_clk, info_x, info_y, info_t):
+        """
+        PE axis flow type
+            'permute': permute data long axis. 'info' -> PE_required_axes_prior need other axis info as well.
+            'fixed': data fix in certain index on this axis. 'info' -> the index that are fixed on.
+            'broadcast': data being broadcast to all entries in this axis. 'info' -> None.
+            'streaming': data being streamed in in this axis. 'info' -> the direction of stream.
+        
+        info description
+            'permute': 
+            'fixed': 
+            'broadcast': 
+            'streaming': 
+        
+        # Arguments
+            PE_x: String. The flow type of PE_x axis. One of the flow type mentioned above.
+            PE_y: String. The flow type of PE_y axis. One of the flow type mentioned above.
+            t_clk: String. The flow type of t_clk axis. One of the flow type mentioned above.
+            info_x: String. The infomation of PE_x flow. Must in the format describe above.
+            info_y: String. The infomation of PE_y flow. Must in the format describe above.
+            info_t: String. The infomation of t_clk flow. Must in the format describe above.
+        """
+        self.PE_x=PE_x
+        self.PE_y=PE_y
+        self.t_clk=t_clk
+        self.info_x=info_x
+        self.info_y=info_y
+        self.info_t=info_t
+
 class PEarray:
     """
     The PE array functional model for computation unit fault tolerance analysis.
@@ -51,7 +84,26 @@ class PEarray:
         self.wght_tile=wght_tile
         self.ofmap_tile=ofmap_tile
         
-    def mapping_ravel_idx(self,index,source_shape,source_prior,target_shape,target_prior):
+    def setup_dataflow(self, 
+                       o_PE_x, o_PE_y, o_t_clk, o_info_x, o_info_y, o_info_t,
+                       w_PE_x, w_PE_y, w_t_clk, w_info_x, w_info_y, w_info_t,
+                       i_PE_x, i_PE_y, i_t_clk, i_info_x, i_info_y, i_info_t):
+        """ Setup dataflow of ofmap, weight, ifmap. Read in PE dataflow arguments for mapping.
+        
+        # Arguments
+            PE_x: String. The flow type of PE_x axis. One of the flow type mentioned above.
+            PE_y: String. The flow type of PE_y axis. One of the flow type mentioned above.
+            t_clk: String. The flow type of t_clk axis. One of the flow type mentioned above.
+            info_x: String. The infomation of PE_x flow. Must in the format describe above.
+            info_y: String. The infomation of PE_y flow. Must in the format describe above.
+            info_t: String. The infomation of t_clk flow. Must in the format describe above.
+
+        """
+        self.ofmap_flow=PEflow(o_PE_x, o_PE_y, o_t_clk, o_info_x, o_info_y, o_info_t)
+        self.wght_flow=PEflow(w_PE_x, w_PE_y, w_t_clk, w_info_x, w_info_y, w_info_t)
+        self.ifmap_flow=PEflow(i_PE_x, i_PE_y, i_t_clk, i_info_x, i_info_y, i_info_t)
+        
+    def permute_ravel_idx(self,index, source_shape, source_prior, target_shape, target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
         
         # Arguments
@@ -98,27 +150,6 @@ class PEarray:
         
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
-            
-    def tilt_idx(self, index, axis, direction, shape=None, shift=1):
-        """ Make index tilted for systolic array input
-        
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            shape: Tuple of Integer. The shape of data which the index represents. Needed argument for negative shift.
-            axis: Integer. The axis wanted to be tilted.
-            direction: Integer. The axis of direaction that are tilted to.
-            shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
-        
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.        
-        """
-        new_index=np.copy(index)
-        if shift<0:
-            new_index[:,direction]+=np.subtract(shape[axis]-1, new_index[:,axis])*(-shift)
-        else:
-            new_index[:,direction]+=new_index[:,axis]*shift
-        return new_index
     
     def estimate_clk(self, mapping_shape, non_clk_PE_shape):
         """ Estimate the needed number of clock cycle by shape of mapping data
@@ -156,6 +187,25 @@ class PEarray:
             map_prior_pe.append(mpp_ind[prior])
             
         return map_shape_pe,map_prior_pe
+    
+    def stream_capture_idx(self, index, 
+                           data_shape, data_stream_axis, data_flow_direction, 
+                           window_shape, window_stream_axis, window_flow_direction):
+        """ Convert index from an array to the capture of thream through a window (PE array).
+            The captured shot is the clock cycle that fault index run through.
+            
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            data_shape: Tuple. The shape of data array being streamed in.
+            data_stream_axis: Integer. The axis index whose dimension is the flow going.
+            data_flow_direction: String. 'forward' or 'backward' the direction of data flow in. 
+                Stream starts from the 0 index and increment, or else starts from last index and decrement.
+            window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
+            window_stream_axis: String. The axis index whose dimention is the sweep going.
+            window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
+        """
+        
         
     def mapping_tile_stationary(self, parameter, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
         """ Mapping a tile onto PE array dataflow model. Direct transformation in this function. No data duplication.
@@ -179,35 +229,31 @@ class PEarray:
         
         tile.check_prior()
         
-        if tile.expansion:
-            tile_shape=tile.slice_shape
+        if tile.tilting:
+            tile_shape=tile.tilted_slice_shape
         else:
-            tile_shape=tile.tile_shape
+            if tile.expansion:
+                tile_shape=tile.slice_shape
+            else:
+                tile_shape=tile.tile_shape
             
         map_shape_pe,map_prior_pe=self.get_PE_prior(tile.PE_required_axes_prior, tile_shape)
 
         if tile.expansion:
             orig_coors=np.array(list(tile.fault_dict_expand.keys()))
-            mapped_coors=self.mapping_ravel_idx(orig_coors,
-                                                source_shape=tile.slice_shape,
-                                                source_prior=tile.tile_mapping_prior,
-                                                target_shape=map_shape_pe,
-                                                target_prior=map_prior_pe)
-            
-            mapped_coors_fd=list(zip(*mapped_coors.T))
             fault_info=list(tile.fault_dict_expand.values())
-            new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
         else:
             orig_coors=np.array(list(tile.fault_dict.keys()))
-            mapped_coors=self.mapping_ravel_idx(orig_coors,
-                                                source_shape=tile.tile_shape,
-                                                source_prior=tile.tile_mapping_prior,
-                                                target_shape=map_shape_pe,
-                                                target_prior=map_prior_pe)
-            
-            mapped_coors_fd=list(zip(*mapped_coors.T))
             fault_info=list(tile.fault_dict.values())
-            new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
+
+        mapped_coors=self.permute_ravel_idx(orig_coors,
+                                            source_shape=tile_shape,
+                                            source_prior=tile.tile_mapping_prior,
+                                            target_shape=map_shape_pe,
+                                            target_prior=map_prior_pe)
+            
+        mapped_coors_fd=list(zip(*mapped_coors.T))
+        new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
 
         if parameter=='ofmap':
             self.ofmap_fault_dict=new_fault_dict
@@ -233,13 +279,57 @@ class PEarray:
                 The order in List is the priority for data mapping in PE array.
             tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of tile slice_shape dimensions. The list is the dimension index.
         
+        # Returns
+            Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
+        if PE_required_axes_prior is not None:
+            tile.PE_required_axes_prior=PE_required_axes_prior
+        if tile_mapping_prior is not None:
+            tile.tile_mapping_prior=tile_mapping_prior
+        
+        tile.check_prior()
+        
+        if tile.tilting:
+            tile_shape=tile.tilted_slice_shape
+        else:
+            if tile.expansion:
+                tile_shape=tile.slice_shape
+            else:
+                tile_shape=tile.tile_shape
+            
+        map_shape_pe,map_prior_pe=self.get_PE_prior(tile.PE_required_axes_prior, tile_shape)
+
+        if tile.expansion:
+            orig_coors=np.array(list(tile.fault_dict_expand.keys()))
+            fault_info=list(tile.fault_dict_expand.values())
+        else:
+            orig_coors=np.array(list(tile.fault_dict.keys()))
+            fault_info=list(tile.fault_dict.values())
+
+        mapped_coors=self.mapping_ravel_idx(orig_coors,
+                                            source_shape=tile_shape,
+                                            source_prior=tile.tile_mapping_prior,
+                                            target_shape=map_shape_pe,
+                                            target_prior=map_prior_pe)
+            
+        mapped_coors_fd=list(zip(*mapped_coors.T))
+        new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
+
+        if parameter=='ofmap':
+            self.ofmap_fault_dict=new_fault_dict
+            self.mapping_shape_ofmap=map_shape_pe
+        elif parameter=='ifmap':
+            self.ifmap_fault_dict=new_fault_dict
+            self.mapping_shape_ifmap=map_shape_pe
+        elif parameter=='wght':
+            self.wght_fault_dict=new_fault_dict
+            self.mapping_shape_wght=map_shape_pe
+            
+        return new_fault_dict
         
         
 # TODO
 # gen fault list
-# read in tiles
 # how the data flow        
-# Tilted data      
 # PE stall (shift in or other)        
 # double buffer no stall

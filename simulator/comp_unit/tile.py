@@ -246,6 +246,7 @@ class tile_PE(tile):
             padding: String. 'same' or 'valid'. The type of padding algorithm to use.
             edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
                 the exceeded area with zero and count as an ofmap pixel or not.
+            get_cond_idx: Bool. Return condition index or not.
         
         # Returns
             Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.

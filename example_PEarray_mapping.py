@@ -141,6 +141,25 @@ expand_fault_dict_extracted=ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
 MXU=PEarray(16,16,ofmap_tile=ofmap_tile,wght_tile=wght_tile,ifmap_tile=ifmap_tile)
 
 #%%
+# test streaming mapping
+stream_coors_in=np.array([[87,13],
+                          [194,6],
+                          [17,9]])
+stream_coors_out_f=MXU.stream_capture_idx(stream_coors_in,
+                                          data_shape=(784,16), 
+                                          data_stream_axis=0,  
+                                          window_shape=(28,28,784), 
+                                          window_stream_axis=1)
+
+stream_coors_out_b=MXU.stream_capture_idx(stream_coors_in,
+                                          data_shape=(784,16), 
+                                          data_stream_axis=0,  
+                                          window_shape=(28,28,784), 
+                                          window_stream_axis=1,
+                                          data_flow_direction='backward', 
+                                          window_flow_direction='backward',)
+
+#%%
 # mapping stationary with out duplication
 # ofmap first mapping to PE
 

@@ -189,10 +189,15 @@ class PEarray:
         return map_shape_pe,map_prior_pe
     
     def stream_capture_idx(self, index, 
-                           data_shape, data_stream_axis, data_flow_direction, 
-                           window_shape, window_stream_axis, window_flow_direction):
+                           data_shape, data_stream_axis,  
+                           window_shape, window_stream_axis, 
+                           data_flow_direction='forward', window_flow_direction='forward',
+                           axis_arange=None, get_cond_idx=False):
         """ Convert index from an array to the capture of thream through a window (PE array).
             The captured shot is the clock cycle that fault index run through.
+            
+            window_shape must have 1 more dimension than data_shape, that is let data stream through window.
+            The one more dimension is time dimension which represent the capture shot on that clock cycle.
             
         # Arguments
             index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
@@ -204,8 +209,67 @@ class PEarray:
             window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
             window_stream_axis: String. The axis index whose dimention is the sweep going.
             window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
+            axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 1,2,0 to window_shape axis 0,1,2 respectively.
+            get_cond_idx: Bool. Return condition index or not.
+            
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """
+        if isinstance(index,tuple):
+            index=np.reshape(np.array(index),[1,-1])
+        elif isinstance(index,np.ndarray):
+            pass
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+            
+        if len(window_shape)-1!=len(data_shape):
+            raise ValueError('window_shape must have 1 more dimension than data_shape, but got window_shape %s and data_shape %s'%(str(window_shape),str(data_shape)))
+            
+        if data_flow_direction=='forward':
+            idx_capture_clk=np.expand_dims(index[:,data_stream_axis],1)
+        elif data_flow_direction=='backward':
+            idx_capture_clk=np.expand_dims(np.subtract(data_shape[data_stream_axis]-1,index[:,data_stream_axis]),1)    
+        else:
+            raise ValueError('data_flow_direction must be \'forward\' or \'backward\'.')
+            
+        idx_capture_clk=np.tile(idx_capture_clk,[1,window_shape[window_stream_axis]])
+                
+        if window_flow_direction=='forward':
+            base_coor_shift=np.expand_dims(np.arange(window_shape[window_stream_axis]),0)
+            base_coor_shift=np.tile(base_coor_shift,[len(index),1])
+            idx_capture_clk=np.add(idx_capture_clk,base_coor_shift)
+            
+        elif window_flow_direction=='backward':
+            base_coor_shift=np.expand_dims(np.flip(np.arange(window_shape[window_stream_axis])),0)
+            base_coor_shift=np.tile(base_coor_shift,[len(index),1])
+            idx_capture_clk=np.add(idx_capture_clk,np.flip(base_coor_shift,1))
+        else:
+            raise ValueError('window_flow_direction must be \'forward\' or \'backward\'.')        
         
+        if axis_arange is None:
+            axis_arange=list()
+            for i in range(len(data_shape)):
+                if i==window_stream_axis:
+                    axis_arange.append(data_stream_axis)
+                else:
+                    if i==data_stream_axis:
+                        axis_arange.append(i+1)
+                    else:
+                        axis_arange.append(i)
+        
+        caped_index=np.zeros([len(index)*window_shape[window_stream_axis],len(window_shape)],dtype=int)
+        for i,ax in enumerate(axis_arange):
+            if ax==data_stream_axis:
+                caped_index[:,i]=np.reshape(base_coor_shift,[1,-1])
+            else: 
+                caped_index[:,i]=np.repeat(index[:,ax],window_shape[window_stream_axis])
+                
+        caped_index[:,-1]=np.reshape(idx_capture_clk,[1,-1])
+        
+        if get_cond_idx:
+            return caped_index, np.repeat(np.arange(len(index)),window_shape[window_stream_axis])
+        else:
+            return caped_index
         
     def mapping_tile_stationary(self, parameter, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
         """ Mapping a tile onto PE array dataflow model. Direct transformation in this function. No data duplication.

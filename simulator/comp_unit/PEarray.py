@@ -271,6 +271,81 @@ class PEarray:
         else:
             return caped_index
         
+    def broadcast_idx(self, index, data_shape, target_shape, broadcast_dims,
+                      axis_arange=None, get_cond_idx=False):
+        """ Broadcast certain indexes of an array to all element in a given dimension. 
+            The dimension of data_shape should be smaller than target_shape, there need to be space for broadcast.
+        
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            data_shape: Tuple. The shape of data array being streamed in.
+            data_stream_axis: Integer. The axis index whose dimension is the flow going.
+            target_shape: Tuple. The shape of data array broadcast to.
+            broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that are being broadcast to.
+            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
+            get_cond_idx: Bool. Return condition index or not.
+            
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+            
+        """
+        if not len(data_shape)<len(target_shape):
+            raise ValueError('Dimension data_shape must be smaller than target_shape. There need to be space for broadcast.')
+        if isinstance(broadcast_dims,int):
+            if (len(data_shape)<len(target_shape)-1) and (axis_arange is None):
+                raise AttributeError('For the condition index shape (data_shape) is more than two order smaller than target_shape, the argument axis_arange is mandatory elemet. Got data_shape %d dims and target_shape %d dims.'%(len(data_shape),len(target_shape)))
+        elif isinstance(broadcast_dims,list):
+            if (len(data_shape)<len(target_shape)-len(broadcast_dims)) and (axis_arange is None):
+                raise AttributeError('For the condition index shape (data_shape) is more than %d order smaller than target_shape, the argument axis_arange is mandatory elemet. Got data_shape %d dims and target_shape %d dims.'%(len(broadcast_dims)+1,len(data_shape),len(target_shape)))
+        else:
+            raise TypeError('broadcast_dims must either be integer or list of integer.')
+        
+        if isinstance(index,tuple):
+            index=np.reshape(np.array(index),[1,-1])
+        elif isinstance(index,np.ndarray):
+            if len(data_shape)==1:
+                index=np.reshape(index,[-1,1])
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+        
+        if isinstance(broadcast_dims,int):
+            idx_broadcast=np.repeat(index,target_shape[broadcast_dims],0)
+            idx_leaf=np.tile(np.reshape(np.arange(target_shape[broadcast_dims]),[-1,1]),[len(index),1])
+            cond_idx=np.repeat(np.arange(len(index)),target_shape[broadcast_dims])
+        
+        elif isinstance(broadcast_dims,list):   
+            idx_leaf=list()
+            for dims in broadcast_dims:
+                idx_leaf.append(target_shape[dims])
+            idx_broadcast=np.repeat(index,np.prod(idx_leaf),0)
+            cond_idx=np.repeat(np.arange(len(index)),np.prod(idx_leaf))
+            idx_leaf=np.array(list(np.ndindex(*idx_leaf)))
+            idx_leaf=np.tile(idx_leaf,[len(index),1])
+                
+        else:
+            raise TypeError('broadcast_dims must either be integer or list of integer.')
+        
+        if axis_arange is None:
+            axis_arange=list()
+            for i in range(len(target_shape)):
+                if i not in broadcast_dims:
+                    axis_arange.append(i)
+        
+        broaded_index=np.zeros([len(idx_broadcast),len(target_shape)],dtype=int)
+        
+        for i,ax in enumerate(broadcast_dims):
+            broaded_index[:,ax]=idx_leaf[i]
+        
+        for i,ax in enumerate(axis_arange):
+            broaded_index[:,ax]=idx_broadcast[i]
+            
+        if get_cond_idx:
+            return broaded_index, cond_idx
+        else:
+            return broaded_index
+
+        
     def mapping_tile_stationary(self, parameter, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
         """ Mapping a tile onto PE array dataflow model. Direct transformation in this function. No data duplication.
             This stationary mapping place data to PE on a certain clock cycle.

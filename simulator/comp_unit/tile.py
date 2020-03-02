@@ -51,7 +51,7 @@ class tile_PE(tile):
                 
     def check_prior(self):
         if not isinstance(self.PE_required_axes_prior,list):
-            raise ValueError('The augment PE_required_axes must be in list dtype.')
+            raise TypeError('The augment PE_required_axes must be in list dtype.')
             
         for axis in self.PE_required_axes_prior:
             if axis not in self.axis_element:

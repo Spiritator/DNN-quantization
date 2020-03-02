@@ -26,7 +26,7 @@ class tile:
     
         """
         if not isinstance(is_fmap,bool):
-            raise ValueError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
+            raise TypeError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
         if len(tile_shape) != 4:
             raise ValueError('The augment tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
         if is_fmap:    
@@ -726,7 +726,7 @@ class tile_FC(tile):
     
         """
         if not isinstance(is_fmap,bool):
-            raise ValueError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
+            raise TypeError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
         if len(tile_shape) != 2:
             raise ValueError('The augment tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
         if is_fmap:    

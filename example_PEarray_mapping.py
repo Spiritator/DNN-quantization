@@ -160,6 +160,11 @@ stream_coors_out_b=MXU.stream_capture_idx(stream_coors_in,
                                           window_flow_direction='backward',)
 
 #%%
+# test broadcast array mapping
+
+#TODO
+
+#%%
 # mapping stationary with out duplication
 # ofmap first mapping to PE
 

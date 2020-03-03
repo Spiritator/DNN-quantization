@@ -142,6 +142,7 @@ MXU=PEarray(16,16,ofmap_tile=ofmap_tile,wght_tile=wght_tile,ifmap_tile=ifmap_til
 
 #%%
 # test streaming mapping
+
 stream_coors_in=np.array([[87,13],
                           [194,6],
                           [17,9]])
@@ -162,7 +163,38 @@ stream_coors_out_b=MXU.stream_capture_idx(stream_coors_in,
 #%%
 # test broadcast array mapping
 
-#TODO
+broadcast_coors_in0=np.array([[15,188],
+                              [3,174],
+                              [6,339]])
+broadcast_coors_out0=MXU.broadcast_idx(broadcast_coors_in0,
+                                       data_shape=(16,691), 
+                                       target_shape=(16,16,691), 
+                                       broadcast_dims=0)
+broadcast_coors_in1=np.array([[188],
+                              [174],
+                              [339]])
+broadcast_coors_out1=MXU.broadcast_idx(broadcast_coors_in1,
+                                       data_shape=(691,), 
+                                       target_shape=(16,16,691), 
+                                       broadcast_dims=[0,1])
+
+#%%
+# test fixed array mapping
+
+fixed_coors_in0=np.array([[14,178],
+                          [0,199],
+                          [11,449]])
+fixed_coors_out0=MXU.fixed_idx(fixed_coors_in0,
+                               indice_fix=-1,
+                               fix_dims=0, 
+                               target_shape=(16,16,691))
+fixed_coors_in1=np.array([[178],
+                          [199],
+                          [449]])
+fixed_coors_out1=MXU.fixed_idx(fixed_coors_in1,
+                               indice_fix=[-1,0],
+                               fix_dims=[0,1], 
+                               target_shape=(16,16,691))
 
 #%%
 # mapping stationary with out duplication

@@ -280,7 +280,6 @@ class PEarray:
             index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
                 2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
             data_shape: Tuple. The shape of data array being streamed in.
-            data_stream_axis: Integer. The axis index whose dimension is the flow going.
             target_shape: Tuple. The shape of data array broadcast to.
             broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that are being broadcast to.
             axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
@@ -311,10 +310,10 @@ class PEarray:
         
         if isinstance(broadcast_dims,int):
             idx_broadcast=np.repeat(index,target_shape[broadcast_dims],0)
-            idx_leaf=np.tile(np.reshape(np.arange(target_shape[broadcast_dims]),[-1,1]),[len(index),1])
+            idx_leaf=np.tile(np.arange(target_shape[broadcast_dims]),len(index))
             cond_idx=np.repeat(np.arange(len(index)),target_shape[broadcast_dims])
         
-        elif isinstance(broadcast_dims,list):   
+        else:   
             idx_leaf=list()
             for dims in broadcast_dims:
                 idx_leaf.append(target_shape[dims])
@@ -322,29 +321,103 @@ class PEarray:
             cond_idx=np.repeat(np.arange(len(index)),np.prod(idx_leaf))
             idx_leaf=np.array(list(np.ndindex(*idx_leaf)))
             idx_leaf=np.tile(idx_leaf,[len(index),1])
-                
-        else:
-            raise TypeError('broadcast_dims must either be integer or list of integer.')
-        
+                      
         if axis_arange is None:
-            axis_arange=list()
-            for i in range(len(target_shape)):
-                if i not in broadcast_dims:
-                    axis_arange.append(i)
+            if isinstance(broadcast_dims,int):
+                axis_arange=list()
+                for i in range(len(target_shape)):
+                    if i != broadcast_dims:
+                        axis_arange.append(i)
+            else:
+                axis_arange=list()
+                for i in range(len(target_shape)):
+                    if i not in broadcast_dims:
+                        axis_arange.append(i)
         
         broaded_index=np.zeros([len(idx_broadcast),len(target_shape)],dtype=int)
         
-        for i,ax in enumerate(broadcast_dims):
-            broaded_index[:,ax]=idx_leaf[i]
+        if isinstance(broadcast_dims,int):
+            broaded_index[:,broadcast_dims]=idx_leaf
+        else:
+            for i,ax in enumerate(broadcast_dims):
+                broaded_index[:,ax]=idx_leaf[:,i]
         
         for i,ax in enumerate(axis_arange):
-            broaded_index[:,ax]=idx_broadcast[i]
+            broaded_index[:,ax]=idx_broadcast[:,i]
             
         if get_cond_idx:
             return broaded_index, cond_idx
         else:
             return broaded_index
+        
+    def fixed_idx(self, index, indice_fix, fix_dims, target_shape, axis_arange=None):
+        """ Make certain dimension of data index fix on certain axis.
+            In this condition the data only exist on specific index of this dimension.
+        
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            indice_fix: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
+            fix_dims: Integer or List of Integer. The dimension indexes of target_shape that are being fix to.
+            target_shape: Tuple. The shape of data array fix to.
+            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
+            
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
 
+        """
+        if isinstance(fix_dims,int):
+            if index.shape[1]+1!=len(target_shape):
+                raise AttributeError('target_shape must be one more dimension than index where the fix dimension expand to.')
+        elif isinstance(fix_dims,list):
+            if index.shape[1]+len(fix_dims)!=len(target_shape):
+                raise AttributeError('target_shape must be %d more dimension than index where the fix dimension expand to.'%len(fix_dims))
+        else:
+            raise TypeError('fix_dims must either be integer or list of integer.')
+            
+        if isinstance(index,tuple):
+            index=np.reshape(np.array(index),[1,-1])
+        elif isinstance(index,np.ndarray):
+            if len(index.shape)==1:
+                index=np.reshape(index,[-1,1])
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+        
+        if isinstance(fix_dims,int):
+            if indice_fix<0:
+                indice_fix=target_shape[fix_dims]+indice_fix
+            fixidx=np.multiply(np.ones(len(index),dtype=int),indice_fix)
+        else:
+            fixidx=list()
+            for i,dims in enumerate(fix_dims):
+                if indice_fix[i]<0:
+                    indice_fix[i]=target_shape[dims]+indice_fix[i]
+                fixidx.append(np.multiply(np.ones(len(index),dtype=int),indice_fix[i]))
+                
+        if axis_arange is None:
+            if isinstance(fix_dims,int):
+                axis_arange=list()
+                for i in range(len(target_shape)):
+                    if i != fix_dims:
+                        axis_arange.append(i)
+            else:
+                axis_arange=list()
+                for i in range(len(target_shape)):
+                    if i not in fix_dims:
+                        axis_arange.append(i)
+
+        fixed_index=np.zeros([len(index),len(target_shape)],dtype=int)
+        
+        if isinstance(fix_dims,int):
+            fixed_index[:,fix_dims]=fixidx
+        else:
+            for i,ax in enumerate(fix_dims):
+                fixed_index[:,ax]=fixidx[i]
+        
+        for i,ax in enumerate(axis_arange):
+            fixed_index[:,ax]=index[:,i]
+
+        return fixed_index
         
     def mapping_tile_stationary(self, parameter, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
         """ Mapping a tile onto PE array dataflow model. Direct transformation in this function. No data duplication.

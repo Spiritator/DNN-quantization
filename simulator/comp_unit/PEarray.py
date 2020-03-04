@@ -12,20 +12,54 @@ import numpy as np
 class PEflow:
     """
     The PE flow description class. For information gathering and PE dataflow setup.
+    A PEflow represent a data tile (one of ofmap, weight, ifmap)
     """
-    def __init__(self, PE_x, PE_y, t_clk, info_x, info_y, info_t):
+    def __init__(self, PE_x, PE_y, t_clk, info_x, info_y, info_t, repeat, duplicate, stall=0, latency=0):
         """
         PE axis flow type
-            'permute': permute data long axis. 'info' -> PE_required_axes_prior need other axis info as well.
-            'fixed': data fix in certain index on this axis. 'info' -> the index that are fixed on.
-            'broadcast': data being broadcast to all entries in this axis. 'info' -> None.
-            'streaming': data being streamed in in this axis. 'info' -> the direction of stream.
+            'permute': permute data long axis. 
+            'fixed': data fix in certain index on this axis.
+            'broadcast': data being broadcast to all entries in this axis. 
+            'streaming': data being streamed in in this axis.
+        
+        info must be feed in by dicitionary format
+            ex: info_x = {'source_shape':(676,16,9),
+                          'source_prior':[2,1,0],
+                          'target_shape':(16,1598),
+                          'target_prior':[0,1]}
         
         info description
             'permute': 
+                source_shape: Tuple. The shape of source array before tranformation.
+                source_prior: List or Tuple of Integer. The list for unravel priority of source_shape dimensions. The list is the dimension index.
+                target_shape: Tuple. The shape of target array for tranformation to.
+                target_prior: List or Tuple of Integer. The list for ravel priority of target_shape dimensions. The list is the dimension index.
+
+
             'fixed': 
+                indice_fix: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
+                fix_dims: Integer or List of Integer. The dimension indexes of target_shape that are being fix to.
+                target_shape: Tuple. The shape of data array fix to.
+                axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
+
             'broadcast': 
+                data_shape: Tuple. The shape of data array being streamed in.
+                target_shape: Tuple. The shape of data array broadcast to.
+                broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that are being broadcast to.
+                axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
+                get_cond_idx: Bool. Return condition index or not.
+
+                
             'streaming': 
+                data_shape: Tuple. The shape of data array being streamed in.
+                data_stream_axis: Integer. The axis index whose dimension is the flow going.
+                data_flow_direction: String. 'forward' or 'backward' the direction of data flow in. Stream starts from the 0 index and increment, or else starts from last index and decrement.
+                window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
+                window_stream_axis: String. The axis index whose dimention is the sweep going.
+                window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
+                axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 1,2,0 to window_shape axis 0,1,2 respectively.
+                get_cond_idx: Bool. Return condition index or not.
+
         
         # Arguments
             PE_x: String. The flow type of PE_x axis. One of the flow type mentioned above.
@@ -155,7 +189,8 @@ class PEarray:
         """ Estimate the needed number of clock cycle by shape of mapping data
         
         """
-        return int(np.ceil(np.prod(mapping_shape)/np.prod(non_clk_PE_shape)))
+        self.n_clk=int(np.ceil(np.prod(mapping_shape)/np.prod(non_clk_PE_shape)))
+        return self.n_clk
     
     def get_PE_prior(self, prior_list, tile_shape):
         """ Organize PE mapping shape and prior
@@ -479,65 +514,6 @@ class PEarray:
             
         return new_fault_dict
 
-    def mapping_tile_streaming(self, parameter, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
-        """ Mapping a tile onto PE array dataflow model. Direct transformation in this function. No data duplication.
-            This streaming mapping lets data stream through PE and record the fault traces.
-        
-        # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
-            tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
-            PE_required_axes_prior: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
-                These axes are the dimension in PE array dataflow model for tile mapping.
-                The order in List is the priority for data mapping in PE array.
-            tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of tile slice_shape dimensions. The list is the dimension index.
-        
-        # Returns
-            Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
-        """
-        if PE_required_axes_prior is not None:
-            tile.PE_required_axes_prior=PE_required_axes_prior
-        if tile_mapping_prior is not None:
-            tile.tile_mapping_prior=tile_mapping_prior
-        
-        tile.check_prior()
-        
-        if tile.tilting:
-            tile_shape=tile.tilted_slice_shape
-        else:
-            if tile.expansion:
-                tile_shape=tile.slice_shape
-            else:
-                tile_shape=tile.tile_shape
-            
-        map_shape_pe,map_prior_pe=self.get_PE_prior(tile.PE_required_axes_prior, tile_shape)
-
-        if tile.expansion:
-            orig_coors=np.array(list(tile.fault_dict_expand.keys()))
-            fault_info=list(tile.fault_dict_expand.values())
-        else:
-            orig_coors=np.array(list(tile.fault_dict.keys()))
-            fault_info=list(tile.fault_dict.values())
-
-        mapped_coors=self.mapping_ravel_idx(orig_coors,
-                                            source_shape=tile_shape,
-                                            source_prior=tile.tile_mapping_prior,
-                                            target_shape=map_shape_pe,
-                                            target_prior=map_prior_pe)
-            
-        mapped_coors_fd=list(zip(*mapped_coors.T))
-        new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
-
-        if parameter=='ofmap':
-            self.ofmap_fault_dict=new_fault_dict
-            self.mapping_shape_ofmap=map_shape_pe
-        elif parameter=='ifmap':
-            self.ifmap_fault_dict=new_fault_dict
-            self.mapping_shape_ifmap=map_shape_pe
-        elif parameter=='wght':
-            self.wght_fault_dict=new_fault_dict
-            self.mapping_shape_wght=map_shape_pe
-            
-        return new_fault_dict
         
         
 # TODO

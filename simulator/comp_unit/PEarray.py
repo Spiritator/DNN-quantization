@@ -8,13 +8,32 @@ Processing element array setting for compuation unit fault mapping
 """
 
 import numpy as np
-    
+
+class axis_info:
+    """
+    The axis information holder class. For hold and calling PE mapping parameters.
+    """
+    def __init__(self, 
+                 PE_required_axes_prior=None, 
+                 tile_mapping_prior=None,):
+        self.PE_required_axes_prior=PE_required_axes_prior
+        self.tile_mapping_prior=tile_mapping_prior
+
+        
 class PEflow:
     """
     The PE flow description class. For information gathering and PE dataflow setup.
     A PEflow represent a data tile (one of ofmap, weight, ifmap)
     """
-    def __init__(self, PE_x, PE_y, t_clk, info_x, info_y, info_t, repeat, duplicate, stall=0, latency=0):
+    def __init__(self, 
+                 permute_info=None, 
+                 fixed_info=None, 
+                 broadcast_info=None, 
+                 streaming_info=None, 
+                 repeat=0, 
+                 duplicate=0, 
+                 stall=0, 
+                 latency=0):
         """
         PE axis flow type
             'permute': permute data long axis. 
@@ -23,24 +42,21 @@ class PEflow:
             'streaming': data being streamed in in this axis.
         
         info must be feed in by dicitionary format
-            ex: info_x = {'source_shape':(676,16,9),
-                          'source_prior':[2,1,0],
-                          'target_shape':(16,1598),
-                          'target_prior':[0,1]}
+            ex: info_x = {'PE_required_axes_prior':['t_clk','PE_x'],
+                          'tile_mapping_prior':[2,1,0]}
         
         info description
             'permute': 
-                source_shape: Tuple. The shape of source array before tranformation.
-                source_prior: List or Tuple of Integer. The list for unravel priority of source_shape dimensions. The list is the dimension index.
-                target_shape: Tuple. The shape of target array for tranformation to.
-                target_prior: List or Tuple of Integer. The list for ravel priority of target_shape dimensions. The list is the dimension index.
-
+                PE_required_axes_prior: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
+                    These axes are the dimension in PE array dataflow model for tile mapping.
+                    The order in List is the priority for data mapping in PE array.
+                tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of slice_shape dimensions. The list is the dimension index.
 
             'fixed': 
-                indice_fix: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
-                fix_dims: Integer or List of Integer. The dimension indexes of target_shape that are being fix to.
-                target_shape: Tuple. The shape of data array fix to.
-                axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
+                PE_fix_dims: String or List of Strings. The dimension of target_shape that are being fix to. i.e. 'PE_x', 'PE_y', 't_clk'. 
+                indice: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
+#                target_shape: Tuple. The shape of data array fix to.
+#                axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
 
             'broadcast': 
                 data_shape: Tuple. The shape of data array being streamed in.
@@ -62,19 +78,52 @@ class PEflow:
 
         
         # Arguments
-            PE_x: String. The flow type of PE_x axis. One of the flow type mentioned above.
-            PE_y: String. The flow type of PE_y axis. One of the flow type mentioned above.
-            t_clk: String. The flow type of t_clk axis. One of the flow type mentioned above.
-            info_x: String. The infomation of PE_x flow. Must in the format describe above.
-            info_y: String. The infomation of PE_y flow. Must in the format describe above.
-            info_t: String. The infomation of t_clk flow. Must in the format describe above.
+            permute_info: Dictionary. The infomation of permute flow. Must in the format describe above.
+            fixed_info: Dictionary. The infomation of fixed flow. Must in the format describe above.
+            broadcast_info: Dictionary. The infomation of broadcast flow. Must in the format describe above.
+            streaming_info: Dictionary. The infomation of streaming flow. Must in the format describe above.
+            repeat: Integer. The times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
+            duplicate: Integer. The times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
+            stall: Integer. The clock cycles need to wait till data get ready.
+            latency: Integer. The clock cycles need to wait for other data going through PE array.
         """
-        self.PE_x=PE_x
-        self.PE_y=PE_y
-        self.t_clk=t_clk
-        self.info_x=info_x
-        self.info_y=info_y
-        self.info_t=info_t
+        if permute_info is None:
+            self.permute_info=None
+        else:
+            self.permute_info=axis_info( **permute_info)
+            
+        if fixed_info is None:
+            self.fixed_info=None
+        else:
+            self.fixed_info=axis_info( **fixed_info)
+        
+        if broadcast_info is None:
+            self.broadcast_info=None
+        else:
+            self.broadcast_info=axis_info( **broadcast_info)
+        
+        if streaming_info is None:
+            self.streaming_info=None
+        else:
+            self.streaming_info=axis_info( **streaming_info)
+            
+        self.repeat=repeat
+        self.duplicate=duplicate
+        self.stall=stall
+        self.latency=latency
+        self.axis_element=['PE_x','PE_y','t_clk']
+        
+    def check_prior(self, data_shape):
+        if not isinstance(self.permute_info.PE_required_axes_prior,list):
+            raise TypeError('The augment PE_required_axes must be in list dtype.')
+            
+        for axis in self.permute_info.PE_required_axes_prior:
+            if axis not in self.axis_element:
+                raise ValueError('The augment PE_required_axes must be in list %s'%(str(self.axis_element)))
+                        
+        if len(data_shape)!=len(self.permute_info.tile_mapping_prior):
+            raise ValueError('The length of tile_mapping_prior must equals to data shape, but got %d and %d.'%(len(self.permute_info.tile_mapping_prior),len(data_shape)))
+
 
 class PEarray:
     """
@@ -109,6 +158,7 @@ class PEarray:
             ifmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
 
         """
+        self.setup_ready=False
         self.n_x=n_x
         self.n_y=n_y
         self.n_clk=n_clk
@@ -119,24 +169,65 @@ class PEarray:
         self.ofmap_tile=ofmap_tile
         
     def setup_dataflow(self, 
-                       o_PE_x, o_PE_y, o_t_clk, o_info_x, o_info_y, o_info_t,
-                       w_PE_x, w_PE_y, w_t_clk, w_info_x, w_info_y, w_info_t,
-                       i_PE_x, i_PE_y, i_t_clk, i_info_x, i_info_y, i_info_t):
+                       o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_stall=0, o_latency=0,
+                       w_permute_info=None, w_fixed_info=None, w_broadcast_info=None, w_streaming_info=None, w_repeat=0, w_duplicate=0, w_stall=0, w_latency=0,
+                       i_permute_info=None, i_fixed_info=None, i_broadcast_info=None, i_streaming_info=None, i_repeat=0, i_duplicate=0, i_stall=0, i_latency=0):
         """ Setup dataflow of ofmap, weight, ifmap. Read in PE dataflow arguments for mapping.
         
         # Arguments
-            PE_x: String. The flow type of PE_x axis. One of the flow type mentioned above.
-            PE_y: String. The flow type of PE_y axis. One of the flow type mentioned above.
-            t_clk: String. The flow type of t_clk axis. One of the flow type mentioned above.
-            info_x: String. The infomation of PE_x flow. Must in the format describe above.
-            info_y: String. The infomation of PE_y flow. Must in the format describe above.
-            info_t: String. The infomation of t_clk flow. Must in the format describe above.
+            permute_info: Dictionary. The infomation of permute flow. Must in the format describe above.
+            fixed_info: Dictionary. The infomation of fixed flow. Must in the format describe above.
+            broadcast_info: Dictionary. The infomation of broadcast flow. Must in the format describe above.
+            streaming_info: Dictionary. The infomation of streaming flow. Must in the format describe above.
+            repeat: Integer. The times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
+            duplicate: Integer. The times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
+            stall: Integer. The clock cycles need to wait till data get ready.
+            latency: Integer. The clock cycles need to wait for other data going through PE array.
 
         """
-        self.ofmap_flow=PEflow(o_PE_x, o_PE_y, o_t_clk, o_info_x, o_info_y, o_info_t)
-        self.wght_flow=PEflow(w_PE_x, w_PE_y, w_t_clk, w_info_x, w_info_y, w_info_t)
-        self.ifmap_flow=PEflow(i_PE_x, i_PE_y, i_t_clk, i_info_x, i_info_y, i_info_t)
+        self.setup_ready=True
+        self.ofmap_flow=PEflow(o_permute_info, o_fixed_info, o_broadcast_info, o_streaming_info, o_repeat, o_duplicate, o_stall, o_latency)
+        self.wght_flow=PEflow(w_permute_info, w_fixed_info, w_broadcast_info, w_streaming_info, w_repeat, w_duplicate, w_stall, w_latency)
+        self.ifmap_flow=PEflow(i_permute_info, i_fixed_info, i_broadcast_info, i_streaming_info, i_repeat, i_duplicate, i_stall, i_latency)
         
+    def estimate_clk(self, mapping_shape, non_clk_PE_shape):
+        """ Estimate the needed number of clock cycle by shape of mapping data
+        
+        """
+        self.n_clk=int(np.ceil(np.prod(mapping_shape)/np.prod(non_clk_PE_shape)))
+        return self.n_clk
+    
+    def get_PE_prior(self, prior_list, tile_shape):
+        """ Organize PE mapping shape and prior
+        
+        """
+        map_shape_pe=list()
+        mpp_ind=dict()
+        mpp_cnt=-1
+        map_prior_pe=list()
+        
+        if 'PE_x' in prior_list:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            mpp_ind['PE_x']=mpp_cnt
+        if 'PE_y' in prior_list:
+            map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+            mpp_ind['PE_y']=mpp_cnt
+        
+        if 't_clk' in prior_list:   
+            mpp_cnt+=1
+            mpp_ind['t_clk']=mpp_cnt
+            if self.n_clk is None:
+                map_shape_pe.append(self.estimate_clk(tile_shape,map_shape_pe))
+            else:
+                map_shape_pe.append(self.n_clk)
+                
+        for prior in prior_list:
+            map_prior_pe.append(mpp_ind[prior])
+            
+        return map_shape_pe,map_prior_pe
+    
     def permute_ravel_idx(self,index, source_shape, source_prior, target_shape, target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
         
@@ -184,44 +275,6 @@ class PEarray:
         
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
-    
-    def estimate_clk(self, mapping_shape, non_clk_PE_shape):
-        """ Estimate the needed number of clock cycle by shape of mapping data
-        
-        """
-        self.n_clk=int(np.ceil(np.prod(mapping_shape)/np.prod(non_clk_PE_shape)))
-        return self.n_clk
-    
-    def get_PE_prior(self, prior_list, tile_shape):
-        """ Organize PE mapping shape and prior
-        
-        """
-        map_shape_pe=list()
-        mpp_ind=dict()
-        mpp_cnt=-1
-        map_prior_pe=list()
-        
-        if 'PE_x' in prior_list:
-            map_shape_pe.append(self.n_x)
-            mpp_cnt+=1
-            mpp_ind['PE_x']=mpp_cnt
-        if 'PE_y' in prior_list:
-            map_shape_pe.append(self.n_y)
-            mpp_cnt+=1
-            mpp_ind['PE_y']=mpp_cnt
-        
-        if 't_clk' in prior_list:   
-            mpp_cnt+=1
-            mpp_ind['t_clk']=mpp_cnt
-            if self.n_clk is None:
-                map_shape_pe.append(self.estimate_clk(tile_shape,map_shape_pe))
-            else:
-                map_shape_pe.append(self.n_clk)
-                
-        for prior in prior_list:
-            map_prior_pe.append(mpp_ind[prior])
-            
-        return map_shape_pe,map_prior_pe
     
     def stream_capture_idx(self, index, 
                            data_shape, data_stream_axis,  
@@ -454,28 +507,20 @@ class PEarray:
 
         return fixed_index
         
-    def mapping_tile_stationary(self, parameter, tile, PE_required_axes_prior=None, tile_mapping_prior=None):
-        """ Mapping a tile onto PE array dataflow model. Direct transformation in this function. No data duplication.
-            This stationary mapping place data to PE on a certain clock cycle.
+    def premapping_tile(self, parameter, tile, flow):
+        """ Pre-mapping a tile onto PE array dataflow model. Need setup dataflow config in advance.
+            All three parameter ofmap, weight, ifmap are setup with specific axis config.
+            Each axis on PE array are assign with dataflow mode (one of 'permute', 'fixed', 'broadcast', 'streaming').
+            The pre-mapping phase will tackle axes in following order. 'permute' -> 'fixed' -> 'broadcast' -> 'streaming'
         
         # Arguments
             parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
             tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
-            PE_required_axes_prior: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
-                These axes are the dimension in PE array dataflow model for tile mapping.
-                The order in List is the priority for data mapping in PE array.
-            tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of tile slice_shape dimensions. The list is the dimension index.
+            flow: Class. The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
         
         # Returns
             Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
-        if PE_required_axes_prior is not None:
-            tile.PE_required_axes_prior=PE_required_axes_prior
-        if tile_mapping_prior is not None:
-            tile.tile_mapping_prior=tile_mapping_prior
-        
-        tile.check_prior()
-        
         if tile.tilting:
             tile_shape=tile.tilted_slice_shape
         else:
@@ -483,24 +528,28 @@ class PEarray:
                 tile_shape=tile.slice_shape
             else:
                 tile_shape=tile.tile_shape
-            
-        map_shape_pe,map_prior_pe=self.get_PE_prior(tile.PE_required_axes_prior, tile_shape)
-
+                
         if tile.expansion:
             orig_coors=np.array(list(tile.fault_dict_expand.keys()))
             fault_info=list(tile.fault_dict_expand.values())
         else:
             orig_coors=np.array(list(tile.fault_dict.keys()))
             fault_info=list(tile.fault_dict.values())
-
-        mapped_coors=self.permute_ravel_idx(orig_coors,
-                                            source_shape=tile_shape,
-                                            source_prior=tile.tile_mapping_prior,
-                                            target_shape=map_shape_pe,
-                                            target_prior=map_prior_pe)
+        
+        # permute
+        if flow.permute_info is not None:
+            flow.check_prior(tile_shape)
             
-        mapped_coors_fd=list(zip(*mapped_coors.T))
-        new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
+            map_shape_pe,map_prior_pe=self.get_PE_prior(flow.permute_info.PE_required_axes_prior, tile_shape)
+    
+            mapped_coors=self.permute_ravel_idx(orig_coors,
+                                                source_shape=tile_shape,
+                                                source_prior=flow.permute_info.tile_mapping_prior,
+                                                target_shape=map_shape_pe,
+                                                target_prior=map_prior_pe)
+                
+            mapped_coors_fd=list(zip(*mapped_coors.T))
+            new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
 
         if parameter=='ofmap':
             self.ofmap_fault_dict=new_fault_dict
@@ -521,3 +570,7 @@ class PEarray:
 # how the data flow        
 # PE stall (shift in or other)        
 # double buffer no stall
+# form fault information
+# cross tile slice ordering
+# describe psum
+# 

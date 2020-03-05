@@ -11,7 +11,7 @@ import numpy as np
 from simulator.memory.tile import tile,tile_FC
 
 class tile_PE(tile):
-    def __init__(self, tile_shape, is_fmap, PE_required_axes_prior=[], tile_mapping_prior=[], **kwargs):
+    def __init__(self, tile_shape, is_fmap, **kwargs):
         """The tile of a DNN feature map or weights
 
         # Arguments
@@ -21,18 +21,10 @@ class tile_PE(tile):
             Tr: Integer. The size of tile on the kernel row dimension or feature map row dimention.
             Tc: Integer. The size of tile on the kernel column dimension or feature map column dimention.
             is_fmap: Bool. The tile is feature map tile or weight tile.
-            PE_required_axes_prior: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
-                These axes are the dimension in PE array dataflow model for tile mapping.
-                The order in List is the priority for data mapping in PE array.
-            tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of slice_shape dimensions. The list is the dimension index.
     
         """
         super(tile_PE, self).__init__(tile_shape, is_fmap, **kwargs)
         self.tile_shape=tile_shape
-        self.PE_required_axes_prior=PE_required_axes_prior
-        self.tile_mapping_prior=tile_mapping_prior
-        self.axis_element=['PE_x','PE_y','t_clk']
-        #self.prior_element=['Tm','Tn','Tr','Tc']
                 
         self.expansion=False
         self.expand_method=None
@@ -48,29 +40,7 @@ class tile_PE(tile):
         self.reshape_patches=False
         self.fault_dict_rehsaped=dict()
         self.fault_dict_expand=dict()
-                
-    def check_prior(self):
-        if not isinstance(self.PE_required_axes_prior,list):
-            raise TypeError('The augment PE_required_axes must be in list dtype.')
-            
-        for axis in self.PE_required_axes_prior:
-            if axis not in self.axis_element:
-                raise ValueError('The augment PE_required_axes must be in list %s'%(str(self.axis_element)))
-                        
-        if self.expansion:
-            if len(self.slice_shape)!=len(self.tile_mapping_prior):
-                raise ValueError('The length of slice_shape must equals to tile_mapping_prior, but got %d and %d.'%(len(self.slice_shape),len(self.tile_mapping_prior)))
-        else:
-            if len(self.tile_shape)!=len(self.tile_mapping_prior):
-                raise ValueError('The length of tile_shape must equals to tile_mapping_prior, but got %d and %d.'%(len(self.tile_shape),len(self.tile_mapping_prior)))
-                
-#            if not isinstance(self.axis_prior[axis],list) or len(self.axis_prior[axis])!=self.shape_len:
-#                raise ValueError('The augment axis_prior must be in list dtype and have length %d but got length %d'%(self.shape_len,len(self.axis_prior[axis])))
-#    
-#            for i in range(self.shape_len):
-#                if self.axis_prior[axis][i] not in self.prior_element:
-#                    raise ValueError('The augment axis_prior must be in list %s'%(str(self.prior_element)))
-    
+                                    
     def conv_output_length(self, input_length, filter_size, padding, stride, dilation=1, edge_fill=False):
         """Determines output length of a convolution given input length.
     

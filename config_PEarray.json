@@ -1,0 +1,16 @@
+{
+  "(2, 2, 3, 10)": {
+    "SA_type": "flip",
+    "SA_bit": 4,
+    "fixed_dims": [
+      1,
+      0
+    ],
+    "target_shape": [
+      28,
+      28,
+      16
+    ]
+  },
+  "gen_cond_ind": true
+}

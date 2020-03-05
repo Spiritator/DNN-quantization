@@ -197,8 +197,37 @@ fixed_coors_out1=MXU.fixed_idx(fixed_coors_in1,
                                target_shape=(16,16,691))
 
 #%%
-# mapping stationary with out duplication
-# ofmap first mapping to PE
+# pre-mapping tiles to PE
 
-mapped_fault_dict_ofmap=MXU.mapping_tile_stationary('ofmap',ofmap_tile,tile_mapping_prior=[2,1,0])
+# setup mapping configuration
+MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
+                                   'tile_mapping_prior':[2,1,0]}, 
+                   o_fixed_info=None, 
+                   o_broadcast_info=None, 
+                   o_streaming_info=None, 
+                   o_repeat=0, 
+                   o_duplicate=0, 
+                   o_stall=0, 
+                   o_latency=0,
+                   w_permute_info={'PE_required_axes_prior':['t_clk','PE_y','PE_x'],
+                                   'tile_mapping_prior':[2,1,0]}, 
+                   w_fixed_info=None, 
+                   w_broadcast_info=None, 
+                   w_streaming_info=None, 
+                   w_repeat=0, 
+                   w_duplicate=0, 
+                   w_stall=0, 
+                   w_latency=0,
+                   i_permute_info={'PE_required_axes_prior':['t_clk','PE_y'],
+                                   'tile_mapping_prior':[2,1,0]}, 
+                   i_fixed_info=None, 
+                   i_broadcast_info=None, 
+                   i_streaming_info=None, 
+                   i_repeat=0, 
+                   i_duplicate=0, 
+                   i_stall=0, 
+                   i_latency=0)
+
+# ofmap pre-mapping
+mapped_fault_dict_ofmap=MXU.premapping_tile('ofmap',ofmap_tile,tile_mapping_prior=[2,1,0])
 

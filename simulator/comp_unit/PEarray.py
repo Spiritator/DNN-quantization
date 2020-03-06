@@ -531,10 +531,10 @@ class PEarray:
                 
         if tile.expansion:
             orig_coors=np.array(list(tile.fault_dict_expand.keys()))
-            fault_info=list(tile.fault_dict_expand.values())
+            fault_value=list(tile.fault_dict_expand.values())
         else:
             orig_coors=np.array(list(tile.fault_dict.keys()))
-            fault_info=list(tile.fault_dict.values())
+            fault_value=list(tile.fault_dict.values())
         
         # permute
         if flow.permute_info is not None:
@@ -549,7 +549,11 @@ class PEarray:
                                                 target_prior=map_prior_pe)
                 
             mapped_coors_fd=list(zip(*mapped_coors.T))
-            new_fault_dict=dict(zip(mapped_coors_fd,fault_info))
+            new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
+        
+        # fixed
+        if flow.fixed_info is not None:
+            flow
 
         if parameter=='ofmap':
             self.ofmap_fault_dict=new_fault_dict

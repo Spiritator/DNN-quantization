@@ -15,9 +15,13 @@ class axis_info:
     """
     def __init__(self, 
                  PE_required_axes_prior=None, 
-                 tile_mapping_prior=None,):
+                 tile_mapping_prior=None,
+                 PE_fix_dims=None,
+                 indice=None):
         self.PE_required_axes_prior=PE_required_axes_prior
         self.tile_mapping_prior=tile_mapping_prior
+        self.PE_fix_dims=PE_fix_dims
+        self.indice=indice
 
         
 class PEflow:
@@ -55,8 +59,6 @@ class PEflow:
             'fixed': 
                 PE_fix_dims: String or List of Strings. The dimension of target_shape that are being fix to. i.e. 'PE_x', 'PE_y', 't_clk'. 
                 indice: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
-#                target_shape: Tuple. The shape of data array fix to.
-#                axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
 
             'broadcast': 
                 data_shape: Tuple. The shape of data array being streamed in.
@@ -114,8 +116,8 @@ class PEflow:
         self.axis_element=['PE_x','PE_y','t_clk']
         
     def check_prior(self, data_shape):
-        if not isinstance(self.permute_info.PE_required_axes_prior,list):
-            raise TypeError('The augment PE_required_axes must be in list dtype.')
+        if (not isinstance(self.permute_info.PE_required_axes_prior,list)) and (not isinstance(self.permute_info.PE_required_axes_prior,str)):
+            raise TypeError('The augment PE_required_axes must be String or List of Strings dtype.')
             
         for axis in self.permute_info.PE_required_axes_prior:
             if axis not in self.axis_element:
@@ -124,6 +126,16 @@ class PEflow:
         if len(data_shape)!=len(self.permute_info.tile_mapping_prior):
             raise ValueError('The length of tile_mapping_prior must equals to data shape, but got %d and %d.'%(len(self.permute_info.tile_mapping_prior),len(data_shape)))
 
+    def check_fix(self):
+        if isinstance(self.fixed_info.PE_fix_dims,str):
+            if self.fixed_info.PE_fix_dims not in self.axis_element:
+                raise ValueError('The augment PE_dix_dims must be in list %s'%(str(self.axis_element)))
+        elif isinstance(self.fixed_info.PE_fix_dims,list):
+            for dim in self.fixed_info.PE_fix_dims:
+                if dim not in self.axis_element:
+                    raise ValueError('The augment PE_dix_dims must be in list %s'%(str(self.axis_element)))
+        else:
+            raise TypeError('PE_fix_dims must either be integer or list of integer.')
 
 class PEarray:
     """
@@ -167,6 +179,7 @@ class PEarray:
         self.ifmap_tile=ifmap_tile
         self.wght_tile=wght_tile
         self.ofmap_tile=ofmap_tile
+        self.used_axes=list()
         
     def setup_dataflow(self, 
                        o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_stall=0, o_latency=0,
@@ -194,18 +207,21 @@ class PEarray:
         """ Estimate the needed number of clock cycle by shape of mapping data
         
         """
-        self.n_clk=int(np.ceil(np.prod(mapping_shape)/np.prod(non_clk_PE_shape)))
-        return self.n_clk
+        return int(np.ceil(np.prod(mapping_shape)/np.prod(non_clk_PE_shape)))
     
-    def get_PE_prior(self, prior_list, tile_shape):
-        """ Organize PE mapping shape and prior
+    def get_PE_prior(self, prior_list, tile_shape, keep_slice=False):
+        """ Organize PE mapping permute shape and prior
         
         """
+        if isinstance(prior_list,str):
+            prior_list=[prior_list]
+        self.used_axes+=prior_list
+            
         map_shape_pe=list()
         mpp_ind=dict()
         mpp_cnt=-1
         map_prior_pe=list()
-        
+                
         if 'PE_x' in prior_list:
             map_shape_pe.append(self.n_x)
             mpp_cnt+=1
@@ -215,18 +231,42 @@ class PEarray:
             mpp_cnt+=1
             mpp_ind['PE_y']=mpp_cnt
         
-        if 't_clk' in prior_list:   
-            mpp_cnt+=1
-            mpp_ind['t_clk']=mpp_cnt
-            if self.n_clk is None:
-                map_shape_pe.append(self.estimate_clk(tile_shape,map_shape_pe))
-            else:
-                map_shape_pe.append(self.n_clk)
-                
+        if keep_slice:
+            map_shape_pe.append(tile_shape[-1])
+            
+            if 't_clk' in prior_list:   
+                mpp_cnt+=1
+                mpp_ind['t_clk']=mpp_cnt
+                if self.n_clk is None:
+                    map_shape_pe.insert(-1,self.estimate_clk(tile_shape,map_shape_pe))
+                else:
+                    map_shape_pe.insert(-1,self.n_clk)
+                    
+            map_prior_pe.append(mpp_cnt+1)
+                    
+        else:        
+            if 't_clk' in prior_list:   
+                mpp_cnt+=1
+                mpp_ind['t_clk']=mpp_cnt
+                if self.n_clk is None:
+                    map_shape_pe.append(self.estimate_clk(tile_shape,map_shape_pe))
+                else:
+                    map_shape_pe.append(self.n_clk)
+        
         for prior in prior_list:
             map_prior_pe.append(mpp_ind[prior])
             
         return map_shape_pe,map_prior_pe
+    
+    def get_fix_arange(self,fix_dims):
+        """ Organize PE mapping fixed shape and arange
+        
+        """
+        if isinstance(fix_dims,str):
+            fix_dims=[fix_dims]
+        #TODO
+        self.used_axes+=fix_dims
+        return map_fixdims,map_shape_pe,map_arange
     
     def permute_ravel_idx(self,index, source_shape, source_prior, target_shape, target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
@@ -527,33 +567,45 @@ class PEarray:
             if tile.expansion:
                 tile_shape=tile.slice_shape
             else:
-                tile_shape=tile.tile_shape
+                tile_shape=tile.tile_shape+(1,)
                 
         if tile.expansion:
-            orig_coors=np.array(list(tile.fault_dict_expand.keys()))
+            mapped_coors=np.array(list(tile.fault_dict_expand.keys()))
             fault_value=list(tile.fault_dict_expand.values())
         else:
-            orig_coors=np.array(list(tile.fault_dict.keys()))
+            mapped_coors=np.array(list(tile.fault_dict.keys()))
+            mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=int),axis=1)
             fault_value=list(tile.fault_dict.values())
+               
+        self.used_axes=list()
         
         # permute
         if flow.permute_info is not None:
             flow.check_prior(tile_shape)
             
-            map_shape_pe,map_prior_pe=self.get_PE_prior(flow.permute_info.PE_required_axes_prior, tile_shape)
+            map_shape_pe,map_prior_pe=self.get_PE_prior(flow.permute_info.PE_required_axes_prior, tile_shape, keep_slice=True)
     
-            mapped_coors=self.permute_ravel_idx(orig_coors,
+            mapped_coors=self.permute_ravel_idx(mapped_coors,
                                                 source_shape=tile_shape,
                                                 source_prior=flow.permute_info.tile_mapping_prior,
                                                 target_shape=map_shape_pe,
                                                 target_prior=map_prior_pe)
                 
-            mapped_coors_fd=list(zip(*mapped_coors.T))
-            new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
         
         # fixed
         if flow.fixed_info is not None:
-            flow
+            flow.check_fix()
+            map_fixdims,map_shape_pe,map_arange=self.get_fix_arange(flow.fix_dims.PE_fix_dims)
+            
+            mapped_coors=self.fixed_idx(mapped_coors, 
+                                        indice_fix=flow.fix_dims.indice, 
+                                        fix_dims=map_fixdims, 
+                                        target_shape=None, 
+                                        axis_arange=None)
+
+
+        mapped_coors_fd=list(zip(*mapped_coors.T))
+        new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
 
         if parameter=='ofmap':
             self.ofmap_fault_dict=new_fault_dict

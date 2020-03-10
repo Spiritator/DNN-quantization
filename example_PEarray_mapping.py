@@ -202,7 +202,8 @@ fixed_coors_out1=MXU.fixed_idx(fixed_coors_in1,
 # setup mapping configuration
 MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                                    'tile_mapping_prior':[2,1,0]}, 
-                   o_fixed_info=None, 
+                   o_fixed_info={'PE_fix_axis':'PE_y',
+                                 'indice':-1}, 
                    o_broadcast_info=None, 
                    o_streaming_info=None, 
                    o_repeat=0, 
@@ -222,12 +223,18 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                                    'tile_mapping_prior':[2,1,0]}, 
                    i_fixed_info=None, 
                    i_broadcast_info=None, 
-                   i_streaming_info=None, 
+                   i_streaming_info={'PE_stream_axis':'PE_x',
+                                     'tile_direction':'forward',
+                                     'PE_direction':'forward'}, 
                    i_repeat=0, 
                    i_duplicate=0, 
                    i_stall=0, 
                    i_latency=0)
 
 # ofmap pre-mapping
-#mapped_fault_dict_ofmap=MXU.premapping_tile('ofmap',ofmap_tile,tile_mapping_prior=[2,1,0])
+mapped_fault_dict_ofmap=MXU.premapping_tile('ofmap',MXU.ofmap_tile,MXU.ofmap_flow)
+# weight pre-mapping
+mapped_fault_dict_wght=MXU.premapping_tile('wght',MXU.wght_tile,MXU.wght_flow)
+# ifmap pre-mapping
+mapped_fault_dict_ifmap=MXU.premapping_tile('ifmap',MXU.ifmap_tile,MXU.ifmap_flow)
 

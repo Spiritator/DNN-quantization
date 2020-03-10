@@ -28,7 +28,6 @@ class axis_info:
         self.PE_fix_axis=PE_fix_axis
         self.indice=indice
         self.PE_broadcast_axis=PE_broadcast_axis
-        self.tile_stream_axis=tile_stream_axis
         self.tile_direction=tile_direction
         self.PE_stream_axis=PE_stream_axis
         self.PE_direction=PE_direction
@@ -74,9 +73,8 @@ class PEflow:
                 PE_broadcast_axis: String or List of Strings. The dimension of target_shape that are being broadcast to. i.e. 'PE_x', 'PE_y', 't_clk'. 
                                 
             'streaming': 
-                tile_stream_axis: Integer. The axis index whose dimension is the flow going.
-                tile_direction: String. 'forward' or 'backward' the direction of data flow in. Stream starts from the 0 index and increment, or else starts from last index and decrement.
                 PE_stream_axis: String. The axis index whose dimension is the sweep going on PE. i.e. 'PE_x' or 'PE_y'.
+                tile_direction: String. 'forward' or 'backward' the direction of data flow in. Stream starts from the 0 index and increment, or else starts from last index and decrement.
                 PE_direction: String. 'forward' or 'backward' the direction of window sweeping. 
 
         
@@ -247,14 +245,14 @@ class PEarray:
         mpp_cnt=-1
         map_prior_pe=list()
                 
-        if 'PE_x' in prior_list:
-            map_shape_pe.append(self.n_x)
-            mpp_cnt+=1
-            mpp_ind['PE_x']=mpp_cnt
         if 'PE_y' in prior_list:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             mpp_ind['PE_y']=mpp_cnt
+        if 'PE_x' in prior_list:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            mpp_ind['PE_x']=mpp_cnt
         
         if keep_slice:
             map_shape_pe.append(tile_shape[-1])
@@ -296,20 +294,20 @@ class PEarray:
         map_fixdims=list()
         mpp_cnt=-1
                 
-        if 'PE_x' in fix_dims:
-            map_shape_pe.append(self.n_x)
-            mpp_cnt+=1
-            map_fixdims.append(mpp_cnt)
-        elif 'PE_x' in self.used_axes:
-            map_shape_pe.append(self.n_x)
-            mpp_cnt+=1
-            
         if 'PE_y' in fix_dims:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             map_fixdims.append(mpp_cnt)
         elif 'PE_y' in self.used_axes:
             map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+            
+        if 'PE_x' in fix_dims:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            map_fixdims.append(mpp_cnt)
+        elif 'PE_x' in self.used_axes:
+            map_shape_pe.append(self.n_x)
             mpp_cnt+=1
 
         if keep_slice:
@@ -386,20 +384,20 @@ class PEarray:
         map_broaddims=list()
         mpp_cnt=-1
                 
-        if 'PE_x' in broadcast_dims:
-            map_shape_pe.append(self.n_x)
-            mpp_cnt+=1
-            map_broaddims.append(mpp_cnt)
-        elif 'PE_x' in self.used_axes:
-            map_shape_pe.append(self.n_x)
-            mpp_cnt+=1
-            
         if 'PE_y' in broadcast_dims:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             map_broaddims.append(mpp_cnt)
         elif 'PE_y' in self.used_axes:
             map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+            
+        if 'PE_x' in broadcast_dims:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            map_broaddims.append(mpp_cnt)
+        elif 'PE_x' in self.used_axes:
+            map_shape_pe.append(self.n_x)
             mpp_cnt+=1
 
         if keep_slice:
@@ -476,20 +474,20 @@ class PEarray:
         map_shape_pe=list()
         mpp_cnt=-1
                 
-        if 'PE_x' == stream_dim:
-            map_shape_pe.append(self.n_x)
-            mpp_cnt+=1
-            map_streamdim=mpp_cnt
-        elif 'PE_x' in self.used_axes:
-            map_shape_pe.append(self.n_x)
-            mpp_cnt+=1
-            
         if 'PE_y' == stream_dim:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             map_streamdim=mpp_cnt
         elif 'PE_y' in self.used_axes:
             map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+            
+        if 'PE_x' == stream_dim:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            map_streamdim=mpp_cnt
+        elif 'PE_x' in self.used_axes:
+            map_shape_pe.append(self.n_x)
             mpp_cnt+=1
 
         if keep_slice:
@@ -512,6 +510,9 @@ class PEarray:
             else:
                 map_shape_pe.append(self.n_clk)
         
+        mpp_cnt+=1
+        map_streamclk=mpp_cnt
+        
         self.used_axes+=[stream_dim]
         
         if keep_slice:
@@ -524,7 +525,7 @@ class PEarray:
         map_shape_data=np.delete(map_shape_data,map_streamdim)
         map_arange=np.delete(map_arange,map_streamdim)
         
-        return map_shape_data,map_shape_pe,map_streamdim,map_arange
+        return map_shape_data,map_streamclk,map_shape_pe,map_streamdim,map_arange
     
     def permute_ravel_idx(self,index, source_shape, source_prior, target_shape, target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
@@ -646,9 +647,9 @@ class PEarray:
         caped_index=np.zeros([len(index)*window_shape[window_stream_axis],len(window_shape)],dtype=int)
         for i,ax in enumerate(axis_arange):
             if ax==data_stream_axis:
-                caped_index[:,i]=np.reshape(base_coor_shift,[1,-1])
+                caped_index[:,ax]=np.reshape(base_coor_shift,[1,-1])
             else: 
-                caped_index[:,i]=np.repeat(index[:,ax],window_shape[window_stream_axis])
+                caped_index[:,ax]=np.repeat(index[:,i],window_shape[window_stream_axis])
                 
         caped_index[:,-1]=np.reshape(idx_capture_clk,[1,-1])
         
@@ -854,12 +855,12 @@ class PEarray:
         # fixed
         if flow.fixed_info is not None:
             flow.check_fix()
-            map_fixdims,map_shape_pe,map_arange=self.get_fix_arange(flow.fix_dims.PE_fix_axis, 
+            map_fixdims,map_shape_pe,map_arange=self.get_fix_arange(flow.fixed_info.PE_fix_axis, 
                                                                     tile_shape, 
                                                                     keep_slice=True)
             
             mapped_coors=self.fixed_idx(mapped_coors, 
-                                        indice_fix=flow.fix_dims.indice, 
+                                        indice_fix=flow.fixed_info.indice, 
                                         fix_dims=map_fixdims, 
                                         target_shape=map_shape_pe, 
                                         axis_arange=map_arange)
@@ -883,13 +884,14 @@ class PEarray:
         # streaming
         if flow.streaming_info is not None:
             flow.check_streaming()
-            map_shape_data,map_shape_pe,map_streamdim,map_arange=self.get_streaming_arange(flow.streaming_info.PE_stream_axis, 
-                                                                                            tile_shape, 
-                                                                                            keep_slice=True)
+            map_shape_data,map_streamclk,map_shape_pe,map_streamdim,map_arange\
+            =self.get_streaming_arange(flow.streaming_info.PE_stream_axis, 
+                                       tile_shape, 
+                                       keep_slice=True)
             
             mapped_coors,cond_idx=self.stream_capture_idx(mapped_coors, 
                                                           data_shape=map_shape_data, 
-                                                          data_stream_axis=flow.streaming_info.tile_stream_axis,
+                                                          data_stream_axis=map_streamclk,
                                                           window_shape=map_shape_pe, 
                                                           window_stream_axis=map_streamdim, 
                                                           data_flow_direction=flow.streaming_info.tile_direction, 

@@ -16,12 +16,22 @@ class axis_info:
     def __init__(self, 
                  PE_required_axes_prior=None, 
                  tile_mapping_prior=None,
-                 PE_fix_dims=None,
-                 indice=None):
+                 PE_fix_axis=None,
+                 indice=None,
+                 PE_broadcast_axis=None,
+                 tile_stream_axis=None,
+                 tile_direction=None,
+                 PE_stream_axis=None,
+                 PE_direction=None):
         self.PE_required_axes_prior=PE_required_axes_prior
         self.tile_mapping_prior=tile_mapping_prior
-        self.PE_fix_dims=PE_fix_dims
+        self.PE_fix_axis=PE_fix_axis
         self.indice=indice
+        self.PE_broadcast_axis=PE_broadcast_axis
+        self.tile_stream_axis=tile_stream_axis
+        self.tile_direction=tile_direction
+        self.PE_stream_axis=PE_stream_axis
+        self.PE_direction=PE_direction
 
         
 class PEflow:
@@ -57,26 +67,17 @@ class PEflow:
                 tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of slice_shape dimensions. The list is the dimension index.
 
             'fixed': 
-                PE_fix_dims: String or List of Strings. The dimension of target_shape that are being fix to. i.e. 'PE_x', 'PE_y', 't_clk'. 
+                PE_fix_axis: String or List of Strings. The dimension of target_shape that are being fix to. i.e. 'PE_x', 'PE_y', 't_clk'. 
                 indice: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
 
             'broadcast': 
-                data_shape: Tuple. The shape of data array being streamed in.
-                target_shape: Tuple. The shape of data array broadcast to.
-                broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that are being broadcast to.
-                axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
-                get_cond_idx: Bool. Return condition index or not.
-
-                
+                PE_broadcast_axis: String or List of Strings. The dimension of target_shape that are being broadcast to. i.e. 'PE_x', 'PE_y', 't_clk'. 
+                                
             'streaming': 
-                data_shape: Tuple. The shape of data array being streamed in.
-                data_stream_axis: Integer. The axis index whose dimension is the flow going.
-                data_flow_direction: String. 'forward' or 'backward' the direction of data flow in. Stream starts from the 0 index and increment, or else starts from last index and decrement.
-                window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
-                window_stream_axis: String. The axis index whose dimention is the sweep going.
-                window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
-                axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 1,2,0 to window_shape axis 0,1,2 respectively.
-                get_cond_idx: Bool. Return condition index or not.
+                tile_stream_axis: Integer. The axis index whose dimension is the flow going.
+                tile_direction: String. 'forward' or 'backward' the direction of data flow in. Stream starts from the 0 index and increment, or else starts from last index and decrement.
+                PE_stream_axis: String. The axis index whose dimension is the sweep going on PE. i.e. 'PE_x' or 'PE_y'.
+                PE_direction: String. 'forward' or 'backward' the direction of window sweeping. 
 
         
         # Arguments
@@ -127,15 +128,38 @@ class PEflow:
             raise ValueError('The length of tile_mapping_prior must equals to data shape, but got %d and %d.'%(len(self.permute_info.tile_mapping_prior),len(data_shape)))
 
     def check_fix(self):
-        if isinstance(self.fixed_info.PE_fix_dims,str):
-            if self.fixed_info.PE_fix_dims not in self.axis_element:
+        if isinstance(self.fixed_info.PE_fix_axis,str):
+            if self.fixed_info.PE_fix_axis not in self.axis_element:
                 raise ValueError('The augment PE_dix_dims must be in list %s'%(str(self.axis_element)))
-        elif isinstance(self.fixed_info.PE_fix_dims,list):
-            for dim in self.fixed_info.PE_fix_dims:
+        elif isinstance(self.fixed_info.PE_fix_axis,list):
+            for dim in self.fixed_info.PE_fix_axis:
                 if dim not in self.axis_element:
                     raise ValueError('The augment PE_dix_dims must be in list %s'%(str(self.axis_element)))
         else:
-            raise TypeError('PE_fix_dims must either be integer or list of integer.')
+            raise TypeError('PE_fix_axis must either be integer or list of integer.')
+
+    def check_broadcast(self):
+        if isinstance(self.broadcast_info.PE_broadcast_axis,str):
+            if self.broadcast_info.PE_broadcast_axis not in self.axis_element:
+                raise ValueError('The augment PE_broadcast_axis must be in list %s'%(str(self.axis_element)))
+        elif isinstance(self.broadcast_info.PE_broadcast_axis,list):
+            for dim in self.broadcast_info.PE_broadcast_axis:
+                if dim not in self.axis_element:
+                    raise ValueError('The augment PE_broadcast_axis must be in list %s'%(str(self.axis_element)))
+        else:
+            raise TypeError('PE_broadcast_axis must either be integer or list of integer.')
+            
+    def check_streaming(self):
+        if isinstance(self.streaming_info.PE_stream_axis,str):
+            if self.streaming_info.PE_stream_axis not in self.axis_element:
+                raise ValueError('The augment PE_stream_axis must be in list %s'%(str(self.axis_element)))
+        elif isinstance(self.streaming_info.PE_stream_axis,list):
+            for dim in self.streaming_info.PE_stream_axis:
+                if dim not in self.axis_element:
+                    raise ValueError('The augment PE_stream_axis must be in list %s'%(str(self.axis_element)))
+        else:
+            raise TypeError('PE_stream_axis must either be integer or list of integer.')
+
 
 class PEarray:
     """
@@ -180,6 +204,7 @@ class PEarray:
         self.wght_tile=wght_tile
         self.ofmap_tile=ofmap_tile
         self.used_axes=list()
+        self.tmp_clk=None
         
     def setup_dataflow(self, 
                        o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_stall=0, o_latency=0,
@@ -238,7 +263,8 @@ class PEarray:
                 mpp_cnt+=1
                 mpp_ind['t_clk']=mpp_cnt
                 if self.n_clk is None:
-                    map_shape_pe.insert(-1,self.estimate_clk(tile_shape,map_shape_pe))
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 else:
                     map_shape_pe.insert(-1,self.n_clk)
                     
@@ -249,7 +275,8 @@ class PEarray:
                 mpp_cnt+=1
                 mpp_ind['t_clk']=mpp_cnt
                 if self.n_clk is None:
-                    map_shape_pe.append(self.estimate_clk(tile_shape,map_shape_pe))
+                    self.n_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.append(self.n_clk)
                 else:
                     map_shape_pe.append(self.n_clk)
         
@@ -258,15 +285,246 @@ class PEarray:
             
         return map_shape_pe,map_prior_pe
     
-    def get_fix_arange(self,fix_dims):
+    def get_fix_arange(self,fix_dims,tile_shape,keep_slice=False):
         """ Organize PE mapping fixed shape and arange
         
         """
         if isinstance(fix_dims,str):
             fix_dims=[fix_dims]
-        #TODO
+
+        map_shape_pe=list()
+        map_fixdims=list()
+        mpp_cnt=-1
+                
+        if 'PE_x' in fix_dims:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            map_fixdims.append(mpp_cnt)
+        elif 'PE_x' in self.used_axes:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            
+        if 'PE_y' in fix_dims:
+            map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+            map_fixdims.append(mpp_cnt)
+        elif 'PE_y' in self.used_axes:
+            map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+
+        if keep_slice:
+            map_shape_pe.append(tile_shape[-1])
+            
+            if 't_clk' in fix_dims:
+                if self.n_clk is None:
+                    if self.tmp_clk is None:
+                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                        map_shape_pe.insert(-1,self.tmp_clk)
+                    else:
+                        map_shape_pe.insert(-1,self.tmp_clk)
+                else:
+                    map_shape_pe.insert(-1,self.n_clk)
+                mpp_cnt+=1
+                map_fixdims.append(mpp_cnt)
+            elif 't_clk' in self.used_axes:
+                if self.n_clk is None:
+                    if self.tmp_clk is None:
+                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                        map_shape_pe.insert(-1,self.tmp_clk)
+                    else:
+                        map_shape_pe.insert(-1,self.tmp_clk)
+                else:
+                    map_shape_pe.insert(-1,self.n_clk)
+                mpp_cnt+=1
+
+        else:     
+            if 't_clk' in fix_dims:
+                if self.n_clk is None:
+                    if self.tmp_clk is None:
+                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                        map_shape_pe.append(self.tmp_clk)
+                    else:
+                        map_shape_pe.append(self.tmp_clk)
+                else:
+                    map_shape_pe.append(self.n_clk)
+                mpp_cnt+=1
+                map_fixdims.append(mpp_cnt)
+            elif 't_clk' in self.used_axes:
+                if self.n_clk is None:
+                    if self.tmp_clk is None:
+                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                        map_shape_pe.append(-1,self.tmp_clk)
+                    else:
+                        map_shape_pe.append(self.tmp_clk)
+                else:
+                    map_shape_pe.append(self.n_clk)
+                mpp_cnt+=1
+        
         self.used_axes+=fix_dims
+        
+        if keep_slice:
+            map_arange=np.arange(len(self.used_axes)+1)
+        else:
+            map_arange=np.arange(len(self.used_axes))
+            
+        for i in map_fixdims:
+            map_arange=np.delete(map_arange,i)
+        
+        if len(map_fixdims)==1:
+            map_fixdims=map_fixdims[0]
+        
         return map_fixdims,map_shape_pe,map_arange
+    
+    def get_broadcast_arange(self,broadcast_dims,tile_shape,keep_slice=False):
+        """ Organize PE mapping broadcast shape and arange
+        
+        """
+        if isinstance(broadcast_dims,str):
+            broadcast_dims=[broadcast_dims]
+
+        map_shape_pe=list()
+        map_broaddims=list()
+        mpp_cnt=-1
+                
+        if 'PE_x' in broadcast_dims:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            map_broaddims.append(mpp_cnt)
+        elif 'PE_x' in self.used_axes:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            
+        if 'PE_y' in broadcast_dims:
+            map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+            map_broaddims.append(mpp_cnt)
+        elif 'PE_y' in self.used_axes:
+            map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+
+        if keep_slice:
+            map_shape_pe.append(tile_shape[-1])
+            
+            if 't_clk' in broadcast_dims:
+                if self.n_clk is None:
+                    if self.tmp_clk is None:
+                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                        map_shape_pe.insert(-1,self.tmp_clk)
+                    else:
+                        map_shape_pe.insert(-1,self.tmp_clk)
+                else:
+                    map_shape_pe.insert(-1,self.n_clk)
+                mpp_cnt+=1
+                map_broaddims.append(mpp_cnt)
+            elif 't_clk' in self.used_axes:
+                if self.n_clk is None:
+                    if self.tmp_clk is None:
+                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                        map_shape_pe.insert(-1,self.tmp_clk)
+                    else:
+                        map_shape_pe.insert(-1,self.tmp_clk)
+                else:
+                    map_shape_pe.insert(-1,self.n_clk)
+                mpp_cnt+=1
+
+        else:     
+            if 't_clk' in broadcast_dims:
+                if self.n_clk is None:
+                    if self.tmp_clk is None:
+                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                        map_shape_pe.append(self.tmp_clk)
+                    else:
+                        map_shape_pe.append(self.tmp_clk)
+                else:
+                    map_shape_pe.append(self.n_clk)
+                mpp_cnt+=1
+                map_broaddims.append(mpp_cnt)
+            elif 't_clk' in self.used_axes:
+                if self.n_clk is None:
+                    if self.tmp_clk is None:
+                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                        map_shape_pe.append(-1,self.tmp_clk)
+                    else:
+                        map_shape_pe.append(self.tmp_clk)
+                else:
+                    map_shape_pe.append(self.n_clk)
+                mpp_cnt+=1
+        
+        self.used_axes+=broadcast_dims
+        
+        if keep_slice:
+            map_arange=np.arange(len(self.used_axes)+1)
+        else:
+            map_arange=np.arange(len(self.used_axes))
+            
+        map_shape_data=np.copy(map_shape_pe)
+            
+        for i in map_broaddims:
+            map_shape_data=np.delete(map_shape_data,i)
+            map_arange=np.delete(map_arange,i)
+        
+        if len(map_broaddims)==1:
+            map_broaddims=map_broaddims[0]
+        
+        return map_shape_data,map_shape_pe,map_broaddims,map_arange
+    
+    def get_streaming_arange(self,stream_dim,tile_shape,keep_slice=False):
+        """ Organize PE mapping streaming shape and arange
+        
+        """
+        
+        map_shape_pe=list()
+        mpp_cnt=-1
+                
+        if 'PE_x' == stream_dim:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            map_streamdim=mpp_cnt
+        elif 'PE_x' in self.used_axes:
+            map_shape_pe.append(self.n_x)
+            mpp_cnt+=1
+            
+        if 'PE_y' == stream_dim:
+            map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+            map_streamdim=mpp_cnt
+        elif 'PE_y' in self.used_axes:
+            map_shape_pe.append(self.n_y)
+            mpp_cnt+=1
+
+        if keep_slice:
+            map_shape_pe.append(tile_shape[-1])
+            if self.n_clk is None:
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.insert(-1,self.tmp_clk)
+                else:
+                    map_shape_pe.insert(-1,self.tmp_clk)
+            else:
+                map_shape_pe.insert(-1,self.n_clk)
+        else:     
+            if self.n_clk is None:
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.append(self.tmp_clk)
+                else:
+                    map_shape_pe.append(self.tmp_clk)
+            else:
+                map_shape_pe.append(self.n_clk)
+        
+        self.used_axes+=[stream_dim]
+        
+        if keep_slice:
+            map_arange=np.arange(len(self.used_axes)+1)
+        else:
+            map_arange=np.arange(len(self.used_axes))
+            
+        map_shape_data=np.copy(map_shape_pe)
+            
+        map_shape_data=np.delete(map_shape_data,map_streamdim)
+        map_arange=np.delete(map_arange,map_streamdim)
+        
+        return map_shape_data,map_shape_pe,map_streamdim,map_arange
     
     def permute_ravel_idx(self,index, source_shape, source_prior, target_shape, target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
@@ -407,7 +665,7 @@ class PEarray:
         # Arguments
             index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
                 2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            data_shape: Tuple. The shape of data array being streamed in.
+            data_shape: Tuple. The shape of data array being broadcasted.
             target_shape: Tuple. The shape of data array broadcast to.
             broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that are being broadcast to.
             axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
@@ -583,26 +841,64 @@ class PEarray:
         if flow.permute_info is not None:
             flow.check_prior(tile_shape)
             
-            map_shape_pe,map_prior_pe=self.get_PE_prior(flow.permute_info.PE_required_axes_prior, tile_shape, keep_slice=True)
+            map_shape_pe,map_prior_pe=self.get_PE_prior(flow.permute_info.PE_required_axes_prior, 
+                                                        tile_shape, 
+                                                        keep_slice=True)
     
             mapped_coors=self.permute_ravel_idx(mapped_coors,
                                                 source_shape=tile_shape,
                                                 source_prior=flow.permute_info.tile_mapping_prior,
                                                 target_shape=map_shape_pe,
                                                 target_prior=map_prior_pe)
-                
         
         # fixed
         if flow.fixed_info is not None:
             flow.check_fix()
-            map_fixdims,map_shape_pe,map_arange=self.get_fix_arange(flow.fix_dims.PE_fix_dims)
+            map_fixdims,map_shape_pe,map_arange=self.get_fix_arange(flow.fix_dims.PE_fix_axis, 
+                                                                    tile_shape, 
+                                                                    keep_slice=True)
             
             mapped_coors=self.fixed_idx(mapped_coors, 
                                         indice_fix=flow.fix_dims.indice, 
                                         fix_dims=map_fixdims, 
-                                        target_shape=None, 
-                                        axis_arange=None)
+                                        target_shape=map_shape_pe, 
+                                        axis_arange=map_arange)
+        
+        # broadcast
+        if flow.broadcast_info is not None:
+            flow.check_broadcast()
+            map_shape_data,map_shape_pe,map_broaddims,map_arange=self.get_broadcast_arange(flow.broadcast_info.PE_broadcast_axis, 
+                                                                                           tile_shape, 
+                                                                                           keep_slice=True)
+            
+            mapped_coors,cond_idx=self.broadcast_idx(mapped_coors, 
+                                                     data_shape=map_shape_data,
+                                                     target_shape=map_prior_pe, 
+                                                     broadcast_dims=map_broaddims,
+                                                     axis_arange=map_arange, 
+                                                     get_cond_idx=True)
+            
+            fault_value=[fault_value[i] for i in cond_idx]
+          
+        # streaming
+        if flow.streaming_info is not None:
+            flow.check_streaming()
+            map_shape_data,map_shape_pe,map_streamdim,map_arange=self.get_streaming_arange(flow.streaming_info.PE_stream_axis, 
+                                                                                            tile_shape, 
+                                                                                            keep_slice=True)
+            
+            mapped_coors,cond_idx=self.stream_capture_idx(mapped_coors, 
+                                                          data_shape=map_shape_data, 
+                                                          data_stream_axis=flow.streaming_info.tile_stream_axis,
+                                                          window_shape=map_shape_pe, 
+                                                          window_stream_axis=map_streamdim, 
+                                                          data_flow_direction=flow.streaming_info.tile_direction, 
+                                                          window_flow_direction=flow.streaming_info.PE_direction,
+                                                          axis_arange=map_arange, 
+                                                          get_cond_idx=True)
 
+            fault_value=[fault_value[i] for i in cond_idx]
+            
 
         mapped_coors_fd=list(zip(*mapped_coors.T))
         new_fault_dict=dict(zip(mapped_coors_fd,fault_value))

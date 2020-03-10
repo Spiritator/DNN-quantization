@@ -264,17 +264,17 @@ class tile_PE(tile):
                 cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
                 
         elif padding=='same':
-            cond_tmp=idx_patches_candidate[:,:,0]>=0-(dilated_ksize_row-1) # left edge
+            cond_tmp=idx_patches_candidate[:,:,0]>=0-(np.floor_divide(dilated_ksize_row,2)) # left edge
             cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
             
-            cond_tmp=idx_patches_candidate[:,:,1]>=0-(dilated_ksize_col-1) # up edge
+            cond_tmp=idx_patches_candidate[:,:,1]>=0-(np.floor_divide(dilated_ksize_col,2)) # up edge
             cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
             
             if not edge_fill:
-                cond_tmp=idx_patches_candidate[:,:,0]<(fmap_shape[1]) # right edge
+                cond_tmp=idx_patches_candidate[:,:,0]<(fmap_shape[1]-(np.floor_divide(dilated_ksize_row,2))) # right edge
                 cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
                 
-                cond_tmp=idx_patches_candidate[:,:,1]<(fmap_shape[2]) # down edge
+                cond_tmp=idx_patches_candidate[:,:,1]<(fmap_shape[2]-(np.floor_divide(dilated_ksize_col,2))) # down edge
                 cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
                 
         else:
@@ -282,7 +282,7 @@ class tile_PE(tile):
             
         extracted_2D=idx_patches_candidate[cond_arg]
         if padding=='same':
-            extracted_2D=np.add(extracted_2D,[[dilated_ksize_row-1,dilated_ksize_col-1]])
+            extracted_2D=np.add(extracted_2D,[[np.floor_divide(dilated_ksize_row,2),np.floor_divide(dilated_ksize_col,2)]])
         if strides[1]>1 or strides[2]>1:
             extracted_2D=np.floor_divide(extracted_2D,[strides[1:3]])
         cond_idx=np.argwhere(cond_arg)

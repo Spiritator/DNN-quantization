@@ -45,6 +45,7 @@ class PEflow:
                  streaming_info=None, 
                  repeat=0, 
                  duplicate=0, 
+                 pack_size=1,
                  stall=0, 
                  latency=0):
         """
@@ -85,6 +86,7 @@ class PEflow:
             streaming_info: Dictionary. The infomation of streaming flow. Must in the format describe above.
             repeat: Integer. The times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
             duplicate: Integer. The times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
+            pack_size: Integer. The number of slices of pre-mapped tile data in a slice-pack.
             stall: Integer. The clock cycles need to wait till data get ready.
             latency: Integer. The clock cycles need to wait for other data going through PE array.
         """
@@ -110,6 +112,7 @@ class PEflow:
             
         self.repeat=repeat
         self.duplicate=duplicate
+        self.pack_size=pack_size
         self.stall=stall
         self.latency=latency
         self.axis_element=['PE_x','PE_y','t_clk']
@@ -806,7 +809,7 @@ class PEarray:
 
         return fixed_index
         
-    def premapping_tile(self, parameter, tile, flow):
+    def premapping_tile(self, parameter):
         """ Pre-mapping a tile onto PE array dataflow model. Need setup dataflow config in advance.
             All three parameter ofmap, weight, ifmap are setup with specific axis config.
             Each axis on PE array are assign with dataflow mode (one of 'permute', 'fixed', 'broadcast', 'streaming').
@@ -820,6 +823,19 @@ class PEarray:
         # Returns
             Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
+        if parameter=='ofmap':
+            tile=self.ofmap_tile
+            flow=self.ofmap_flow
+        elif parameter=='ifmap':
+            tile=self.ifmap_tile
+            flow=self.ifmap_flow
+        elif parameter=='wght':
+            tile=self.wght_tile
+            flow=self.wght_flow
+        else:
+            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\'.')
+
+        
         if tile.tilting:
             tile_shape=tile.tilted_slice_shape
         else:
@@ -835,6 +851,16 @@ class PEarray:
             mapped_coors=np.array(list(tile.fault_dict.keys()))
             mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=int),axis=1)
             fault_value=list(tile.fault_dict.values())
+            
+        if parameter=='ofmap':
+            PEparam={'param':'psum_out'}
+        elif parameter=='ifmap':
+            PEparam={'param':'ifmap_in'}
+        elif parameter=='wght':
+            PEparam={'param':'wght_in'}
+        
+        for value in fault_value:
+            value.update(PEparam)
                
         self.used_axes=list()
         
@@ -906,17 +932,53 @@ class PEarray:
         new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
 
         if parameter=='ofmap':
-            self.ofmap_fault_dict=new_fault_dict
+            self.ofmap_premap_fd=new_fault_dict
             self.mapping_shape_ofmap=map_shape_pe
         elif parameter=='ifmap':
-            self.ifmap_fault_dict=new_fault_dict
+            self.ifmap_premap_fd=new_fault_dict
             self.mapping_shape_ifmap=map_shape_pe
         elif parameter=='wght':
-            self.wght_fault_dict=new_fault_dict
+            self.wght_premap_fd=new_fault_dict
             self.mapping_shape_wght=map_shape_pe
             
         return new_fault_dict
+    
+    def duplicate_mapping(self, parameter):
+        """ Duplicate pre-mapped tile which is on PE array dataflow model. Need setup dataflow config in advance.
+            There might need multiple iteration for a ofmap tile to complete it computation. 
+            Maybe for calculating different channels or accumulate partial sum.
+            Repeat means the times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
+            Duplicate means the times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
+            
+        
+        # Arguments
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+        
+        # Returns
+            Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        """
+        if parameter=='ofmap':
+            fault_dict=self.ofmap_premap_fd
+            flow=self.ofmap_flow
+        elif parameter=='ifmap':
+            fault_dict=self.ifmap_premap_fd
+            flow=self.ifmap_flow
+        elif parameter=='wght':
+            fault_dict=self.wght_premap_fd
+            flow=self.wght_flow
+        else:
+            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\'.')
 
+        duped_coors=np.array(list(fault_dict.keys()))
+        fault_value=np.array(list(fault_dict.values()))
+        
+        # TODO
+        # slices dims fit into alliged index
+        duped_coors=np.repeat(duped_coors,flow.repeat,0)
+        fault_value=np.repeat(fault_value,flow.repeat,0)
+        
+        duped_coors_fd=list(zip(*duped_coors.T))
+        new_fault_dict=dict(zip(duped_coors_fd,fault_value))
         
         
 # TODO

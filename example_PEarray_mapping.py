@@ -232,9 +232,9 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                    i_latency=0)
 
 # ofmap pre-mapping
-mapped_fault_dict_ofmap=MXU.premapping_tile('ofmap',MXU.ofmap_tile,MXU.ofmap_flow)
+mapped_fault_dict_ofmap=MXU.premapping_tile('ofmap')
 # weight pre-mapping
-mapped_fault_dict_wght=MXU.premapping_tile('wght',MXU.wght_tile,MXU.wght_flow)
+mapped_fault_dict_wght=MXU.premapping_tile('wght')
 # ifmap pre-mapping
-mapped_fault_dict_ifmap=MXU.premapping_tile('ifmap',MXU.ifmap_tile,MXU.ifmap_flow)
+mapped_fault_dict_ifmap=MXU.premapping_tile('ifmap')
 

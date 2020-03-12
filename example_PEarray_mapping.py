@@ -206,19 +206,21 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                                  'indice':-1}, 
                    o_broadcast_info=None, 
                    o_streaming_info=None, 
-                   o_repeat=0, 
+                   o_repeat=9, 
                    o_duplicate=0, 
-                   o_stall=0, 
-                   o_latency=0,
+                   o_pack_size=1,
+                   o_stall_latency=17+15,
+                   
                    w_permute_info={'PE_required_axes_prior':['t_clk','PE_y','PE_x'],
                                    'tile_mapping_prior':[2,1,0]}, 
                    w_fixed_info=None, 
                    w_broadcast_info=None, 
                    w_streaming_info=None, 
-                   w_repeat=0, 
+                   w_repeat=799, 
                    w_duplicate=0, 
-                   w_stall=0, 
-                   w_latency=0,
+                   w_pack_size=799,
+                   w_stall_latency=17,
+                   
                    i_permute_info={'PE_required_axes_prior':['t_clk','PE_y'],
                                    'tile_mapping_prior':[2,1,0]}, 
                    i_fixed_info=None, 
@@ -227,9 +229,9 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                                      'tile_direction':'forward',
                                      'PE_direction':'forward'}, 
                    i_repeat=0, 
-                   i_duplicate=0, 
-                   i_stall=0, 
-                   i_latency=0)
+                   i_duplicate=2, 
+                   i_pack_size=1,
+                   i_stall_latency=17)
 
 # ofmap pre-mapping
 mapped_fault_dict_ofmap=MXU.premapping_tile('ofmap')
@@ -237,4 +239,11 @@ mapped_fault_dict_ofmap=MXU.premapping_tile('ofmap')
 mapped_fault_dict_wght=MXU.premapping_tile('wght')
 # ifmap pre-mapping
 mapped_fault_dict_ifmap=MXU.premapping_tile('ifmap')
+
+# ofmap duplicate mapping
+duped_fault_dict_ofmap=MXU.duplicate_mapping('ofmap')
+# weight duplicate mapping
+duped_fault_dict_wght=MXU.duplicate_mapping('wght')
+# ifmap duplicate mapping
+duped_fault_dict_ifmap=MXU.duplicate_mapping('ifmap')
 

@@ -11,6 +11,7 @@ from simulator.comp_unit.PEarray import PEarray
 from simulator.comp_unit.tile import tile_PE
 
 import numpy as np
+import json
 
 #%% 
 # Test example using TPU-like vecter mac
@@ -197,8 +198,6 @@ fixed_coors_out1=MXU.fixed_idx(fixed_coors_in1,
                                target_shape=(16,16,691))
 
 #%%
-# pre-mapping tiles to PE
-
 # setup mapping configuration
 MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                                    'tile_mapping_prior':[2,1,0]}, 
@@ -233,11 +232,21 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                    i_pack_size=1,
                    i_stall_latency=17)
 
+#%% 
+# read in mapping configuration
+with open('config_PEarray.json', 'r') as config_file:
+    PEconfig=json.load(config_file)
+
+MXU.setup_dataflow(** PEconfig)
+
+#%%
+# pre-mapping tiles to PE
+
 # ofmap pre-mapping
 mapped_fault_dict_ofmap=MXU.premapping_tile('ofmap')
 # weight pre-mapping
 mapped_fault_dict_wght=MXU.premapping_tile('wght')
-# ifmap pre-mapping
+# ifmap pre-mappingde
 mapped_fault_dict_ifmap=MXU.premapping_tile('ifmap')
 
 # ofmap duplicate mapping
@@ -246,4 +255,7 @@ duped_fault_dict_ofmap=MXU.duplicate_mapping('ofmap')
 duped_fault_dict_wght=MXU.duplicate_mapping('wght')
 # ifmap duplicate mapping
 duped_fault_dict_ifmap=MXU.duplicate_mapping('ifmap')
+
+# align clock cycle and make final mapping fault dictionary
+PE_fault_dict_final=MXU.align_slice_pack()
 

@@ -553,5 +553,21 @@ class tile_PE(tile):
         self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
         
         return self.fault_dict_expand
+    
+    def clear(self):
+        """ Clear fault dictionary of tile """
+        self.fault_dict_rehsaped=dict()
+        self.fault_dict_expand=dict()
+        
+    def clear_expansion(self):
+        """ Clear expansion shapes and priorities of tile """
+        self.expand_shape=None
+        self.expand_prior_orig=None
+        self.expand_prior_targ=None
+        self.slice_shape=None
+        self.slicing_dims=None
+        self.slices_permute=None
+        self.slices_cutset=None
+        self.tilted_slice_shape=None
         
             

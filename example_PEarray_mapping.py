@@ -249,6 +249,9 @@ mapped_fault_dict_wght=MXU.premapping_tile('wght')
 # ifmap pre-mappingde
 mapped_fault_dict_ifmap=MXU.premapping_tile('ifmap')
 
+#%%
+# duplicate mapping for data reuse or accumulate partial sum
+
 # ofmap duplicate mapping
 duped_fault_dict_ofmap=MXU.duplicate_mapping('ofmap')
 # weight duplicate mapping
@@ -256,6 +259,39 @@ duped_fault_dict_wght=MXU.duplicate_mapping('wght')
 # ifmap duplicate mapping
 duped_fault_dict_ifmap=MXU.duplicate_mapping('ifmap')
 
+#%%
 # align clock cycle and make final mapping fault dictionary
 PE_fault_dict_final=MXU.align_slice_pack()
 
+#%%
+# assign psum and bias mapping configuration
+
+MXU.clear()
+MXU.clear_map_config()
+
+MXU.setup_dataflow(p_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
+                                   'tile_mapping_prior':[2,1,0]}, 
+                   p_fixed_info=None, 
+                   p_broadcast_info=None, 
+                   p_streaming_info={'PE_stream_axis':'PE_y',
+                                     'tile_direction':'forward',
+                                     'PE_direction':'forward'}, 
+                   p_repeat=9, 
+                   p_duplicate=0, 
+                   p_pack_size=1,
+                   p_stall_latency=17,
+                   
+                   b_permute_info={'PE_required_axes_prior':['t_clk','PE_y','PE_x'],
+                                   'tile_mapping_prior':[2,1,0]}, 
+                   b_fixed_info=None, 
+                   b_broadcast_info=None, 
+                   b_streaming_info=None, 
+                   b_repeat=9, 
+                   b_duplicate=0, 
+                   b_pack_size=1,
+                   b_stall_latency=17,
+
+                   ** PEconfig)
+
+#%%
+# mapping PE fault to tile

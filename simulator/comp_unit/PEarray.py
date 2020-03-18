@@ -209,8 +209,15 @@ class PEarray:
     def setup_dataflow(self, 
                        o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_pack_size=1, o_stall_latency=0,
                        w_permute_info=None, w_fixed_info=None, w_broadcast_info=None, w_streaming_info=None, w_repeat=0, w_duplicate=0, w_pack_size=1, w_stall_latency=0,
-                       i_permute_info=None, i_fixed_info=None, i_broadcast_info=None, i_streaming_info=None, i_repeat=0, i_duplicate=0, i_pack_size=1, i_stall_latency=0):
+                       i_permute_info=None, i_fixed_info=None, i_broadcast_info=None, i_streaming_info=None, i_repeat=0, i_duplicate=0, i_pack_size=1, i_stall_latency=0,
+                       p_permute_info=None, p_fixed_info=None, p_broadcast_info=None, p_streaming_info=None, p_repeat=0, p_duplicate=0, p_pack_size=1, p_stall_latency=0,
+                       b_permute_info=None, b_fixed_info=None, b_broadcast_info=None, b_streaming_info=None, b_repeat=0, b_duplicate=0, b_pack_size=1, b_stall_latency=0):
         """ Setup dataflow of ofmap, weight, ifmap. Read in PE dataflow arguments for mapping.
+            o_* for output feature map
+            w_* for weight kernel
+            i_* for input feature map
+            p_* for partial sum (the same shape as ofmap tile)
+            b_* for weight bias
         
         # Arguments
             permute_info: Dictionary. The infomation of permute flow. Must in the format describe above.
@@ -227,6 +234,8 @@ class PEarray:
         self.ofmap_flow=PEflow(o_permute_info, o_fixed_info, o_broadcast_info, o_streaming_info, o_repeat, o_duplicate, o_pack_size, o_stall_latency)
         self.wght_flow=PEflow(w_permute_info, w_fixed_info, w_broadcast_info, w_streaming_info, w_repeat, w_duplicate, w_pack_size, w_stall_latency)
         self.ifmap_flow=PEflow(i_permute_info, i_fixed_info, i_broadcast_info, i_streaming_info, i_repeat, i_duplicate, i_pack_size, i_stall_latency)
+        self.psum_flow=PEflow(p_permute_info, p_fixed_info, p_broadcast_info, p_streaming_info, p_repeat, p_duplicate, p_pack_size, p_stall_latency)
+        self.bias_flow=PEflow(b_permute_info, b_fixed_info, b_broadcast_info, b_streaming_info, b_repeat, b_duplicate, b_pack_size, b_stall_latency)
         
     def estimate_clk(self, mapping_shape, non_clk_PE_shape):
         """ Estimate the needed number of clock cycle by shape of mapping data

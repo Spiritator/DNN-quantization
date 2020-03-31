@@ -329,8 +329,8 @@ class tile_PE(tile):
 
     def expand_reshape_data(self, orig_prior, expect_shape, reshape_prior, slicing_dims, slices_permute,
                             tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1):
-        """ Data expansion before put into PE array. Usually used for ifmap and weight reuse. 
-            The data may be cut into many pieces than fit into PE. Different slices calculate in different clock cycle.
+        """ Data expansion before put into PE array. 
+            The data may be cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
             Method 'reshape' means change data shape without any duplication in array.
         
         # Arguments              
@@ -372,7 +372,7 @@ class tile_PE(tile):
         self.expand_shape=expect_shape
         
         if len(reshape_prior)!=len(self.expand_shape):
-            raise TypeError('slicing_dims must be in length %d, but get length %d'%(len(self.expand_shape),len(reshape_prior)))
+            raise TypeError('reshape_prior must be in length %d, but get length %d'%(len(self.expand_shape),len(reshape_prior)))
         self.expand_prior_targ=reshape_prior
         
         if not isinstance(slicing_dims,tuple) or len(slicing_dims)!=len(self.expand_shape):
@@ -553,6 +553,33 @@ class tile_PE(tile):
         self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
         
         return self.fault_dict_expand
+    
+    def expand_slice_bias(self, slice_width):
+        """ Data expansion before put into PE array. 
+            The data are being cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
+        
+        # Arguments                            
+            slice_width: Integer. The expected slice width to be expand into.         
+                            
+        # Returns
+            Converted fault dictionary.
+
+        """
+        if self.is_fmap:
+            raise TypeError('This is feature maps tile, no bias!')
+        self.use_bias=True
+            
+        self.bias_slice_shape=(slice_width, np.ceil(self.Tn/slice_width))
+        
+        orig_coors=np.array(list(self.bias_fault_dict.keys()))
+        fault_info=list(self.bias_fault_dict.values())
+        
+        sliced_coors=np.concatenate([np.remainder(orig_coors,slice_width),np.floor_divide(orig_coors,slice_width)],axis=1)
+        
+        sliced_coors_fd=list(zip(*sliced_coors.T))
+        self.bias_fault_dict_expand=dict(zip(sliced_coors_fd,fault_info))
+        
+        return self.bias_fault_dict_expand
     
     def clear(self):
         """ Clear fault dictionary of tile """

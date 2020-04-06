@@ -875,7 +875,7 @@ class PEarray:
 
         return new_fault_dict,mapping_shape
         
-    def premapping_tile(self, parameter):
+    def premapping_tile(self, parameter, dataflow_pre_plan=False):
         """ Pre-mapping a tile onto PE array dataflow model. Need setup dataflow config in advance.
             All three parameter ofmap, weight, ifmap are setup with specific axis config.
             Each axis on PE array are assign with dataflow mode (one of 'permute', 'fixed', 'broadcast', 'streaming').
@@ -885,6 +885,9 @@ class PEarray:
             parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
             tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
             flow: Class. The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
+        
+            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+                Only save the expansion configuration for later PEarray to Tile transform.
         
         # Returns
             Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -1012,7 +1015,7 @@ class PEarray:
             
         return new_fault_dict
     
-    def duplicate_mapping(self, parameter):
+    def duplicate_mapping(self, parameter, dataflow_pre_plan=False):
         """ Duplicate pre-mapped tile which is on PE array dataflow model. Need setup dataflow config in advance.
             There might need multiple iteration for a ofmap tile to complete it computation. 
             Maybe for calculating different channels or accumulate partial sum.
@@ -1022,6 +1025,9 @@ class PEarray:
         
         # Arguments
             parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+
+            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+                Only save the expansion configuration for later PEarray to Tile transform.
         
         # Returns
             Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -1088,13 +1094,16 @@ class PEarray:
             
         return new_fault_dict
 
-    def align_slice_pack(self):
+    def align_slice_pack(self, dataflow_pre_plan=False):
         """ Align pre-mapped and duplicated fault dictionarys which is mapped on PE array dataflow model. Need setup dataflow config in advance.
             All the fault dictionary are in the correct location within slice. Forming slice pack to slign the timing of each slices to complete tile computation.
             Insert stall and latency for actual PE dataflow for each slice pack. Finally, combines all mapped tile fault dictionary onto PE dataflow model.
         
         # Arguments
             parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+
+            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+                Only save the expansion configuration for later PEarray to Tile transform.
         
         # Returns
             Converted and combined fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -1167,7 +1176,4 @@ class PEarray:
         
 # TODO
 # gen fault list
-# how the data flow        
-# form fault information
-# describe psum & bias
 # 

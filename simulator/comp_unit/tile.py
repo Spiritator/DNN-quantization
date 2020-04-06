@@ -328,7 +328,8 @@ class tile_PE(tile):
         return new_index,tuple(new_shape)
 
     def expand_reshape_data(self, orig_prior, expect_shape, reshape_prior, slicing_dims, slices_permute,
-                            tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1):
+                            tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1,
+                            dataflow_pre_plan=False):
         """ Data expansion before put into PE array. 
             The data may be cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
             Method 'reshape' means change data shape without any duplication in array.
@@ -352,6 +353,9 @@ class tile_PE(tile):
             tilt_axis: Integer. The axis wanted to be tilted.
             tilt_direction: Integer. The axis of direaction that are tilted to.
             tilt_shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
+            
+            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+                Only save the expansion configuration for later PEarray to Tile transform.
                 
         # Returns
             Converted fault dictionary.
@@ -387,41 +391,55 @@ class tile_PE(tile):
             raise TypeError('slices_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
         self.slices_permute=slices_permute
         
-        orig_coors=np.array(list(self.fault_dict.keys()))
-        reshaped_coors=self.reshape_ravel_idx(orig_coors,
-                                              source_shape=self.tile_shape,
-                                              source_prior=self.expand_prior_orig,
-                                              target_shape=self.expand_shape,
-                                              target_prior=self.expand_prior_targ)
+        if not dataflow_pre_plan:
+            orig_coors=np.array(list(self.fault_dict.keys()))
+            reshaped_coors=self.reshape_ravel_idx(orig_coors,
+                                                  source_shape=self.tile_shape,
+                                                  source_prior=self.expand_prior_orig,
+                                                  target_shape=self.expand_shape,
+                                                  target_prior=self.expand_prior_targ)
+            
+            reshaped_coors_fd=list(zip(*reshaped_coors.T))
+            fault_info=list(self.fault_dict.values())
+            self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
         
-        reshaped_coors_fd=list(zip(*reshaped_coors.T))
-        fault_info=list(self.fault_dict.values())
-        self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
-        
-        permuted_coors=self.slice_permute_idx(reshaped_coors,
-                                              orig_shape=self.expand_shape,
-                                              slicing_dims=self.slicing_dims,
-                                              slices_permute=self.slices_permute)
+            permuted_coors=self.slice_permute_idx(reshaped_coors,
+                                                  orig_shape=self.expand_shape,
+                                                  slicing_dims=self.slicing_dims,
+                                                  slices_permute=self.slices_permute)
         
         if tilting:
             self.tilting=True
             self.tilt_axis=tilt_axis
             self.tilt_direction=tilt_direction
             self.tilt_shift=tilt_shift
-            permuted_coors,self.tilted_slice_shape=self.tilt_idx(permuted_coors,
-                                                                 self.tilt_axis,
-                                                                 self.tilt_direction,
-                                                                 self.slice_shape,
-                                                                 self.tilt_shift)
+            
+            if not dataflow_pre_plan:
+                permuted_coors,self.tilted_slice_shape=self.tilt_idx(permuted_coors,
+                                                                     self.tilt_axis,
+                                                                     self.tilt_direction,
+                                                                     self.slice_shape,
+                                                                     self.tilt_shift)
+            else:
+                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([len(self.slice_shape),1],dtype=int),
+                                                        self.tilt_axis,
+                                                        self.tilt_direction,
+                                                        self.slice_shape,
+                                                        self.tilt_shift)
+                    
+        if not dataflow_pre_plan:
+            permuted_coor_fd=list(zip(*permuted_coors.T))
+            self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
         
-        permuted_coor_fd=list(zip(*permuted_coors.T))
-        self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
+            return self.fault_dict_expand
         
-        return self.fault_dict_expand
+        else:
+            return None
     
     def expand_extract_patches(self, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, 
             reshape_patches=False, patches_prior=None, expect_shape=None, reshape_prior=None, slicing_dims=None, slices_permute=None,
-            tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1):
+            tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1,
+            dataflow_pre_plan=False):
         """ Data expansion before put into PE array. Usually used for ifmap reuse. 
             The data may be cut into many pieces than fit into PE. Different slices calculate in different clock cycle.
             Method 'extract patches' means extract feature patches to output feature maps corresponding kernel multiply.
@@ -461,6 +479,9 @@ class tile_PE(tile):
             tilt_direction: Integer. The axis of direaction that are tilted to.
             tilt_shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
         
+            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+                Only save the expansion configuration for later PEarray to Tile transform.
+
         # Returns
             Converted fault dictionary.
         """
@@ -473,6 +494,13 @@ class tile_PE(tile):
             raise ValueError('strides length must be 4, but got %d'%len(strides))
         if len(dilation_rates)!=4:
             raise ValueError('dilation rate length must be 4, but got %d'%len(dilation_rates))
+            
+        if dataflow_pre_plan:
+            self.ksizes=ksizes
+            self.strides=strides
+            self.dilation_rates=dilation_rates
+            self.padding=padding
+            self.edge_fill=edge_fill
         
         extracted_shape=self.get_extracted_shape(fmap_shape=self.tile_shape,
                                                  ksizes=ksizes,
@@ -507,59 +535,76 @@ class tile_PE(tile):
             raise TypeError('slices_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
         self.slices_permute=slices_permute
         
-        orig_coors=np.array(list(self.fault_dict.keys()))
-        fault_info=list(self.fault_dict.values())
-        
-        extracted_coors,cond_idx=self.extract_patches_idx(orig_coors,
-                                                          fmap_shape=self.tile_shape,
-                                                          ksizes=ksizes,
-                                                          strides=strides,
-                                                          dilation_rates=dilation_rates,
-                                                          padding=padding,
-                                                          edge_fill=edge_fill,
-                                                          get_cond_idx=True)
-        fault_info=[fault_info[i] for i in cond_idx[:,0]]
-        
-        if reshape_patches:
-            reshaped_coors=self.reshape_ravel_idx(extracted_coors,
-                                                  source_shape=self.extracted_shape,
-                                                  source_prior=self.expand_prior_orig,
-                                                  target_shape=self.expand_shape,
-                                                  target_prior=self.expand_prior_targ)
+        if not dataflow_pre_plan:
+            orig_coors=np.array(list(self.fault_dict.keys()))
+            fault_info=list(self.fault_dict.values())
             
-            reshaped_coors_fd=list(zip(*reshaped_coors.T))
-        else:
-            reshaped_coors_fd=list(zip(*extracted_coors.T))
-        
-        self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
-        
-        permuted_coors=self.slice_permute_idx(reshaped_coors,
-                                              orig_shape=self.expand_shape,
-                                              slicing_dims=self.slicing_dims,
-                                              slices_permute=self.slices_permute)
+            extracted_coors,cond_idx=self.extract_patches_idx(orig_coors,
+                                                              fmap_shape=self.tile_shape,
+                                                              ksizes=ksizes,
+                                                              strides=strides,
+                                                              dilation_rates=dilation_rates,
+                                                              padding=padding,
+                                                              edge_fill=edge_fill,
+                                                              get_cond_idx=True)
+            fault_info=[fault_info[i] for i in cond_idx[:,0]]
+            
+            if reshape_patches:
+                reshaped_coors=self.reshape_ravel_idx(extracted_coors,
+                                                      source_shape=self.extracted_shape,
+                                                      source_prior=self.expand_prior_orig,
+                                                      target_shape=self.expand_shape,
+                                                      target_prior=self.expand_prior_targ)
+                
+                reshaped_coors_fd=list(zip(*reshaped_coors.T))
+            else:
+                reshaped_coors_fd=list(zip(*extracted_coors.T))
+            
+            self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
+            
+            permuted_coors=self.slice_permute_idx(reshaped_coors,
+                                                  orig_shape=self.expand_shape,
+                                                  slicing_dims=self.slicing_dims,
+                                                  slices_permute=self.slices_permute)
         
         if tilting:
             self.tilting=True
             self.tilt_axis=tilt_axis
             self.tilt_direction=tilt_direction
             self.tilt_shift=tilt_shift
-            permuted_coors,self.tilted_slice_shape=self.tilt_idx(permuted_coors,
-                                                                 self.tilt_axis,
-                                                                 self.tilt_direction,
-                                                                 self.slice_shape,
-                                                                 self.tilt_shift)
+            
+            if not dataflow_pre_plan:
+                permuted_coors,self.tilted_slice_shape=self.tilt_idx(permuted_coors,
+                                                                     self.tilt_axis,
+                                                                     self.tilt_direction,
+                                                                     self.slice_shape,
+                                                                     self.tilt_shift)
+            else:
+                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([len(self.slice_shape),1],dtype=int),
+                                                        self.tilt_axis,
+                                                        self.tilt_direction,
+                                                        self.slice_shape,
+                                                        self.tilt_shift)
+
         
-        permuted_coor_fd=list(zip(*permuted_coors.T))
-        self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
+        if not dataflow_pre_plan:
+            permuted_coor_fd=list(zip(*permuted_coors.T))
+            self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
+            
+            return self.fault_dict_expand
         
-        return self.fault_dict_expand
+        else:
+            return None
     
-    def expand_slice_bias(self, slice_width):
+    def expand_slice_bias(self, slice_width, dataflow_pre_plan=False):
         """ Data expansion before put into PE array. 
             The data are being cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
         
         # Arguments                            
-            slice_width: Integer. The expected slice width to be expand into.         
+            slice_width: Integer. The expected slice width to be expand into. 
+            
+            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+                Only save the expansion configuration for later PEarray to Tile transform.
                             
         # Returns
             Converted fault dictionary.
@@ -571,15 +616,19 @@ class tile_PE(tile):
             
         self.bias_slice_shape=(slice_width, np.ceil(self.Tn/slice_width))
         
-        orig_coors=np.array(list(self.bias_fault_dict.keys()))
-        fault_info=list(self.bias_fault_dict.values())
+        if not dataflow_pre_plan:
+            orig_coors=np.array(list(self.bias_fault_dict.keys()))
+            fault_info=list(self.bias_fault_dict.values())
+            
+            sliced_coors=np.concatenate([np.remainder(orig_coors,slice_width),np.floor_divide(orig_coors,slice_width)],axis=1)
+            
+            sliced_coors_fd=list(zip(*sliced_coors.T))
+            self.bias_fault_dict_expand=dict(zip(sliced_coors_fd,fault_info))
+            
+            return self.bias_fault_dict_expand
         
-        sliced_coors=np.concatenate([np.remainder(orig_coors,slice_width),np.floor_divide(orig_coors,slice_width)],axis=1)
-        
-        sliced_coors_fd=list(zip(*sliced_coors.T))
-        self.bias_fault_dict_expand=dict(zip(sliced_coors_fd,fault_info))
-        
-        return self.bias_fault_dict_expand
+        else:
+            return None
     
     def clear(self):
         """ Clear fault dictionary of tile """

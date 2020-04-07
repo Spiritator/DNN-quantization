@@ -817,12 +817,13 @@ class PEarray:
 
         return fixed_index
     
-    def serialize_slices(self, fault_dict, mapping_shape, slice_n_clk=None, pack_size=1, t_clk_dims=-2, slice_dims=-1):
+    def serialize_slices(self, fault_dict, mapping_shape, slice_n_clk=None, pack_size=1, t_clk_dims=-2, slice_dims=-1, dataflow_pre_plan=False):
         """ Serialize slice dimension into t_clk dimension. Converge the slice order on PE dataflow model.
         
         """
-        index=np.array(list(fault_dict.keys()))
-        fault_value=list(fault_dict.values())
+        if not dataflow_pre_plan:
+            index=np.array(list(fault_dict.keys()))
+            fault_value=list(fault_dict.values())
         
         if slice_n_clk is None:
             slice_n_clk=mapping_shape[t_clk_dims]
@@ -830,48 +831,59 @@ class PEarray:
         slice_num=mapping_shape[slice_dims]
         
         if t_clk_dims<0:
-            t_clk_dims=index.shape[1]+t_clk_dims
+            t_clk_dims=len(mapping_shape)+t_clk_dims
         if slice_dims<0:
-            slice_dims=index.shape[1]+slice_dims
+            slice_dims=len(mapping_shape)+slice_dims
         
-        PE_shape_idx=np.delete(index,[t_clk_dims,slice_dims],axis=1)
-        clk_idx=index[:,t_clk_dims]
-        slice_idx=index[:,slice_dims]
+        if not dataflow_pre_plan:
+            PE_shape_idx=np.delete(index,[t_clk_dims,slice_dims],axis=1)
+            clk_idx=index[:,t_clk_dims]
+            slice_idx=index[:,slice_dims]
         
         mapping_shape=list(np.delete(mapping_shape,[t_clk_dims,slice_dims]))
         
         if pack_size>1:
-            slice_rmd=np.remainder(slice_idx,pack_size)
-            slice_idx=np.floor_divide(slice_idx,pack_size)
-            clk_idx=np.add(np.multiply(slice_rmd,slice_n_clk),clk_idx)
-            new_index=np.append(PE_shape_idx,np.reshape(clk_idx,[len(clk_idx),1]),1)
-            new_index=np.append(new_index,np.reshape(slice_idx,[len(slice_idx),1]),1)
+            if not dataflow_pre_plan:
+                slice_rmd=np.remainder(slice_idx,pack_size)
+                slice_idx=np.floor_divide(slice_idx,pack_size)
+                clk_idx=np.add(np.multiply(slice_rmd,slice_n_clk),clk_idx)
+                new_index=np.append(PE_shape_idx,np.reshape(clk_idx,[len(clk_idx),1]),1)
+                new_index=np.append(new_index,np.reshape(slice_idx,[len(slice_idx),1]),1)
             
             mapping_shape.append(slice_n_clk*pack_size)
             mapping_shape.append(int(np.ceil(slice_num/pack_size)))
             
         else:
-            clk_idx=np.add(np.multiply(slice_idx,slice_n_clk),clk_idx)
-            new_index=np.append(PE_shape_idx,np.reshape(clk_idx,[len(clk_idx),1]),1)
+            if not dataflow_pre_plan:
+                clk_idx=np.add(np.multiply(slice_idx,slice_n_clk),clk_idx)
+                new_index=np.append(PE_shape_idx,np.reshape(clk_idx,[len(clk_idx),1]),1)
             
             mapping_shape.append(slice_n_clk*slice_num)
         
-        index_fd=list(zip(*new_index.T))
-        new_fault_dict=dict(zip(index_fd,fault_value))
+        if not dataflow_pre_plan:
+            index_fd=list(zip(*new_index.T))
+            new_fault_dict=dict(zip(index_fd,fault_value))
+        else:
+            new_fault_dict=dict()
+            
         return new_fault_dict,mapping_shape
     
-    def insert_stalllatency(self, fault_dict, stalllatency, mapping_shape, t_clk_dims=-2):
+    def insert_stalllatency(self, fault_dict, stalllatency, mapping_shape, t_clk_dims=-2, dataflow_pre_plan=False):
         """ Insert stall and latency to fault dictionary t_clk axis.
         
         """
-        index=np.array(list(fault_dict.keys()))
-        fault_value=list(fault_dict.values())
+        if not dataflow_pre_plan:
+            index=np.array(list(fault_dict.keys()))
+            fault_value=list(fault_dict.values())
 
-        index[:,t_clk_dims]=np.add(index[:,t_clk_dims],stalllatency)
-        mapping_shape[t_clk_dims]+=stalllatency
+            index[:,t_clk_dims]=np.add(index[:,t_clk_dims],stalllatency)
+            
+            index_fd=list(zip(*index.T))
+            new_fault_dict=dict(zip(index_fd,fault_value))
+        else:
+            new_fault_dict=dict()
         
-        index_fd=list(zip(*index.T))
-        new_fault_dict=dict(zip(index_fd,fault_value))
+        mapping_shape[t_clk_dims]+=stalllatency
 
         return new_fault_dict,mapping_shape
         
@@ -885,10 +897,10 @@ class PEarray:
             parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
             tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
             flow: Class. The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
-        
+                
             dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
                 Only save the expansion configuration for later PEarray to Tile transform.
-        
+                
         # Returns
             Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
@@ -915,24 +927,25 @@ class PEarray:
                 tile_shape=tile.slice_shape
             else:
                 tile_shape=tile.tile_shape+(1,)
-                
-        if tile.expansion:
-            mapped_coors=np.array(list(tile.fault_dict_expand.keys()))
-            fault_value=list(tile.fault_dict_expand.values())
-        else:
-            mapped_coors=np.array(list(tile.fault_dict.keys()))
-            mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=int),axis=1)
-            fault_value=list(tile.fault_dict.values())
-            
-        if parameter=='ofmap':
-            PEparam={'param':'psum_out'}
-        elif parameter=='ifmap':
-            PEparam={'param':'ifmap_in'}
-        elif parameter=='wght':
-            PEparam={'param':'wght_in'}
         
-        for value in fault_value:
-            value.update(PEparam)
+        if not dataflow_pre_plan:
+            if tile.expansion:
+                mapped_coors=np.array(list(tile.fault_dict_expand.keys()))
+                fault_value=list(tile.fault_dict_expand.values())
+            else:
+                mapped_coors=np.array(list(tile.fault_dict.keys()))
+                mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=int),axis=1)
+                fault_value=list(tile.fault_dict.values())
+                
+            if parameter=='ofmap':
+                PEparam={'param':'psum_out'}
+            elif parameter=='ifmap':
+                PEparam={'param':'ifmap_in'}
+            elif parameter=='wght':
+                PEparam={'param':'wght_in'}
+            
+            for value in fault_value:
+                value.update(PEparam)
                
         self.used_axes=list()
         
@@ -943,25 +956,25 @@ class PEarray:
             map_shape_pe,map_prior_pe=self.get_PE_prior(flow.permute_info.PE_required_axes_prior, 
                                                         tile_shape, 
                                                         keep_slice=True)
-    
-            mapped_coors=self.permute_ravel_idx(mapped_coors,
-                                                source_shape=tile_shape,
-                                                source_prior=flow.permute_info.tile_mapping_prior,
-                                                target_shape=map_shape_pe,
-                                                target_prior=map_prior_pe)
-        
+            if not dataflow_pre_plan:
+                mapped_coors=self.permute_ravel_idx(mapped_coors,
+                                                    source_shape=tile_shape,
+                                                    source_prior=flow.permute_info.tile_mapping_prior,
+                                                    target_shape=map_shape_pe,
+                                                    target_prior=map_prior_pe)
+            
         # fixed
         if flow.fixed_info is not None:
             flow.check_fix()
             map_fixdims,map_shape_pe,map_arange=self.get_fix_arange(flow.fixed_info.PE_fix_axis, 
                                                                     tile_shape, 
                                                                     keep_slice=True)
-            
-            mapped_coors=self.fixed_idx(mapped_coors, 
-                                        indice_fix=flow.fixed_info.indice, 
-                                        fix_dims=map_fixdims, 
-                                        target_shape=map_shape_pe, 
-                                        axis_arange=map_arange)
+            if not dataflow_pre_plan:
+                mapped_coors=self.fixed_idx(mapped_coors, 
+                                            indice_fix=flow.fixed_info.indice, 
+                                            fix_dims=map_fixdims, 
+                                            target_shape=map_shape_pe, 
+                                            axis_arange=map_arange)
         
         # broadcast
         if flow.broadcast_info is not None:
@@ -969,15 +982,15 @@ class PEarray:
             map_shape_data,map_shape_pe,map_broaddims,map_arange=self.get_broadcast_arange(flow.broadcast_info.PE_broadcast_axis, 
                                                                                            tile_shape, 
                                                                                            keep_slice=True)
-            
-            mapped_coors,cond_idx=self.broadcast_idx(mapped_coors, 
-                                                     data_shape=map_shape_data,
-                                                     target_shape=map_prior_pe, 
-                                                     broadcast_dims=map_broaddims,
-                                                     axis_arange=map_arange, 
-                                                     get_cond_idx=True)
-            
-            fault_value=[fault_value[i] for i in cond_idx]
+            if not dataflow_pre_plan:
+                mapped_coors,cond_idx=self.broadcast_idx(mapped_coors, 
+                                                         data_shape=map_shape_data,
+                                                         target_shape=map_prior_pe, 
+                                                         broadcast_dims=map_broaddims,
+                                                         axis_arange=map_arange, 
+                                                         get_cond_idx=True)
+                
+                fault_value=[fault_value[i] for i in cond_idx]
           
         # streaming
         if flow.streaming_info is not None:
@@ -987,21 +1000,24 @@ class PEarray:
                                        tile_shape, 
                                        keep_slice=True)
             
-            mapped_coors,cond_idx=self.stream_capture_idx(mapped_coors, 
-                                                          data_shape=map_shape_data, 
-                                                          data_stream_axis=map_streamclk,
-                                                          window_shape=map_shape_pe, 
-                                                          window_stream_axis=map_streamdim, 
-                                                          data_flow_direction=flow.streaming_info.tile_direction, 
-                                                          window_flow_direction=flow.streaming_info.PE_direction,
-                                                          axis_arange=map_arange, 
-                                                          get_cond_idx=True)
-
-            fault_value=[fault_value[i] for i in cond_idx]
+            if not dataflow_pre_plan:
+                mapped_coors,cond_idx=self.stream_capture_idx(mapped_coors, 
+                                                              data_shape=map_shape_data, 
+                                                              data_stream_axis=map_streamclk,
+                                                              window_shape=map_shape_pe, 
+                                                              window_stream_axis=map_streamdim, 
+                                                              data_flow_direction=flow.streaming_info.tile_direction, 
+                                                              window_flow_direction=flow.streaming_info.PE_direction,
+                                                              axis_arange=map_arange, 
+                                                              get_cond_idx=True)
+    
+                fault_value=[fault_value[i] for i in cond_idx]
             
-
-        mapped_coors_fd=list(zip(*mapped_coors.T))
-        new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
+        if not dataflow_pre_plan:
+            mapped_coors_fd=list(zip(*mapped_coors.T))
+            new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
+        else:
+            new_fault_dict=dict()
 
         if parameter=='ofmap':
             self.ofmap_map_fd=new_fault_dict
@@ -1022,12 +1038,11 @@ class PEarray:
             Repeat means the times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
             Duplicate means the times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
             
-        
-        # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
-
             dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
                 Only save the expansion configuration for later PEarray to Tile transform.
+                
+        # Arguments
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
         
         # Returns
             Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -1050,37 +1065,45 @@ class PEarray:
         else:
             raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\'.')
 
-        duped_coors=np.array(list(fault_dict.keys()))
-        fault_value=np.array(list(fault_dict.values()))
+        if not dataflow_pre_plan:
+            duped_coors=np.array(list(fault_dict.keys()))
+            fault_value=np.array(list(fault_dict.values()))
         
         # repeat
         if flow.repeat>0:
-            slices_mod=np.tile(np.arange(flow.repeat),len(duped_coors))
+            if not dataflow_pre_plan:
+                slices_mod=np.tile(np.arange(flow.repeat),len(duped_coors))
+                
+                duped_coors=np.repeat(duped_coors,flow.repeat,0)
+                fault_value=np.repeat(fault_value,flow.repeat,0)
+                
+                slices_idx=duped_coors[:,-1]
+                slices_idx=np.add(np.multiply(slices_idx,flow.repeat),slices_mod)
+                
+                duped_coors[:,-1]=slices_idx
             
-            duped_coors=np.repeat(duped_coors,flow.repeat,0)
-            fault_value=np.repeat(fault_value,flow.repeat,0)
-            
-            slices_idx=duped_coors[:,-1]
-            slices_idx=np.add(np.multiply(slices_idx,flow.repeat),slices_mod)
-            
-            duped_coors[:,-1]=slices_idx
             cutset_num*=flow.repeat
 
         # duplicate
         if flow.duplicate>0:
-            slices_mod=np.repeat(np.arange(flow.duplicate),len(duped_coors))
+            if not dataflow_pre_plan:
+                slices_mod=np.repeat(np.arange(flow.duplicate),len(duped_coors))
+                
+                duped_coors=np.tile(duped_coors,[flow.duplicate,1])
+                fault_value=np.tile(fault_value,flow.duplicate)
+                
+                slices_idx=duped_coors[:,-1]
+                slices_idx=np.add(np.multiply(slices_mod,cutset_num),slices_idx)
+                
+                duped_coors[:,-1]=slices_idx
             
-            duped_coors=np.tile(duped_coors,[flow.duplicate,1])
-            fault_value=np.tile(fault_value,flow.duplicate)
-            
-            slices_idx=duped_coors[:,-1]
-            slices_idx=np.add(np.multiply(slices_mod,cutset_num),slices_idx)
-            
-            duped_coors[:,-1]=slices_idx
             cutset_num*=flow.duplicate
         
-        duped_coors_fd=list(zip(*duped_coors.T))
-        new_fault_dict=dict(zip(duped_coors_fd,fault_value))
+        if not dataflow_pre_plan:
+            duped_coors_fd=list(zip(*duped_coors.T))
+            new_fault_dict=dict(zip(duped_coors_fd,fault_value))
+        else:
+            new_fault_dict=dict()
         
         if parameter=='ofmap':
             self.ofmap_map_fd=new_fault_dict
@@ -1098,15 +1121,88 @@ class PEarray:
         """ Align pre-mapped and duplicated fault dictionarys which is mapped on PE array dataflow model. Need setup dataflow config in advance.
             All the fault dictionary are in the correct location within slice. Forming slice pack to slign the timing of each slices to complete tile computation.
             Insert stall and latency for actual PE dataflow for each slice pack. Finally, combines all mapped tile fault dictionary onto PE dataflow model.
-        
-        # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
-
+            
             dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
                 Only save the expansion configuration for later PEarray to Tile transform.
+                
+        # Arguments
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
         
         # Returns
             Converted and combined fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        """
+        if not self.setup_ready:
+            raise AttributeError('The dataflow setup is not ready!')
+        
+        # form slice pack
+        if self.ifmap_flow.pack_size>1:
+            self.ifmap_map_fd,self.shape_ifmap_mapping=self.serialize_slices(self.ifmap_map_fd, 
+                                                                             mapping_shape=self.shape_ifmap_mapping,
+                                                                             pack_size=self.ifmap_flow.pack_size,
+                                                                             dataflow_pre_plan=dataflow_pre_plan)
+
+        if self.wght_flow.pack_size>1:
+            self.wght_map_fd,self.shape_wght_mapping=self.serialize_slices(self.wght_map_fd, 
+                                                                           mapping_shape=self.shape_wght_mapping,
+                                                                           pack_size=self.wght_flow.pack_size,
+                                                                           dataflow_pre_plan=dataflow_pre_plan)
+
+        if self.ofmap_flow.pack_size>1:
+            self.ofmap_map_fd,self.shape_ofmap_mapping=self.serialize_slices(self.ofmap_map_fd, 
+                                                                             mapping_shape=self.shape_ofmap_mapping,
+                                                                             pack_size=self.ofmap_flow.pack_size,
+                                                                             dataflow_pre_plan=dataflow_pre_plan)            
+            
+        # insert stall & latency
+        if self.ifmap_flow.stall_latency>0:
+            self.ifmap_map_fd,self.shape_ifmap_mapping=self.insert_stalllatency(self.ifmap_map_fd, 
+                                                                                self.ifmap_flow.stall_latency, 
+                                                                                self.shape_ifmap_mapping,
+                                                                                dataflow_pre_plan=dataflow_pre_plan)
+            
+        if self.wght_flow.stall_latency>0:
+            self.wght_map_fd,self.shape_wght_mapping=self.insert_stalllatency(self.wght_map_fd, 
+                                                                              self.wght_flow.stall_latency, 
+                                                                              self.shape_wght_mapping,
+                                                                              dataflow_pre_plan=dataflow_pre_plan)
+            
+        if self.ofmap_flow.stall_latency>0:
+            self.ofmap_map_fd,self.shape_ofmap_mapping=self.insert_stalllatency(self.ofmap_map_fd, 
+                                                                                self.ofmap_flow.stall_latency, 
+                                                                                self.shape_ofmap_mapping,
+                                                                                dataflow_pre_plan=dataflow_pre_plan)
+            
+        # align clock cycle
+        slice_num=[self.shape_ifmap_mapping[-1], self.shape_ofmap_mapping[-1], self.shape_wght_mapping[-1]]
+        if not slice_num[1:] == slice_num[:-1]:
+            print('WARNING: The number of slices of ifmap, ofmap, weight should be the same but got %s'%str(slice_num))
+            
+        self.pack_clk=max(self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2])
+        
+        self.n_clk=self.pack_clk*max(slice_num)
+        
+        if not dataflow_pre_plan:
+            self.fault_dict.update(self.serialize_slices(self.ofmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=self.pack_clk)[0])
+            self.fault_dict.update(self.serialize_slices(self.wght_map_fd,self.shape_wght_mapping,slice_n_clk=self.pack_clk)[0])
+            self.fault_dict.update(self.serialize_slices(self.ifmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=self.pack_clk)[0])
+            self.fault_num=len(self.fault_dict)
+        
+            return self.fault_dict
+        
+        else:
+            return None
+    
+    def decompose_slice_pack(self):
+        """ Decompose PE array dataflow model fault dictionary to duplicated but unpacked state. Need setup dataflow config in advance.
+            Transform the fault dictionary by tear down slice pack to each slices for repective data.
+            Remove stall and latency for actual PE dataflow for each slice pack. 
+            Decompose ifmap, weight and ofmap(psum) at once to get partial sum index for tile fault dictionary which can be further analyzed.
+        
+        # Arguments
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+        
+        # Returns
+            Converted and decomposed mapping fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if not self.setup_ready:
             raise AttributeError('The dataflow setup is not ready!')
@@ -1148,13 +1244,13 @@ class PEarray:
         if not slice_num[1:] == slice_num[:-1]:
             print('WARNING: The number of slices of ifmap, ofmap, weight should be the same but got %s'%str(slice_num))
             
-        pack_clk=max(self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2])
+        self.pack_clk=max(self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2])
         
-        self.n_clk=pack_clk*max(slice_num)
+        self.n_clk=self.pack_clk*max(slice_num)
         
-        self.fault_dict.update(self.serialize_slices(self.ofmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=pack_clk)[0])
-        self.fault_dict.update(self.serialize_slices(self.wght_map_fd,self.shape_wght_mapping,slice_n_clk=pack_clk)[0])
-        self.fault_dict.update(self.serialize_slices(self.ifmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=pack_clk)[0])
+        self.fault_dict.update(self.serialize_slices(self.ofmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=self.pack_clk)[0])
+        self.fault_dict.update(self.serialize_slices(self.wght_map_fd,self.shape_wght_mapping,slice_n_clk=self.pack_clk)[0])
+        self.fault_dict.update(self.serialize_slices(self.ifmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=self.pack_clk)[0])
         self.fault_num=len(self.fault_dict)
         
         return self.fault_dict
@@ -1164,6 +1260,12 @@ class PEarray:
         self.fault_num=None
         self.fault_dict=dict()
         
+    def clear_map_fd(self):
+        """ Clear fault dictionary of tile mapping in PEarray"""
+        self.ifmap_map_fd=dict()
+        self.ofmap_map_fd=dict()
+        self.wght_map_fd=dict()
+        
     def clear_map_config(self):
         """ Clear mapping setup of PE dataflow model """
         self.setup_ready=False
@@ -1171,7 +1273,9 @@ class PEarray:
         self.wght_flow=None
         self.ifmap_flow=None
         self.used_axes=list()
+        self.n_clk=None
         self.tmp_clk=None
+        self.pack_clk=None
 
         
 # TODO

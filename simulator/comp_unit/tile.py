@@ -421,7 +421,7 @@ class tile_PE(tile):
                                                                      self.slice_shape,
                                                                      self.tilt_shift)
             else:
-                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([len(self.slice_shape),1],dtype=int),
+                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([1,len(self.slice_shape)],dtype=int),
                                                         self.tilt_axis,
                                                         self.tilt_direction,
                                                         self.slice_shape,
@@ -580,7 +580,7 @@ class tile_PE(tile):
                                                                      self.slice_shape,
                                                                      self.tilt_shift)
             else:
-                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([len(self.slice_shape),1],dtype=int),
+                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([1,len(self.slice_shape)],dtype=int),
                                                         self.tilt_axis,
                                                         self.tilt_direction,
                                                         self.slice_shape,

@@ -609,7 +609,7 @@ class PEarray:
             window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
             window_stream_axis: String. The axis index whose dimention is the sweep going.
             window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
-            axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 1,2,0 to window_shape axis 0,1,2 respectively.
+            axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 0,1,2 to window_shape axis 1,2,0 respectively.
             get_cond_idx: Bool. Return condition index or not.
             
         # Returns
@@ -647,19 +647,13 @@ class PEarray:
             raise ValueError('window_flow_direction must be \'forward\' or \'backward\'.')        
         
         if axis_arange is None:
-            axis_arange=list()
-            for i in range(len(data_shape)):
-                if i==window_stream_axis:
-                    axis_arange.append(data_stream_axis)
-                else:
-                    if i==data_stream_axis:
-                        axis_arange.append(i+1)
-                    else:
-                        axis_arange.append(i)
-        
+            axis_arange=list(range(len(data_shape)))
+            axis_arange.remove(window_stream_axis)
+            axis_arange.insert(data_stream_axis,window_stream_axis)
+                            
         caped_index=np.zeros([len(index)*window_shape[window_stream_axis],len(window_shape)],dtype=int)
         for i,ax in enumerate(axis_arange):
-            if ax==data_stream_axis:
+            if ax==window_stream_axis:
                 caped_index[:,ax]=np.reshape(base_coor_shift,[1,-1])
             else: 
                 caped_index[:,ax]=np.repeat(index[:,i],window_shape[window_stream_axis])
@@ -682,7 +676,7 @@ class PEarray:
             data_shape: Tuple. The shape of data array being broadcasted.
             target_shape: Tuple. The shape of data array broadcast to.
             broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that are being broadcast to.
-            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
+            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
             get_cond_idx: Bool. Return condition index or not.
             
         # Returns
@@ -760,7 +754,7 @@ class PEarray:
             indice_fix: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
             fix_dims: Integer or List of Integer. The dimension indexes of target_shape that are being fix to.
             target_shape: Tuple. The shape of data array fix to.
-            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 1,2,0 to target_shape axis 0,1,2 respectively.
+            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
             
         # Returns
             Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.

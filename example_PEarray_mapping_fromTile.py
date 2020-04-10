@@ -161,7 +161,7 @@ stream_coors_out_b=MXU.stream_capture_idx(stream_coors_in,
                                           window_shape=(28,28,784), 
                                           window_stream_axis=1,
                                           data_flow_direction='backward', 
-                                          window_flow_direction='backward',)
+                                          window_flow_direction='backward')
 
 #stream_coors_in=np.array([[7,137],
 #                          [9,664],

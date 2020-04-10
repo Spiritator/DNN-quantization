@@ -505,6 +505,7 @@ class PEarray:
 
         if keep_slice:
             map_shape_pe.append(tile_shape[-1])
+            clk_idx=-2
             if self.n_clk is None:
                 if self.tmp_clk is None:
                     self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
@@ -514,6 +515,7 @@ class PEarray:
             else:
                 map_shape_pe.insert(-1,self.n_clk)
         else:     
+            clk_idx=-1
             if self.n_clk is None:
                 if self.tmp_clk is None:
                     self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
@@ -523,22 +525,25 @@ class PEarray:
             else:
                 map_shape_pe.append(self.n_clk)
         
-        mpp_cnt+=1
-        map_streamclk=mpp_cnt
-        
         self.used_axes+=[stream_dim]
+        
+            
+        map_shape_data=np.copy(map_shape_pe)
+            
+        map_shape_data=np.delete(map_shape_data,map_streamdim)
+        map_streamclk=clk_idx+len(map_shape_pe)
+        map_streamdata=clk_idx+len(map_shape_data)
         
         if keep_slice:
             map_arange=np.arange(len(self.used_axes)+1)
         else:
             map_arange=np.arange(len(self.used_axes))
-            
-        map_shape_data=np.copy(map_shape_pe)
-            
-        map_shape_data=np.delete(map_shape_data,map_streamdim)
         map_arange=np.delete(map_arange,map_streamdim)
+        map_arange=np.insert(map_arange,map_streamdata,map_streamdim)
         
-        return map_shape_data,map_streamclk,map_shape_pe,map_streamdim,map_arange
+        map_arange=np.delete(map_arange,map_streamclk)
+        
+        return map_shape_data,map_streamdata,map_shape_pe,map_streamdim,map_streamclk,map_arange
     
     def permute_ravel_idx(self,index, source_shape, source_prior, target_shape, target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
@@ -591,6 +596,7 @@ class PEarray:
     def stream_capture_idx(self, index, 
                            data_shape, data_stream_axis,  
                            window_shape, window_stream_axis, 
+                           window_clk_axis=-1,
                            data_flow_direction='forward', window_flow_direction='forward',
                            axis_arange=None, get_cond_idx=False):
         """ Convert index from an array to the capture of thream through a window (PE array).
@@ -608,6 +614,7 @@ class PEarray:
                 Stream starts from the 0 index and increment, or else starts from last index and decrement.
             window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
             window_stream_axis: String. The axis index whose dimention is the sweep going.
+            window_clk_axis: Integer. The axis index where the clock cycle of PE dataflow is.
             window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
             axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 0,1,2 to window_shape axis 1,2,0 respectively.
             get_cond_idx: Bool. Return condition index or not.
@@ -658,12 +665,81 @@ class PEarray:
             else: 
                 caped_index[:,ax]=np.repeat(index[:,i],window_shape[window_stream_axis])
                 
-        caped_index[:,-1]=np.reshape(idx_capture_clk,[1,-1])
+        caped_index[:,window_clk_axis]=np.reshape(idx_capture_clk,[1,-1])
         
         if get_cond_idx:
             return caped_index, np.repeat(np.arange(len(index)),window_shape[window_stream_axis])
         else:
             return caped_index
+        
+    def stream_flowback_idx(self, index, 
+                           data_shape, data_stream_axis,  
+                           window_shape, window_stream_axis, 
+                           window_clk_axis=-1,
+                           data_flow_direction='forward', window_flow_direction='forward',
+                           axis_arange=None):
+        """ Convert index from the capture of stream through a window (PE array) flow back to an array before capture.
+            The captured shot is the clock cycle that fault index run through.
+            
+            window_shape must have 1 more dimension than data_shape, that is let data stream through window.
+            The one more stream through dimension will be collapse to the time dimension.
+            
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            data_shape: Tuple. The shape of data array being streamed in.
+            data_stream_axis: Integer. The axis index whose dimension is the flow going.
+            data_flow_direction: String. 'forward' or 'backward' the direction of data flow in. 
+                Stream starts from the 0 index and increment, or else starts from last index and decrement.
+            window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
+            window_stream_axis: String. The axis index whose dimention is the sweep going.
+            window_clk_axis: Integer. The axis index where the clock cycle of PE dataflow is.
+            window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
+            axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 0,1,2 to window_shape axis 1,2,0 respectively.
+            
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        """
+        if isinstance(index,tuple):
+            index=np.reshape(np.array(index),[1,-1])
+        elif isinstance(index,np.ndarray):
+            pass
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+            
+        if len(window_shape)-1!=len(data_shape):
+            raise ValueError('window_shape must have 1 more dimension than data_shape, but got window_shape %s and data_shape %s'%(str(window_shape),str(data_shape)))
+            
+        if axis_arange is None:
+            axis_arange=list(range(len(data_shape)))
+            axis_arange.remove(window_stream_axis)
+            axis_arange.insert(data_stream_axis,window_stream_axis)
+                            
+        if window_flow_direction=='forward':
+            base_coor_shift=index[:,window_stream_axis]
+        elif window_flow_direction=='forward':
+            base_coor_shift=np.subtract(window_shape[window_stream_axis]-1,index[:,window_stream_axis])
+        else:
+            raise ValueError('data_flow_direction must be \'forward\' or \'backward\'.')
+
+            
+        if data_flow_direction=='forward':
+            idx_flowback_clk=np.expand_dims(index[:,window_clk_axis],1)
+        elif data_flow_direction=='backward':
+            idx_flowback_clk=np.expand_dims(np.subtract(window_shape[window_clk_axis]-1,index[:,window_clk_axis]),1)    
+        else:
+            raise ValueError('data_flow_direction must be \'forward\' or \'backward\'.')
+            
+        idx_flowback_clk=np.subtract(idx_flowback_clk,base_coor_shift)
+        
+        flowbacked_index=np.zeros([len(index),len(data_shape)],dtype=int)
+        for i,ax in enumerate(axis_arange):
+            if i==data_stream_axis:
+                flowbacked_index[:,i]=np.reshape(idx_flowback_clk,[1,-1])
+            else: 
+                flowbacked_index[:,i]=np.repeat(index[:,ax],window_shape[window_stream_axis])
+                        
+        return flowbacked_index
         
     def broadcast_idx(self, index, data_shape, target_shape, broadcast_dims,
                       axis_arange=None, get_cond_idx=False):
@@ -1083,7 +1159,7 @@ class PEarray:
         # streaming
         if flow.streaming_info is not None:
             flow.check_streaming()
-            map_shape_data,map_streamclk,map_shape_pe,map_streamdim,map_arange\
+            map_shape_data,map_streamdata,map_shape_pe,map_streamdim,map_streamclk,map_arange\
             =self.get_streaming_arange(flow.streaming_info.PE_stream_axis, 
                                        tile_shape, 
                                        keep_slice=True)
@@ -1091,9 +1167,10 @@ class PEarray:
             if not dataflow_pre_plan:
                 mapped_coors,cond_idx=self.stream_capture_idx(mapped_coors, 
                                                               data_shape=map_shape_data, 
-                                                              data_stream_axis=map_streamclk,
+                                                              data_stream_axis=map_streamdata,
                                                               window_shape=map_shape_pe, 
                                                               window_stream_axis=map_streamdim, 
+                                                              window_clk_axis=map_streamclk,
                                                               data_flow_direction=flow.streaming_info.tile_direction, 
                                                               window_flow_direction=flow.streaming_info.PE_direction,
                                                               axis_arange=map_arange, 

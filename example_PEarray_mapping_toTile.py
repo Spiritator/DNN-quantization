@@ -155,3 +155,67 @@ reduced_fault_dict_ofmap=MXU.reduce_mapping('ofmap')
 reduced_fault_dict_wght=MXU.reduce_mapping('wght')
 # ifmap reduce mapping
 reduced_fault_dict_ifmap=MXU.reduce_mapping('ifmap')
+
+#%% test stream flowback 
+
+flowback_coors_in=np.array([[13,7,94],
+                            [6,17,211],
+                            [9,25,42]])
+flowback_coors_out_f=MXU.stream_flowback_idx(flowback_coors_in,
+                                             data_shape=(784,16), 
+                                             data_stream_axis=0,  
+                                             window_shape=(28,28,784), 
+                                             window_stream_axis=1)
+
+flowback_coors_out_b=MXU.stream_flowback_idx(flowback_coors_in,
+                                             data_shape=(784,16), 
+                                             data_stream_axis=0,  
+                                             window_shape=(28,28,784), 
+                                             window_stream_axis=1,
+                                             data_flow_direction='backward', 
+                                             window_flow_direction='backward')
+
+#flowback_coors_in=np.array([[7,13,94],
+#                          [17,6,211],
+#                          [25,9,42]])
+#stream_coors_out_f=MXU.stream_flowback_idx(flowback_coors_in,
+#                                           data_shape=(16,784), 
+#                                           data_stream_axis=1,  
+#                                           window_shape=(28,28,784), 
+#                                           window_stream_axis=0)
+
+#%% test retract broadcast
+
+narrowcast_coors_in0=np.array([[7,15,188],
+                               [13,3,174],
+                               [2,6,339]])
+narrowcast_coors_out0=MXU.narrowcast_idx(narrowcast_coors_in0,
+                                         data_shape=(16,691), 
+                                         target_shape=(16,16,691), 
+                                         broadcast_dims=0)
+narrowcast_coors_in1=np.array([[9,10,188],
+                               [0,3,174],
+                               [14,7,339]])
+narrowcast_coors_out1=MXU.narrowcast_idx(narrowcast_coors_in1,
+                                         data_shape=(691,), 
+                                         target_shape=(16,16,691), 
+                                         broadcast_dims=[0,1])
+
+#%% test retract fix
+
+unfix_coors_in0=np.array([[-1,14,178],
+                          [-1,0,199],
+                          [-1,11,449]])
+unfix_coors_out0=MXU.unfix_idx(unfix_coors_in0,
+                               indice_fix=-1,
+                               fix_dims=0, 
+                               target_shape=(16,16,691))
+
+unfix_coors_in1=np.array([[-1,0,178],
+                          [-1,0,199],
+                          [-1,0,449]])
+unfix_coors_out1=MXU.unfix_idx(unfix_coors_in1,
+                               indice_fix=[-1,0],
+                               fix_dims=[0,1], 
+                               target_shape=(16,16,691))
+

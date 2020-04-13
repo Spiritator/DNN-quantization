@@ -243,13 +243,18 @@ class PEarray:
         """
         return int(np.ceil(np.prod(mapping_shape)/np.prod(non_clk_PE_shape)))
     
-    def get_PE_prior(self, prior_list, tile_shape, keep_slice=False):
+    def get_PE_prior(self, prior_list, tile_shape, keep_slice=False,backward_mapping=False):
         """ Organize PE mapping permute shape and prior
         
         """
         if isinstance(prior_list,str):
             prior_list=[prior_list]
-        self.used_axes+=prior_list
+            
+        if backward_mapping:
+            for prior in prior_list:
+                self.solving_axes.remove(prior)
+        else:
+            self.used_axes+=prior_list
             
         map_shape_pe=list()
         mpp_ind=dict()
@@ -294,12 +299,17 @@ class PEarray:
             
         return map_shape_pe,map_prior_pe
     
-    def get_fix_arange(self,fix_dims,tile_shape,keep_slice=False):
+    def get_fix_arange(self,fix_dims,tile_shape,keep_slice=False,backward_mapping=False):
         """ Organize PE mapping fixed shape and arange
         
         """
         if isinstance(fix_dims,str):
             fix_dims=[fix_dims]
+
+        if backward_mapping:
+            axis_list=self.solving_axes
+        else:
+            axis_list=self.used_axes
 
         map_shape_pe=list()
         map_fixdims=list()
@@ -309,7 +319,7 @@ class PEarray:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             map_fixdims.append(mpp_cnt)
-        elif 'PE_y' in self.used_axes:
+        elif 'PE_y' in axis_list:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             
@@ -317,7 +327,7 @@ class PEarray:
             map_shape_pe.append(self.n_x)
             mpp_cnt+=1
             map_fixdims.append(mpp_cnt)
-        elif 'PE_x' in self.used_axes:
+        elif 'PE_x' in axis_list:
             map_shape_pe.append(self.n_x)
             mpp_cnt+=1
 
@@ -335,7 +345,7 @@ class PEarray:
                     map_shape_pe.insert(-1,self.n_clk)
                 mpp_cnt+=1
                 map_fixdims.append(mpp_cnt)
-            elif 't_clk' in self.used_axes:
+            elif 't_clk' in axis_list:
                 if self.n_clk is None:
                     if self.tmp_clk is None:
                         self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
@@ -358,7 +368,7 @@ class PEarray:
                     map_shape_pe.append(self.n_clk)
                 mpp_cnt+=1
                 map_fixdims.append(mpp_cnt)
-            elif 't_clk' in self.used_axes:
+            elif 't_clk' in axis_list:
                 if self.n_clk is None:
                     if self.tmp_clk is None:
                         self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
@@ -369,12 +379,18 @@ class PEarray:
                     map_shape_pe.append(self.n_clk)
                 mpp_cnt+=1
         
-        self.used_axes+=fix_dims
+        if backward_mapping:
+            for dims in fix_dims:
+                self.solving_axes.remove(dims)
+            axis_list=self.solving_axes
+        else:
+            self.used_axes+=fix_dims
+            axis_list=self.used_axes
         
         if keep_slice:
-            map_arange=np.arange(len(self.used_axes)+1)
+            map_arange=np.arange(len(axis_list)+1)
         else:
-            map_arange=np.arange(len(self.used_axes))
+            map_arange=np.arange(len(axis_list))
             
         for i in map_fixdims:
             map_arange=np.delete(map_arange,i)
@@ -384,12 +400,17 @@ class PEarray:
         
         return map_fixdims,map_shape_pe,map_arange
     
-    def get_broadcast_arange(self,broadcast_dims,tile_shape,keep_slice=False):
+    def get_broadcast_arange(self,broadcast_dims,tile_shape,keep_slice=False,backward_mapping=False):
         """ Organize PE mapping broadcast shape and arange
         
         """
         if isinstance(broadcast_dims,str):
             broadcast_dims=[broadcast_dims]
+            
+        if backward_mapping:
+            axis_list=self.solving_axes
+        else:
+            axis_list=self.used_axes
 
         map_shape_pe=list()
         map_broaddims=list()
@@ -399,7 +420,7 @@ class PEarray:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             map_broaddims.append(mpp_cnt)
-        elif 'PE_y' in self.used_axes:
+        elif 'PE_y' in axis_list:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             
@@ -407,7 +428,7 @@ class PEarray:
             map_shape_pe.append(self.n_x)
             mpp_cnt+=1
             map_broaddims.append(mpp_cnt)
-        elif 'PE_x' in self.used_axes:
+        elif 'PE_x' in axis_list:
             map_shape_pe.append(self.n_x)
             mpp_cnt+=1
 
@@ -425,7 +446,7 @@ class PEarray:
                     map_shape_pe.insert(-1,self.n_clk)
                 mpp_cnt+=1
                 map_broaddims.append(mpp_cnt)
-            elif 't_clk' in self.used_axes:
+            elif 't_clk' in axis_list:
                 if self.n_clk is None:
                     if self.tmp_clk is None:
                         self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
@@ -448,7 +469,7 @@ class PEarray:
                     map_shape_pe.append(self.n_clk)
                 mpp_cnt+=1
                 map_broaddims.append(mpp_cnt)
-            elif 't_clk' in self.used_axes:
+            elif 't_clk' in axis_list:
                 if self.n_clk is None:
                     if self.tmp_clk is None:
                         self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
@@ -459,12 +480,18 @@ class PEarray:
                     map_shape_pe.append(self.n_clk)
                 mpp_cnt+=1
         
-        self.used_axes+=broadcast_dims
+        if backward_mapping:
+            for dims in broadcast_dims:
+                self.solving_axes.remove(dims)
+            axis_list=self.solving_axes
+        else:
+            self.used_axes+=broadcast_dims
+            axis_list=self.used_axes
         
         if keep_slice:
-            map_arange=np.arange(len(self.used_axes)+1)
+            map_arange=np.arange(len(axis_list)+1)
         else:
-            map_arange=np.arange(len(self.used_axes))
+            map_arange=np.arange(len(axis_list))
             
         map_shape_data=np.copy(map_shape_pe)
             
@@ -477,10 +504,14 @@ class PEarray:
         
         return map_shape_data,map_shape_pe,map_broaddims,map_arange
     
-    def get_streaming_arange(self,stream_dim,tile_shape,keep_slice=False):
+    def get_streaming_arange(self,stream_dim,tile_shape,keep_slice=False,backward_mapping=False):
         """ Organize PE mapping streaming shape and arange
         
         """
+        if backward_mapping:
+            axis_list=self.solving_axes
+        else:
+            axis_list=self.used_axes        
         
         map_shape_pe=list()
         mpp_cnt=-1
@@ -490,7 +521,7 @@ class PEarray:
             latency=self.n_y-1
             mpp_cnt+=1
             map_streamdim=mpp_cnt
-        elif 'PE_y' in self.used_axes:
+        elif 'PE_y' in axis_list:
             map_shape_pe.append(self.n_y)
             mpp_cnt+=1
             
@@ -499,7 +530,7 @@ class PEarray:
             latency=self.n_x-1
             mpp_cnt+=1
             map_streamdim=mpp_cnt
-        elif 'PE_x' in self.used_axes:
+        elif 'PE_x' in axis_list:
             map_shape_pe.append(self.n_x)
             mpp_cnt+=1
 
@@ -525,8 +556,12 @@ class PEarray:
             else:
                 map_shape_pe.append(self.n_clk)
         
-        self.used_axes+=[stream_dim]
-        
+        if backward_mapping:
+            self.solving_axes.remove(stream_dim)
+            axis_list=self.solving_axes
+        else:
+            self.used_axes+=[stream_dim]
+            axis_list=self.used_axes        
             
         map_shape_data=np.copy(map_shape_pe)
             
@@ -535,9 +570,9 @@ class PEarray:
         map_streamdata=clk_idx+len(map_shape_data)
         
         if keep_slice:
-            map_arange=np.arange(len(self.used_axes)+1)
+            map_arange=np.arange(len(axis_list)+1)
         else:
-            map_arange=np.arange(len(self.used_axes))
+            map_arange=np.arange(len(axis_list))
         map_arange=np.delete(map_arange,map_streamdim)
         map_arange=np.insert(map_arange,map_streamdata,map_streamdim)
         
@@ -717,16 +752,16 @@ class PEarray:
                             
         if window_flow_direction=='forward':
             base_coor_shift=index[:,window_stream_axis]
-        elif window_flow_direction=='forward':
+        elif window_flow_direction=='backward':
             base_coor_shift=np.subtract(window_shape[window_stream_axis]-1,index[:,window_stream_axis])
         else:
-            raise ValueError('data_flow_direction must be \'forward\' or \'backward\'.')
+            raise ValueError('window_flow_direction must be \'forward\' or \'backward\'.')
 
             
         if data_flow_direction=='forward':
-            idx_flowback_clk=np.expand_dims(index[:,window_clk_axis],1)
+            idx_flowback_clk=index[:,window_clk_axis]
         elif data_flow_direction=='backward':
-            idx_flowback_clk=np.expand_dims(np.subtract(window_shape[window_clk_axis]-1,index[:,window_clk_axis]),1)    
+            idx_flowback_clk=np.subtract(window_shape[window_clk_axis]-1,index[:,window_clk_axis])  
         else:
             raise ValueError('data_flow_direction must be \'forward\' or \'backward\'.')
             
@@ -737,7 +772,7 @@ class PEarray:
             if i==data_stream_axis:
                 flowbacked_index[:,i]=np.reshape(idx_flowback_clk,[1,-1])
             else: 
-                flowbacked_index[:,i]=np.repeat(index[:,ax],window_shape[window_stream_axis])
+                flowbacked_index[:,i]=index[:,ax]
                         
         return flowbacked_index
         
@@ -820,6 +855,72 @@ class PEarray:
         else:
             return broaded_index
         
+    def narrowcast_idx(self, index, data_shape, target_shape, broadcast_dims,
+                       axis_arange=None):
+        """ Retract the broadcast of a dimesion, return mapping to its original state and remove the broadcast dimension. 
+            The dimension of data_shape should be smaller than target_shape, the extra dimension on target_shape will be removed by narrowcast.
+        
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            data_shape: Tuple. The shape of data array being narrowcast to.
+            target_shape: Tuple. The shape of data array being narrowcasted.
+            broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that were broadcasted to.
+            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
+            
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+            
+        """
+        if not len(data_shape)<len(target_shape):
+            raise ValueError('Dimension data_shape must be smaller than target_shape. There need to be space for broadcast.')
+        if isinstance(broadcast_dims,int):
+            if (len(data_shape)<len(target_shape)-1) and (axis_arange is None):
+                raise AttributeError('For the condition index shape (data_shape) is more than two order smaller than target_shape, the argument axis_arange is mandatory elemet. Got data_shape %d dims and target_shape %d dims.'%(len(data_shape),len(target_shape)))
+        elif isinstance(broadcast_dims,list):
+            if (len(data_shape)<len(target_shape)-len(broadcast_dims)) and (axis_arange is None):
+                raise AttributeError('For the condition index shape (data_shape) is more than %d order smaller than target_shape, the argument axis_arange is mandatory elemet. Got data_shape %d dims and target_shape %d dims.'%(len(broadcast_dims)+1,len(data_shape),len(target_shape)))
+        else:
+            raise TypeError('broadcast_dims must either be integer or list of integer.')
+        
+        if isinstance(index,tuple):
+            index=np.reshape(np.array(index),[1,-1])
+        elif isinstance(index,np.ndarray):
+            pass
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+                  
+#TODO 
+        
+        # filt non-broadcasted area
+        
+        if axis_arange is None:
+            if isinstance(broadcast_dims,int):
+                axis_arange=list()
+                for i in range(len(target_shape)):
+                    if i != broadcast_dims:
+                        axis_arange.append(i)
+            else:
+                axis_arange=list()
+                for i in range(len(target_shape)):
+                    if i not in broadcast_dims:
+                        axis_arange.append(i)
+        else:
+            if isinstance(broadcast_dims,int):
+                if broadcast_dims in axis_arange:
+                    raise ValueError('broadcast_dims should not be in axis_arange.')
+            else:   
+                for ax in broadcast_dims:
+                    if ax in axis_arange:
+                        raise ValueError('broadcast_dims %d should not be in axis_arange.'%ax)
+        
+        narrowed_index=np.zeros([len(index),len(data_shape)],dtype=int)
+                
+        for i,ax in enumerate(axis_arange):
+            narrowed_index[:,i]=index[:,ax]
+            
+        return narrowed_index
+        
     def fixed_idx(self, index, indice_fix, fix_dims, target_shape, axis_arange=None):
         """ Make certain dimension of data index fix on certain axis.
             In this condition the data only exist on specific index of this dimension.
@@ -888,6 +989,77 @@ class PEarray:
             fixed_index[:,ax]=index[:,i]
 
         return fixed_index
+    
+    def unfix_idx(self, index, indice_fix, fix_dims, target_shape, axis_arange=None):
+        """ Retract the fixed dimension of data, return mapping to its original state and remove the fixed dimension. 
+            The dimension of fix_dims in target_shape will be removed.
+        
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            indice_fix: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
+            fix_dims: Integer or List of Integer. The dimension indexes of target_shape that were fixed to.
+            target_shape: Tuple. The shape of data array were fixed to.
+            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
+            
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+
+        """
+        if index.shape[1]!=len(target_shape):
+                raise AttributeError('target_shape must have the same dimensions as index.')
+                
+        if isinstance(fix_dims,int):
+            if len(target_shape)-1<1:
+                raise AttributeError('target_shape must have at least one dimension after unfix.')
+        elif isinstance(fix_dims,list):
+            if len(target_shape)-len(fix_dims)<1:
+                raise AttributeError('target_shape must have at least one dimension after unfix.')
+        else:
+            raise TypeError('fix_dims must either be integer or list of integer.')
+            
+        if isinstance(index,tuple):
+            index=np.reshape(np.array(index),[1,-1])
+        elif isinstance(index,np.ndarray):
+            pass
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+        
+#TODO 
+        
+        # filt non-fixed area
+                
+        if axis_arange is None:
+            if isinstance(fix_dims,int):
+                axis_arange=list()
+                for i in range(len(target_shape)):
+                    if i != fix_dims:
+                        axis_arange.append(i)
+            else:
+                axis_arange=list()
+                for i in range(len(target_shape)):
+                    if i not in fix_dims:
+                        axis_arange.append(i)
+        else:
+            if isinstance(fix_dims,int):
+                if fix_dims in axis_arange:
+                    raise ValueError('fix_dims should not be in axis_arange.')
+            else:
+                for ax in fix_dims:
+                    if ax in axis_arange:
+                        raise ValueError('fix_dims %d should not be in axis_arange.'%ax)
+
+        if isinstance(fix_dims,int):
+            data_shape_len=len(target_shape)-1
+        else:
+            data_shape_len=len(target_shape)-len(fix_dims)
+            
+        unfix_index=np.zeros([len(index),data_shape_len],dtype=int)
+                
+        for i,ax in enumerate(axis_arange):
+            unfix_index[:,i]=index[:,ax]
+
+        return unfix_index
     
     def serialize_slices(self, fault_dict, mapping_shape, slice_n_clk=None, pack_size=1, t_clk_dims=-2, slice_dims=-1, dataflow_pre_plan=False):
         """ Serialize slice dimension into t_clk dimension. Converge the slice order on PE dataflow model.
@@ -1241,38 +1413,28 @@ class PEarray:
         
         mapped_coors=np.array(list(fault_dict.keys()))
         fault_value=np.array(list(fault_dict.values()))
-        
-#                
-#            if parameter=='ofmap':
-#                PEparam={'param':'psum_out'}
-#            elif parameter=='ifmap':
-#                PEparam={'param':'ifmap_in'}
-#            elif parameter=='wght':
-#                PEparam={'param':'wght_in'}
-#            
-#            for value in fault_value:
-#                value.update(PEparam)
-               
-        self.solving_axes=self.used_axes
+                       
+        self.solving_axes=self.used_axes.copy()
 
         # streaming
         if flow.streaming_info is not None:
             flow.check_streaming()
-            map_shape_data,map_streamclk,map_shape_pe,map_streamdim,map_arange\
+            map_shape_data,map_streamdata,map_shape_pe,map_streamdim,map_streamclk,map_arange\
             =self.get_streaming_arange(flow.streaming_info.PE_stream_axis, 
                                        tile_shape, 
-                                       keep_slice=True)
-            
+                                       keep_slice=True,
+                                       backward_mapping=True)
 
-            mapped_coors,cond_idx=self.stream_capture_idx(mapped_coors, 
-                                                          data_shape=map_shape_data, 
-                                                          data_stream_axis=map_streamclk,
-                                                          window_shape=map_shape_pe, 
-                                                          window_stream_axis=map_streamdim, 
-                                                          data_flow_direction=flow.streaming_info.tile_direction, 
-                                                          window_flow_direction=flow.streaming_info.PE_direction,
-                                                          axis_arange=map_arange, 
-                                                          get_cond_idx=True)
+            mapped_coors,cond_idx=self.stream_flowback_idx(mapped_coors, 
+                                                           data_shape=map_shape_data, 
+                                                           data_stream_axis=map_streamdata,
+                                                           window_shape=map_shape_pe, 
+                                                           window_stream_axis=map_streamdim, 
+                                                           window_clk_axis=map_streamclk,
+                                                           data_flow_direction=flow.streaming_info.tile_direction, 
+                                                           window_flow_direction=flow.streaming_info.PE_direction,
+                                                           axis_arange=map_arange, 
+                                                           get_cond_idx=True)
 
             fault_value=[fault_value[i] for i in cond_idx]
 
@@ -1281,7 +1443,8 @@ class PEarray:
             flow.check_broadcast()
             map_shape_data,map_shape_pe,map_broaddims,map_arange=self.get_broadcast_arange(flow.broadcast_info.PE_broadcast_axis, 
                                                                                            tile_shape, 
-                                                                                           keep_slice=True)
+                                                                                           keep_slice=True,
+                                                                                           backward_mapping=True)
 
             mapped_coors,cond_idx=self.broadcast_idx(mapped_coors, 
                                                      data_shape=map_shape_data,
@@ -1297,7 +1460,8 @@ class PEarray:
             flow.check_fix()
             map_fixdims,map_shape_pe,map_arange=self.get_fix_arange(flow.fixed_info.PE_fix_axis, 
                                                                     tile_shape, 
-                                                                    keep_slice=True)
+                                                                    keep_slice=True,
+                                                                    backward_mapping=True)
 
             mapped_coors=self.fixed_idx(mapped_coors, 
                                         indice_fix=flow.fixed_info.indice, 
@@ -1311,7 +1475,8 @@ class PEarray:
             
             map_shape_pe,map_prior_pe=self.get_PE_prior(flow.permute_info.PE_required_axes_prior, 
                                                         tile_shape, 
-                                                        keep_slice=True)
+                                                        keep_slice=True,
+                                                        backward_mapping=True)
 
             mapped_coors=self.permute_ravel_idx(mapped_coors,
                                                 source_shape=tile_shape,
@@ -1724,6 +1889,7 @@ class PEarray:
         self.shape_ofmap_mapping=None
         self.shape_wght_mapping=None
         self.used_axes=list()
+        self.solving_axes=list()
         self.n_clk=None
         self.tmp_clk=None
         self.pack_clk=None

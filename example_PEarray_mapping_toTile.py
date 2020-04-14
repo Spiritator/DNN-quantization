@@ -219,3 +219,12 @@ unfix_coors_out1=MXU.unfix_idx(unfix_coors_in1,
                                fix_dims=[0,1], 
                                target_shape=(16,16,691))
 
+unfix_coors_in2=np.array([[15,14,178],
+                          [7,0,199],
+                          [15,11,449]])
+unfix_coors_out2,condidxfix=MXU.unfix_idx(unfix_coors_in2,
+                                          indice_fix=-1,
+                                          fix_dims=0, 
+                                          target_shape=(16,16,691),
+                                          get_cond_idx=True)
+

@@ -889,11 +889,7 @@ class PEarray:
             pass
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
-                  
-#TODO 
-        
-        # filt non-broadcasted area
-        
+                          
         if axis_arange is None:
             if isinstance(broadcast_dims,int):
                 axis_arange=list()
@@ -990,7 +986,7 @@ class PEarray:
 
         return fixed_index
     
-    def unfix_idx(self, index, indice_fix, fix_dims, target_shape, axis_arange=None):
+    def unfix_idx(self, index, indice_fix, fix_dims, target_shape, axis_arange=None, get_cond_idx=False):
         """ Retract the fixed dimension of data, return mapping to its original state and remove the fixed dimension. 
             The dimension of fix_dims in target_shape will be removed.
         
@@ -1024,10 +1020,18 @@ class PEarray:
             pass
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
-        
-#TODO 
-        
+                
         # filt non-fixed area
+        if isinstance(fix_dims,int):
+            if indice_fix<0:
+                indice_fix=target_shape[fix_dims]+indice_fix
+            cond_idx=np.equal(index[:,fix_dims], indice_fix)
+        else:
+            cond_idx=np.ones(len(index),dtype=bool)
+            for i,dims in enumerate(fix_dims):
+                if indice_fix[i]<0:
+                    indice_fix[i]=target_shape[dims]+indice_fix[i]    
+                cond_idx=np.bitwise_and(cond_idx,np.equal(index[:,dims],indice_fix[i]))
                 
         if axis_arange is None:
             if isinstance(fix_dims,int):
@@ -1058,8 +1062,11 @@ class PEarray:
                 
         for i,ax in enumerate(axis_arange):
             unfix_index[:,i]=index[:,ax]
-
-        return unfix_index
+            
+        if get_cond_idx:
+            return unfix_index, cond_idx
+        else:
+            return unfix_index
     
     def serialize_slices(self, fault_dict, mapping_shape, slice_n_clk=None, pack_size=1, t_clk_dims=-2, slice_dims=-1, dataflow_pre_plan=False):
         """ Serialize slice dimension into t_clk dimension. Converge the slice order on PE dataflow model.
@@ -1230,7 +1237,7 @@ class PEarray:
             The pre-mapping phase will tackle axes in following order. 'permute' -> 'fixed' -> 'broadcast' -> 'streaming'
         
         # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
             tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
             flow: Class. The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
                 
@@ -1252,6 +1259,12 @@ class PEarray:
         elif parameter=='wght':
             tile=self.wght_tile
             flow=self.wght_flow
+        elif parameter=='psum':
+            tile=self.ofmap_tile
+            flow=self.psum_flow
+        elif parameter=='bias':
+            tile=self.wght_tile
+            flow=self.bias_flow
         else:
             raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\'.')
 
@@ -1263,6 +1276,9 @@ class PEarray:
                 tile_shape=tile.slice_shape
             else:
                 tile_shape=tile.tile_shape+(1,)
+        
+        if parameter=='bias':
+            tile_shape=tile.bias_slice_shape
         
         if not dataflow_pre_plan:
             if tile.expansion:
@@ -1279,6 +1295,10 @@ class PEarray:
                 PEparam={'param':'ifmap_in'}
             elif parameter=='wght':
                 PEparam={'param':'wght_in'}
+            elif parameter=='bias':
+                PEparam={'param':'psum_in'}
+            elif parameter=='psum':
+                PEparam={'param':'psum_out'}
             
             for value in fault_value:
                 value.update(PEparam)
@@ -1365,6 +1385,12 @@ class PEarray:
         elif parameter=='wght':
             self.wght_map_fd=new_fault_dict
             self.shape_wght_mapping=map_shape_pe
+        elif parameter=='bias':
+            self.bias_map_fd=new_fault_dict
+            self.shape_bias_mapping=map_shape_pe
+        elif parameter=='psum':
+            self.psum_map_fd=new_fault_dict
+            self.shape_psum_mapping=map_shape_pe
             
         return new_fault_dict
     
@@ -1433,10 +1459,7 @@ class PEarray:
                                                            window_clk_axis=map_streamclk,
                                                            data_flow_direction=flow.streaming_info.tile_direction, 
                                                            window_flow_direction=flow.streaming_info.PE_direction,
-                                                           axis_arange=map_arange, 
-                                                           get_cond_idx=True)
-
-            fault_value=[fault_value[i] for i in cond_idx]
+                                                           axis_arange=map_arange)
 
         # broadcast
         if flow.broadcast_info is not None:
@@ -1446,15 +1469,12 @@ class PEarray:
                                                                                            keep_slice=True,
                                                                                            backward_mapping=True)
 
-            mapped_coors,cond_idx=self.broadcast_idx(mapped_coors, 
-                                                     data_shape=map_shape_data,
-                                                     target_shape=map_shape_pe, 
-                                                     broadcast_dims=map_broaddims,
-                                                     axis_arange=map_arange, 
-                                                     get_cond_idx=True)
+            mapped_coors,cond_idx=self.narrowcast_idx(mapped_coors, 
+                                                      data_shape=map_shape_data,
+                                                      target_shape=map_shape_pe, 
+                                                      broadcast_dims=map_broaddims,
+                                                      axis_arange=map_arange)
             
-            fault_value=[fault_value[i] for i in cond_idx]
-
         # fixed
         if flow.fixed_info is not None:
             flow.check_fix()
@@ -1463,11 +1483,18 @@ class PEarray:
                                                                     keep_slice=True,
                                                                     backward_mapping=True)
 
-            mapped_coors=self.fixed_idx(mapped_coors, 
-                                        indice_fix=flow.fixed_info.indice, 
-                                        fix_dims=map_fixdims, 
-                                        target_shape=map_shape_pe, 
-                                        axis_arange=map_arange)
+            mapped_coors,cond_idx=self.unfix_idx(mapped_coors, 
+                                                 indice_fix=flow.fixed_info.indice, 
+                                                 fix_dims=map_fixdims, 
+                                                 target_shape=map_shape_pe, 
+                                                 axis_arange=map_arange, 
+                                                 get_cond_idx=True)
+            
+            # mark outlier coordinates
+            for i,cond in enumerate(cond_idx):
+                if not cond:
+                    fault_value[i].update({'outlier':'fixed'})
+        
             
         # permute
         if flow.permute_info is not None:
@@ -1479,10 +1506,10 @@ class PEarray:
                                                         backward_mapping=True)
 
             mapped_coors=self.permute_ravel_idx(mapped_coors,
-                                                source_shape=tile_shape,
-                                                source_prior=flow.permute_info.tile_mapping_prior,
-                                                target_shape=map_shape_pe,
-                                                target_prior=map_prior_pe)
+                                                source_shape=map_shape_pe,
+                                                source_prior=map_prior_pe,
+                                                target_shape=tile_shape,
+                                                target_prior=flow.permute_info.tile_mapping_prior)
             
         if tile.expansion:
             mapped_coors_fd=list(zip(*mapped_coors.T))

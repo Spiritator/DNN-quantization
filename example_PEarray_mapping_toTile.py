@@ -130,10 +130,14 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
 MXU.premapping_tile('ofmap', dataflow_pre_plan=True)
 MXU.premapping_tile('wght', dataflow_pre_plan=True)
 MXU.premapping_tile('ifmap', dataflow_pre_plan=True)
+MXU.premapping_tile('bias', dataflow_pre_plan=True)
+MXU.premapping_tile('psum', dataflow_pre_plan=True)
 # pre-plan duplication
 MXU.duplicate_mapping('ofmap', dataflow_pre_plan=True)
 MXU.duplicate_mapping('wght', dataflow_pre_plan=True)
 MXU.duplicate_mapping('ifmap', dataflow_pre_plan=True)
+MXU.duplicate_mapping('bias', dataflow_pre_plan=True)
+MXU.duplicate_mapping('psum', dataflow_pre_plan=True)
 # pre-plan alignment
 MXU.align_slice_pack(dataflow_pre_plan=True)
 
@@ -142,10 +146,10 @@ MXU.align_slice_pack(dataflow_pre_plan=True)
 MXU.fault_dict={(6,15,77):{'SA_type':'flip','SA_bit':3,'param':'ifmap_in'},
                 (9,3,833):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
                 (7,12,12664):{'SA_type':'flip','SA_bit':0,'param':'psum_out'},
-                (6,6,863):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
+                (6,6,863):{'SA_type':'flip','SA_bit':5,'param':'psum_out'},
                 (4,4,862):{'SA_type':'flip','SA_bit':5,'param':'wght_in'}}
 
-mapped_fault_dict_ifmap,mapped_fault_dict_wght,mapped_fault_dict_ofmap = MXU.decompose_slice_pack()
+mapped_fault_dict_ifmap,mapped_fault_dict_wght,mapped_fault_dict_ofmap,mapped_fault_dict_bias,mapped_fault_dict_psum = MXU.decompose_slice_pack()
 
 #%% reduce mapping from duplicate data reuse or accumulate partial sum
 
@@ -155,6 +159,10 @@ reduced_fault_dict_ofmap=MXU.reduce_mapping('ofmap')
 reduced_fault_dict_wght=MXU.reduce_mapping('wght')
 # ifmap reduce mapping
 reduced_fault_dict_ifmap=MXU.reduce_mapping('ifmap')
+# bias reduce mapping
+reduced_fault_dict_bias=MXU.reduce_mapping('bias')
+# psum reduce mapping
+reduced_fault_dict_psum=MXU.reduce_mapping('psum')
 
 #%% test stream flowback 
 

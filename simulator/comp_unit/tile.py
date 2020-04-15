@@ -613,8 +613,9 @@ class tile_PE(tile):
         if self.is_fmap:
             raise TypeError('This is feature maps tile, no bias!')
         self.use_bias=True
+        self.expansion=True
             
-        self.bias_slice_shape=(slice_width, np.ceil(self.Tn/slice_width))
+        self.bias_slice_shape=(slice_width, int(np.ceil(self.Tn/slice_width)))
         
         if not dataflow_pre_plan:
             orig_coors=np.array(list(self.bias_fault_dict.keys()))
@@ -634,6 +635,7 @@ class tile_PE(tile):
         """ Clear fault dictionary of tile """
         self.fault_dict_rehsaped=dict()
         self.fault_dict_expand=dict()
+        self.bias_fault_dict_expand=dict()
         
     def clear_expansion(self):
         """ Clear expansion shapes and priorities of tile """
@@ -645,5 +647,6 @@ class tile_PE(tile):
         self.slices_permute=None
         self.slices_cutset=None
         self.tilted_slice_shape=None
+        self.bias_slice_shape=None
         
             

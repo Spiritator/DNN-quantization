@@ -8,6 +8,7 @@ Processing element array setting for compuation unit fault mapping
 """
 
 import numpy as np
+import copy
 
 class axis_info:
     """
@@ -203,6 +204,8 @@ class PEarray:
         self.ifmap_tile=ifmap_tile
         self.wght_tile=wght_tile
         self.ofmap_tile=ofmap_tile
+        self.use_psum=False
+        self.use_bias=False
         self.used_axes=list()
         self.tmp_clk=None
         
@@ -236,6 +239,14 @@ class PEarray:
         self.ifmap_flow=PEflow(i_permute_info, i_fixed_info, i_broadcast_info, i_streaming_info, i_repeat, i_duplicate, i_pack_size, i_stall_latency)
         self.psum_flow=PEflow(p_permute_info, p_fixed_info, p_broadcast_info, p_streaming_info, p_repeat, p_duplicate, p_pack_size, p_stall_latency)
         self.bias_flow=PEflow(b_permute_info, b_fixed_info, b_broadcast_info, b_streaming_info, b_repeat, b_duplicate, b_pack_size, b_stall_latency)
+        
+        psum_arg=[p_permute_info, p_fixed_info, p_broadcast_info, p_streaming_info, p_repeat, p_duplicate, p_pack_size, p_stall_latency]
+        if psum_arg[1:]!=psum_arg[:-1]:
+            self.use_psum=True
+        
+        bias_arg=[b_permute_info, b_fixed_info, b_broadcast_info, b_streaming_info, b_repeat, b_duplicate, b_pack_size, b_stall_latency]
+        if bias_arg[1:]!=bias_arg[:-1]:
+            self.use_bias=True
         
     def estimate_clk(self, mapping_shape, non_clk_PE_shape):
         """ Estimate the needed number of clock cycle by shape of mapping data
@@ -1266,7 +1277,7 @@ class PEarray:
             tile=self.wght_tile
             flow=self.bias_flow
         else:
-            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\'.')
+            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\', \'bias\', \'psum\'.')
 
         
         if tile.tilting:
@@ -1288,6 +1299,10 @@ class PEarray:
                 mapped_coors=np.array(list(tile.fault_dict.keys()))
                 mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=int),axis=1)
                 fault_value=list(tile.fault_dict.values())
+            
+            if parameter=='bias':
+                mapped_coors=np.array(list(tile.bias_fault_dict.keys()))
+                fault_value=list(tile.bias_fault_dict.values())
                 
             if parameter=='ofmap':
                 PEparam={'param':'psum_out'}
@@ -1403,7 +1418,7 @@ class PEarray:
             The demapping phase will tackle axes in following order. 'streaming' -> 'broadcast' -> 'fixed' -> 'permute' 
         
         # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
             tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
             flow: Class. The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
                 
@@ -1425,8 +1440,16 @@ class PEarray:
             tile=self.wght_tile
             flow=self.wght_flow
             fault_dict=self.wght_map_fd
+        elif parameter=='psum':
+            tile=self.ofmap_tile
+            flow=self.psum_flow
+            fault_dict=self.psum_map_fd
+        elif parameter=='bias':
+            tile=self.wght_tile
+            flow=self.bias_flow
+            fault_dict=self.bias_map_fd
         else:
-            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\'.')
+            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\', \'bias\', \'psum\'.')
 
         
         if tile.tilting:
@@ -1436,10 +1459,13 @@ class PEarray:
                 tile_shape=tile.slice_shape
             else:
                 tile_shape=tile.tile_shape+(1,)
+                
+        if parameter=='bias':
+            tile_shape=tile.bias_slice_shape
         
         mapped_coors=np.array(list(fault_dict.keys()))
         fault_value=np.array(list(fault_dict.values()))
-                       
+                               
         self.solving_axes=self.used_axes.copy()
 
         # streaming
@@ -1510,27 +1536,23 @@ class PEarray:
                                                 source_prior=map_prior_pe,
                                                 target_shape=tile_shape,
                                                 target_prior=flow.permute_info.tile_mapping_prior)
-            
-        if tile.expansion:
-            mapped_coors_fd=list(zip(*mapped_coors.T))
-            new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
+        
+        if parameter!='bias':
+            if tile.expansion:
+                mapped_coors_fd=list(zip(*mapped_coors.T))
+                new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
+                tile.fault_dict_expand=new_fault_dict
+            else:
+                mapped_coors=mapped_coors[:,:-1]
+                mapped_coors_fd=list(zip(*mapped_coors.T))
+                new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
+                tile.fault_dict=new_fault_dict
         else:
-            mapped_coors=mapped_coors[:,:-1]
             mapped_coors_fd=list(zip(*mapped_coors.T))
             new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
-
-        if parameter=='ofmap':
-            self.ofmap_map_fd=new_fault_dict
-            self.shape_ofmap_mapping=map_shape_pe
-        elif parameter=='ifmap':
-            self.ifmap_map_fd=new_fault_dict
-            self.shape_ifmap_mapping=map_shape_pe
-        elif parameter=='wght':
-            self.wght_map_fd=new_fault_dict
-            self.shape_wght_mapping=map_shape_pe
+            tile.bias_fault_dict=new_fault_dict
             
         return new_fault_dict
-        #TODO
     
     def duplicate_mapping(self, parameter, dataflow_pre_plan=False):
         """ Duplicate pre-mapped tile which is on PE array dataflow model. Need setup dataflow config in advance.
@@ -1540,7 +1562,7 @@ class PEarray:
             Duplicate means the times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
             
         # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
             
             dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
                 Only save the expansion configuration for later PEarray to Tile transform.
@@ -1563,8 +1585,16 @@ class PEarray:
             fault_dict=self.wght_map_fd
             flow=self.wght_flow
             cutset_num=self.shape_wght_mapping[-1]
+        elif parameter=='psum':
+            fault_dict=self.psum_map_fd
+            flow=self.psum_flow
+            cutset_num=self.shape_psum_mapping[-1]
+        elif parameter=='bias':
+            fault_dict=self.bias_map_fd
+            flow=self.bias_flow
+            cutset_num=self.shape_bias_mapping[-1]
         else:
-            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\'.')
+            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\', \'bias\', \'psum\'.')
 
         if not dataflow_pre_plan:
             duped_coors=np.array(list(fault_dict.keys()))
@@ -1615,8 +1645,16 @@ class PEarray:
         elif parameter=='wght':
             self.wght_map_fd=new_fault_dict
             self.shape_wght_mapping[-1]=cutset_num
+        elif parameter=='psum':
+            self.psum_map_fd=new_fault_dict
+            self.shape_psum_mapping[-1]=cutset_num
+        elif parameter=='bias':
+            self.bias_map_fd=new_fault_dict
+            self.shape_bias_mapping[-1]=cutset_num
             
         return new_fault_dict
+    #TODO
+    # dull/dummy slice pack for duplication (bias)
     
     def reduce_mapping(self, parameter):
         """ Reduce tile back to not duplicated pre-mapped tile which is on PE array dataflow model. 
@@ -1625,7 +1663,7 @@ class PEarray:
             Duplicate means the times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
             
         # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
             
         # Returns
             Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -1645,8 +1683,16 @@ class PEarray:
             fault_dict=self.wght_map_fd
             flow=self.wght_flow
             cutset_num=self.shape_wght_mapping[-1]
+        elif parameter=='psum':
+            fault_dict=self.psum_map_fd
+            flow=self.psum_flow
+            cutset_num=self.shape_psum_mapping[-1]
+        elif parameter=='bias':
+            fault_dict=self.bias_map_fd
+            flow=self.bias_flow
+            cutset_num=self.shape_bias_mapping[-1]
         else:
-            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\'.')
+            raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\', \'bias\', \'psum\'.')
 
         reduced_coors=np.array(list(fault_dict.keys()))
         fault_value=list(fault_dict.values())
@@ -1681,6 +1727,12 @@ class PEarray:
         elif parameter=='wght':
             self.wght_map_fd=new_fault_dict
             self.shape_wght_mapping[-1]=cutset_num
+        elif parameter=='psum':
+            self.psum_map_fd=new_fault_dict
+            self.shape_psum_mapping[-1]=cutset_num
+        elif parameter=='bias':
+            self.bias_map_fd=new_fault_dict
+            self.shape_bias_mapping[-1]=cutset_num
             
         return new_fault_dict
 
@@ -1690,7 +1742,7 @@ class PEarray:
             Insert stall and latency for actual PE dataflow for each slice pack. Finally, combines all mapped tile fault dictionary onto PE dataflow model.
                             
         # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght' or 'ifmap'.
+            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
             
             dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
                 Only save the expansion configuration for later PEarray to Tile transform.
@@ -1718,7 +1770,21 @@ class PEarray:
             self.ofmap_map_fd,self.shape_ofmap_mapping=self.serialize_slices(self.ofmap_map_fd, 
                                                                              mapping_shape=self.shape_ofmap_mapping,
                                                                              pack_size=self.ofmap_flow.pack_size,
-                                                                             dataflow_pre_plan=dataflow_pre_plan)            
+                                                                             dataflow_pre_plan=dataflow_pre_plan)  
+        
+        if self.use_bias:
+            if self.bias_flow.pack_size>1:
+                self.bias_map_fd,self.shape_bias_mapping=self.serialize_slices(self.bias_map_fd, 
+                                                                               mapping_shape=self.shape_bias_mapping,
+                                                                               pack_size=self.bias_flow.pack_size,
+                                                                               dataflow_pre_plan=dataflow_pre_plan)   
+        
+        if self.use_psum:
+            if self.psum_flow.pack_size>1:
+                self.psum_map_fd,self.shape_psum_mapping=self.serialize_slices(self.psum_map_fd, 
+                                                                               mapping_shape=self.shape_psum_mapping,
+                                                                               pack_size=self.psum_flow.pack_size,
+                                                                               dataflow_pre_plan=dataflow_pre_plan)   
             
         # insert stall & latency
         if self.ifmap_flow.stall_latency>0:
@@ -1738,13 +1804,36 @@ class PEarray:
                                                                                 self.ofmap_flow.stall_latency, 
                                                                                 self.shape_ofmap_mapping,
                                                                                 dataflow_pre_plan=dataflow_pre_plan)
-            
+
+        if self.use_bias:
+            if self.bias_flow.stall_latency>0:
+                self.bias_map_fd,self.shape_bias_mapping=self.insert_stalllatency(self.bias_map_fd, 
+                                                                                  self.bias_flow.stall_latency, 
+                                                                                  self.shape_bias_mapping,
+                                                                                  dataflow_pre_plan=dataflow_pre_plan)
+
+        if self.use_psum:
+            if self.psum_flow.stall_latency>0:
+                self.psum_map_fd,self.shape_psum_mapping=self.insert_stalllatency(self.psum_map_fd, 
+                                                                                  self.psum_flow.stall_latency, 
+                                                                                  self.shape_psum_mapping,
+                                                                                  dataflow_pre_plan=dataflow_pre_plan)
+                
         # align clock cycle
         pack_num=[self.shape_ifmap_mapping[-1], self.shape_ofmap_mapping[-1], self.shape_wght_mapping[-1]]
+        if self.use_bias:
+            pack_num.append(self.shape_bias_mapping[-1])
+        if self.use_psum:
+            pack_num.append(self.shape_psum_mapping[-1])
         if not pack_num[1:] == pack_num[:-1]:
             print('WARNING: The number of slices of ifmap, ofmap, weight should be the same but got %s'%str(pack_num))
-            
-        self.pack_clk=max(self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2])
+        
+        pack_clk=[self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2],self.shape_bias_mapping[-2],self.shape_psum_mapping[-2]]
+        if self.use_bias:
+            pack_clk.append(self.shape_bias_mapping[-2])
+        if self.use_psum:
+            pack_clk.append(self.shape_psum_mapping[-2])
+        self.pack_clk=max(pack_clk)
         
         self.pack_num=max(pack_num)
         self.n_clk=self.pack_clk*self.pack_num
@@ -1753,6 +1842,10 @@ class PEarray:
             self.fault_dict.update(self.serialize_slices(self.ofmap_map_fd,self.shape_ofmap_mapping,slice_n_clk=self.pack_clk)[0])
             self.fault_dict.update(self.serialize_slices(self.wght_map_fd,self.shape_wght_mapping,slice_n_clk=self.pack_clk)[0])
             self.fault_dict.update(self.serialize_slices(self.ifmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=self.pack_clk)[0])
+            if self.use_bias:
+                self.fault_dict.update(self.serialize_slices(self.bias_map_fd,self.shape_bias_mapping,slice_n_clk=self.pack_clk)[0])
+            if self.use_psum:
+                self.fault_dict.update(self.serialize_slices(self.psum_map_fd,self.shape_psum_mapping,slice_n_clk=self.pack_clk)[0])
             self.fault_num=len(self.fault_dict)
         
             return self.fault_dict
@@ -1776,11 +1869,22 @@ class PEarray:
 
         shape_PE_fd=[self.n_y,self.n_x,self.n_clk]
         # decompose clock cycle
-        self.ofmap_map_fd,_=self.deserialize_slices(self.fault_dict,shape_PE_fd,slice_n_clk=self.pack_clk)
+        self.ofmap_map_fd=copy.deepcopy(self.fault_dict)
+        self.ofmap_map_fd,_=self.deserialize_slices(self.ofmap_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
         
-        self.wght_map_fd,_=self.deserialize_slices(self.fault_dict,shape_PE_fd,slice_n_clk=self.pack_clk)
+        self.wght_map_fd=copy.deepcopy(self.fault_dict)
+        self.wght_map_fd,_=self.deserialize_slices(self.wght_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
         
-        self.ifmap_map_fd,_=self.deserialize_slices(self.fault_dict,shape_PE_fd,slice_n_clk=self.pack_clk)
+        self.ifmap_map_fd=copy.deepcopy(self.fault_dict)
+        self.ifmap_map_fd,_=self.deserialize_slices(self.ifmap_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
+        
+        if self.use_bias:
+            self.bias_map_fd=copy.deepcopy(self.fault_dict)
+            self.bias_map_fd,_=self.deserialize_slices(self.bias_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
+        
+        if self.use_psum:
+            self.psum_map_fd=copy.deepcopy(self.fault_dict)
+            self.psum_map_fd,_=self.deserialize_slices(self.psum_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
         
         # remove stall & latency
         if self.ifmap_flow.stall_latency>0:
@@ -1797,9 +1901,20 @@ class PEarray:
             self.ofmap_map_fd,self.shape_ofmap_mapping=self.remove_stalllatency(self.ofmap_map_fd, 
                                                                                 self.ofmap_flow.stall_latency, 
                                                                                 self.shape_ofmap_mapping)
+        
+        if self.use_bias:
+            if self.bias_flow.stall_latency>0:
+                self.bias_map_fd,self.shape_bias_mapping=self.remove_stalllatency(self.bias_map_fd, 
+                                                                                  self.bias_flow.stall_latency, 
+                                                                                  self.shape_bias_mapping)
+        if self.use_psum:
+            if self.psum_flow.stall_latency>0:
+                self.psum_map_fd,self.shape_psum_mapping=self.remove_stalllatency(self.psum_map_fd, 
+                                                                                  self.psum_flow.stall_latency, 
+                                                                                  self.shape_psum_mapping)
 
         # remove fault lies in non-comuputation time
-        self.pop_outlier_coors_alldata()
+        self.pop_outlier_coors_alldata(outlier_messege='slice_pack')
         
         # split slice pack
         if self.ifmap_flow.pack_size>1:
@@ -1815,8 +1930,27 @@ class PEarray:
         if self.ofmap_flow.pack_size>1:
             self.ofmap_map_fd,self.shape_ofmap_mapping=self.deserialize_slices(self.ofmap_map_fd, 
                                                                                mapping_shape=self.shape_ofmap_mapping,
-                                                                               pack_size=self.ofmap_flow.pack_size)            
-        return self.ifmap_map_fd, self.wght_map_fd, self.ofmap_map_fd
+                                                                               pack_size=self.ofmap_flow.pack_size) 
+        
+        if self.use_bias:
+            if self.bias_flow.pack_size>1:
+                self.bias_map_fd,self.shape_bias_mapping=self.deserialize_slices(self.bias_map_fd, 
+                                                                                 mapping_shape=self.shape_bias_mapping,
+                                                                                 pack_size=self.bias_flow.pack_size)   
+        
+        if self.use_psum:
+            if self.psum_flow.pack_size>1:
+                self.psum_map_fd,self.shape_psum_mapping=self.deserialize_slices(self.psum_map_fd, 
+                                                                                 mapping_shape=self.shape_psum_mapping,
+                                                                                 pack_size=self.psum_flow.pack_size)   
+               
+        fd_return=(self.ifmap_map_fd, self.wght_map_fd, self.ofmap_map_fd)
+        if self.use_bias:
+            fd_return+=(self.bias_map_fd,)
+        if self.use_psum:
+            fd_return+=(self.psum_map_fd,)
+        
+        return fd_return
     
     def gen_PEarray_SA_fault_dict(self):
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
@@ -1832,6 +1966,7 @@ class PEarray:
         self.fault_num=len(self.fault_dict)
 
         #TODO
+        # generate fault
         pass
     
     def get_outlier_cond_args(self,index,mapping_shape):
@@ -1861,13 +1996,17 @@ class PEarray:
 
         return new_fault_dict,mapping_shape
     
-    def pop_outlier_coors_alldata(self):
+    def pop_outlier_coors_alldata(self,outlier_messege='unspecified'):
         """ Remove coordinates in fault dictionary that lies outside of current shape.
             Only used in PEarray to Tile mapping. Due to time expand on fault list generation.
             In Tile to PEarray mapping, coordinates outside current shape might be invalid configuration.
         
             In this function, once a fault is outlier in one of the ifmap, ofmap, weight fault dictionary,
             the fault will be poped out in all fault dictionary.
+        
+        # Arguments
+            outlier_messege: String. The messege to put in fault information dictionary {'outlier':'the messege'}.
+        
         """
         index_i=np.array(list(self.ifmap_map_fd.keys()))
         fault_value_i=np.array(list(self.ifmap_map_fd.values()))
@@ -1875,18 +2014,42 @@ class PEarray:
         fault_value_o=np.array(list(self.ofmap_map_fd.values()))
         index_w=np.array(list(self.wght_map_fd.keys()))
         fault_value_w=np.array(list(self.wght_map_fd.values()))
+        if self.use_bias:
+            index_b=np.array(list(self.bias_map_fd.keys()))
+            fault_value_b=np.array(list(self.bias_map_fd.values()))
+        if self.use_psum:
+            index_p=np.array(list(self.psum_map_fd.keys()))
+            fault_value_p=np.array(list(self.psum_map_fd.values()))
         
         cond_argi=self.get_outlier_cond_args(index_i,self.shape_ifmap_mapping)
         cond_argo=self.get_outlier_cond_args(index_o,self.shape_ofmap_mapping)
         cond_argw=self.get_outlier_cond_args(index_w,self.shape_wght_mapping)
-        cond_arg=np.bitwise_and(np.bitwise_and(cond_argi,cond_argo),cond_argw)
+        if self.use_bias:
+            cond_argb=self.get_outlier_cond_args(index_b,self.shape_bias_mapping)
+        if self.use_psum:
+            cond_argp=self.get_outlier_cond_args(index_p,self.shape_psum_mapping)
+#        cond_arg=[cond_argi,cond_argo,cond_argw]
+#        if self.use_bias:
+#            cond_arg.append(cond_argb)
+#        if self.use_psum:
+#            cond_arg.append(cond_argp)
+#        cond_arg=np.stack(cond_arg)
+#        cond_arg=np.prod(cond_arg,axis=0)
+#        cond_arg=cond_arg.astype(bool)
         
-        index_i=index_i[cond_arg]
-        fault_value_i=fault_value_i[cond_arg].tolist()
-        index_o=index_o[cond_arg]
-        fault_value_o=fault_value_o[cond_arg].tolist()
-        index_w=index_w[cond_arg]
-        fault_value_w=fault_value_w[cond_arg].tolist()
+        for i in range(len(index_i)):
+            if not cond_argi[i]:
+                fault_value_i[i].update({'outlier':outlier_messege})
+            if not cond_argo[i]:
+                fault_value_o[i].update({'outlier':outlier_messege})
+            if not cond_argw[i]:
+                fault_value_w[i].update({'outlier':outlier_messege})
+            if self.use_bias:
+                if not cond_argb[i]:
+                    fault_value_b[i].update({'outlier':outlier_messege})
+            if self.use_psum:
+                if not cond_argp[i]:
+                    fault_value_p[i].update({'outlier':outlier_messege})
         
         index_i=list(zip(*index_i.T))
         self.ifmap_map_fd=dict(zip(index_i,fault_value_i))
@@ -1894,6 +2057,12 @@ class PEarray:
         self.ofmap_map_fd=dict(zip(index_o,fault_value_o))
         index_w=list(zip(*index_w.T))
         self.wght_map_fd=dict(zip(index_w,fault_value_w))
+        if self.use_bias:
+            index_b=list(zip(*index_b.T))
+            self.bias_map_fd=dict(zip(index_b,fault_value_b))
+        if self.use_psum:
+            index_p=list(zip(*index_p.T))
+            self.psum_map_fd=dict(zip(index_p,fault_value_p))
     
     def clear(self):
         """ Clear fault dictionary of PE dataflow model """
@@ -1905,6 +2074,8 @@ class PEarray:
         self.ifmap_map_fd=dict()
         self.ofmap_map_fd=dict()
         self.wght_map_fd=dict()
+        self.bias_map_fd=dict()
+        self.psum_map_fd=dict()
         
     def clear_map_config(self):
         """ Clear mapping setup of PE dataflow model """
@@ -1915,6 +2086,8 @@ class PEarray:
         self.shape_ifmap_mapping=None
         self.shape_ofmap_mapping=None
         self.shape_wght_mapping=None
+        self.shape_bias_mapping=None
+        self.shape_psum_mapping=None
         self.used_axes=list()
         self.solving_axes=list()
         self.n_clk=None

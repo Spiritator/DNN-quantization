@@ -147,7 +147,10 @@ MXU.fault_dict={(6,15,77):{'SA_type':'flip','SA_bit':3,'param':'ifmap_in'},
                 (9,3,833):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
                 (7,12,12664):{'SA_type':'flip','SA_bit':0,'param':'psum_out'},
                 (6,6,863):{'SA_type':'flip','SA_bit':5,'param':'psum_out'},
-                (4,4,862):{'SA_type':'flip','SA_bit':5,'param':'wght_in'}}
+                (4,4,862):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
+                (15,4,666):{'SA_type':'flip','SA_bit':2,'param':'psum_out'}}
+
+MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
 
 mapped_fault_dict_ifmap,mapped_fault_dict_wght,mapped_fault_dict_ofmap,mapped_fault_dict_bias,mapped_fault_dict_psum = MXU.decompose_slice_pack()
 
@@ -236,3 +239,17 @@ unfix_coors_out2,condidxfix=MXU.unfix_idx(unfix_coors_in2,
                                           target_shape=(16,16,691),
                                           get_cond_idx=True)
 
+#%% demapping return fault dictionary to Tile
+
+# ofmap reduce mapping
+demapped_fault_dict_ofmap=MXU.demapping_tile('ofmap')
+# weight reduce mapping
+demapped_fault_dict_wght=MXU.demapping_tile('wght')
+# ifmap reduce mapping
+demapped_fault_dict_ifmap=MXU.demapping_tile('ifmap')
+# bias reduce mapping
+demapped_fault_dict_bias=MXU.demapping_tile('bias')
+# psum reduce mapping
+demapped_fault_dict_psum=MXU.demapping_tile('psum')
+
+#%% assemble slices and shrink tile back to original shape

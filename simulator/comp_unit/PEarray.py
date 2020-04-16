@@ -117,6 +117,9 @@ class PEflow:
         self.stall_latency=stall_latency
         self.axis_element=['PE_x','PE_y','t_clk']
         
+        self.tmp_clk=None
+        self.using_axes=list()
+        
     def check_prior(self, data_shape):
         if (not isinstance(self.permute_info.PE_required_axes_prior,list)) and (not isinstance(self.permute_info.PE_required_axes_prior,str)):
             raise TypeError('The augment PE_required_axes must be String or List of Strings dtype.')
@@ -240,12 +243,14 @@ class PEarray:
         self.psum_flow=PEflow(p_permute_info, p_fixed_info, p_broadcast_info, p_streaming_info, p_repeat, p_duplicate, p_pack_size, p_stall_latency)
         self.bias_flow=PEflow(b_permute_info, b_fixed_info, b_broadcast_info, b_streaming_info, b_repeat, b_duplicate, b_pack_size, b_stall_latency)
         
+        default_arg=[None,None,None,None,0,0,1,0]
+        
         psum_arg=[p_permute_info, p_fixed_info, p_broadcast_info, p_streaming_info, p_repeat, p_duplicate, p_pack_size, p_stall_latency]
-        if psum_arg[1:]!=psum_arg[:-1]:
+        if psum_arg!=default_arg:
             self.use_psum=True
         
         bias_arg=[b_permute_info, b_fixed_info, b_broadcast_info, b_streaming_info, b_repeat, b_duplicate, b_pack_size, b_stall_latency]
-        if bias_arg[1:]!=bias_arg[:-1]:
+        if bias_arg!=default_arg:
             self.use_bias=True
         
     def estimate_clk(self, mapping_shape, non_clk_PE_shape):
@@ -287,11 +292,9 @@ class PEarray:
             if 't_clk' in prior_list:   
                 mpp_cnt+=1
                 mpp_ind['t_clk']=mpp_cnt
-                if self.n_clk is None:
-                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                    map_shape_pe.insert(-1,self.tmp_clk)
-                else:
-                    map_shape_pe.insert(-1,self.n_clk)
+                    
+                self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                map_shape_pe.insert(-1,self.tmp_clk)
                     
             map_prior_pe.append(mpp_cnt+1)
                     
@@ -299,11 +302,9 @@ class PEarray:
             if 't_clk' in prior_list:   
                 mpp_cnt+=1
                 mpp_ind['t_clk']=mpp_cnt
-                if self.n_clk is None:
-                    self.n_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                    map_shape_pe.append(self.n_clk)
-                else:
-                    map_shape_pe.append(self.n_clk)
+
+                self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                map_shape_pe.append(self.tmp_clk)
         
         for prior in prior_list:
             map_prior_pe.append(mpp_ind[prior])
@@ -346,48 +347,36 @@ class PEarray:
             map_shape_pe.append(tile_shape[-1])
             
             if 't_clk' in fix_dims:
-                if self.n_clk is None:
-                    if self.tmp_clk is None:
-                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                        map_shape_pe.insert(-1,self.tmp_clk)
-                    else:
-                        map_shape_pe.insert(-1,self.tmp_clk)
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 else:
-                    map_shape_pe.insert(-1,self.n_clk)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 mpp_cnt+=1
                 map_fixdims.append(mpp_cnt)
             elif 't_clk' in axis_list:
-                if self.n_clk is None:
-                    if self.tmp_clk is None:
-                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                        map_shape_pe.insert(-1,self.tmp_clk)
-                    else:
-                        map_shape_pe.insert(-1,self.tmp_clk)
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 else:
-                    map_shape_pe.insert(-1,self.n_clk)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 mpp_cnt+=1
 
         else:     
             if 't_clk' in fix_dims:
-                if self.n_clk is None:
-                    if self.tmp_clk is None:
-                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                        map_shape_pe.append(self.tmp_clk)
-                    else:
-                        map_shape_pe.append(self.tmp_clk)
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.append(self.tmp_clk)
                 else:
-                    map_shape_pe.append(self.n_clk)
+                    map_shape_pe.append(self.tmp_clk)
                 mpp_cnt+=1
                 map_fixdims.append(mpp_cnt)
             elif 't_clk' in axis_list:
-                if self.n_clk is None:
-                    if self.tmp_clk is None:
-                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                        map_shape_pe.append(-1,self.tmp_clk)
-                    else:
-                        map_shape_pe.append(self.tmp_clk)
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.append(-1,self.tmp_clk)
                 else:
-                    map_shape_pe.append(self.n_clk)
+                    map_shape_pe.append(self.tmp_clk)
                 mpp_cnt+=1
         
         if backward_mapping:
@@ -447,48 +436,36 @@ class PEarray:
             map_shape_pe.append(tile_shape[-1])
             
             if 't_clk' in broadcast_dims:
-                if self.n_clk is None:
-                    if self.tmp_clk is None:
-                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                        map_shape_pe.insert(-1,self.tmp_clk)
-                    else:
-                        map_shape_pe.insert(-1,self.tmp_clk)
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 else:
-                    map_shape_pe.insert(-1,self.n_clk)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 mpp_cnt+=1
                 map_broaddims.append(mpp_cnt)
             elif 't_clk' in axis_list:
-                if self.n_clk is None:
-                    if self.tmp_clk is None:
-                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                        map_shape_pe.insert(-1,self.tmp_clk)
-                    else:
-                        map_shape_pe.insert(-1,self.tmp_clk)
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 else:
-                    map_shape_pe.insert(-1,self.n_clk)
+                    map_shape_pe.insert(-1,self.tmp_clk)
                 mpp_cnt+=1
 
         else:     
             if 't_clk' in broadcast_dims:
-                if self.n_clk is None:
-                    if self.tmp_clk is None:
-                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                        map_shape_pe.append(self.tmp_clk)
-                    else:
-                        map_shape_pe.append(self.tmp_clk)
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.append(self.tmp_clk)
                 else:
-                    map_shape_pe.append(self.n_clk)
+                    map_shape_pe.append(self.tmp_clk)
                 mpp_cnt+=1
                 map_broaddims.append(mpp_cnt)
             elif 't_clk' in axis_list:
-                if self.n_clk is None:
-                    if self.tmp_clk is None:
-                        self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                        map_shape_pe.append(-1,self.tmp_clk)
-                    else:
-                        map_shape_pe.append(self.tmp_clk)
+                if self.tmp_clk is None:
+                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                    map_shape_pe.append(-1,self.tmp_clk)
                 else:
-                    map_shape_pe.append(self.n_clk)
+                    map_shape_pe.append(self.tmp_clk)
                 mpp_cnt+=1
         
         if backward_mapping:
@@ -548,24 +525,18 @@ class PEarray:
         if keep_slice:
             map_shape_pe.append(tile_shape[-1])
             clk_idx=-2
-            if self.n_clk is None:
-                if self.tmp_clk is None:
-                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                    map_shape_pe.insert(-1,self.tmp_clk+latency)
-                else:
-                    map_shape_pe.insert(-1,self.tmp_clk+latency)
+            if self.tmp_clk is None:
+                self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                map_shape_pe.insert(-1,self.tmp_clk+latency)
             else:
-                map_shape_pe.insert(-1,self.n_clk)
+                map_shape_pe.insert(-1,self.tmp_clk+latency)
         else:     
             clk_idx=-1
-            if self.n_clk is None:
-                if self.tmp_clk is None:
-                    self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
-                    map_shape_pe.append(self.tmp_clk+latency)
-                else:
-                    map_shape_pe.append(self.tmp_clk+latency)
+            if self.tmp_clk is None:
+                self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
+                map_shape_pe.append(self.tmp_clk+latency)
             else:
-                map_shape_pe.append(self.n_clk)
+                map_shape_pe.append(self.tmp_clk+latency)
         
         if backward_mapping:
             self.solving_axes.remove(stream_dim)
@@ -1319,6 +1290,7 @@ class PEarray:
                 value.update(PEparam)
                
         self.used_axes=list()
+        self.tmp_clk=None
         
         # permute
         if flow.permute_info is not None:
@@ -1384,7 +1356,10 @@ class PEarray:
                                                               get_cond_idx=True)
     
                 fault_value=[fault_value[i] for i in cond_idx]
-            
+        
+        flow.tmp_clk=self.tmp_clk
+        flow.using_axes=self.used_axes.copy()
+        
         if not dataflow_pre_plan:
             mapped_coors_fd=list(zip(*mapped_coors.T))
             new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
@@ -1463,10 +1438,14 @@ class PEarray:
         if parameter=='bias':
             tile_shape=tile.bias_slice_shape
         
+        if len(fault_dict)==0:
+            return dict()
+        
         mapped_coors=np.array(list(fault_dict.keys()))
         fault_value=np.array(list(fault_dict.values()))
                                
-        self.solving_axes=self.used_axes.copy()
+        self.solving_axes=flow.using_axes.copy()
+        self.tmp_clk=flow.tmp_clk
 
         # streaming
         if flow.streaming_info is not None:
@@ -1477,15 +1456,15 @@ class PEarray:
                                        keep_slice=True,
                                        backward_mapping=True)
 
-            mapped_coors,cond_idx=self.stream_flowback_idx(mapped_coors, 
-                                                           data_shape=map_shape_data, 
-                                                           data_stream_axis=map_streamdata,
-                                                           window_shape=map_shape_pe, 
-                                                           window_stream_axis=map_streamdim, 
-                                                           window_clk_axis=map_streamclk,
-                                                           data_flow_direction=flow.streaming_info.tile_direction, 
-                                                           window_flow_direction=flow.streaming_info.PE_direction,
-                                                           axis_arange=map_arange)
+            mapped_coors=self.stream_flowback_idx(mapped_coors, 
+                                                  data_shape=map_shape_data, 
+                                                  data_stream_axis=map_streamdata,
+                                                  window_shape=map_shape_pe, 
+                                                  window_stream_axis=map_streamdim, 
+                                                  window_clk_axis=map_streamclk,
+                                                  data_flow_direction=flow.streaming_info.tile_direction, 
+                                                  window_flow_direction=flow.streaming_info.PE_direction,
+                                                  axis_arange=map_arange)
 
         # broadcast
         if flow.broadcast_info is not None:
@@ -1495,12 +1474,12 @@ class PEarray:
                                                                                            keep_slice=True,
                                                                                            backward_mapping=True)
 
-            mapped_coors,cond_idx=self.narrowcast_idx(mapped_coors, 
-                                                      data_shape=map_shape_data,
-                                                      target_shape=map_shape_pe, 
-                                                      broadcast_dims=map_broaddims,
-                                                      axis_arange=map_arange)
-            
+            mapped_coors=self.narrowcast_idx(mapped_coors, 
+                                             data_shape=map_shape_data,
+                                             target_shape=map_shape_pe, 
+                                             broadcast_dims=map_broaddims,
+                                             axis_arange=map_arange)
+        
         # fixed
         if flow.fixed_info is not None:
             flow.check_fix()
@@ -1694,6 +1673,9 @@ class PEarray:
         else:
             raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\', \'bias\', \'psum\'.')
 
+        if len(fault_dict)==0:
+            return dict()
+        
         reduced_coors=np.array(list(fault_dict.keys()))
         fault_value=list(fault_dict.values())
         
@@ -1828,7 +1810,7 @@ class PEarray:
         if not pack_num[1:] == pack_num[:-1]:
             print('WARNING: The number of slices of ifmap, ofmap, weight should be the same but got %s'%str(pack_num))
         
-        pack_clk=[self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2],self.shape_bias_mapping[-2],self.shape_psum_mapping[-2]]
+        pack_clk=[self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2]]
         if self.use_bias:
             pack_clk.append(self.shape_bias_mapping[-2])
         if self.use_psum:
@@ -1914,7 +1896,7 @@ class PEarray:
                                                                                   self.shape_psum_mapping)
 
         # remove fault lies in non-comuputation time
-        self.pop_outlier_coors_alldata(outlier_messege='slice_pack')
+        self.pop_outlier_coors_alldata()
         
         # split slice pack
         if self.ifmap_flow.pack_size>1:
@@ -1965,6 +1947,7 @@ class PEarray:
         
         self.fault_num=len(self.fault_dict)
 
+        self.fault_dict=self.assign_id(self.fault_dict)
         #TODO
         # generate fault
         pass
@@ -1996,17 +1979,14 @@ class PEarray:
 
         return new_fault_dict,mapping_shape
     
-    def pop_outlier_coors_alldata(self,outlier_messege='unspecified'):
+    def pop_outlier_coors_alldata(self):
         """ Remove coordinates in fault dictionary that lies outside of current shape.
             Only used in PEarray to Tile mapping. Due to time expand on fault list generation.
             In Tile to PEarray mapping, coordinates outside current shape might be invalid configuration.
         
-            In this function, once a fault is outlier in one of the ifmap, ofmap, weight fault dictionary,
-            the fault will be poped out in all fault dictionary.
-        
-        # Arguments
-            outlier_messege: String. The messege to put in fault information dictionary {'outlier':'the messege'}.
-        
+            In this function, a fault is outlier in one of the ifmap, ofmap, weight, bias, psum fault dictionary,
+            the fault will be poped out of fault dictionary.
+                
         """
         index_i=np.array(list(self.ifmap_map_fd.keys()))
         fault_value_i=np.array(list(self.ifmap_map_fd.values()))
@@ -2037,19 +2017,32 @@ class PEarray:
 #        cond_arg=np.prod(cond_arg,axis=0)
 #        cond_arg=cond_arg.astype(bool)
         
-        for i in range(len(index_i)):
-            if not cond_argi[i]:
-                fault_value_i[i].update({'outlier':outlier_messege})
-            if not cond_argo[i]:
-                fault_value_o[i].update({'outlier':outlier_messege})
-            if not cond_argw[i]:
-                fault_value_w[i].update({'outlier':outlier_messege})
-            if self.use_bias:
-                if not cond_argb[i]:
-                    fault_value_b[i].update({'outlier':outlier_messege})
-            if self.use_psum:
-                if not cond_argp[i]:
-                    fault_value_p[i].update({'outlier':outlier_messege})
+#        for i in range(len(index_i)):
+#            if not cond_argi[i]:
+#                fault_value_i[i].update({'outlier':outlier_messege})
+#            if not cond_argo[i]:
+#                fault_value_o[i].update({'outlier':outlier_messege})
+#            if not cond_argw[i]:
+#                fault_value_w[i].update({'outlier':outlier_messege})
+#            if self.use_bias:
+#                if not cond_argb[i]:
+#                    fault_value_b[i].update({'outlier':outlier_messege})
+#            if self.use_psum:
+#                if not cond_argp[i]:
+#                    fault_value_p[i].update({'outlier':outlier_messege})
+            
+        index_i=index_i[cond_argi]
+        fault_value_i=fault_value_i[cond_argi].tolist()
+        index_o=index_o[cond_argo]
+        fault_value_o=fault_value_o[cond_argo].tolist()
+        index_w=index_w[cond_argw]
+        fault_value_w=fault_value_w[cond_argw].tolist()
+        if self.use_bias:
+            index_b=index_b[cond_argb]
+            fault_value_b=fault_value_b[cond_argb].tolist()
+        if self.use_psum:
+            index_p=index_p[cond_argp]
+            fault_value_p=fault_value_p[cond_argp].tolist()
         
         index_i=list(zip(*index_i.T))
         self.ifmap_map_fd=dict(zip(index_i,fault_value_i))
@@ -2063,6 +2056,15 @@ class PEarray:
         if self.use_psum:
             index_p=list(zip(*index_p.T))
             self.psum_map_fd=dict(zip(index_p,fault_value_p))
+    
+    def assign_id(self, fault_dict):
+        """ Give fault dict id for every fault
+            For popping outlier faults because we need to save the order of original fault
+        
+        """
+        for i,coor in enumerate(fault_dict):
+            fault_dict[coor].update({'id':i})
+        return fault_dict
     
     def clear(self):
         """ Clear fault dictionary of PE dataflow model """

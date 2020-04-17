@@ -1265,15 +1265,15 @@ class PEarray:
         if not dataflow_pre_plan:
             if tile.expansion:
                 mapped_coors=np.array(list(tile.fault_dict_expand.keys()))
-                fault_value=list(tile.fault_dict_expand.values())
+                fault_value=np.array(list(tile.fault_dict_expand.values()))
             else:
                 mapped_coors=np.array(list(tile.fault_dict.keys()))
                 mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=int),axis=1)
-                fault_value=list(tile.fault_dict.values())
+                fault_value=np.array(list(tile.fault_dict.values()))
             
             if parameter=='bias':
                 mapped_coors=np.array(list(tile.bias_fault_dict.keys()))
-                fault_value=list(tile.bias_fault_dict.values())
+                fault_value=np.array(list(tile.bias_fault_dict.values()))
                 
             if parameter=='ofmap':
                 PEparam={'param':'psum_out'}
@@ -1333,7 +1333,7 @@ class PEarray:
                                                          axis_arange=map_arange, 
                                                          get_cond_idx=True)
                 
-                fault_value=[fault_value[i] for i in cond_idx]
+                fault_value=fault_value[cond_idx]
           
         # streaming
         if flow.streaming_info is not None:
@@ -1355,7 +1355,7 @@ class PEarray:
                                                               axis_arange=map_arange, 
                                                               get_cond_idx=True)
     
-                fault_value=[fault_value[i] for i in cond_idx]
+                fault_value=fault_value[cond_idx]
         
         flow.tmp_clk=self.tmp_clk
         flow.using_axes=self.used_axes.copy()
@@ -1496,9 +1496,11 @@ class PEarray:
                                                  get_cond_idx=True)
             
             # mark outlier coordinates
-            for i,cond in enumerate(cond_idx):
-                if not cond:
-                    fault_value[i].update({'outlier':'fixed'})
+            mapped_coors=mapped_coors[cond_idx]
+            fault_value=fault_value[cond_idx].tolist()
+#            for i,cond in enumerate(cond_idx):
+#                if not cond:
+#                    fault_value[i].update({'outlier':'fixed'})
         
             
         # permute

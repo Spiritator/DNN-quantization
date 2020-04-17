@@ -252,4 +252,55 @@ demapped_fault_dict_bias=MXU.demapping_tile('bias')
 # psum reduce mapping
 demapped_fault_dict_psum=MXU.demapping_tile('psum')
 
-#%% assemble slices and shrink tile back to original shape
+#%% test assemble slices 
+
+assembled_coor=wght_tile.assemble_slice_idx((3,10,48),
+                                            orig_shape=(3,3,16,32),
+                                            slicing_dims=(0,0,12,12),
+                                            slices_permute=[0,1,3,2])
+
+sliced_coors=np.array([[3,10,48],
+                       [1,4,11],
+                       [3,3,39],
+                       [5,9,18],
+                       [3,1,48],
+                       [9,0,34],
+                       [3,6,36],
+                       [11,5,20],
+                       [7,6,46],
+                       [6,3,8]])
+assembled_coors=wght_tile.assemble_slice_idx(sliced_coors,
+                                             orig_shape=(3,3,16,32),
+                                             slicing_dims=(0,0,12,12),
+                                             slices_permute=[0,1,3,2])
+
+#%% test return patches
+#TODO
+
+#%% test shrink tile back to original shape
+
+shrink_fault_dict_reshape_o=ofmap_tile.shrink_reshape_data()
+
+shrink_fault_dict_reshape_w=wght_tile.shrink_reshape_data()
+
+#TODO
+# shrink return patches
+
+#expand_fault_dict_extracted=ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
+#                                                              strides=(1,1,1,1),
+#                                                              dilation_rates=(1,1,1,1),
+#                                                              padding='same',
+#                                                              edge_fill=False,
+#                                                              reshape_patches=True,
+#                                                              patches_prior=[0,1,2,3],
+#                                                              expect_shape=(1*28*28,144),
+#                                                              reshape_prior=[0,1],
+#                                                              slicing_dims=(1*28*28,16),
+#                                                              slices_permute=[0,1],
+#                                                              tilting=True, 
+#                                                              tilt_axis=1, 
+#                                                              tilt_direction=0)
+#
+#expand_bias_fault_dict_slice=wght_tile.expand_slice_bias(slice_width=16)
+
+

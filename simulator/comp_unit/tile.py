@@ -207,24 +207,30 @@ class tile_PE(tile):
 
         cutset,div_dims=self.get_slices_cutset(orig_shape, slicing_dims)
         
-        permute_dims=np.floor_divide(index,div_dims)
-        mapping_dims=np.remainder(index,div_dims)
         if len(index.shape)==1:
-            mapping_dims=mapping_dims[np.argwhere(np.array(slicing_dims)>0)]
-            tclk=np.ravel_multi_index(permute_dims[slices_permute],cutset[slices_permute])
-            if len(mapping_dims.shape)==1:
-                mapping_dims=np.expand_dims(mapping_dims,-1)
-            mapping_dims=np.append(mapping_dims,tclk)
+            tclk=index[-1]
+            mapping_dims=index[:-1]
+#            if len(mapping_dims.shape)==1:
+#                mapping_dims=np.expand_dims(mapping_dims,-1)
+            permute_dims=np.unravel_index(tclk,cutset[slices_permute])
+            permute_dims=np.array(permute_dims)[slices_permute]
+            assembled_idx=np.zeros(len(orig_shape),dtype=int)
+            assembled_idx[np.squeeze(np.argwhere(np.array(slicing_dims)>0))]=mapping_dims
         else:
-            mapping_dims=mapping_dims[:,np.squeeze(np.argwhere(np.array(slicing_dims)>0))]
-            tclk=np.ravel_multi_index(permute_dims.T[slices_permute],cutset[slices_permute])
+            tclk=index[:,-1]
+            mapping_dims=index[:,:-1]
             if len(mapping_dims.shape)==1:
                 mapping_dims=np.expand_dims(mapping_dims,-1)
-            mapping_dims=np.append(mapping_dims,np.expand_dims(tclk,-1),axis=-1)
+            permute_dims=np.unravel_index(tclk,cutset[slices_permute])
+            permute_dims=np.array(permute_dims)[slices_permute]
+            permute_dims=permute_dims.T
+            assembled_idx=np.zeros([len(index),len(orig_shape)],dtype=int)
+            assembled_idx[:,np.squeeze(np.argwhere(np.array(slicing_dims)>0))]=mapping_dims
             
-        return mapping_dims
-    #TODO
-    # assemble slice
+        permute_dims=np.multiply(permute_dims,div_dims)
+        assembled_idx=np.add(assembled_idx,permute_dims)
+            
+        return assembled_idx
     
     def get_extracted_shape(self, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False):
         new_dim_row = self.conv_output_length(
@@ -521,7 +527,7 @@ class tile_PE(tile):
 
         """
         permuted_coors=np.array(list(self.fault_dict_expand.keys()))
-        fault_info=list(self.fault_dict_expand.values())
+        fault_info=np.array(list(self.fault_dict_expand.values()))
         
         if self.tilting:            
             permuted_coors,self.slice_shape=self.untilt_idx(permuted_coors,
@@ -529,11 +535,17 @@ class tile_PE(tile):
                                                             self.tilt_direction,
                                                             self.tilted_slice_shape,
                                                             self.tilt_shift)
+            # pop inalid t_clk
+            permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
+            fault_info=fault_info[cond_idx]
         
         reshaped_coors=self.assemble_slice_idx(permuted_coors,
                                                orig_shape=self.expand_shape,
                                                slicing_dims=self.slicing_dims,
                                                slices_permute=self.slices_permute)
+        # pop under-utilized area on PE
+        reshaped_coors,cond_idx=self.pop_outlier_idx(reshaped_coors,self.expand_shape,get_cond_idx=True)
+        fault_info=fault_info[cond_idx]
         
         reshaped_coors_fd=list(zip(*reshaped_coors.T))
         self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
@@ -743,6 +755,24 @@ class tile_PE(tile):
         
         else:
             return None
+        
+    def pop_outlier_idx(self, index, shape, get_cond_idx=False):
+        """ Remove coordinates in fault dictionary that lies outside of current shape.
+            Only used in PEarray to Tile mapping. Due to time expand on fault list generation.
+            In Tile to PEarray mapping, coordinates outside current shape might be invalid configuration.
+        
+        """        
+        index_bound=np.floor_divide(index,shape)
+        cond_arg=np.max(index_bound,axis=1)<1
+        cond_tmp=np.min(index_bound,axis=1)>=0
+        cond_arg=np.bitwise_and(cond_arg,cond_tmp)        
+        
+        poped_index=index[cond_arg]
+        
+        if get_cond_idx:
+            return poped_index,cond_arg
+        else:
+            return poped_index
     
     def clear(self):
         """ Clear fault dictionary of tile """

@@ -353,6 +353,67 @@ class tile_PE(tile):
             return extracted_index, cond_idx
         else:
             return extracted_index
+    
+    def retrun_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, get_cond_idx=False):
+        """ Index transformation for reverse tf.extract_image_patches for ifmap shrink in PE to Tile mapping. 
+            This was used for convert ofmap column and row with all the partial product input fmap to 4D ifmap tile.
+            [batch, row, column, # of kernel 2D * # of ifmap channel] -> [batch, row, column, in channel]
+            
+        # Arguments
+            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
+                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+            fmap_shape: Tuple. The shape of orignal fmap were going to be extracted.
+            ksize: List of Integer. Length >= 4. The size of the sliding window for each dimension of images. [1, row, col, 1]
+            strides: List of Integer. Length >= 4. How far the centers of two consecutive patches are in the images. [1, stride_rows, stride_cols, 1]
+            dilation_rates: List of Integer. Length >= 4. Must be: [1, rate_rows, rate_cols, 1]. This is the input stride, 
+                specifying how far two consecutive patch samples are in the input.
+            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
+            edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
+                the exceeded area with zero and count as an ofmap pixel or not.
+            get_cond_idx: Bool. Return condition index or not.
+        
+        # Returns
+            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        """
+        if isinstance(index,tuple):
+            index=np.reshape(np.array(index),[1,-1])
+        elif isinstance(index,np.ndarray):
+            pass
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+                    
+        dilated_ksize_row = ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1)
+        dilated_ksize_col = ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1)
+        
+        batch_idx=index[:,0]
+        returned_2D=index[:,1:3]
+        extracted_psum=index[:,-1]
+        
+        idx_patches_candidate=np.remainder(extracted_psum,ksizes[1]*ksizes[2])
+        idx_patches_candidate=np.subtract(ksizes[1]*ksizes[2]-1,idx_patches_candidate)
+        
+        ifchannel_idx=np.floor_divide(extracted_psum,ksizes[1]*ksizes[2])
+        
+        if strides[1]>1 or strides[2]>1:
+            returned_2D=np.multiply(returned_2D,[strides[1:3]])
+#        if padding=='same':
+#            returned_2D=np.subtract(returned_2D,[[np.floor_divide(dilated_ksize_row,2),np.floor_divide(dilated_ksize_col,2)]])
+
+        base_kcoor_reduction=list(np.ndindex(ksizes[1:3]))
+        base_kcoor_reduction.reverse()
+        base_kcoor_reduction=np.multiply(base_kcoor_reduction,dilation_rates[1:3])
+
+        returned_2D=np.add(returned_2D,base_kcoor_reduction[idx_patches_candidate])
+        
+        
+        batch_idx=np.expand_dims(batch_idx,-1)
+        ifchannel_idx=np.expand_dims(ifchannel_idx,-1)
+        returned_index=np.concatenate([batch_idx,returned_2D,ifchannel_idx],axis=1)
+
+        if get_cond_idx:
+            return returned_index#, cond_idx
+        else:
+            return returned_index
         
     def tilt_idx(self, index, axis, direction, shape, shift=1):
         """ Make index tilted for systolic array input
@@ -530,11 +591,11 @@ class tile_PE(tile):
         fault_info=np.array(list(self.fault_dict_expand.values()))
         
         if self.tilting:            
-            permuted_coors,self.slice_shape=self.untilt_idx(permuted_coors,
-                                                            self.tilt_axis,
-                                                            self.tilt_direction,
-                                                            self.tilted_slice_shape,
-                                                            self.tilt_shift)
+            permuted_coors,_=self.untilt_idx(permuted_coors,
+                                             self.tilt_axis,
+                                             self.tilt_direction,
+                                             self.tilted_slice_shape,
+                                             self.tilt_shift)
             # pop inalid t_clk
             permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
             fault_info=fault_info[cond_idx]

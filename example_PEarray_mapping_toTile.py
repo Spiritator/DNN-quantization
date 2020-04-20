@@ -277,6 +277,58 @@ assembled_coors=wght_tile.assemble_slice_idx(sliced_coors,
 #%% test return patches
 #TODO
 
+retruned_coor1=ifmap_tile.retrun_patches_idx((0,0,0,18),
+                                             fmap_shape=(1,28,28,16),
+                                             ksizes=(1,3,3,1),
+                                             strides=(1,1,1,1),
+                                             dilation_rates=(1,1,1,1),
+                                             padding='valid',
+                                             edge_fill=False)
+
+retruned_coor2=ifmap_tile.retrun_patches_idx((0,4,8,31),
+                                             fmap_shape=(1,28,28,16),
+                                             ksizes=(1,3,3,1),
+                                             strides=(1,2,2,1),
+                                             dilation_rates=(1,1,1,1),
+                                             padding='same',
+                                             edge_fill=True)
+
+extracted_coors1=np.array([[  0,  24,   2,   9],
+                           [  0,   0,   5,  47],
+                           [  0,  25,  14,   0],
+                           [  0,   9,  19, 134],
+                           [  0,  13,  12,  92],
+                           [  0,  12,  14,  93],
+                           [  0,   4,   1, 131],
+                           [  0,   0,  24, 130],
+                           [  0,  13,  21,  48],
+                           [  0,  24,  11, 130]])
+retruned_coors1=ifmap_tile.retrun_patches_idx(extracted_coors1,
+                                                fmap_shape=(1,28,28,16),
+                                                ksizes=(1,3,3,1),
+                                                strides=(1,1,1,1),
+                                                dilation_rates=(1,1,1,1),
+                                                padding='valid',
+                                                edge_fill=False)
+
+extracted_coors2=np.array([[  0,   5,   7,  29],
+                           [  0,   9,   8,  64],
+                           [  0,   3,   2, 100],
+                           [  0,   0,  10, 134],
+                           [  0,   5,   2,  96],
+                           [  0,   0,   0,  53],
+                           [  0,  12,   5, 131],
+                           [  0,   6,  12,  64],
+                           [  0,   3,   4,  23],
+                           [  0,   5,   4,  75]])
+retruned_coors2=ifmap_tile.retrun_patches_idx(extracted_coors2,
+                                                fmap_shape=(1,28,28,16),
+                                                ksizes=(1,3,3,1),
+                                                strides=(1,2,2,1),
+                                                dilation_rates=(1,1,1,1),
+                                                padding='same',
+                                                edge_fill=True)
+
 #%% test shrink tile back to original shape
 
 shrink_fault_dict_reshape_o=ofmap_tile.shrink_reshape_data()

@@ -40,6 +40,13 @@ class tile_PE(tile):
         self.reshape_patches=False
         self.fault_dict_rehsaped=dict()
         self.fault_dict_expand=dict()
+        
+        if is_fmap:
+            self.psum_fault_dict=dict()
+            self.psum_fault_dict_expand=dict()
+        else:
+            self.bias_fault_dict=()
+            self.bias_fault_dict_expand=dict()
                                     
     def conv_output_length(self, input_length, filter_size, padding, stride, dilation=1, edge_fill=False):
         """Determines output length of a convolution given input length.
@@ -354,7 +361,7 @@ class tile_PE(tile):
         else:
             return extracted_index
     
-    def retrun_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, get_cond_idx=False):
+    def retrun_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False):
         """ Index transformation for reverse tf.extract_image_patches for ifmap shrink in PE to Tile mapping. 
             This was used for convert ofmap column and row with all the partial product input fmap to 4D ifmap tile.
             [batch, row, column, # of kernel 2D * # of ifmap channel] -> [batch, row, column, in channel]
@@ -382,8 +389,8 @@ class tile_PE(tile):
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
                     
-        dilated_ksize_row = ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1)
-        dilated_ksize_col = ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1)
+#        dilated_ksize_row = ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1)
+#        dilated_ksize_col = ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1)
         
         batch_idx=index[:,0]
         returned_2D=index[:,1:3]
@@ -410,10 +417,10 @@ class tile_PE(tile):
         ifchannel_idx=np.expand_dims(ifchannel_idx,-1)
         returned_index=np.concatenate([batch_idx,returned_2D,ifchannel_idx],axis=1)
 
-        if get_cond_idx:
-            return returned_index#, cond_idx
-        else:
-            return returned_index
+#        if get_cond_idx:
+#            return returned_index#, cond_idx
+#        else:
+        return returned_index
         
     def tilt_idx(self, index, axis, direction, shape, shift=1):
         """ Make index tilted for systolic array input
@@ -576,19 +583,24 @@ class tile_PE(tile):
         else:
             return None
         
-    def shrink_reshape_data(self):
+    def shrink_reshape_data(self,psum=False):
         """ Reverse data expansion of PE array dataflow model. 
             Re-assemble the cut tile slices.
             Method 'reshape' means change data shape without any reduction in array.
         
         # Arguments              
+            psum: Bool. Indicate the transformation is for partial sum or not.
                 
         # Returns
             Converted fault dictionary.
 
         """
-        permuted_coors=np.array(list(self.fault_dict_expand.keys()))
-        fault_info=np.array(list(self.fault_dict_expand.values()))
+        if not psum:
+            permuted_coors=np.array(list(self.fault_dict_expand.keys()))
+            fault_info=np.array(list(self.fault_dict_expand.values()))
+        else:
+            permuted_coors=np.array(list(self.psum_fault_dict_expand.keys()))
+            fault_info=np.array(list(self.psum_fault_dict_expand.values()))
         
         if self.tilting:            
             permuted_coors,_=self.untilt_idx(permuted_coors,
@@ -608,8 +620,9 @@ class tile_PE(tile):
         reshaped_coors,cond_idx=self.pop_outlier_idx(reshaped_coors,self.expand_shape,get_cond_idx=True)
         fault_info=fault_info[cond_idx]
         
-        reshaped_coors_fd=list(zip(*reshaped_coors.T))
-        self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
+        if not psum:
+            reshaped_coors_fd=list(zip(*reshaped_coors.T))
+            self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
 
         orig_coors=self.reshape_ravel_idx(reshaped_coors,
                                           source_shape=self.expand_shape,
@@ -618,9 +631,13 @@ class tile_PE(tile):
                                           target_prior=self.expand_prior_orig)
                     
         orig_coor_fd=list(zip(*orig_coors.T))
-        self.fault_dict=dict(zip(orig_coor_fd,fault_info))
+        new_fault_dict=dict(zip(orig_coor_fd,fault_info))
+        if not psum:
+            self.fault_dict=new_fault_dict
+        else:
+            self.psum_fault_dict=new_fault_dict
     
-        return self.fault_dict
+        return new_fault_dict
             
     def expand_extract_patches(self, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, 
             reshape_patches=False, patches_prior=None, expect_shape=None, reshape_prior=None, slicing_dims=None, slices_permute=None,
@@ -781,7 +798,67 @@ class tile_PE(tile):
         
         else:
             return None
-    
+        
+    def shrink_return_patches(self):
+        """ Reverse data expansion before put into PE array. Usually used for ifmap reduction. 
+            Re-assemble the cut tile alices
+            Method 'return patches' means return the extracted feature patches to ifmap tile.
+            This method contains data reduction.
+            reference: https://www.tensorflow.org/api_docs/python/tf/image/extract_patches
+        
+        # Arguments     
+
+        # Returns
+            Converted fault dictionary.
+        """              
+        permuted_coors=np.array(list(self.fault_dict_expand.keys()))
+        fault_info=np.array(list(self.fault_dict_expand.values()))
+        
+        if self.tilting:
+            permuted_coors,_=self.tilt_idx(permuted_coors,
+                                           self.tilt_axis,
+                                           self.tilt_direction,
+                                           self.slice_shape,
+                                           self.tilt_shift)
+            
+            # pop inalid t_clk
+            permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
+            fault_info=fault_info[cond_idx]
+            
+        reshaped_coors=self.assemble_slice_idx(permuted_coors,
+                                               orig_shape=self.expand_shape,
+                                               slicing_dims=self.slicing_dims,
+                                               slices_permute=self.slices_permute)
+        
+        # pop under-utilized area on PE
+        reshaped_coors,cond_idx=self.pop_outlier_idx(reshaped_coors,self.expand_shape,get_cond_idx=True)
+        fault_info=fault_info[cond_idx]
+        
+        reshaped_coors_fd=list(zip(*reshaped_coors.T))
+        self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
+        
+        if self.reshape_patches:
+            extracted_coors=self.reshape_ravel_idx(reshaped_coors,
+                                                   source_shape=self.expand_shape,
+                                                   source_prior=self.expand_prior_targ,
+                                                   target_shape=self.extracted_shape,
+                                                   target_prior=self.expand_prior_orig)
+        else:
+            extracted_coors=reshaped_coors
+        
+        orig_coors=self.retrun_patches_idx(extracted_coors,
+                                           fmap_shape=self.tile_shape,
+                                           ksizes=self.ksizes,
+                                           strides=self.strides,
+                                           dilation_rates=self.dilation_rates,
+                                           padding=self.padding,
+                                           edge_fill=self.edge_fill)
+
+        orig_coor_fd=list(zip(*orig_coors.T))
+        self.fault_dict=dict(zip(orig_coor_fd,fault_info))
+        
+        return self.fault_dict
+            
     def expand_slice_bias(self, slice_width, dataflow_pre_plan=False):
         """ Data expansion before put into PE array. 
             The data are being cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
@@ -815,7 +892,39 @@ class tile_PE(tile):
             return self.bias_fault_dict_expand
         
         else:
+            self.bias_fault_dict_expand=dict()
             return None
+        
+    def shrink_slice_bias(self):
+        """ Data shrink for PE array to Tile mapping.
+            The data are being cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
+        
+        # Arguments                            
+                            
+        # Returns
+            Converted fault dictionary.
+
+        """
+        if self.is_fmap:
+            raise TypeError('This is feature maps tile, no bias!')           
+        
+        if not self.use_bias:
+            raise AttributeError('not use bias')
+        
+        if len(self.bias_fault_dict_expand)==0:
+            return dict()
+        
+        sliced_coors=np.array(list(self.bias_fault_dict_expand.keys()))
+        fault_info=list(self.bias_fault_dict_expand.values())
+        
+        bias_idx=sliced_coors[:,0]
+        slice_idx=sliced_coors[:,1]
+        orig_coors=np.add(np.multiply(slice_idx,self.bias_slice_shape[0]),bias_idx)
+        
+        orig_coors_fd=list(zip(*orig_coors.T))
+        self.bias_fault_dict=dict(zip(orig_coors_fd,fault_info))
+        
+        return self.bias_fault_dict
         
     def pop_outlier_idx(self, index, shape, get_cond_idx=False):
         """ Remove coordinates in fault dictionary that lies outside of current shape.
@@ -837,8 +946,12 @@ class tile_PE(tile):
     
     def clear(self):
         """ Clear fault dictionary of tile """
+        self.fault_dict=dict()
         self.fault_dict_rehsaped=dict()
         self.fault_dict_expand=dict()
+        self.psum_fault_dict=dict()
+        self.psum_fault_dict_expand=dict()
+        self.bias_fault_dict=()
         self.bias_fault_dict_expand=dict()
         
     def clear_expansion(self):
@@ -852,5 +965,13 @@ class tile_PE(tile):
         self.slices_cutset=None
         self.tilted_slice_shape=None
         self.bias_slice_shape=None
-        
+
+     
+def solve_correspond_io():
+    """ Solving the PE array to Tile mapping fault dictionarys.
+        Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
+        and find the relation between them. Give fault info (psum index).
+    
+    """
+    pass
             

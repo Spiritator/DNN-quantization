@@ -148,9 +148,14 @@ MXU.fault_dict={(6,15,77):{'SA_type':'flip','SA_bit':3,'param':'ifmap_in'},
                 (7,12,12664):{'SA_type':'flip','SA_bit':0,'param':'psum_out'},
                 (6,6,863):{'SA_type':'flip','SA_bit':5,'param':'psum_out'},
                 (4,4,862):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
-                (15,4,666):{'SA_type':'flip','SA_bit':2,'param':'psum_out'}}
+                (15,4,666):{'SA_type':'flip','SA_bit':2,'param':'psum_out'},
+                (13,6,11111):{'SA_type':'flip','SA_bit':6,'param':'psum_in'},
+                (3,13,777):{'SA_type':'flip','SA_bit':7,'param':'ifmap_out'},
+                (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'}}
 
 MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
+
+fault_dict_neighbor=MXU.neighbor_io_fault_dict_coors(MXU.fault_dict)
 
 mapped_fault_dict_ifmap,mapped_fault_dict_wght,mapped_fault_dict_ofmap,mapped_fault_dict_bias,mapped_fault_dict_psum = MXU.decompose_slice_pack()
 
@@ -275,7 +280,6 @@ assembled_coors=wght_tile.assemble_slice_idx(sliced_coors,
                                              slices_permute=[0,1,3,2])
 
 #%% test return patches
-#TODO
 
 retruned_coor1=ifmap_tile.retrun_patches_idx((0,0,0,18),
                                              fmap_shape=(1,28,28,16),
@@ -332,27 +336,14 @@ retruned_coors2=ifmap_tile.retrun_patches_idx(extracted_coors2,
 #%% test shrink tile back to original shape
 
 shrink_fault_dict_reshape_o=ofmap_tile.shrink_reshape_data()
+shrink_fault_dict_reshape_p=ofmap_tile.shrink_reshape_data(psum=True)
 
 shrink_fault_dict_reshape_w=wght_tile.shrink_reshape_data()
+shrink_fault_dict_bias=wght_tile.shrink_slice_bias()
 
-#TODO
 # shrink return patches
+shrink_fault_dict_returned_i=ifmap_tile.shrink_return_patches()
 
-#expand_fault_dict_extracted=ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
-#                                                              strides=(1,1,1,1),
-#                                                              dilation_rates=(1,1,1,1),
-#                                                              padding='same',
-#                                                              edge_fill=False,
-#                                                              reshape_patches=True,
-#                                                              patches_prior=[0,1,2,3],
-#                                                              expect_shape=(1*28*28,144),
-#                                                              reshape_prior=[0,1],
-#                                                              slicing_dims=(1*28*28,16),
-#                                                              slices_permute=[0,1],
-#                                                              tilting=True, 
-#                                                              tilt_axis=1, 
-#                                                              tilt_direction=0)
-#
-#expand_bias_fault_dict_slice=wght_tile.expand_slice_bias(slice_width=16)
+
 
 

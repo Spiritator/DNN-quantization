@@ -1518,20 +1518,30 @@ class PEarray:
                                                 target_shape=tile_shape,
                                                 target_prior=flow.permute_info.tile_mapping_prior)
         
-        if parameter!='bias':
-            if tile.expansion:
-                mapped_coors_fd=list(zip(*mapped_coors.T))
-                new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
-                tile.fault_dict_expand=new_fault_dict
-            else:
-                mapped_coors=mapped_coors[:,:-1]
-                mapped_coors_fd=list(zip(*mapped_coors.T))
-                new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
-                tile.fault_dict=new_fault_dict
-        else:
+        
+        
+        if tile.expansion:
             mapped_coors_fd=list(zip(*mapped_coors.T))
             new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
-            tile.bias_fault_dict=new_fault_dict
+            
+            if parameter in ['ofmap','ifmap','wght']:
+                tile.fault_dict_expand=new_fault_dict
+            elif parameter=='psum':
+                tile.psum_fault_dict_expand=new_fault_dict
+            elif parameter=='bias':
+                tile.bias_fault_dict_expand=new_fault_dict
+        
+        else:
+            mapped_coors=mapped_coors[:,:-1]
+            mapped_coors_fd=list(zip(*mapped_coors.T))
+            new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
+            
+            if parameter in ['ofmap','ifmap','wght']:
+                tile.fault_dict=new_fault_dict
+            elif parameter=='psum':
+                tile.psum_fault_dict=new_fault_dict
+            elif parameter=='bias':
+                tile.bias_fault_dict=new_fault_dict
             
         return new_fault_dict
     
@@ -1953,6 +1963,86 @@ class PEarray:
         #TODO
         # generate fault
         pass
+    
+    def get_neighboring_axis(self, flow):
+        """ Get the neighboring axis of a parameter flow
+        
+        """
+        if flow.streaming_info is not None:
+            return flow.streaming_info.PE_stream_axis
+        elif flow.permute_info is not None:
+            for ax in flow.permute_info.PE_required_axes_prior:
+                if ax!='t_clk':
+                    break
+            return ax
+        else:
+            return None
+    
+    def neighbor_io_fault_dict_coors(self, fault_dict):
+        """ Find neighbor PE index of PE array dataflow model. For mapping 'ifmap_out', 'wght_out', 'psum_in' faults.
+            These fault info 'param' correspond to upstream or downstream PE I/O. 
+            By finding the actual tile data of these index, can know the fault location in convolution.
+        
+        # Arguments
+            fault_dict: Dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        
+        # Returns
+            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        """
+        if not self.setup_ready:
+            raise AttributeError('Dataflow set up not ready! Can\'t find neighbor PE index.')
+        index=np.array(list(fault_dict.keys()))
+        fault_value=np.array(list(fault_dict.values()))
+        
+        iout=list()
+        wout=list()
+        psin=list()
+        
+        for i,info in enumerate(fault_value):
+            if info['param']=='ifmap_out':
+                iout.append(i)
+            elif info['param']=='wght_out':
+                wout.append(i)
+            elif info['param']=='psum_in':
+                psin.append(i)
+                
+        if len(iout)>0:
+            ifmap_out_dir=self.get_neighboring_axis(self.ifmap_flow)
+            if ifmap_out_dir=='PE_y':
+                ifmap_out_dir=np.tile([[1,0]],[len(iout),1])
+            elif ifmap_out_dir=='PE_x':
+                ifmap_out_dir=np.tile([[0,1]],[len(iout),1])
+            
+            if ifmap_out_dir is not None:
+                index[iout,0:2]=np.add(index[iout,0:2],ifmap_out_dir)
+            
+        if len(wout)>0:
+            wght_out_dir=self.get_neighboring_axis(self.wght_flow)
+            if wght_out_dir=='PE_y':
+                wght_out_dir=np.tile([[1,0]],[len(iout),1])
+            elif wght_out_dir=='PE_x':
+                wght_out_dir=np.tile([[0,1]],[len(iout),1])
+            
+            if wght_out_dir is not None:
+                index[wout,0:2]=np.add(index[wout,0:2],wght_out_dir)
+            
+        if len(psin)>0:
+            psum_out_dir=self.get_neighboring_axis(self.psum_flow)
+            if psum_out_dir=='PE_y':
+                psum_out_dir=np.tile([[1,0]],[len(iout),1])
+            elif wght_out_dir=='PE_x':
+                psum_out_dir=np.tile([[0,1]],[len(iout),1])
+            
+            if psum_out_dir is not None:
+                index[psin,0:2]=np.subtract(index[psin,0:2],psum_out_dir)
+
+        #TODO
+        # edge problem
+        
+        index_fd=list(zip(*index.T))
+        new_fault_dict=dict(zip(index_fd,fault_value))
+
+        return new_fault_dict
     
     def get_outlier_cond_args(self,index,mapping_shape):
         index_bound=np.floor_divide(index,mapping_shape)

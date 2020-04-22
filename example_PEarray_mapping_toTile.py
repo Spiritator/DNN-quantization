@@ -151,11 +151,15 @@ MXU.fault_dict={(6,15,77):{'SA_type':'flip','SA_bit':3,'param':'ifmap_in'},
                 (15,4,666):{'SA_type':'flip','SA_bit':2,'param':'psum_out'},
                 (13,6,11111):{'SA_type':'flip','SA_bit':6,'param':'psum_in'},
                 (3,13,777):{'SA_type':'flip','SA_bit':7,'param':'ifmap_out'},
-                (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'}}
+                (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'},
+                (0,0,444):{'SA_type':'flip','SA_bit':1,'param':'psum_in'},
+                (15,15,8787):{'SA_type':'flip','SA_bit':3,'param':'ifmap_out'}}
 
 MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
+PE_fault_dict=MXU.fault_dict
 
-fault_dict_neighbor=MXU.neighbor_io_fault_dict_coors(MXU.fault_dict)
+MXU.fault_dict=MXU.neighbor_io_fault_dict_coors(MXU.fault_dict)
+PE_fault_dict_neighbor=MXU.fault_dict
 
 mapped_fault_dict_ifmap,mapped_fault_dict_wght,mapped_fault_dict_ofmap,mapped_fault_dict_bias,mapped_fault_dict_psum = MXU.decompose_slice_pack()
 

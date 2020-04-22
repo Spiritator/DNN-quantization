@@ -967,11 +967,100 @@ class tile_PE(tile):
         self.bias_slice_shape=None
 
      
-def solve_correspond_io():
+def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
     """ Solving the PE array to Tile mapping fault dictionarys.
         Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
         and find the relation between them. Give fault info (psum index).
     
     """
-    pass
+    ofmap_fd=ofmap_tile.fault_dict
+    ifmap_fd=ifmap_tile.fault_dict
+    wght_fd=wght_tile.fault_dict
+    psum_fd=ofmap_tile.psum_fault_dict
+    bias_fd=wght_tile.bias_fault_dict
+    
+    ofmap_coors=np.array(list(ofmap_fd.keys()))
+    ifmap_coors=np.array(list(ifmap_fd.keys()))
+    wght_coors =np.array(list(wght_fd.keys()))
+    psum_coors =np.array(list(psum_fd.keys()))
+    bias_coors =np.array(list(bias_fd.keys()))
+    
+    ofmap_vl=np.array(list(ofmap_fd.values()))
+    ifmap_vl=np.array(list(ifmap_fd.values()))
+    wght_vl =np.array(list(wght_fd.values()))
+    psum_vl =np.array(list(psum_fd.values()))
+    bias_vl =np.array(list(bias_fd.values()))
+    
+    ofmap_id=[info['id'] for info in ofmap_vl]
+    ifmap_id=[info['id'] for info in ifmap_vl]
+    wght_id =[info['id'] for info in wght_vl]
+    psum_id =[info['id'] for info in psum_vl]
+    bias_id =[info['id'] for info in bias_vl]
+    
+    if fault_num==None:
+        fault_num=max(ofmap_id+ifmap_id+wght_id+psum_id+bias_id)+1
+        
+    new_ofmap_fd=dict()
+    new_ifmap_fd=dict()
+    new_wght_fd=dict()
+    new_bias_fd=dict()
+        
+    for i in range(fault_num):
+        param=None
+        try:
+            pidx=psum_id.index(i)
+            param=psum_vl[pidx]['param']
+            psum_index=psum_coors[pidx]
+        except ValueError:
+            pidx=None
+
+        try:
+            widx=wght_id.index(i)
+            param=whgt_vl[widx]['param']
+            wght_index=whgt_coors[widx]
+        except ValueError:
+            widx=None
+
+        try:
+            iidx=ifmap_id.index(i)
+            param=ifmap_vl[iidx]['param']
+            ifmap_index=ifmap_coors[iidx]
+        except ValueError:
+            iidx=None
+            
+        try:
+            oidx=ofmap_id.index(i)
+            param=ofmap_vl[oidx]['param']
+            ofmap_index=ofmap_coors[oidx]
+        except ValueError:
+            oidx=None
+            
+        try:
+            bidx=bias_id.index(i)
+            param=bias_vl[bidx]['param']
+            bias_index=bias_coors[bidx]
+        except ValueError:
+            bidx=None
+                   
+#TODO
+# complex existing and non-existing combination
+        if param is not None:
+            if param=='ifmap_in':
+                psidx=0# MAJOR DEBUG needed
+                info=ifmap_vl[iidx].update({'psum_idx':psidx})
+                new_ifmap_fd[tuple(ifmap_index[iidx])]=info
+            elif param=='ifmap_out':
+                pass
+            elif param=='wght_in':
+                pass
+            elif param=='wght_out':
+                pass
+            elif param=='psum_in':
+                pass
+            elif param=='psum_out':
+                pass
+    
+    
+#TODO
+# solve correspond I/O fault info
             

@@ -2019,9 +2019,9 @@ class PEarray:
         if len(wout)>0:
             wght_out_dir=self.get_neighboring_axis(self.wght_flow)
             if wght_out_dir=='PE_y':
-                wght_out_dir=np.tile([[1,0]],[len(iout),1])
+                wght_out_dir=np.tile([[1,0]],[len(wout),1])
             elif wght_out_dir=='PE_x':
-                wght_out_dir=np.tile([[0,1]],[len(iout),1])
+                wght_out_dir=np.tile([[0,1]],[len(wout),1])
             
             if wght_out_dir is not None:
                 index[wout,0:2]=np.add(index[wout,0:2],wght_out_dir)
@@ -2029,16 +2029,23 @@ class PEarray:
         if len(psin)>0:
             psum_out_dir=self.get_neighboring_axis(self.psum_flow)
             if psum_out_dir=='PE_y':
-                psum_out_dir=np.tile([[1,0]],[len(iout),1])
+                psum_out_dir=np.tile([[1,0]],[len(psin),1])
             elif wght_out_dir=='PE_x':
-                psum_out_dir=np.tile([[0,1]],[len(iout),1])
+                psum_out_dir=np.tile([[0,1]],[len(psin),1])
             
             if psum_out_dir is not None:
                 index[psin,0:2]=np.subtract(index[psin,0:2],psum_out_dir)
 
-        #TODO
-        # edge problem
-        
+        edge_arg=self.get_outlier_cond_args(index,[self.n_y,self.n_x,self.n_clk])
+        if not edge_arg.all():
+            edge_arg=np.bitwise_not(edge_arg)
+            
+            index[edge_arg]=np.clip(index[edge_arg],[0,0,0],[self.n_y-1,self.n_x-1,self.n_clk-1])
+            
+            edge_idx=np.squeeze(np.argwhere(edge_arg))
+            for i in edge_idx:
+                fault_value[i].update({'edge':True})
+                    
         index_fd=list(zip(*index.T))
         new_fault_dict=dict(zip(index_fd,fault_value))
 
@@ -2069,7 +2076,7 @@ class PEarray:
         index_fd=list(zip(*index.T))
         new_fault_dict=dict(zip(index_fd,fault_value))
 
-        return new_fault_dict,mapping_shape
+        return new_fault_dict
     
     def pop_outlier_coors_alldata(self):
         """ Remove coordinates in fault dictionary that lies outside of current shape.

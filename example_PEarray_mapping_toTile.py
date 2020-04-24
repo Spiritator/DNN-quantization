@@ -153,7 +153,10 @@ MXU.fault_dict={(6,15,77):{'SA_type':'flip','SA_bit':3,'param':'ifmap_in'},
                 (3,13,777):{'SA_type':'flip','SA_bit':7,'param':'ifmap_out'},
                 (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'},
                 (0,0,444):{'SA_type':'flip','SA_bit':1,'param':'psum_in'},
-                (15,15,8787):{'SA_type':'flip','SA_bit':3,'param':'ifmap_out'}}
+                (15,15,8787):{'SA_type':'flip','SA_bit':3,'param':'ifmap_out'},
+                (5,3,9008):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
+                (10,3,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
+                (15,7,2005):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
 
 MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
 PE_fault_dict=MXU.fault_dict
@@ -285,7 +288,7 @@ assembled_coors=wght_tile.assemble_slice_idx(sliced_coors,
 
 #%% test return patches
 
-retruned_coor1=ifmap_tile.retrun_patches_idx((0,0,0,18),
+returned_coor1=ifmap_tile.return_patches_idx((0,0,0,18),
                                              fmap_shape=(1,28,28,16),
                                              ksizes=(1,3,3,1),
                                              strides=(1,1,1,1),
@@ -293,7 +296,7 @@ retruned_coor1=ifmap_tile.retrun_patches_idx((0,0,0,18),
                                              padding='valid',
                                              edge_fill=False)
 
-retruned_coor2=ifmap_tile.retrun_patches_idx((0,4,8,31),
+returned_coor2=ifmap_tile.return_patches_idx((0,4,8,31),
                                              fmap_shape=(1,28,28,16),
                                              ksizes=(1,3,3,1),
                                              strides=(1,2,2,1),
@@ -311,13 +314,13 @@ extracted_coors1=np.array([[  0,  24,   2,   9],
                            [  0,   0,  24, 130],
                            [  0,  13,  21,  48],
                            [  0,  24,  11, 130]])
-retruned_coors1=ifmap_tile.retrun_patches_idx(extracted_coors1,
-                                                fmap_shape=(1,28,28,16),
-                                                ksizes=(1,3,3,1),
-                                                strides=(1,1,1,1),
-                                                dilation_rates=(1,1,1,1),
-                                                padding='valid',
-                                                edge_fill=False)
+returned_coors1=ifmap_tile.return_patches_idx(extracted_coors1,
+                                              fmap_shape=(1,28,28,16),
+                                              ksizes=(1,3,3,1),
+                                              strides=(1,1,1,1),
+                                              dilation_rates=(1,1,1,1),
+                                              padding='valid',
+                                              edge_fill=False)
 
 extracted_coors2=np.array([[  0,   5,   7,  29],
                            [  0,   9,   8,  64],
@@ -329,13 +332,13 @@ extracted_coors2=np.array([[  0,   5,   7,  29],
                            [  0,   6,  12,  64],
                            [  0,   3,   4,  23],
                            [  0,   5,   4,  75]])
-retruned_coors2=ifmap_tile.retrun_patches_idx(extracted_coors2,
-                                                fmap_shape=(1,28,28,16),
-                                                ksizes=(1,3,3,1),
-                                                strides=(1,2,2,1),
-                                                dilation_rates=(1,1,1,1),
-                                                padding='same',
-                                                edge_fill=True)
+returned_coors2=ifmap_tile.return_patches_idx(extracted_coors2,
+                                              fmap_shape=(1,28,28,16),
+                                              ksizes=(1,3,3,1),
+                                              strides=(1,2,2,1),
+                                              dilation_rates=(1,1,1,1),
+                                              padding='same',
+                                              edge_fill=True)
 
 #%% test shrink tile back to original shape
 

@@ -217,8 +217,6 @@ class tile_PE(tile):
         if len(index.shape)==1:
             tclk=index[-1]
             mapping_dims=index[:-1]
-#            if len(mapping_dims.shape)==1:
-#                mapping_dims=np.expand_dims(mapping_dims,-1)
             permute_dims=np.unravel_index(tclk,cutset[slices_permute])
             permute_dims=np.array(permute_dims)[slices_permute]
             assembled_idx=np.zeros(len(orig_shape),dtype=int)
@@ -302,9 +300,15 @@ class tile_PE(tile):
         
         # condition strides > 1
         if strides[1]>1 or strides[2]>1:
-            cond_arg=idx_patches_candidate[:,:,0]%strides[1]==0 #row
-            cond_tmp=idx_patches_candidate[:,:,1]%strides[2]==0 #col
+            if padding=='valid':
+                cond_arg=idx_patches_candidate[:,:,0]%strides[1]==0 #row
+                cond_tmp=idx_patches_candidate[:,:,1]%strides[2]==0 #col
+            elif padding=='same':
+                cond_arg=np.subtract(idx_patches_candidate[:,:,0],np.floor_divide(dilated_ksize_row,2))%strides[1]==0 #row
+                cond_tmp=np.subtract(idx_patches_candidate[:,:,1],np.floor_divide(dilated_ksize_col,2))%strides[2]==0 #col
+                
             cond_arg=np.bitwise_and(cond_arg,cond_tmp) 
+                
         else: # stride = 1
             cond_arg=np.ones(idx_patches_candidate.shape[0:-1],dtype=bool)
             
@@ -361,7 +365,7 @@ class tile_PE(tile):
         else:
             return extracted_index
     
-    def retrun_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False):
+    def return_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False):
         """ Index transformation for reverse tf.extract_image_patches for ifmap shrink in PE to Tile mapping. 
             This was used for convert ofmap column and row with all the partial product input fmap to 4D ifmap tile.
             [batch, row, column, # of kernel 2D * # of ifmap channel] -> [batch, row, column, in channel]
@@ -389,25 +393,25 @@ class tile_PE(tile):
         else:
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
                     
-#        dilated_ksize_row = ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1)
-#        dilated_ksize_col = ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1)
+        dilated_ksize_row = ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1)
+        dilated_ksize_col = ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1)
         
         batch_idx=index[:,0]
         returned_2D=index[:,1:3]
         extracted_psum=index[:,-1]
         
         idx_patches_candidate=np.remainder(extracted_psum,ksizes[1]*ksizes[2])
-        idx_patches_candidate=np.subtract(ksizes[1]*ksizes[2]-1,idx_patches_candidate)
+#        idx_patches_candidate=np.subtract(ksizes[1]*ksizes[2]-1,idx_patches_candidate)
         
         ifchannel_idx=np.floor_divide(extracted_psum,ksizes[1]*ksizes[2])
         
         if strides[1]>1 or strides[2]>1:
             returned_2D=np.multiply(returned_2D,[strides[1:3]])
-#        if padding=='same':
-#            returned_2D=np.subtract(returned_2D,[[np.floor_divide(dilated_ksize_row,2),np.floor_divide(dilated_ksize_col,2)]])
+        if padding=='same':
+            returned_2D=np.subtract(returned_2D,[[np.floor_divide(dilated_ksize_row,2),np.floor_divide(dilated_ksize_col,2)]])
 
         base_kcoor_reduction=list(np.ndindex(ksizes[1:3]))
-        base_kcoor_reduction.reverse()
+#        base_kcoor_reduction.reverse()
         base_kcoor_reduction=np.multiply(base_kcoor_reduction,dilation_rates[1:3])
 
         returned_2D=np.add(returned_2D,base_kcoor_reduction[idx_patches_candidate])
@@ -799,27 +803,32 @@ class tile_PE(tile):
         else:
             return None
         
-    def shrink_return_patches(self):
+    def shrink_return_patches(self,psum=False):
         """ Reverse data expansion before put into PE array. Usually used for ifmap reduction. 
             Re-assemble the cut tile alices
             Method 'return patches' means return the extracted feature patches to ifmap tile.
             This method contains data reduction.
             reference: https://www.tensorflow.org/api_docs/python/tf/image/extract_patches
         
-        # Arguments     
+        # Arguments              
+            psum: Bool. Indicate the transformation is for partial sum or not.
 
         # Returns
             Converted fault dictionary.
-        """              
-        permuted_coors=np.array(list(self.fault_dict_expand.keys()))
-        fault_info=np.array(list(self.fault_dict_expand.values()))
+        """  
+        if not psum:
+            permuted_coors=np.array(list(self.fault_dict_expand.keys()))
+            fault_info=np.array(list(self.fault_dict_expand.values()))
+        else:
+            permuted_coors=np.array(list(self.psum_fault_dict_expand.keys()))
+            fault_info=np.array(list(self.psum_fault_dict_expand.values()))
         
         if self.tilting:
-            permuted_coors,_=self.tilt_idx(permuted_coors,
-                                           self.tilt_axis,
-                                           self.tilt_direction,
-                                           self.slice_shape,
-                                           self.tilt_shift)
+            permuted_coors,_=self.untilt_idx(permuted_coors,
+                                             self.tilt_axis,
+                                             self.tilt_direction,
+                                             self.slice_shape,
+                                             self.tilt_shift)
             
             # pop inalid t_clk
             permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
@@ -834,8 +843,9 @@ class tile_PE(tile):
         reshaped_coors,cond_idx=self.pop_outlier_idx(reshaped_coors,self.expand_shape,get_cond_idx=True)
         fault_info=fault_info[cond_idx]
         
-        reshaped_coors_fd=list(zip(*reshaped_coors.T))
-        self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
+        if not psum:
+            reshaped_coors_fd=list(zip(*reshaped_coors.T))
+            self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
         
         if self.reshape_patches:
             extracted_coors=self.reshape_ravel_idx(reshaped_coors,
@@ -846,7 +856,7 @@ class tile_PE(tile):
         else:
             extracted_coors=reshaped_coors
         
-        orig_coors=self.retrun_patches_idx(extracted_coors,
+        orig_coors=self.return_patches_idx(extracted_coors,
                                            fmap_shape=self.tile_shape,
                                            ksizes=self.ksizes,
                                            strides=self.strides,
@@ -855,9 +865,13 @@ class tile_PE(tile):
                                            edge_fill=self.edge_fill)
 
         orig_coor_fd=list(zip(*orig_coors.T))
-        self.fault_dict=dict(zip(orig_coor_fd,fault_info))
+        new_fault_dict=dict(zip(orig_coor_fd,fault_info))
+        if not psum:
+            self.fault_dict=new_fault_dict
+        else:
+            self.psum_fault_dict=new_fault_dict
         
-        return self.fault_dict
+        return new_fault_dict
             
     def expand_slice_bias(self, slice_width, dataflow_pre_plan=False):
         """ Data expansion before put into PE array. 

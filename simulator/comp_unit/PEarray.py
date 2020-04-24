@@ -379,13 +379,8 @@ class PEarray:
                     map_shape_pe.append(self.tmp_clk)
                 mpp_cnt+=1
         
-        if backward_mapping:
-            for dims in fix_dims:
-                self.solving_axes.remove(dims)
-            axis_list=self.solving_axes
-        else:
+        if not backward_mapping:
             self.used_axes+=fix_dims
-            axis_list=self.used_axes
         
         if keep_slice:
             map_arange=np.arange(len(axis_list)+1)
@@ -394,7 +389,11 @@ class PEarray:
             
         for i in map_fixdims:
             map_arange=np.delete(map_arange,i)
-        
+            
+        if backward_mapping:
+            for dims in fix_dims:
+                self.solving_axes.remove(dims)
+            
         if len(map_fixdims)==1:
             map_fixdims=map_fixdims[0]
         
@@ -468,13 +467,8 @@ class PEarray:
                     map_shape_pe.append(self.tmp_clk)
                 mpp_cnt+=1
         
-        if backward_mapping:
-            for dims in broadcast_dims:
-                self.solving_axes.remove(dims)
-            axis_list=self.solving_axes
-        else:
+        if not backward_mapping:
             self.used_axes+=broadcast_dims
-            axis_list=self.used_axes
         
         if keep_slice:
             map_arange=np.arange(len(axis_list)+1)
@@ -486,7 +480,11 @@ class PEarray:
         for i in map_broaddims:
             map_shape_data=np.delete(map_shape_data,i)
             map_arange=np.delete(map_arange,i)
-        
+            
+        if backward_mapping:
+            for dims in broadcast_dims:
+                self.solving_axes.remove(dims)
+            
         if len(map_broaddims)==1:
             map_broaddims=map_broaddims[0]
         
@@ -538,12 +536,8 @@ class PEarray:
             else:
                 map_shape_pe.append(self.tmp_clk+latency)
         
-        if backward_mapping:
-            self.solving_axes.remove(stream_dim)
-            axis_list=self.solving_axes
-        else:
+        if not backward_mapping:
             self.used_axes+=[stream_dim]
-            axis_list=self.used_axes        
             
         map_shape_data=np.copy(map_shape_pe)
             
@@ -555,10 +549,17 @@ class PEarray:
             map_arange=np.arange(len(axis_list)+1)
         else:
             map_arange=np.arange(len(axis_list))
-        map_arange=np.delete(map_arange,map_streamdim)
+            
+        map_arange=np.delete(map_arange,[map_streamdim,map_streamclk])
         map_arange=np.insert(map_arange,map_streamdata,map_streamdim)
         
-        map_arange=np.delete(map_arange,map_streamclk)
+        if backward_mapping:
+            self.solving_axes.remove(stream_dim)
+            
+#        map_arange=np.delete(map_arange,map_streamdim)
+#        map_arange=np.insert(map_arange,map_streamdata,map_streamdim)
+        
+        #map_arange=np.delete(map_arange,map_streamclk)
         
         return map_shape_data,map_streamdata,map_shape_pe,map_streamdim,map_streamclk,map_arange
     
@@ -670,14 +671,21 @@ class PEarray:
         else:
             raise ValueError('window_flow_direction must be \'forward\' or \'backward\'.')        
         
+#        if axis_arange is None:
+#            axis_arange=list(range(len(data_shape)))
+#            axis_arange.remove(window_stream_axis)
+#            axis_arange.insert(data_stream_axis,window_stream_axis)
+            
+        if window_clk_axis<0:
+            window_clk_axis+=len(window_shape)
         if axis_arange is None:
-            axis_arange=list(range(len(data_shape)))
-            axis_arange.remove(window_stream_axis)
-            axis_arange.insert(data_stream_axis,window_stream_axis)
+            axis_arange=np.arange(len(window_shape))
+            axis_arange=np.delete(axis_arange,[window_stream_axis,window_clk_axis])
+            axis_arange=np.insert(axis_arange,data_stream_axis,window_stream_axis)
                             
         caped_index=np.zeros([len(index)*window_shape[window_stream_axis],len(window_shape)],dtype=int)
         for i,ax in enumerate(axis_arange):
-            if ax==window_stream_axis:
+            if i==data_stream_axis:
                 caped_index[:,ax]=np.reshape(base_coor_shift,[1,-1])
             else: 
                 caped_index[:,ax]=np.repeat(index[:,i],window_shape[window_stream_axis])
@@ -690,11 +698,11 @@ class PEarray:
             return caped_index
         
     def stream_flowback_idx(self, index, 
-                           data_shape, data_stream_axis,  
-                           window_shape, window_stream_axis, 
-                           window_clk_axis=-1,
-                           data_flow_direction='forward', window_flow_direction='forward',
-                           axis_arange=None):
+                            data_shape, data_stream_axis,  
+                            window_shape, window_stream_axis, 
+                            window_clk_axis=-1,
+                            data_flow_direction='forward', window_flow_direction='forward',
+                            axis_arange=None):
         """ Convert index from the capture of stream through a window (PE array) flow back to an array before capture.
             The captured shot is the clock cycle that fault index run through.
             
@@ -727,10 +735,12 @@ class PEarray:
         if len(window_shape)-1!=len(data_shape):
             raise ValueError('window_shape must have 1 more dimension than data_shape, but got window_shape %s and data_shape %s'%(str(window_shape),str(data_shape)))
             
+        if window_clk_axis<0:
+            window_clk_axis+=len(window_shape)
         if axis_arange is None:
-            axis_arange=list(range(len(data_shape)))
-            axis_arange.remove(window_stream_axis)
-            axis_arange.insert(data_stream_axis,window_stream_axis)
+            axis_arange=np.arange(len(window_shape))
+            axis_arange=np.delete(axis_arange,[window_stream_axis,window_clk_axis])
+            axis_arange=np.insert(axis_arange,data_stream_axis,window_stream_axis)
                             
         if window_flow_direction=='forward':
             base_coor_shift=index[:,window_stream_axis]

@@ -99,6 +99,9 @@ class tile_PE(tile):
         if len(target_shape)!=len(target_prior):
             raise ValueError('The length of target_shape must equals to target_prior, but got %d and %d.'%(len(target_shape),len(target_prior)))
             
+        source_prior=np.argsort(np.array(source_prior))[::-1]
+        target_prior=np.argsort(np.array(target_prior))[::-1]
+            
         restore_index=np.zeros((len(target_shape),),dtype=int)
         for i in range(len(target_shape)):
             restore_index[target_prior[i]]=i
@@ -168,6 +171,8 @@ class tile_PE(tile):
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
 
         cutset,div_dims=self.get_slices_cutset(orig_shape, slicing_dims)
+                
+        slices_permute=np.argsort(np.array(slices_permute))[::-1]
         
         permute_dims=np.floor_divide(index,div_dims)
         mapping_dims=np.remainder(index,div_dims)
@@ -214,11 +219,17 @@ class tile_PE(tile):
 
         cutset,div_dims=self.get_slices_cutset(orig_shape, slicing_dims)
         
+        slices_permute=np.argsort(np.array(slices_permute))[::-1]
+        
+        restore_index=np.zeros((len(slices_permute),),dtype=int)
+        for i in range(len(slices_permute)):
+            restore_index[slices_permute[i]]=i
+        
         if len(index.shape)==1:
             tclk=index[-1]
             mapping_dims=index[:-1]
             permute_dims=np.unravel_index(tclk,cutset[slices_permute])
-            permute_dims=np.array(permute_dims)[slices_permute]
+            permute_dims=np.array(permute_dims)[restore_index]
             assembled_idx=np.zeros(len(orig_shape),dtype=int)
             assembled_idx[np.squeeze(np.argwhere(np.array(slicing_dims)>0))]=mapping_dims
         else:
@@ -227,7 +238,7 @@ class tile_PE(tile):
             if len(mapping_dims.shape)==1:
                 mapping_dims=np.expand_dims(mapping_dims,-1)
             permute_dims=np.unravel_index(tclk,cutset[slices_permute])
-            permute_dims=np.array(permute_dims)[slices_permute]
+            permute_dims=np.array(permute_dims)[restore_index]
             permute_dims=permute_dims.T
             assembled_idx=np.zeros([len(index),len(orig_shape)],dtype=int)
             assembled_idx[:,np.squeeze(np.argwhere(np.array(slicing_dims)>0))]=mapping_dims
@@ -1030,8 +1041,8 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
 
         try:
             widx=wght_id.index(i)
-            param=whgt_vl[widx]['param']
-            wght_index=whgt_coors[widx]
+            param=wght_vl[widx]['param']
+            wght_index=wght_coors[widx]
         except ValueError:
             widx=None
 
@@ -1058,21 +1069,55 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
                    
 #TODO
 # complex existing and non-existing combination
+        
+        # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, Tck)
         if param is not None:
             if param=='ifmap_in':
-                psidx=0# MAJOR DEBUG needed
+                psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
                 info=ifmap_vl[iidx].update({'psum_idx':psidx})
-                new_ifmap_fd[tuple(ifmap_index[iidx])]=info
+                new_ifmap_fd[tuple(ifmap_index)]=info
+            
             elif param=='ifmap_out':
-                pass
+                if ifmap_vl[iidx]['edge']:
+                    pass
+                else:
+                    psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
+                    info=ifmap_vl[iidx].update({'psum_idx':psidx})
+                    new_ifmap_fd[tuple(ifmap_index)]=info
+            
             elif param=='wght_in':
-                pass
+                psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
+                info=wght_vl[widx].update({'psum_idx':psidx})
+                new_wght_fd[tuple(wght_index)]=info
+            
             elif param=='wght_out':
-                pass
+                if wght_vl[widx]['edge']:
+                    pass
+                else:
+                    psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
+                    info=wght_vl[widx].update({'psum_idx':psidx})
+                    new_wght_fd[tuple(wght_index)]=info
+            
             elif param=='psum_in':
-                pass
+                if psum_vl[pidx]['edge']:
+                    pass
+#TODO
+# the complex psum_in edge problem
+                else:
+                    psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
+                    info=ofmap_vl[oidx].update({'psum_idx':psidx})
+                    new_ofmap_fd[tuple(ofmap_index)]=info
+
+            
             elif param=='psum_out':
-                pass
+                if oidx is None:
+                    psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
+                    info=psum_vl[oidx].update({'psum_idx':psidx,'ofmap':False})
+                    new_ofmap_fd[tuple(psum_index)]=info
+                else:
+                    psidx=(ofmap_index[0],ofmap_index[3],ofmap_index[1],ofmap_index[2],wght_index[2],wght_index[0],wght_index[1])
+                    info=ofmap_vl[oidx].update({'psum_idx':psidx,'ofmap':True})
+                    new_ofmap_fd[tuple(ofmap_index)]=info
     
     
 #TODO

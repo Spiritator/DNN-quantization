@@ -275,7 +275,7 @@ class PEarray:
         map_shape_pe=list()
         mpp_ind=dict()
         mpp_cnt=-1
-        map_prior_pe=list()
+        map_prior_pe=[0 for i in range(len(prior_list))]
                 
         if 'PE_y' in prior_list:
             map_shape_pe.append(self.n_y)
@@ -296,8 +296,6 @@ class PEarray:
                 self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
                 map_shape_pe.insert(-1,self.tmp_clk)
                     
-            map_prior_pe.append(mpp_cnt+1)
-                    
         else:        
             if 't_clk' in prior_list:   
                 mpp_cnt+=1
@@ -306,8 +304,12 @@ class PEarray:
                 self.tmp_clk=self.estimate_clk(tile_shape,map_shape_pe)
                 map_shape_pe.append(self.tmp_clk)
         
-        for prior in prior_list:
-            map_prior_pe.append(mpp_ind[prior])
+        order_list=list(reversed(range(len(prior_list))))
+        for i,prior in enumerate(prior_list):
+            map_prior_pe[mpp_ind[prior]]=order_list[i]
+            
+        if keep_slice:
+            map_prior_pe.append(mpp_cnt+1)
             
         return map_shape_pe,map_prior_pe
     
@@ -581,6 +583,9 @@ class PEarray:
             raise ValueError('The length of source_shape must equals to source_prior, but got %d and %d.'%(len(source_shape),len(source_prior)))
         if len(target_shape)!=len(target_prior):
             raise ValueError('The length of target_shape must equals to target_prior, but got %d and %d.'%(len(target_shape),len(target_prior)))
+
+        source_prior=np.argsort(np.array(source_prior))[::-1]
+        target_prior=np.argsort(np.array(target_prior))[::-1]
 
         restore_index=np.zeros((len(target_shape),),dtype=int)
         for i in range(len(target_shape)):

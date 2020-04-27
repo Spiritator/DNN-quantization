@@ -28,21 +28,21 @@ ifmap_tile=tile_PE((1,28,28,16),is_fmap=True,wl=8)
 ofmap_tile=tile_PE((1,28,28,32),is_fmap=True,wl=8)
 
 # pre-plan tile reshape and slice
-ofmap_tile.expand_reshape_data(orig_prior=[0,3,2,1],
+ofmap_tile.expand_reshape_data(orig_prior=[3,0,1,2],
                                expect_shape=(784,32),
-                               reshape_prior=[1,0],
+                               reshape_prior=[0,1],
                                slicing_dims=(784,16),
-                               slices_permute=[1,0],
+                               slices_permute=[0,1],
                                tilting=True, 
                                tilt_axis=1, 
                                tilt_direction=0,
                                dataflow_pre_plan=True)
 
-wght_tile.expand_reshape_data(orig_prior=[3,2,1,0],
+wght_tile.expand_reshape_data(orig_prior=[0,1,2,3],
                               expect_shape=(144,32),
-                              reshape_prior=[1,0],
+                              reshape_prior=[0,1],
                               slicing_dims=(16,16),
-                              slices_permute=[1,0],
+                              slices_permute=[0,1],
                               dataflow_pre_plan=True)
 
 ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
@@ -51,11 +51,11 @@ ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
                                   padding='same',
                                   edge_fill=False,
                                   reshape_patches=True,
-                                  patches_prior=[0,1,2,3],
+                                  patches_prior=[3,2,1,0],
                                   expect_shape=(1*28*28,144),
-                                  reshape_prior=[0,1],
+                                  reshape_prior=[1,0],
                                   slicing_dims=(1*28*28,16),
-                                  slices_permute=[0,1],
+                                  slices_permute=[1,0],
                                   tilting=True, 
                                   tilt_axis=1, 
                                   tilt_direction=0,
@@ -68,8 +68,8 @@ wght_tile.expand_slice_bias(slice_width=16,
 
 MXU=PEarray(16,16,ofmap_tile=ofmap_tile,wght_tile=wght_tile,ifmap_tile=ifmap_tile)
 
-MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
-                                   'tile_mapping_prior':[2,1,0]}, 
+MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['PE_x','t_clk'],
+                                   'tile_mapping_prior':[0,1,2]}, 
                    o_fixed_info={'PE_fix_axis':'PE_y',
                                  'indice':-1}, 
                    o_broadcast_info=None, 
@@ -79,8 +79,8 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                    o_pack_size=1,
                    o_stall_latency=17+15,
                    
-                   w_permute_info={'PE_required_axes_prior':['t_clk','PE_y','PE_x'],
-                                   'tile_mapping_prior':[2,1,0]}, 
+                   w_permute_info={'PE_required_axes_prior':['PE_x','PE_y','t_clk'],
+                                   'tile_mapping_prior':[0,1,2]}, 
                    w_fixed_info=None, 
                    w_broadcast_info=None, 
                    w_streaming_info=None, 
@@ -89,8 +89,8 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                    w_pack_size=799+15,
                    w_stall_latency=17,
                    
-                   i_permute_info={'PE_required_axes_prior':['t_clk','PE_y'],
-                                   'tile_mapping_prior':[2,1,0]}, 
+                   i_permute_info={'PE_required_axes_prior':['PE_y','t_clk'],
+                                   'tile_mapping_prior':[0,1,2]}, 
                    i_fixed_info=None, 
                    i_broadcast_info=None, 
                    i_streaming_info={'PE_stream_axis':'PE_x',
@@ -101,8 +101,8 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                    i_pack_size=1,
                    i_stall_latency=17,
                    
-                   p_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
-                                   'tile_mapping_prior':[2,1,0]}, 
+                   p_permute_info={'PE_required_axes_prior':['PE_x','t_clk'],
+                                   'tile_mapping_prior':[0,1,2]}, 
                    p_fixed_info=None, 
                    p_broadcast_info=None, 
                    p_streaming_info={'PE_stream_axis':'PE_y',
@@ -113,8 +113,8 @@ MXU.setup_dataflow(o_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
                    p_pack_size=1,
                    p_stall_latency=17,
                    
-                   b_permute_info={'PE_required_axes_prior':['t_clk','PE_x'],
-                                   'tile_mapping_prior':[1,0]}, 
+                   b_permute_info={'PE_required_axes_prior':['PE_x','t_clk'],
+                                   'tile_mapping_prior':[0,1]}, 
                    b_fixed_info={'PE_fix_axis':'PE_y',
                                  'indice':0}, 
                    b_broadcast_info=None, 
@@ -154,9 +154,9 @@ MXU.fault_dict={(6,15,77):{'SA_type':'flip','SA_bit':3,'param':'ifmap_in'},
                 (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'},
                 (0,0,444):{'SA_type':'flip','SA_bit':1,'param':'psum_in'},
                 (15,15,8787):{'SA_type':'flip','SA_bit':3,'param':'ifmap_out'},
-                (5,3,9008):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
-                (10,3,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
-                (15,7,2005):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
+                (13,3,8796):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
+                (3,10,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
+                (15,6,5207):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
 
 MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
 PE_fault_dict=MXU.fault_dict

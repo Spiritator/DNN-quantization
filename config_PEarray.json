@@ -1,13 +1,13 @@
 {
     "o_permute_info":{
         "PE_required_axes_prior":[
-            "t_clk",
-            "PE_x"
+            "PE_x",
+            "t_clk"
         ],
         "tile_mapping_prior":[
-            2,
+            0,
             1,
-            0
+            2
         ]
     },
     "o_fixed_info":{
@@ -22,14 +22,14 @@
     "o_stall_latency":32,
     "w_permute_info":{
         "PE_required_axes_prior":[
-            "t_clk",
+            "PE_x",
             "PE_y",
-            "PE_x"
+            "t_clk"
         ],
         "tile_mapping_prior":[
-            2,
+            0,
             1,
-            0
+            1
         ]
     },
     "w_fixed_info":null,
@@ -41,13 +41,13 @@
     "w_stall_latency":17,
     "i_permute_info":{
         "PE_required_axes_prior":[
-            "t_clk",
-            "PE_y"
+            "PE_y",
+            "t_clk"
         ],
         "tile_mapping_prior":[
-            2,
+            0,
             1,
-            0
+            2
         ]
     },
     "i_fixed_info":null,

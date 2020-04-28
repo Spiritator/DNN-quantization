@@ -45,7 +45,7 @@ class tile_PE(tile):
             self.psum_fault_dict=dict()
             self.psum_fault_dict_expand=dict()
         else:
-            self.bias_fault_dict=()
+            self.bias_fault_dict=dict()
             self.bias_fault_dict_expand=dict()
                                     
     def conv_output_length(self, input_length, filter_size, padding, stride, dilation=1, edge_fill=False):
@@ -611,9 +611,13 @@ class tile_PE(tile):
 
         """
         if not psum:
+            if len(self.fault_dict_expand)==0:
+                return dict()
             permuted_coors=np.array(list(self.fault_dict_expand.keys()))
             fault_info=np.array(list(self.fault_dict_expand.values()))
         else:
+            if len(self.psum_fault_dict_expand)==0:
+                return dict()
             permuted_coors=np.array(list(self.psum_fault_dict_expand.keys()))
             fault_info=np.array(list(self.psum_fault_dict_expand.values()))
         
@@ -976,7 +980,7 @@ class tile_PE(tile):
         self.fault_dict_expand=dict()
         self.psum_fault_dict=dict()
         self.psum_fault_dict_expand=dict()
-        self.bias_fault_dict=()
+        self.bias_fault_dict=dict()
         self.bias_fault_dict_expand=dict()
         
     def clear_expansion(self):
@@ -1073,53 +1077,78 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
         # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, Tck)
         if param is not None:
             if param=='ifmap_in':
-                psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
-                info=ifmap_vl[iidx].update({'psum_idx':psidx})
-                new_ifmap_fd[tuple(ifmap_index)]=info
+                psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
+                ifmap_vl[iidx].update({'psum_idx':psidx})
+                new_ifmap_fd[tuple(ifmap_index)]=ifmap_vl[iidx]
             
             elif param=='ifmap_out':
-                if ifmap_vl[iidx]['edge']:
-                    pass
-                else:
-                    psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
-                    info=ifmap_vl[iidx].update({'psum_idx':psidx})
-                    new_ifmap_fd[tuple(ifmap_index)]=info
+                try:
+                    if ifmap_vl[iidx]['edge']:
+                        pass
+                except:
+                    psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
+                    ifmap_vl[iidx].update({'psum_idx':psidx})
+                    new_ifmap_fd[tuple(ifmap_index)]=ifmap_vl[iidx]
             
             elif param=='wght_in':
-                psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
-                info=wght_vl[widx].update({'psum_idx':psidx})
-                new_wght_fd[tuple(wght_index)]=info
+                psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
+                wght_vl[widx].update({'psum_idx':psidx})
+                new_wght_fd[tuple(wght_index)]=wght_vl[widx]
             
             elif param=='wght_out':
-                if wght_vl[widx]['edge']:
-                    pass
-                else:
-                    psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
-                    info=wght_vl[widx].update({'psum_idx':psidx})
-                    new_wght_fd[tuple(wght_index)]=info
+                try:
+                    if wght_vl[widx]['edge']:
+                        pass
+                except:
+                    psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
+                    wght_vl[widx].update({'psum_idx':psidx})
+                    new_wght_fd[tuple(wght_index)]=wght_vl[widx]
             
             elif param=='psum_in':
-                if psum_vl[pidx]['edge']:
-                    pass
-#TODO
-# the complex psum_in edge problem
-                else:
-                    psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
-                    info=ofmap_vl[oidx].update({'psum_idx':psidx})
-                    new_ofmap_fd[tuple(ofmap_index)]=info
+                try:
+                    if psum_vl[pidx]['edge']:
+                        if bidx is None:
+                            psum_index=np.ravel_multi_index(np.array(psum_index)[[0,3,2,1]],np.array(ofmap_tile.tile_shape)[[0,3,2,1]])
+                            psum_index-=1
+                            if psum_index<0:
+                                continue
+                            
+                            psum_index=np.unravel_index(psum_index,np.array(ofmap_tile.tile_shape)[[0,3,2,1]])
+                            psum_index=np.array(psum_index)[[0,3,2,1]]
+                            
+                            wght_index=np.ravel_multi_index(np.array(wght_index)[[3,2,1,0]],np.array(wght_tile.tile_shape)[[3,2,1,0]])
+                            wght_index-=1
+                            if wght_index<0:
+                                continue
+                            
+                            wght_index=np.unravel_index(wght_index,np.array(ofmap_tile.tile_shape)[[3,2,1,0]])
+                            wght_index=np.array(wght_index)[[3,2,1,0]]
+                            
+                            psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
+                            psum_vl[pidx].update({'psum_idx':psidx})
+                            new_ofmap_fd[tuple(psum_index)]=psum_vl[pidx]
+                        else:
+                            new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
+                except:
+                    psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
+                    psum_vl[pidx].update({'psum_idx':psidx})
+                    new_ofmap_fd[tuple(psum_index)]=psum_vl[pidx]
 
             
             elif param=='psum_out':
                 if oidx is None:
-                    psidx=(psum_index[0],psum_index[3],psum_index[1],psum_index[2],wght_index[2],wght_index[0],wght_index[1])
-                    info=psum_vl[oidx].update({'psum_idx':psidx,'ofmap':False})
-                    new_ofmap_fd[tuple(psum_index)]=info
+                    psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
+                    psum_vl[pidx].update({'psum_idx':psidx,'ofmap':False})
+                    new_ofmap_fd[tuple(psum_index)]=psum_vl[pidx]
                 else:
-                    psidx=(ofmap_index[0],ofmap_index[3],ofmap_index[1],ofmap_index[2],wght_index[2],wght_index[0],wght_index[1])
-                    info=ofmap_vl[oidx].update({'psum_idx':psidx,'ofmap':True})
-                    new_ofmap_fd[tuple(ofmap_index)]=info
+                    psidx=tuple(np.append(ofmap_index[[0,3,1,2]],wght_index[[2,0,1]]))
+                    ofmap_vl[oidx].update({'psum_idx':psidx,'ofmap':True})
+                    new_ofmap_fd[tuple(ofmap_index)]=ofmap_vl[oidx]
     
-    
+    ofmap_tile.fault_dict=new_ofmap_fd
+    ifmap_tile.fault_dict=new_ifmap_fd
+    wght_tile.fault_dict=new_wght_fd
+    wght_tile.bias_fault_dict=new_bias_fd
 #TODO
 # solve correspond I/O fault info
             

@@ -9,7 +9,7 @@ This file shows example of mapping from Tile to PEarray
 """
 
 from simulator.comp_unit.PEarray import PEarray
-from simulator.comp_unit.tile import tile_PE
+from simulator.comp_unit.tile import tile_PE, solve_correspond_io
 
 import numpy as np
 import json
@@ -141,28 +141,33 @@ MXU.duplicate_mapping('psum', dataflow_pre_plan=True)
 # pre-plan alignment
 MXU.align_slice_pack(dataflow_pre_plan=True)
 
-#%% test decomposed slice pack
+#%% generate PE array fault dictionary
 
-MXU.fault_dict={(6,15,77):{'SA_type':'flip','SA_bit':3,'param':'ifmap_in'},
-                (9,3,833):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
-                (7,12,12664):{'SA_type':'flip','SA_bit':0,'param':'psum_out'},
-                (6,6,863):{'SA_type':'flip','SA_bit':5,'param':'psum_out'},
-                (4,4,862):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
-                (15,4,666):{'SA_type':'flip','SA_bit':2,'param':'psum_out'},
-                (13,6,11111):{'SA_type':'flip','SA_bit':6,'param':'psum_in'},
-                (3,13,777):{'SA_type':'flip','SA_bit':7,'param':'ifmap_out'},
-                (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'},
-                (0,0,444):{'SA_type':'flip','SA_bit':1,'param':'psum_in'},
-                (15,15,8787):{'SA_type':'flip','SA_bit':3,'param':'ifmap_out'},
-                (13,3,8796):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
-                (3,10,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
-                (15,6,5207):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
+#MXU.fault_dict={(6,15,77):{'SA_type':'flip','SA_bit':3,'param':'ifmap_in'},
+#                (9,3,833):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
+#                (7,12,12664):{'SA_type':'flip','SA_bit':0,'param':'psum_out'},
+#                (6,6,863):{'SA_type':'flip','SA_bit':5,'param':'psum_out'},
+#                (4,4,862):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
+#                (15,4,666):{'SA_type':'flip','SA_bit':2,'param':'psum_out'},
+#                (13,6,11111):{'SA_type':'flip','SA_bit':6,'param':'psum_in'},
+#                (3,13,777):{'SA_type':'flip','SA_bit':7,'param':'ifmap_out'},
+#                (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'},
+#                (0,0,444):{'SA_type':'flip','SA_bit':1,'param':'psum_in'},
+#                (15,15,8787):{'SA_type':'flip','SA_bit':3,'param':'ifmap_out'},
+#                (13,3,8796):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
+#                (3,10,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
+#                (15,6,5207):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
+#
+#MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
+#PE_fault_dict=MXU.fault_dict
+#
+#MXU.fault_dict=MXU.neighbor_io_fault_dict_coors(MXU.fault_dict)
+#PE_fault_dict_neighbor=MXU.fault_dict
 
-MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
+MXU.gen_PEarray_SA_fault_dict(n_bit=8)
 PE_fault_dict=MXU.fault_dict
 
-MXU.fault_dict=MXU.neighbor_io_fault_dict_coors(MXU.fault_dict)
-PE_fault_dict_neighbor=MXU.fault_dict
+#%% test decomposed slice pack
 
 mapped_fault_dict_ifmap,mapped_fault_dict_wght,mapped_fault_dict_ofmap,mapped_fault_dict_bias,mapped_fault_dict_psum = MXU.decompose_slice_pack()
 
@@ -351,6 +356,10 @@ shrink_fault_dict_bias=wght_tile.shrink_slice_bias()
 # shrink return patches
 shrink_fault_dict_returned_i=ifmap_tile.shrink_return_patches()
 
+#%% organize fault dict and give partial sum index
 
-
-
+solve_correspond_io(ofmap_tile,wght_tile,ifmap_tile)
+final_solved_ofmap_fd=ofmap_tile.fault_dict
+final_solved_ifmap_fd=ifmap_tile.fault_dict
+final_solved_wght_fd=wght_tile.fault_dict
+final_solved_bias_fd=wght_tile.bias_fault_dict

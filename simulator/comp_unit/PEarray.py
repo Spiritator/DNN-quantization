@@ -1510,9 +1510,9 @@ class PEarray:
                                                  axis_arange=map_arange, 
                                                  get_cond_idx=True)
             
-            # mark outlier coordinates
+            # pop outlier coordinates
             mapped_coors=mapped_coors[cond_idx]
-            fault_value=fault_value[cond_idx].tolist()
+            fault_value=fault_value[cond_idx]
 #            for i,cond in enumerate(cond_idx):
 #                if not cond:
 #                    fault_value[i].update({'outlier':'fixed'})
@@ -1526,6 +1526,11 @@ class PEarray:
                                                         tile_shape, 
                                                         keep_slice=True,
                                                         backward_mapping=True)
+            
+            # pop outlier coordinates
+            cond_idx=self.get_outlier_cond_args(mapped_coors,map_shape_pe)
+            mapped_coors=mapped_coors[cond_idx]
+            fault_value=fault_value[cond_idx]
 
             mapped_coors=self.permute_ravel_idx(mapped_coors,
                                                 source_shape=map_shape_pe,
@@ -1961,23 +1966,14 @@ class PEarray:
         
         return fd_return
     
-    def gen_PEarray_SA_fault_dict(self):
-        """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
+    def assign_id(self, fault_dict):
+        """ Give fault dict id for every fault
+            For popping outlier faults because we need to save the order of original fault
         
-        # Arguments
-        
-        # Returns
-            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
-        if self.n_clk is None:
-            raise ValueError('n_clk not set, dataflow pre-plan not ready.')
-        
-        self.fault_num=len(self.fault_dict)
-
-        self.fault_dict=self.assign_id(self.fault_dict)
-        #TODO
-        # generate fault
-        pass
+        for i,coor in enumerate(fault_dict):
+            fault_dict[coor].update({'id':i})
+        return fault_dict
     
     def get_neighboring_axis(self, flow):
         """ Get the neighboring axis of a parameter flow
@@ -2065,6 +2061,42 @@ class PEarray:
         new_fault_dict=dict(zip(index_fd,fault_value))
 
         return new_fault_dict
+    
+    def gen_PEarray_SA_fault_dict(self, n_bit, fault_type='flip', param_list=None):
+        """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
+        
+        # Arguments
+            n_bit: Integer. Number of word length bits used in PE array.
+            fault_type: String. The type of fault.
+        
+        # Returns
+            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        """
+        if self.n_clk is None:
+            raise ValueError('n_clk not set, dataflow pre-plan not ready.')
+        if not self.setup_ready:
+            raise ValueError('Dataflow setup not ready!')
+        if param_list==None:
+            param_list=['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']
+            
+        fault_loc=[[np.random.randint(self.n_y),np.random.randint(self.n_x)]]
+        fault_bit=np.random.randint(n_bit)
+        fault_param=param_list[np.random.randint(len(param_list))]
+        fault_info={'SA_type':fault_type,'SA_bit':fault_bit,'param':fault_param}
+        
+        fault_coors=np.tile(fault_loc,[self.n_clk,1])
+        fault_coors=np.concatenate([fault_coors,np.reshape(np.arange(self.n_clk),[-1,1])],1)
+        
+        fault_coors=list(zip(*fault_coors.T))
+        self.fault_dict=dict(zip(fault_coors,[fault_info.copy() for _ in range(self.n_clk)]))        
+        
+        self.fault_num=len(self.fault_dict)
+
+        self.fault_dict=self.assign_id(self.fault_dict)
+        self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
+
+        #TODO
+        # generate fault
     
     def get_outlier_cond_args(self,index,mapping_shape):
         index_bound=np.floor_divide(index,mapping_shape)
@@ -2170,15 +2202,6 @@ class PEarray:
         if self.use_psum:
             index_p=list(zip(*index_p.T))
             self.psum_map_fd=dict(zip(index_p,fault_value_p))
-    
-    def assign_id(self, fault_dict):
-        """ Give fault dict id for every fault
-            For popping outlier faults because we need to save the order of original fault
-        
-        """
-        for i,coor in enumerate(fault_dict):
-            fault_dict[coor].update({'id':i})
-        return fault_dict
     
     def clear(self):
         """ Clear fault dictionary of PE dataflow model """

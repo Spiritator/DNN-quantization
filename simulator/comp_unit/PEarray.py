@@ -1494,6 +1494,20 @@ class PEarray:
                                              target_shape=map_shape_pe, 
                                              broadcast_dims=map_broaddims,
                                              axis_arange=map_arange)
+            
+            # deal with repeative mapped_coors
+            mapped_coors,uni_idx,rep_idx=np.unique(mapped_coors,return_index=True,return_inverse=True,axis=0)
+            
+            id_list_rep=[list() for _ in range(len(rep_idx))]
+            for i,repid in enumerate(rep_idx):
+                if isinstance(fault_value[i]['id'],int):
+                    id_list_rep[repid].append(fault_value[i]['id'])
+                else:
+                    id_list_rep[repid]+=fault_value[i]['id']
+            
+            fault_value=fault_value[uni_idx]
+            for i in range(len(uni_idx)):
+                fault_value[i]['id']=id_list_rep[i]
         
         # fixed
         if flow.fixed_info is not None:
@@ -1709,7 +1723,7 @@ class PEarray:
             return dict()
         
         reduced_coors=np.array(list(fault_dict.keys()))
-        fault_value=list(fault_dict.values())
+        fault_value=np.array(list(fault_dict.values()))
         
         # reverse duplicate
         if flow.duplicate>0:
@@ -1719,6 +1733,20 @@ class PEarray:
             slices_idx=np.remainder(slices_idx,cutset_num)
             
             reduced_coors[:,-1]=slices_idx
+            
+            # deal with repeative reduced_coors
+            reduced_coors,uni_idx,rep_idx=np.unique(reduced_coors,return_index=True,return_inverse=True,axis=0)
+            
+            id_list_rep=[list() for _ in range(len(rep_idx))]
+            for i,repid in enumerate(rep_idx):
+                if isinstance(fault_value[i]['id'],int):
+                    id_list_rep[repid].append(fault_value[i]['id'])
+                else:
+                    id_list_rep[repid]+=fault_value[i]['id']
+            
+            fault_value=fault_value[uni_idx]
+            for i in range(len(uni_idx)):
+                fault_value[i]['id']=id_list_rep[i]
         
         # reverse repeat
         if flow.repeat>0:
@@ -1728,6 +1756,20 @@ class PEarray:
             slices_idx=np.floor_divide(slices_idx,flow.repeat)
             
             reduced_coors[:,-1]=slices_idx
+            
+            # deal with repeative reduced_coors
+            reduced_coors,uni_idx,rep_idx=np.unique(reduced_coors,return_index=True,return_inverse=True,axis=0)
+            
+            id_list_rep=[list() for _ in range(len(rep_idx))]
+            for i,repid in enumerate(rep_idx):
+                if isinstance(fault_value[i]['id'],int):
+                    id_list_rep[repid].append(fault_value[i]['id'])
+                else:
+                    id_list_rep[repid]+=fault_value[i]['id']
+            
+            fault_value=fault_value[uni_idx]
+            for i in range(len(uni_idx)):
+                fault_value[i]['id']=id_list_rep[i]
             
         reduced_coors_fd=list(zip(*reduced_coors.T))
         new_fault_dict=dict(zip(reduced_coors_fd,fault_value))
@@ -2094,9 +2136,6 @@ class PEarray:
 
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
-
-        #TODO
-        # generate fault
     
     def get_outlier_cond_args(self,index,mapping_shape):
         index_bound=np.floor_divide(index,mapping_shape)

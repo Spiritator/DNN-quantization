@@ -169,7 +169,8 @@ PE_fault_dict=MXU.fault_dict
 
 #%% test decomposed slice pack
 
-mapped_fault_dict_ifmap,mapped_fault_dict_wght,mapped_fault_dict_ofmap,mapped_fault_dict_bias,mapped_fault_dict_psum = MXU.decompose_slice_pack()
+mapped_fault_dict_ifmap,mapped_fault_dict_wght,mapped_fault_dict_ofmap,mapped_fault_dict_bias,mapped_fault_dict_psum \
+= MXU.decompose_slice_pack()
 
 #%% reduce mapping from duplicate data reuse or accumulate partial sum
 

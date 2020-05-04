@@ -878,6 +878,22 @@ class tile_PE(tile):
                                            dilation_rates=self.dilation_rates,
                                            padding=self.padding,
                                            edge_fill=self.edge_fill)
+        
+        # pop inalid edge condition that doesn't exist in tile
+        orig_coors,cond_idx=self.pop_outlier_idx(orig_coors,list(self.tile_shape),get_cond_idx=True)
+        fault_info=fault_info[cond_idx]
+        
+        # deal with repeative orig_coors
+        mapped_coors,uni_idx,rep_idx=np.unique(orig_coors,return_index=True,return_inverse=True,axis=0)
+        id_list_rep=[list() for _ in range(len(rep_idx))]
+        for i,repid in enumerate(rep_idx):
+            if isinstance(fault_info[i]['id'],int):
+                id_list_rep[repid].append(fault_info[i]['id'])
+            else:
+                id_list_rep[repid]+=fault_info[i]['id']
+        fault_info=fault_info[uni_idx]
+        for i in range(len(uni_idx)):
+            fault_info[i]['id']=id_list_rep[i]
 
         orig_coor_fd=list(zip(*orig_coors.T))
         new_fault_dict=dict(zip(orig_coor_fd,fault_info))
@@ -950,7 +966,7 @@ class tile_PE(tile):
         slice_idx=sliced_coors[:,1]
         orig_coors=np.add(np.multiply(slice_idx,self.bias_slice_shape[0]),bias_idx)
         
-        orig_coors_fd=list(zip(*orig_coors.T))
+        orig_coors_fd=list(zip(*np.expand_dims(orig_coors,0)))
         self.bias_fault_dict=dict(zip(orig_coors_fd,fault_info))
         
         return self.bias_fault_dict

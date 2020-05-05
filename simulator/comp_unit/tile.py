@@ -1032,7 +1032,7 @@ class tile_PE(tile):
         self.bias_slice_shape=None
 
      
-def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
+def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, fast_gen=False):
     """ Solving the PE array to Tile mapping fault dictionarys.
         Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
         and find the relation between them. Give fault info (psum index).
@@ -1056,58 +1056,127 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
     psum_vl =np.array(list(psum_fd.values()))
     bias_vl =np.array(list(bias_fd.values()))
     
-    ofmap_id=[info['id'] for info in ofmap_vl]
-    ifmap_id=[info['id'] for info in ifmap_vl]
-    wght_id =[info['id'] for info in wght_vl]
-    psum_id =[info['id'] for info in psum_vl]
-    bias_id =[info['id'] for info in bias_vl]
+    def state_setting(faultvalue):
+        if len(faultvalue)>0:
+            if isinstance(faultvalue[0]['id'],np.ndarray):
+                state='fastgen'
+                idlist=np.array([info['id'] for info in faultvalue])
+                maxx=np.max(idlist)
+            elif isinstance(faultvalue[0]['id'],int):
+                state='normal'
+                idlist=[info['id'] for info in faultvalue]
+                maxx=max(idlist)
+            elif isinstance(faultvalue[0]['id'],list):
+                state='repeative'
+                idlist=[info['id'] for info in faultvalue]
+                maxx=max([max(idl) for idl in idlist])
+        else:
+            idlist=list()
+            state=None
+            maxx=-1
+        
+        return idlist,state,maxx
     
-    #TODO
-    # id collapse into list
+    ofmap_id,ostate,maxo=state_setting(ofmap_vl)
+    ifmap_id,istate,maxi=state_setting(ifmap_vl)
+    wght_id,wstate,maxw=state_setting(wght_vl)
+    psum_id,pstate,maxp=state_setting(psum_vl)
+    bias_id,bstate,maxb=state_setting(bias_vl)
+    
     if fault_num==None:
-        fault_num=max(ofmap_id+ifmap_id+wght_id+psum_id+bias_id)+1
+        fault_num=max([maxo,maxi,maxw,maxp,maxb])+1
         
     new_ofmap_fd=dict()
     new_ifmap_fd=dict()
     new_wght_fd=dict()
     new_bias_fd=dict()
+    
+    def state_idxget(idlist,faultcoors,faultvalue,state,faultid,paramin):
+        if state is None:
+            idx=None
+            param=None
+            faultindex=None
+            
+        elif state=='fastgen':
+            idx=np.argwhere(idlist==faultid)
+            if len(idx)==0:
+                idx=None
+                param=None
+                faultindex=None
+            else:
+                idx=idx[0][0]
+                param=faultvalue[idx]['param']
+                faultindex=faultcoors[idx]
+            
+        elif state=='normal':
+            try:
+                idx=idlist.index(i)
+                param=faultvalue[idx]['param']
+                faultindex=faultcoors[idx]
+            except ValueError:
+                idx=None
+                param=None
+                faultindex=None
+                
+        elif state=='repeative':
+            idx=None
+            param=None
+            faultindex=None
+            for ii,idl in enumerate(idlist):
+                if faultid in idl:
+                    ii2=idl.index(faultid)
+                    idx=[ii,ii2]
+                    param=faultvalue[ii]['param'][ii2]
+                    faultindex=faultcoors[ii]
+        
+        if paramin is not None:
+            param=paramin
+        
+        return idx,param,faultindex
         
     for i in range(fault_num):
         param=None
-        try:
-            pidx=psum_id.index(i)
-            param=psum_vl[pidx]['param']
-            psum_index=psum_coors[pidx]
-        except ValueError:
-            pidx=None
-
-        try:
-            widx=wght_id.index(i)
-            param=wght_vl[widx]['param']
-            wght_index=wght_coors[widx]
-        except ValueError:
-            widx=None
-
-        try:
-            iidx=ifmap_id.index(i)
-            param=ifmap_vl[iidx]['param']
-            ifmap_index=ifmap_coors[iidx]
-        except ValueError:
-            iidx=None
-            
-        try:
-            oidx=ofmap_id.index(i)
-            param=ofmap_vl[oidx]['param']
-            ofmap_index=ofmap_coors[oidx]
-        except ValueError:
-            oidx=None
-            
-        try:
-            bidx=bias_id.index(i)
-            param=bias_vl[bidx]['param']
-            bias_index=bias_coors[bidx]
-        except ValueError:
-            bidx=None
+        
+        pidx,param,psum_index=state_idxget(psum_id,psum_coors,psum_vl,pstate,i,param)
+        widx,param,wght_index=state_idxget(wght_id,wght_coors,wght_vl,wstate,i,param)
+        iidx,param,ifmap_index=state_idxget(ifmap_id,ifmap_coors,ifmap_vl,istate,i,param)
+        oidx,param,ofmap_index=state_idxget(ofmap_id,ofmap_coors,ofmap_vl,ostate,i,param)
+        bidx,param,bias_index=state_idxget(bias_id,bias_coors,bias_vl,bstate,i,param)
+        
+#        try:
+#            pidx=psum_id.index(i)
+#            param=psum_vl[pidx]['param']
+#            psum_index=psum_coors[pidx]
+#        except ValueError:
+#            pidx=None
+#
+#        try:
+#            widx=wght_id.index(i)
+#            param=wght_vl[widx]['param']
+#            wght_index=wght_coors[widx]
+#        except ValueError:
+#            widx=None
+#
+#        try:
+#            iidx=ifmap_id.index(i)
+#            param=ifmap_vl[iidx]['param']
+#            ifmap_index=ifmap_coors[iidx]
+#        except ValueError:
+#            iidx=None
+#            
+#        try:
+#            oidx=ofmap_id.index(i)
+#            param=ofmap_vl[oidx]['param']
+#            ofmap_index=ofmap_coors[oidx]
+#        except ValueError:
+#            oidx=None
+#            
+#        try:
+#            bidx=bias_id.index(i)
+#            param=bias_vl[bidx]['param']
+#            bias_index=bias_coors[bidx]
+#        except ValueError:
+#            bidx=None
                    
 #TODO
 # complex existing and non-existing combination

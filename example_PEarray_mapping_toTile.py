@@ -164,8 +164,11 @@ MXU.align_slice_pack(dataflow_pre_plan=True)
 #MXU.fault_dict=MXU.neighbor_io_fault_dict_coors(MXU.fault_dict)
 #PE_fault_dict_neighbor=MXU.fault_dict
 
-MXU.gen_PEarray_SA_fault_dict(n_bit=8)
+MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
 PE_fault_dict=MXU.fault_dict
+
+#MXU.gen_PEarray_transient_fault_dict(n_bit=8, fault_num=20, fault_type='flip')
+#PE_fault_dict=MXU.fault_dict
 
 #%% test decomposed slice pack
 

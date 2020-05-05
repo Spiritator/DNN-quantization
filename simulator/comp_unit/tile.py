@@ -884,16 +884,36 @@ class tile_PE(tile):
         fault_info=fault_info[cond_idx]
         
         # deal with repeative orig_coors
-        mapped_coors,uni_idx,rep_idx=np.unique(orig_coors,return_index=True,return_inverse=True,axis=0)
-        id_list_rep=[list() for _ in range(len(rep_idx))]
-        for i,repid in enumerate(rep_idx):
-            if isinstance(fault_info[i]['id'],int):
-                id_list_rep[repid].append(fault_info[i]['id'])
-            else:
-                id_list_rep[repid]+=fault_info[i]['id']
-        fault_info=fault_info[uni_idx]
-        for i in range(len(uni_idx)):
-            fault_info[i]['id']=id_list_rep[i]
+        orig_coors,uni_idx,rep_idx,cnt_idx=np.unique(orig_coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
+        
+        if len(uni_idx)==len(rep_idx):
+            pass
+        else:
+            id_list_rep=[list() for _ in range(len(uni_idx))]
+            bit_list_rep=[list() for _ in range(len(uni_idx))]
+            param_list_rep=[list() for _ in range(len(uni_idx))]
+            
+            for i,repid in enumerate(rep_idx):
+                if isinstance(fault_info[i]['id'],int):
+                    id_list_rep[repid].append(fault_info[i]['id'])
+                else:
+                    id_list_rep[repid]+=fault_info[i]['id']
+                    
+                if isinstance(fault_info[i]['SA_bit'],int):
+                    bit_list_rep[repid].append(fault_info[i]['SA_bit'])
+                else:
+                    bit_list_rep[repid]+=fault_info[i]['SA_bit']
+                    
+                if isinstance(fault_info[i]['param'],int):
+                    param_list_rep[repid].append(fault_info[i]['param'])
+                else:
+                    param_list_rep[repid]+=fault_info[i]['param']
+            
+            fault_info=fault_info[uni_idx]
+            for i in range(len(uni_idx)):
+                fault_info[i]['id']=id_list_rep[i]
+                fault_info[i]['SA_bit']=bit_list_rep[i]
+                fault_info[i]['param']=param_list_rep[i]
 
         orig_coor_fd=list(zip(*orig_coors.T))
         new_fault_dict=dict(zip(orig_coor_fd,fault_info))
@@ -1042,6 +1062,8 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
     psum_id =[info['id'] for info in psum_vl]
     bias_id =[info['id'] for info in bias_vl]
     
+    #TODO
+    # id collapse into list
     if fault_num==None:
         fault_num=max(ofmap_id+ifmap_id+wght_id+psum_id+bias_id)+1
         

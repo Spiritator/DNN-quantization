@@ -211,6 +211,7 @@ class PEarray:
         self.use_bias=False
         self.used_axes=list()
         self.tmp_clk=None
+        self.fast_gen=False
         
     def setup_dataflow(self, 
                        o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_pack_size=1, o_stall_latency=0,
@@ -1495,19 +1496,7 @@ class PEarray:
                                              broadcast_dims=map_broaddims,
                                              axis_arange=map_arange)
             
-            # deal with repeative mapped_coors
-            mapped_coors,uni_idx,rep_idx=np.unique(mapped_coors,return_index=True,return_inverse=True,axis=0)
-            
-            id_list_rep=[list() for _ in range(len(rep_idx))]
-            for i,repid in enumerate(rep_idx):
-                if isinstance(fault_value[i]['id'],int):
-                    id_list_rep[repid].append(fault_value[i]['id'])
-                else:
-                    id_list_rep[repid]+=fault_value[i]['id']
-            
-            fault_value=fault_value[uni_idx]
-            for i in range(len(uni_idx)):
-                fault_value[i]['id']=id_list_rep[i]
+            mapped_coors,fault_value=self.collapse_repeative_coors(mapped_coors,fault_value)
         
         # fixed
         if flow.fixed_info is not None:
@@ -1734,19 +1723,7 @@ class PEarray:
             
             reduced_coors[:,-1]=slices_idx
             
-            # deal with repeative reduced_coors
-            reduced_coors,uni_idx,rep_idx=np.unique(reduced_coors,return_index=True,return_inverse=True,axis=0)
-            
-            id_list_rep=[list() for _ in range(len(rep_idx))]
-            for i,repid in enumerate(rep_idx):
-                if isinstance(fault_value[i]['id'],int):
-                    id_list_rep[repid].append(fault_value[i]['id'])
-                else:
-                    id_list_rep[repid]+=fault_value[i]['id']
-            
-            fault_value=fault_value[uni_idx]
-            for i in range(len(uni_idx)):
-                fault_value[i]['id']=id_list_rep[i]
+            reduced_coors,fault_value=self.collapse_repeative_coors(reduced_coors,fault_value)
         
         # reverse repeat
         if flow.repeat>0:
@@ -1757,19 +1734,7 @@ class PEarray:
             
             reduced_coors[:,-1]=slices_idx
             
-            # deal with repeative reduced_coors
-            reduced_coors,uni_idx,rep_idx=np.unique(reduced_coors,return_index=True,return_inverse=True,axis=0)
-            
-            id_list_rep=[list() for _ in range(len(rep_idx))]
-            for i,repid in enumerate(rep_idx):
-                if isinstance(fault_value[i]['id'],int):
-                    id_list_rep[repid].append(fault_value[i]['id'])
-                else:
-                    id_list_rep[repid]+=fault_value[i]['id']
-            
-            fault_value=fault_value[uni_idx]
-            for i in range(len(uni_idx)):
-                fault_value[i]['id']=id_list_rep[i]
+            reduced_coors,fault_value=self.collapse_repeative_coors(reduced_coors,fault_value)
             
         reduced_coors_fd=list(zip(*reduced_coors.T))
         new_fault_dict=dict(zip(reduced_coors_fd,fault_value))
@@ -2104,12 +2069,53 @@ class PEarray:
 
         return new_fault_dict
     
+    def gen_PEarray_transient_fault_dict(self, n_bit, fault_num, fault_type='flip', param_list=None):
+        """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single cycle transient fault occurs
+            multiple times on I/O of PE in a tile processing time.
+        
+        # Arguments
+            n_bit: Integer. Number of word length bits used in PE array.
+            fault_num: Integer. The number of transient faults happened in a tile processing time.
+            fault_type: String. The type of fault.
+            param_list: List of String. The available parameters can have fault on it. 
+                The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+
+        
+        # Returns
+            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        """
+        if self.n_clk is None:
+            raise ValueError('n_clk not set, dataflow pre-plan not ready.')
+        if not self.setup_ready:
+            raise ValueError('Dataflow setup not ready!')
+        if param_list==None:
+            param_list=np.array(['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'])
+        else:
+            param_list=np.array(param_list)
+        self.fast_gen=False
+            
+        fault_coors=[np.random.randint(self.n_y,size=[fault_num,1]), np.random.randint(self.n_x,size=[fault_num,1]), np.random.randint(self.n_clk,size=[fault_num,1])]
+        fault_coors=np.concatenate(fault_coors,axis=1)
+        fault_bit=np.random.randint(n_bit,size=fault_num)
+        fault_param=param_list[np.random.randint(len(param_list),size=fault_num)]
+        fault_info=[{'SA_type':fault_type,'SA_bit':fault_bit[i],'param':str(fault_param[i])} for i in range(fault_num)]
+        
+        fault_coors=list(zip(*fault_coors.T))
+        self.fault_dict=dict(zip(fault_coors,fault_info))        
+        
+        self.fault_num=len(self.fault_dict)
+
+        self.fault_dict=self.assign_id(self.fault_dict)
+        self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
+    
     def gen_PEarray_SA_fault_dict(self, n_bit, fault_type='flip', param_list=None):
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
         
         # Arguments
             n_bit: Integer. Number of word length bits used in PE array.
             fault_type: String. The type of fault.
+            param_list: List of String. The available parameters can have fault on it. 
+                The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
         
         # Returns
             Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -2120,6 +2126,7 @@ class PEarray:
             raise ValueError('Dataflow setup not ready!')
         if param_list==None:
             param_list=['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']
+        self.fast_gen=True
             
         fault_loc=[[np.random.randint(self.n_y),np.random.randint(self.n_x)]]
         fault_bit=np.random.randint(n_bit)
@@ -2241,6 +2248,57 @@ class PEarray:
         if self.use_psum:
             index_p=list(zip(*index_p.T))
             self.psum_map_fd=dict(zip(index_p,fault_value_p))
+    
+    def collapse_repeative_coors(self, coors, fault_value):
+        """ Collapse repeative coordinates and combine its fault dictionary values.
+            If generate permanent stuck-at fault (fast_gen), collapse and combine onlt fault id.
+            The rest of fault information are the same.
+            Else if generate transient fault, the repeative coordinate exist, collapse and conbine id, SA_bit, param.
+        
+        """
+        coors,uni_idx,rep_idx,cnt_idx=np.unique(coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
+        
+        if len(uni_idx)==len(rep_idx):
+            pass
+        else:
+            if self.fast_gen:
+                id_list=np.array([value['id'] for value in fault_value])
+                
+                id_list=id_list[np.argsort(rep_idx)]
+                cnt_idx=np.cumsum(cnt_idx)[:-1]
+                id_list=np.split(id_list,cnt_idx)
+                
+                fault_value=fault_value[uni_idx]
+                for i in range(len(uni_idx)):
+                    fault_value[i]['id']=id_list[i].flatten()
+            else:
+                id_list_rep=[list() for _ in range(len(uni_idx))]
+                bit_list_rep=[list() for _ in range(len(uni_idx))]
+                param_list_rep=[list() for _ in range(len(uni_idx))]
+                
+                for i,repid in enumerate(rep_idx):
+                    if isinstance(fault_value[i]['id'],int):
+                        id_list_rep[repid].append(fault_value[i]['id'])
+                    else:
+                        id_list_rep[repid]+=fault_value[i]['id']
+                        
+                    if isinstance(fault_value[i]['SA_bit'],int):
+                        bit_list_rep[repid].append(fault_value[i]['SA_bit'])
+                    else:
+                        bit_list_rep[repid]+=fault_value[i]['SA_bit']
+                        
+                    if isinstance(fault_value[i]['param'],int):
+                        param_list_rep[repid].append(fault_value[i]['param'])
+                    else:
+                        param_list_rep[repid]+=fault_value[i]['param']
+                
+                fault_value=fault_value[uni_idx]
+                for i in range(len(uni_idx)):
+                    fault_value[i]['id']=id_list_rep[i]
+                    fault_value[i]['SA_bit']=bit_list_rep[i]
+                    fault_value[i]['param']=param_list_rep[i]
+            
+        return coors, fault_value
     
     def clear(self):
         """ Clear fault dictionary of PE dataflow model """

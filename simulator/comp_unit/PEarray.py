@@ -558,12 +558,7 @@ class PEarray:
         
         if backward_mapping:
             self.solving_axes.remove(stream_dim)
-            
-#        map_arange=np.delete(map_arange,map_streamdim)
-#        map_arange=np.insert(map_arange,map_streamdata,map_streamdim)
-        
-        #map_arange=np.delete(map_arange,map_streamclk)
-        
+                    
         return map_shape_data,map_streamdata,map_shape_pe,map_streamdim,map_streamclk,map_arange
     
     def permute_ravel_idx(self,index, source_shape, source_prior, target_shape, target_prior):
@@ -676,12 +671,7 @@ class PEarray:
             idx_capture_clk=np.add(idx_capture_clk,np.flip(base_coor_shift,1))
         else:
             raise ValueError('window_flow_direction must be \'forward\' or \'backward\'.')        
-        
-#        if axis_arange is None:
-#            axis_arange=list(range(len(data_shape)))
-#            axis_arange.remove(window_stream_axis)
-#            axis_arange.insert(data_stream_axis,window_stream_axis)
-            
+                    
         if window_clk_axis<0:
             window_clk_axis+=len(window_shape)
         if axis_arange is None:
@@ -1515,11 +1505,7 @@ class PEarray:
             
             # pop outlier coordinates
             mapped_coors=mapped_coors[cond_idx]
-            fault_value=fault_value[cond_idx]
-#            for i,cond in enumerate(cond_idx):
-#                if not cond:
-#                    fault_value[i].update({'outlier':'fixed'})
-        
+            fault_value=fault_value[cond_idx]        
             
         # permute
         if flow.permute_info is not None:
@@ -2200,28 +2186,6 @@ class PEarray:
             cond_argb=self.get_outlier_cond_args(index_b,self.shape_bias_mapping)
         if self.use_psum:
             cond_argp=self.get_outlier_cond_args(index_p,self.shape_psum_mapping)
-#        cond_arg=[cond_argi,cond_argo,cond_argw]
-#        if self.use_bias:
-#            cond_arg.append(cond_argb)
-#        if self.use_psum:
-#            cond_arg.append(cond_argp)
-#        cond_arg=np.stack(cond_arg)
-#        cond_arg=np.prod(cond_arg,axis=0)
-#        cond_arg=cond_arg.astype(bool)
-        
-#        for i in range(len(index_i)):
-#            if not cond_argi[i]:
-#                fault_value_i[i].update({'outlier':outlier_messege})
-#            if not cond_argo[i]:
-#                fault_value_o[i].update({'outlier':outlier_messege})
-#            if not cond_argw[i]:
-#                fault_value_w[i].update({'outlier':outlier_messege})
-#            if self.use_bias:
-#                if not cond_argb[i]:
-#                    fault_value_b[i].update({'outlier':outlier_messege})
-#            if self.use_psum:
-#                if not cond_argp[i]:
-#                    fault_value_p[i].update({'outlier':outlier_messege})
             
         index_i=index_i[cond_argi]
         fault_value_i=fault_value_i[cond_argi].tolist()

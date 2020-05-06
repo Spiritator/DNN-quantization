@@ -432,9 +432,6 @@ class tile_PE(tile):
         ifchannel_idx=np.expand_dims(ifchannel_idx,-1)
         returned_index=np.concatenate([batch_idx,returned_2D,ifchannel_idx],axis=1)
 
-#        if get_cond_idx:
-#            return returned_index#, cond_idx
-#        else:
         return returned_index
         
     def tilt_idx(self, index, axis, direction, shape, shift=1):
@@ -1133,6 +1130,33 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, fast_
             param=paramin
         
         return idx,param,faultindex
+    
+    def state_make_new_fd(state,faultid,paramin,opindex,windex,faultvalue,idx,newfd,dataindex):
+        try:
+            psidx=tuple(np.append(opindex[[0,3,1,2]],windex[[2,0,1]]))
+            if state is None:
+                pass
+            elif state=='fastgen':
+                try:
+                    newfv=newfd[tuple(dataindex)]
+                    newfv['psum_idx'].append(psidx)
+                except KeyError:
+                    newfv=faultvalue[idx].copy()
+                    newfv.update({'psum_idx':[psidx]})
+                    newfd[tuple(dataindex)]=newfv
+            elif state=='normal':
+                newfv=faultvalue[idx].copy()
+                newfv.update({'psum_idx':psidx})
+                newfd[tuple(dataindex)]=newfv
+            elif state=='repeative':
+                newfv={'SA_bit':faultvalue[idx[0]]['SA_bit'][idx[1]],
+                       'SA_type':faultvalue[idx[0]]['SA_type'][idx[1]],
+                       'param':paramin,
+                       'psum_idx':psidx,
+                       'id':faultid}
+                newfd[tuple(dataindex)]=newfv
+        except TypeError:
+            pass
         
     for i in range(fault_num):
         param=None
@@ -1183,37 +1207,42 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, fast_
         
         # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, Tck)
         if param is not None:
-            if param=='ifmap_in':
-                psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
-                ifmap_vl[iidx].update({'psum_idx':psidx})
-                new_ifmap_fd[tuple(ifmap_index)]=ifmap_vl[iidx]
-            
-            elif param=='ifmap_out':
+            if param=='ifmap_in' and iidx is not None:
+                state_make_new_fd(istate,i,param,psum_index,wght_index,ifmap_vl,iidx,new_ifmap_fd,ifmap_index)
+                            
+            elif param=='ifmap_out' and iidx is not None:
                 try:
-                    if ifmap_vl[iidx]['edge']:
-                        pass
+                    if istate=='repeative':
+                        if ifmap_vl[iidx[0]]['edge']:
+                            pass
+                    else:
+                        if ifmap_vl[iidx]['edge']:
+                            pass
                 except:
-                    psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
-                    ifmap_vl[iidx].update({'psum_idx':psidx})
-                    new_ifmap_fd[tuple(ifmap_index)]=ifmap_vl[iidx]
+                    state_make_new_fd(istate,i,param,psum_index,wght_index,ifmap_vl,iidx,new_ifmap_fd,ifmap_index)
             
-            elif param=='wght_in':
-                psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
-                wght_vl[widx].update({'psum_idx':psidx})
-                new_wght_fd[tuple(wght_index)]=wght_vl[widx]
-            
-            elif param=='wght_out':
+            elif param=='wght_in' and widx is not None:
+                state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
+                            
+            elif param=='wght_out'and widx is not None:
                 try:
-                    if wght_vl[widx]['edge']:
-                        pass
+                    if wstate=='repeative':
+                        if wght_vl[widx[0]]['edge']:
+                            pass
+                    else:
+                        if wght_vl[widx]['edge']:
+                            pass
                 except:
-                    psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
-                    wght_vl[widx].update({'psum_idx':psidx})
-                    new_wght_fd[tuple(wght_index)]=wght_vl[widx]
-            
-            elif param=='psum_in':
+                    state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
+                                
+            elif param=='psum_in' and pidx is not None:
                 try:
-                    if psum_vl[pidx]['edge']:
+                    if pstate=='repeative':
+                        pidxx=pidx[0]
+                    else:
+                        pidxx=pidx
+
+                    if psum_vl[pidxx]['edge']:
                         if bidx is None:
                             psum_index=np.ravel_multi_index(np.array(psum_index)[[0,3,2,1]],np.array(ofmap_tile.tile_shape)[[0,3,2,1]])
                             psum_index-=1
@@ -1231,26 +1260,21 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, fast_
                             wght_index=np.unravel_index(wght_index,np.array(ofmap_tile.tile_shape)[[3,2,1,0]])
                             wght_index=np.array(wght_index)[[3,2,1,0]]
                             
-                            psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
-                            psum_vl[pidx].update({'psum_idx':psidx})
-                            new_ofmap_fd[tuple(psum_index)]=psum_vl[pidx]
+                        
+                            state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
+                            
                         else:
                             new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
                 except:
-                    psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
-                    psum_vl[pidx].update({'psum_idx':psidx})
-                    new_ofmap_fd[tuple(psum_index)]=psum_vl[pidx]
-
+                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
             
-            elif param=='psum_out':
+            elif param=='psum_out' and pidx is not None:
                 if oidx is None:
-                    psidx=tuple(np.append(psum_index[[0,3,1,2]],wght_index[[2,0,1]]))
-                    psum_vl[pidx].update({'psum_idx':psidx,'ofmap':False})
-                    new_ofmap_fd[tuple(psum_index)]=psum_vl[pidx]
+                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
+                    new_ofmap_fd[tuple(psum_index)].update({'ofmap':False})
                 else:
-                    psidx=tuple(np.append(ofmap_index[[0,3,1,2]],wght_index[[2,0,1]]))
-                    ofmap_vl[oidx].update({'psum_idx':psidx,'ofmap':True})
-                    new_ofmap_fd[tuple(ofmap_index)]=ofmap_vl[oidx]
+                    state_make_new_fd(ostate,i,param,ofmap_index,wght_index,ofmap_vl,oidx,new_ofmap_fd,ofmap_index)                   
+                    new_ofmap_fd[tuple(ofmap_index)].update({'ofmap':True})
     
     ofmap_tile.fault_dict=new_ofmap_fd
     ifmap_tile.fault_dict=new_ifmap_fd

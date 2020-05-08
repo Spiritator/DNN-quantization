@@ -1167,44 +1167,6 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, fast_
         oidx,param,ofmap_index=state_idxget(ofmap_id,ofmap_coors,ofmap_vl,ostate,i,param)
         bidx,param,bias_index=state_idxget(bias_id,bias_coors,bias_vl,bstate,i,param)
         
-#        try:
-#            pidx=psum_id.index(i)
-#            param=psum_vl[pidx]['param']
-#            psum_index=psum_coors[pidx]
-#        except ValueError:
-#            pidx=None
-#
-#        try:
-#            widx=wght_id.index(i)
-#            param=wght_vl[widx]['param']
-#            wght_index=wght_coors[widx]
-#        except ValueError:
-#            widx=None
-#
-#        try:
-#            iidx=ifmap_id.index(i)
-#            param=ifmap_vl[iidx]['param']
-#            ifmap_index=ifmap_coors[iidx]
-#        except ValueError:
-#            iidx=None
-#            
-#        try:
-#            oidx=ofmap_id.index(i)
-#            param=ofmap_vl[oidx]['param']
-#            ofmap_index=ofmap_coors[oidx]
-#        except ValueError:
-#            oidx=None
-#            
-#        try:
-#            bidx=bias_id.index(i)
-#            param=bias_vl[bidx]['param']
-#            bias_index=bias_coors[bidx]
-#        except ValueError:
-#            bidx=None
-                   
-#TODO
-# complex existing and non-existing combination
-        
         # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, Tck)
         if param is not None:
             if param=='ifmap_in' and iidx is not None:
@@ -1280,6 +1242,4 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, fast_
     ifmap_tile.fault_dict=new_ifmap_fd
     wght_tile.fault_dict=new_wght_fd
     wght_tile.bias_fault_dict=new_bias_fd
-#TODO
-# solve correspond I/O fault info
             

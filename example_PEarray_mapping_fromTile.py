@@ -299,10 +299,12 @@ MXU.setup_dataflow(p_permute_info={'PE_required_axes_prior':['PE_x','t_clk'],
                                  'indice':0}, 
                    b_broadcast_info=None, 
                    b_streaming_info=None, 
-                   b_repeat=9, 
+                   b_repeat=799+15, 
                    b_duplicate=0, 
-                   b_pack_size=1,
+                   b_pack_size=799+15,
                    b_stall_latency=17,
+                   b_dummy_pack_insert='post_each',
+                   b_dummy_pack_n=8
 
                    ** PEconfig)
 

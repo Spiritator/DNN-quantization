@@ -19,7 +19,9 @@
     "o_duplicate":0,
     "o_pack_size":1,
     "o_stall_latency":0,
-    
+	"o_dummy_pack_insert":null,
+	"o_dummy_pack_n":0,
+
     "w_permute_info":{
         "PE_required_axes_prior":[null],
         "tile_mapping_prior":[null]
@@ -40,7 +42,9 @@
     "w_duplicate":0,
     "w_pack_size":1,
     "w_stall_latency":0,
-    
+	"w_dummy_pack_insert":null,
+	"w_dummy_pack_n":0,
+	
     "i_permute_info":{
         "PE_required_axes_prior":[null],
         "tile_mapping_prior":[null]
@@ -60,5 +64,54 @@
     "i_repeat":0,
     "i_duplicate":0,
     "i_pack_size":1,
-    "i_stall_latency":0
+    "i_stall_latency":0,
+	"i_dummy_pack_insert":null,
+	"i_dummy_pack_n":0
+
+    "p_permute_info":{
+        "PE_required_axes_prior":[null],
+        "tile_mapping_prior":[null]
+    },
+    "p_fixed_info":{
+        "PE_fix_axis":null,
+        "indice":null
+    },
+    "p_broadcast_info":{
+        "PE_broadcast_axis":null
+    },
+    "p_streaming_info":{
+        "PE_stream_axis":null,
+        "tile_direction":null,
+        "PE_direction":null
+    },
+    "p_repeat":0,
+    "p_duplicate":0,
+    "p_pack_size":1,
+    "p_stall_latency":0,
+	"p_dummy_pack_insert":null,
+	"p_dummy_pack_n":0
+
+    "b_permute_info":{
+        "PE_required_axes_prior":[null],
+        "tile_mapping_prior":[null]
+    },
+    "b_fixed_info":{
+        "PE_fix_axis":null,
+        "indice":null
+    },
+    "b_broadcast_info":{
+        "PE_broadcast_axis":null
+    },
+    "b_streaming_info":{
+        "PE_stream_axis":null,
+        "tile_direction":null,
+        "PE_direction":null
+    },
+    "b_repeat":0,
+    "b_duplicate":0,
+    "b_pack_size":1,
+    "b_stall_latency":0,
+	"b_dummy_pack_insert":null,
+	"b_dummy_pack_n":0
+
 }

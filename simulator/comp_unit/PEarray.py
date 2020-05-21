@@ -47,7 +47,9 @@ class PEflow:
                  repeat=0, 
                  duplicate=0, 
                  pack_size=1,
-                 stall_latency=0):
+                 stall_latency=0,
+                 dummy_pack_insert=None,
+                 dummy_pack_n=0):
         """
         PE axis flow type
             'permute': permute data long axis. 
@@ -87,9 +89,22 @@ class PEflow:
             repeat: Integer. The times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
             duplicate: Integer. The times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
             pack_size: Integer. The number of slices of pre-mapped tile data in a slice-pack.
-            stall_latency: Integer. The clock cycles need to wait till data get ready. 
-                Or the clock cycles need to wait for other data going through PE array. 
+            
+            stall_latency: Integer. Stall, the clock cycles need to wait till data get ready. 
+                Or latency, the clock cycles need to wait for other data going through PE array. 
                 All clock cycles combined.
+            
+            dummy_pack_insert: String. The method of dummy pack insert to current slice packs.
+                Dummy pack is to give empty slice pack for certain data when a peroid of time the data is absense in 
+                computation. Bias is an example that won't exist through out accumulation process.
+                
+                original slice packs A, B, C
+                'pre_all': insert dummpy slice pack prior to all existing tslice packs. => ~, ~, A, B, C
+                'post_all': insert dummpy slice pack later to all existing slice packs. => A, B, C, ~, ~
+                'pre_each': insert dummpy slice pack prior to each existing slice packs. => ~, ~, A, ~, ~, B, ~, ~, C
+                'post_each': insert dummpy slice pack later to each existing slice packs. =>  A, ~, ~, B, ~, ~, C, ~, ~
+            
+            dummy_pack_n: Integer. The number of dummy slice packs are going to insert.
         """
         if permute_info is None:
             self.permute_info=None
@@ -116,6 +131,8 @@ class PEflow:
         self.pack_size=pack_size
         self.stall_latency=stall_latency
         self.axis_element=['PE_x','PE_y','t_clk']
+        self.dummy_pack_insert=dummy_pack_insert
+        self.dummy_pack_n=dummy_pack_n
         
         self.tmp_clk=None
         self.using_axes=list()
@@ -214,11 +231,11 @@ class PEarray:
         self.fast_gen=False
         
     def setup_dataflow(self, 
-                       o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_pack_size=1, o_stall_latency=0,
-                       w_permute_info=None, w_fixed_info=None, w_broadcast_info=None, w_streaming_info=None, w_repeat=0, w_duplicate=0, w_pack_size=1, w_stall_latency=0,
-                       i_permute_info=None, i_fixed_info=None, i_broadcast_info=None, i_streaming_info=None, i_repeat=0, i_duplicate=0, i_pack_size=1, i_stall_latency=0,
-                       p_permute_info=None, p_fixed_info=None, p_broadcast_info=None, p_streaming_info=None, p_repeat=0, p_duplicate=0, p_pack_size=1, p_stall_latency=0,
-                       b_permute_info=None, b_fixed_info=None, b_broadcast_info=None, b_streaming_info=None, b_repeat=0, b_duplicate=0, b_pack_size=1, b_stall_latency=0):
+                       o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_pack_size=1, o_stall_latency=0, o_dummy_pack_insert=None, o_dummy_pack_n=0,
+                       w_permute_info=None, w_fixed_info=None, w_broadcast_info=None, w_streaming_info=None, w_repeat=0, w_duplicate=0, w_pack_size=1, w_stall_latency=0, w_dummy_pack_insert=None, w_dummy_pack_n=0,
+                       i_permute_info=None, i_fixed_info=None, i_broadcast_info=None, i_streaming_info=None, i_repeat=0, i_duplicate=0, i_pack_size=1, i_stall_latency=0, i_dummy_pack_insert=None, i_dummy_pack_n=0,
+                       p_permute_info=None, p_fixed_info=None, p_broadcast_info=None, p_streaming_info=None, p_repeat=0, p_duplicate=0, p_pack_size=1, p_stall_latency=0, p_dummy_pack_insert=None, p_dummy_pack_n=0,
+                       b_permute_info=None, b_fixed_info=None, b_broadcast_info=None, b_streaming_info=None, b_repeat=0, b_duplicate=0, b_pack_size=1, b_stall_latency=0, b_dummy_pack_insert=None, b_dummy_pack_n=0):
         """ Setup dataflow of ofmap, weight, ifmap. Read in PE dataflow arguments for mapping.
             o_* for output feature map
             w_* for weight kernel
@@ -238,13 +255,13 @@ class PEarray:
 
         """
         self.setup_ready=True
-        self.ofmap_flow=PEflow(o_permute_info, o_fixed_info, o_broadcast_info, o_streaming_info, o_repeat, o_duplicate, o_pack_size, o_stall_latency)
-        self.wght_flow=PEflow(w_permute_info, w_fixed_info, w_broadcast_info, w_streaming_info, w_repeat, w_duplicate, w_pack_size, w_stall_latency)
-        self.ifmap_flow=PEflow(i_permute_info, i_fixed_info, i_broadcast_info, i_streaming_info, i_repeat, i_duplicate, i_pack_size, i_stall_latency)
-        self.psum_flow=PEflow(p_permute_info, p_fixed_info, p_broadcast_info, p_streaming_info, p_repeat, p_duplicate, p_pack_size, p_stall_latency)
-        self.bias_flow=PEflow(b_permute_info, b_fixed_info, b_broadcast_info, b_streaming_info, b_repeat, b_duplicate, b_pack_size, b_stall_latency)
+        self.ofmap_flow=PEflow(o_permute_info, o_fixed_info, o_broadcast_info, o_streaming_info, o_repeat, o_duplicate, o_pack_size, o_stall_latency, o_dummy_pack_insert, o_dummy_pack_n)
+        self.wght_flow=PEflow(w_permute_info, w_fixed_info, w_broadcast_info, w_streaming_info, w_repeat, w_duplicate, w_pack_size, w_stall_latency, w_dummy_pack_insert, w_dummy_pack_n)
+        self.ifmap_flow=PEflow(i_permute_info, i_fixed_info, i_broadcast_info, i_streaming_info, i_repeat, i_duplicate, i_pack_size, i_stall_latency, i_dummy_pack_insert, i_dummy_pack_n)
+        self.psum_flow=PEflow(p_permute_info, p_fixed_info, p_broadcast_info, p_streaming_info, p_repeat, p_duplicate, p_pack_size, p_stall_latency, p_dummy_pack_insert, p_dummy_pack_n)
+        self.bias_flow=PEflow(b_permute_info, b_fixed_info, b_broadcast_info, b_streaming_info, b_repeat, b_duplicate, b_pack_size, b_stall_latency, b_dummy_pack_insert, b_dummy_pack_n)
         
-        default_arg=[None,None,None,None,0,0,1,0]
+        default_arg=[None,None,None,None,0,0,1,0,None,0]
         
         psum_arg=[p_permute_info, p_fixed_info, p_broadcast_info, p_streaming_info, p_repeat, p_duplicate, p_pack_size, p_stall_latency]
         if psum_arg!=default_arg:
@@ -1217,6 +1234,138 @@ class PEarray:
         mapping_shape[t_clk_dims]-=stalllatency
 
         return new_fault_dict,mapping_shape
+    
+    def insert_dummy_pack(self, fault_dict, dummy_pack_insert, dummy_pack_n, mapping_shape, slice_dims=-1, dataflow_pre_plan=False):
+        """ Insert dummy slice packs to existing dummy packs for matching slice packs number.
+            Dummy pack is for a parameter doesn't exist in certain peroid of computation time.
+        
+        """
+        if not dataflow_pre_plan:
+            index=np.array(list(fault_dict.keys()))
+            fault_value=list(fault_dict.values())
+            
+            slice_idx=index[:,slice_dims]
+        
+        if dummy_pack_insert=='pre_all':
+            if not dataflow_pre_plan:
+                slice_idx+=dummy_pack_n
+                index[:,slice_dims]=slice_idx
+                
+                index_fd=list(zip(*index.T))
+                new_fault_dict=dict(zip(index_fd,fault_value))
+            else:
+                new_fault_dict=dict()
+                
+            mapping_shape[slice_dims]+=dummy_pack_n
+                
+        elif dummy_pack_insert=='post_all':
+            if not dataflow_pre_plan:
+                # no change                
+                
+                index_fd=list(zip(*index.T))
+                new_fault_dict=dict(zip(index_fd,fault_value))
+            else:
+                new_fault_dict=dict()
+                
+            mapping_shape[slice_dims]+=dummy_pack_n
+                
+        elif dummy_pack_insert=='pre_each':
+            if not dataflow_pre_plan:
+                slice_idx=np.multiply(slice_idx,dummy_pack_n+1)+dummy_pack_n
+                index[:,slice_dims]=slice_idx
+                
+                index_fd=list(zip(*index.T))
+                new_fault_dict=dict(zip(index_fd,fault_value))
+            else:
+                new_fault_dict=dict()
+                
+            mapping_shape[slice_dims]=(dummy_pack_n+1)*mapping_shape[slice_dims]
+                
+        elif dummy_pack_insert=='post_each':
+            if not dataflow_pre_plan:
+                slice_idx=np.multiply(slice_idx,dummy_pack_n+1)
+                index[:,slice_dims]=slice_idx
+                
+                index_fd=list(zip(*index.T))
+                new_fault_dict=dict(zip(index_fd,fault_value))
+            else:
+                new_fault_dict=dict()
+                
+            mapping_shape[slice_dims]=(dummy_pack_n+1)*mapping_shape[slice_dims]
+                
+        else:
+            raise ValueError('dummy_pack_insert must be one of pre_all, post_all, pre_each, post_each method.')
+            
+        return new_fault_dict,mapping_shape
+        
+    def remove_dummy_pack(self, fault_dict, dummy_pack_insert, dummy_pack_n, mapping_shape, slice_dims=-1):
+        """ Remove dummy slice packs of in current slice packs for recover original slice packs.
+            Dummy pack is for a parameter doesn't exist in certain peroid of computation time.
+        
+        """
+        index=np.array(list(fault_dict.keys()))
+        fault_value=np.array(list(fault_dict.values()))
+        
+        slice_idx=index[:,slice_dims]
+        
+        if dummy_pack_insert=='pre_all':
+            cond_idx=slice_idx>dummy_pack_n
+            slice_idx=slice_idx[cond_idx]
+            index=index[cond_idx]
+            fault_value=fault_value[cond_idx]
+            
+            slice_idx-=dummy_pack_n
+            index[:,slice_dims]=slice_idx
+            
+            index_fd=list(zip(*index.T))
+            new_fault_dict=dict(zip(index_fd,fault_value))
+                
+            mapping_shape[slice_dims]-=dummy_pack_n
+                
+        elif dummy_pack_insert=='post_all':
+            cond_idx=slice_idx<(mapping_shape[slice_dims]-dummy_pack_n)
+            index=index[cond_idx]
+            fault_value=fault_value[cond_idx]
+
+            # slice_idx no change                
+            
+            index_fd=list(zip(*index.T))
+            new_fault_dict=dict(zip(index_fd,fault_value))
+                
+            mapping_shape[slice_dims]-=dummy_pack_n
+                
+        elif dummy_pack_insert=='pre_each':
+            cond_idx=np.remainder(slice_idx,dummy_pack_n+1)==dummy_pack_n
+            slice_idx=slice_idx[cond_idx]
+            index=index[cond_idx]
+            fault_value=fault_value[cond_idx]
+            
+            slice_idx=np.floor_divide(slice_idx,dummy_pack_n+1)
+            index[:,slice_dims]=slice_idx
+            
+            index_fd=list(zip(*index.T))
+            new_fault_dict=dict(zip(index_fd,fault_value))
+                
+            mapping_shape[slice_dims]=mapping_shape[slice_dims]//(dummy_pack_n+1)
+                
+        elif dummy_pack_insert=='post_each':
+            cond_idx=np.remainder(slice_idx,dummy_pack_n+1)==0
+            slice_idx=slice_idx[cond_idx]
+            index=index[cond_idx]
+            fault_value=fault_value[cond_idx]
+            
+            slice_idx=np.floor_divide(slice_idx,dummy_pack_n+1)
+            index[:,slice_dims]=slice_idx
+            
+            index_fd=list(zip(*index.T))
+            new_fault_dict=dict(zip(index_fd,fault_value))
+                
+            mapping_shape[slice_dims]=mapping_shape[slice_dims]//(dummy_pack_n+1)
+                
+        else:
+            raise ValueError('dummy_pack_insert must be one of pre_all, post_all, pre_each, post_each method.')
+            
+        return new_fault_dict,mapping_shape
         
     def premapping_tile(self, parameter, dataflow_pre_plan=False):
         """ Pre-mapping a tile onto PE array dataflow model. Need setup dataflow config in advance.
@@ -1653,8 +1802,6 @@ class PEarray:
             self.shape_bias_mapping[-1]=cutset_num
             
         return new_fault_dict
-    #TODO
-    # dull/dummy slice pack for duplication (bias)
     
     def reduce_mapping(self, parameter):
         """ Reduce tile back to not duplicated pre-mapped tile which is on PE array dataflow model. 
@@ -1825,6 +1972,44 @@ class PEarray:
                                                                                   self.psum_flow.stall_latency, 
                                                                                   self.shape_psum_mapping,
                                                                                   dataflow_pre_plan=dataflow_pre_plan)
+        
+        # insert dummy slice pack
+        if self.ifmap_flow.dummy_pack_insert is not None:
+            self.ifmap_map_fd,self.shape_ifmap_mapping=self.insert_dummy_pack(self.ifmap_map_fd, 
+                                                                              self.ifmap_flow.dummy_pack_insert, 
+                                                                              self.ifmap_flow.dummy_pack_n, 
+                                                                              self.shape_ifmap_mapping,
+                                                                              dataflow_pre_plan=dataflow_pre_plan)
+            
+        if self.wght_flow.dummy_pack_insert is not None:
+            self.wght_map_fd,self.shape_wght_mapping=self.insert_dummy_pack(self.wght_map_fd, 
+                                                                            self.wght_flow.dummy_pack_insert,
+                                                                            self.wght_flow.dummy_pack_n,
+                                                                            self.shape_wght_mapping,
+                                                                            dataflow_pre_plan=dataflow_pre_plan)
+            
+        if self.ofmap_flow.dummy_pack_insert is not None:
+            self.ofmap_map_fd,self.shape_ofmap_mapping=self.insert_dummy_pack(self.ofmap_map_fd, 
+                                                                              self.ofmap_flow.dummy_pack_insert, 
+                                                                              self.ofmap_flow.dummy_pack_n, 
+                                                                              self.shape_ofmap_mapping,
+                                                                              dataflow_pre_plan=dataflow_pre_plan)
+
+        if self.use_bias:
+            if self.bias_flow.dummy_pack_insert is not None:
+                self.bias_map_fd,self.shape_bias_mapping=self.insert_dummy_pack(self.bias_map_fd, 
+                                                                                self.bias_flow.dummy_pack_insert, 
+                                                                                self.bias_flow.dummy_pack_n, 
+                                                                                self.shape_bias_mapping,
+                                                                                dataflow_pre_plan=dataflow_pre_plan)
+
+        if self.use_psum:
+            if self.psum_flow.dummy_pack_insert is not None:
+                self.psum_map_fd,self.shape_psum_mapping=self.insert_dummy_pack(self.psum_map_fd, 
+                                                                                self.psum_flow.dummy_pack_insert, 
+                                                                                self.psum_flow.dummy_pack_n, 
+                                                                                self.shape_psum_mapping,
+                                                                                dataflow_pre_plan=dataflow_pre_plan)
                 
         # align clock cycle
         pack_num=[self.shape_ifmap_mapping[-1], self.shape_ofmap_mapping[-1], self.shape_wght_mapping[-1]]
@@ -1892,6 +2077,39 @@ class PEarray:
         if self.use_psum:
             self.psum_map_fd=copy.deepcopy(self.fault_dict)
             self.psum_map_fd,_=self.deserialize_slices(self.psum_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
+            
+        # remove dummy slice pack
+        if self.ifmap_flow.dummy_pack_insert is not None:
+            self.ifmap_map_fd,self.shape_ifmap_mapping=self.remove_dummy_pack(self.ifmap_map_fd, 
+                                                                              self.ifmap_flow.dummy_pack_insert, 
+                                                                              self.ifmap_flow.dummy_pack_n, 
+                                                                              self.shape_ifmap_mapping)
+            
+        if self.wght_flow.dummy_pack_insert is not None:
+            self.wght_map_fd,self.shape_wght_mapping=self.remove_dummy_pack(self.wght_map_fd, 
+                                                                            self.wght_flow.dummy_pack_insert,
+                                                                            self.wght_flow.dummy_pack_n,
+                                                                            self.shape_wght_mapping)
+            
+        if self.ofmap_flow.dummy_pack_insert is not None:
+            self.ofmap_map_fd,self.shape_ofmap_mapping=self.remove_dummy_pack(self.ofmap_map_fd, 
+                                                                              self.ofmap_flow.dummy_pack_insert, 
+                                                                              self.ofmap_flow.dummy_pack_n, 
+                                                                              self.shape_ofmap_mapping)
+
+        if self.use_bias:
+            if self.bias_flow.dummy_pack_insert is not None:
+                self.bias_map_fd,self.shape_bias_mapping=self.remove_dummy_pack(self.bias_map_fd, 
+                                                                                self.bias_flow.dummy_pack_insert, 
+                                                                                self.bias_flow.dummy_pack_n, 
+                                                                                self.shape_bias_mapping)
+
+        if self.use_psum:
+            if self.psum_flow.dummy_pack_insert is not None:
+                self.psum_map_fd,self.shape_psum_mapping=self.remove_dummy_pack(self.psum_map_fd, 
+                                                                                self.psum_flow.dummy_pack_insert, 
+                                                                                self.psum_flow.dummy_pack_n, 
+                                                                                self.shape_psum_mapping)
         
         # remove stall & latency
         if self.ifmap_flow.stall_latency>0:

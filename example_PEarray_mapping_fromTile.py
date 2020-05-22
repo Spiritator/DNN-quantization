@@ -269,16 +269,9 @@ duped_fault_dict_ifmap=MXU.duplicate_mapping('ifmap')
 
 PE_fault_dict_final=MXU.align_slice_pack()
 
-#%% read in mapping configuration
-
-with open('config_PEarray.json', 'r') as config_file:
-    PEconfig=json.load(config_file)
-
-MXU.setup_dataflow(** PEconfig)
-
 #%% assign psum and bias mapping configuration
 
-MXU.clear()
+MXU.clear_fd()
 MXU.clear_map_config()
 
 MXU.setup_dataflow(p_permute_info={'PE_required_axes_prior':['PE_x','t_clk'],
@@ -304,9 +297,14 @@ MXU.setup_dataflow(p_permute_info={'PE_required_axes_prior':['PE_x','t_clk'],
                    b_pack_size=799+15,
                    b_stall_latency=17,
                    b_dummy_pack_insert='post_each',
-                   b_dummy_pack_n=8
+                   b_dummy_pack_n=8)
 
-                   ** PEconfig)
+#%% read in mapping configuration
+
+with open('config_PEarray.json', 'r') as config_file:
+    PEconfig=json.load(config_file)
+
+MXU.setup_dataflow(** PEconfig)
 
 #%% Read in whole configuration and complete tile to PE flow
 

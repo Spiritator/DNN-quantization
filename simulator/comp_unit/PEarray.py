@@ -9,6 +9,8 @@ Processing element array setting for compuation unit fault mapping
 
 import numpy as np
 import copy
+import json
+from .tile import solve_correspond_io
 
 class axis_info:
     """
@@ -2347,6 +2349,38 @@ class PEarray:
 
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
+        
+    def gen_PEarray_permanent_fault_dict(self, fault_loc, fault_info):
+        """ Generate fault dictionary on PEarray of permanent fault. Given the fault location and fault infomation. 
+            Copy the fault to all clock cycles for this PE mapping configuration. 
+        
+        # Arguments
+            fault_loc: Tuple or List. The location coordinate of fault.
+            fault_info: Dictionary. The fault information dictionay that includes 'SA_type', 'SA_bit', 'param'.
+            param_list: List of String. The available parameters can have fault on it. 
+                The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+        
+        # Returns
+            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        """
+        if self.n_clk is None:
+            raise ValueError('n_clk not set, dataflow pre-plan not ready.')
+        if not self.setup_ready:
+            raise ValueError('Dataflow setup not ready!')
+        self.fast_gen=True
+            
+        fault_loc=[list(fault_loc)]
+        
+        fault_coors=np.tile(fault_loc,[self.n_clk,1])
+        fault_coors=np.concatenate([fault_coors,np.reshape(np.arange(self.n_clk),[-1,1])],1)
+        
+        fault_coors=list(zip(*fault_coors.T))
+        self.fault_dict=dict(zip(fault_coors,[fault_info.copy() for _ in range(self.n_clk)]))        
+        
+        self.fault_num=len(self.fault_dict)
+
+        self.fault_dict=self.assign_id(self.fault_dict)
+        self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
     
     def get_outlier_cond_args(self,index,mapping_shape):
         index_bound=np.floor_divide(index,mapping_shape)
@@ -2550,16 +2584,176 @@ def PE_mapping_forward(ifmap_tile,
             Only save the expansion configuration for later PEarray to Tile transform.
 
     """
+    # load ifmap config
+    if isinstance(ifmap_expand_config,str):
+        with open(ifmap_expand_config, 'r') as config_file:
+            ifmap_expand_config=json.load(config_file)
+    elif isinstance(ifmap_expand_config,dict):
+        pass
+    else:
+        raise TypeError('ifmap_expand_config must be String or Dictionary.')
     
-def PE_mapping_backward(layer, PEarray, fault_dict=None):
+    # load wght config
+    if isinstance(wght_expand_config,str):
+        with open(wght_expand_config, 'r') as config_file:
+            wght_expand_config=json.load(config_file)
+    elif isinstance(wght_expand_config,dict):
+        pass
+    else:
+        raise TypeError('wght_expand_config must be String or Dictionary.')
+    
+    # load ofmap config    
+    if isinstance(ofmap_expand_config,str):
+        with open(ofmap_expand_config, 'r') as config_file:
+            ofmap_expand_config=json.load(config_file)
+    elif isinstance(ofmap_expand_config,dict):
+        pass
+    else:
+        raise TypeError('ofmap_expand_config must be String or Dictionary.')
+        
+    # load PEarray config
+    if isinstance(PEarray_setup_config,str):
+        with open(PEarray_setup_config, 'r') as config_file:
+            PEarray_setup_config=json.load(config_file)
+    elif isinstance(PEarray_setup_config,dict):
+        pass
+    else:
+        raise TypeError('PEarray_setup_config must be String or Dictionary.')
+        
+    # expand ifmap
+    if 'ksizes' not in ifmap_expand_config:
+        ifmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ifmap_expand_config)
+    else:
+        ifmap_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **ifmap_expand_config)
+    # expand wght
+    if 'ksizes' not in wght_expand_config:
+        if 'bias_slice_width' in wght_expand_config:
+            bias_slice_width=wght_expand_config.pop('bias_slice_width')
+            wght_tile.expand_slice_bias(bias_slice_width=bias_slice_width,dataflow_pre_plan=pre_plan)
+        wght_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **wght_expand_config)
+    else:
+        wght_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **wght_expand_config)
+    # expand ofmap
+    if 'ksizes' not in ofmap_expand_config:
+        ofmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
+    else:
+        ofmap_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
+
+    # setup PEarray
+    PEarray.setup_dataflow(**PEarray_setup_config)
+
+    # premapping
+    PEarray.premapping_tile('ofmap', dataflow_pre_plan=pre_plan)
+    PEarray.premapping_tile('wght', dataflow_pre_plan=pre_plan)
+    PEarray.premapping_tile('ifmap', dataflow_pre_plan=pre_plan)
+    PEarray.premapping_tile('bias', dataflow_pre_plan=pre_plan)
+    PEarray.premapping_tile('psum', dataflow_pre_plan=pre_plan)
+    # duplication
+    PEarray.duplicate_mapping('ofmap', dataflow_pre_plan=pre_plan)
+    PEarray.duplicate_mapping('wght', dataflow_pre_plan=pre_plan)
+    PEarray.duplicate_mapping('ifmap', dataflow_pre_plan=pre_plan)
+    PEarray.duplicate_mapping('bias', dataflow_pre_plan=pre_plan)
+    PEarray.duplicate_mapping('psum', dataflow_pre_plan=pre_plan)
+    # alignment
+    PEarray.align_slice_pack(dataflow_pre_plan=pre_plan)
+    
+def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to layer.
         
     # Arguments
         layer: Keras.Layer. 
         PEarray: Class (PEarray). The PE dataflow model class for PE array dataflow mapping.
-        fault_dict: Dictionary. The fault dictionary be assigned to PEarray.
+        fault_dict: Dictionary. The fault dictionary be assigned to PEarray. 
+            If None assuming that the fault dictionary of PEarray is already set.
     
     # Returns
         The fault information Dictionary List of Layer.
     """        
+    if print_detail:
+        print('\nMapping memory fault on layer ...')
+    else:
+        PEarray.ifmap_tile.print_detail=False
+        PEarray.ofmap_tile.print_detail=False
+        PEarray.wght_tile.print_detail=False
+    
+    layer_input_shape=layer.input_shape
+    layer_output_shape=layer.output_shape
+    layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
+    
+    if len(layer_weight_shape)==0:
+        if print_detail:
+            print('    no weight layer Skipped!')
+        return None, None, [None,None]
+    
+    if fault_dict is not None:
+        PEarray.fault_dict=fault_dict
+        
+    PEarray.decompose_slice_pack()
+
+    PEarray.reduce_mapping('ofmap')
+    PEarray.reduce_mapping('wght')
+    PEarray.reduce_mapping('ifmap')
+    PEarray.reduce_mapping('bias')
+    PEarray.reduce_mapping('psum')
+    
+    PEarray.demapping_tile('ofmap')
+    PEarray.demapping_tile('wght')
+    PEarray.demapping_tile('ifmap')
+    PEarray.demapping_tile('bias')
+    PEarray.demapping_tile('psum')
+    
+    if PEarray.ofmap_tile.expand_method=='reshape':
+        PEarray.ofmap_tile.shrink_reshape_data()
+        PEarray.ofmap_tile.shrink_reshape_data(psum=True)
+    elif PEarray.ofmap_tile.expand_method=='extract_patches':
+        PEarray.ofmap_tile.shrink_return_patches()
+        PEarray.ofmap_tile.shrink_return_patches(psum=True)
+    else:
+        raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
+        
+    if PEarray.wght_tile.expand_method=='reshape':
+        PEarray.wght_tile.shrink_reshape_data()
+    elif PEarray.wght_tile.expand_method=='extract_patches':
+        PEarray.wght_tile.shrink_return_patches()
+    else:
+        raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
+        
+    if PEarray.wght_tile.use_bias:
+        PEarray.wght_tile.shrink_slice_bias()
+    
+    if PEarray.wght_tile.expand_method=='extract_patches':
+        PEarray.ifmap_tile.shrink_return_patches()
+    elif PEarray.wght_tile.expand_method=='reshape':
+        PEarray.ifmap_tile.shrink_reshape_data()
+    else:
+        raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
+    
+    # organize fault dict and give partial sum index
+    solve_correspond_io(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile)
+    
+    # ifmap PE mapping to layer
+    ifmap_fault_dict=PEarray.ifmap_tile.fault_dict_tile2layer(layer_input_shape)
+    if print_detail:
+        print('    mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
+    
+    
+    # ofmap PE mapping to layer
+    ofmap_fault_dict=PEarray.ofmap_tile.fault_dict_tile2layer(layer_output_shape)
+    if print_detail:
+        print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
+    
+    # weight PE mapping to layer
+    if len(layer_weight_shape)>1:
+        use_bias=True
+    else:
+        use_bias=False
+    
+    weight_fault_dict=PEarray.wght_tile.fault_dict_tile2layer(layer_weight_shape[0],use_bias=use_bias)
+    
+    if print_detail:
+        print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
+                
+    return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
+
+    

@@ -521,6 +521,7 @@ class tile_PE(tile):
 
         """
         self.expansion=True
+        self.expand_method='reshape'
         
         if len(orig_prior)!=len(self.tile_shape):
             raise ValueError('orig_prior must be in length %d, but get length %d.'%(len(self.tile_shape),len(orig_prior)))
@@ -705,6 +706,7 @@ class tile_PE(tile):
             Converted fault dictionary.
         """
         self.expansion=True
+        self.expand_method='extract_patches'
         self.reshape_patches=reshape_patches
         
         if len(ksizes)!=4:
@@ -921,12 +923,12 @@ class tile_PE(tile):
         
         return new_fault_dict
             
-    def expand_slice_bias(self, slice_width, dataflow_pre_plan=False):
+    def expand_slice_bias(self, bias_slice_width, dataflow_pre_plan=False):
         """ Data expansion before put into PE array. 
             The data are being cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
         
         # Arguments                            
-            slice_width: Integer. The expected slice width to be expand into. 
+            bias_slice_width: Integer. The expected slice width to be expand into. 
             
             dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
                 Only save the expansion configuration for later PEarray to Tile transform.
@@ -940,13 +942,13 @@ class tile_PE(tile):
         self.use_bias=True
         self.expansion=True
             
-        self.bias_slice_shape=(slice_width, int(np.ceil(self.Tn/slice_width)))
+        self.bias_slice_shape=(bias_slice_width, int(np.ceil(self.Tn/bias_slice_width)))
         
         if not dataflow_pre_plan:
             orig_coors=np.array(list(self.bias_fault_dict.keys()))
             fault_info=list(self.bias_fault_dict.values())
             
-            sliced_coors=np.concatenate([np.remainder(orig_coors,slice_width),np.floor_divide(orig_coors,slice_width)],axis=1)
+            sliced_coors=np.concatenate([np.remainder(orig_coors,bias_slice_width),np.floor_divide(orig_coors,bias_slice_width)],axis=1)
             
             sliced_coors_fd=list(zip(*sliced_coors.T))
             self.bias_fault_dict_expand=dict(zip(sliced_coors_fd,fault_info))

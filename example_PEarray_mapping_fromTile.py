@@ -143,7 +143,7 @@ expand_fault_dict_extracted=ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
                                                               tilt_axis=1, 
                                                               tilt_direction=0)
 
-expand_bias_fault_dict_slice=wght_tile.expand_slice_bias(slice_width=16)
+expand_bias_fault_dict_slice=wght_tile.expand_slice_bias(bias_slice_width=16)
 
 #%% test PE array mapping
 

@@ -61,7 +61,7 @@ ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
                                   tilt_direction=0,
                                   dataflow_pre_plan=True)
 
-wght_tile.expand_slice_bias(slice_width=16,
+wght_tile.expand_slice_bias(bias_slice_width=16,
                             dataflow_pre_plan=True)
 
 #%% setup PEarray

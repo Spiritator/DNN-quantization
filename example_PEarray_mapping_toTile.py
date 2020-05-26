@@ -12,7 +12,6 @@ from simulator.comp_unit.PEarray import PEarray
 from simulator.comp_unit.tile import tile_PE, solve_correspond_io
 
 import numpy as np
-import json
 
 # Test example using TPU-like vecter mac
 
@@ -370,3 +369,5 @@ final_solved_ofmap_fd=ofmap_tile.fault_dict
 final_solved_ifmap_fd=ifmap_tile.fault_dict
 final_solved_wght_fd=wght_tile.fault_dict
 final_solved_bias_fd=wght_tile.bias_fault_dict
+
+

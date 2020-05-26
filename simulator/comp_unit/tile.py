@@ -539,7 +539,7 @@ class tile_PE(tile):
             raise TypeError('reshape_prior must be in length %d, but get length %d'%(len(self.expand_shape),len(reshape_prior)))
         self.expand_prior_targ=reshape_prior
         
-        if not isinstance(slicing_dims,tuple) or len(slicing_dims)!=len(self.expand_shape):
+        if len(slicing_dims)!=len(self.expand_shape):
             raise TypeError('slicing_dims must be in length %d, but get length %d'%(len(self.expand_shape),len(slicing_dims)))
         self.slicing_dims=slicing_dims
         self.slice_shape=np.array(slicing_dims)
@@ -717,7 +717,7 @@ class tile_PE(tile):
             raise ValueError('dilation rate length must be 4, but got %d'%len(dilation_rates))
             
         if dataflow_pre_plan:
-            self.ksizes=ksizes
+            self.ksizes=tuple(ksizes)
             self.strides=strides
             self.dilation_rates=dilation_rates
             self.padding=padding
@@ -744,7 +744,7 @@ class tile_PE(tile):
         else:
             self.expand_shape=extracted_shape
                 
-        if not isinstance(slicing_dims,tuple) or len(slicing_dims)!=len(self.expand_shape):
+        if len(slicing_dims)!=len(self.expand_shape):
             raise TypeError('slicing_dims must be in length %d, but get length %d'%(len(self.expand_shape),len(slicing_dims)))
         self.slicing_dims=slicing_dims
         self.slice_shape=np.array(slicing_dims)

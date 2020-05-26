@@ -2657,6 +2657,11 @@ def PE_mapping_forward(ifmap_tile,
     # alignment
     PEarray.align_slice_pack(dataflow_pre_plan=pre_plan)
     
+    if pre_plan:
+        return None
+    else:
+        return PEarray.fault_dict
+    
 def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to layer.
@@ -2671,7 +2676,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
         The fault information Dictionary List of Layer.
     """        
     if print_detail:
-        print('\nMapping memory fault on layer ...')
+        print('\nMapping PE fault on layer ...')
     else:
         PEarray.ifmap_tile.print_detail=False
         PEarray.ofmap_tile.print_detail=False
@@ -2722,9 +2727,9 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
     if PEarray.wght_tile.use_bias:
         PEarray.wght_tile.shrink_slice_bias()
     
-    if PEarray.wght_tile.expand_method=='extract_patches':
+    if PEarray.ifmap_tile.expand_method=='extract_patches':
         PEarray.ifmap_tile.shrink_return_patches()
-    elif PEarray.wght_tile.expand_method=='reshape':
+    elif PEarray.ifmap_tile.expand_method=='reshape':
         PEarray.ifmap_tile.shrink_reshape_data()
     else:
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')

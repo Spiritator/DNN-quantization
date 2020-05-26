@@ -306,6 +306,4 @@ with open('config_PEarray.json', 'r') as config_file:
 
 MXU.setup_dataflow(** PEconfig)
 
-#%% Read in whole configuration and complete tile to PE flow
 
-#TODO

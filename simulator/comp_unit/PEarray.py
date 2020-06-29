@@ -2188,6 +2188,9 @@ class PEarray:
             fault_dict[coor].update({'id':i})
         return fault_dict
     
+    #TODO
+    # match the new IO defining method
+    # if no new method default the old one
     def get_neighboring_axis(self, flow):
         """ Get the neighboring axis of a parameter flow
         
@@ -2202,6 +2205,9 @@ class PEarray:
         else:
             return None
     
+    #TODO
+    # match the new IO defining method
+    # if no new method default the old one
     def neighbor_io_fault_dict_coors(self, fault_dict):
         """ Find neighbor PE index of PE array dataflow model. For mapping 'ifmap_out', 'wght_out', 'psum_in' faults.
             These fault info 'param' correspond to upstream or downstream PE I/O. 

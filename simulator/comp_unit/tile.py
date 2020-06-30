@@ -817,7 +817,7 @@ class tile_PE(tile):
         else:
             return None
         
-    def shrink_return_patches(self,psum=False):
+    def shrink_return_patches(self,psum=False,fast_gen=False):
         """ Reverse data expansion before put into PE array. Usually used for ifmap reduction. 
             Re-assemble the cut tile alices
             Method 'return patches' means return the extracted feature patches to ifmap tile.
@@ -888,31 +888,42 @@ class tile_PE(tile):
         if len(uni_idx)==len(rep_idx):
             pass
         else:
-            id_list_rep=[list() for _ in range(len(uni_idx))]
-            bit_list_rep=[list() for _ in range(len(uni_idx))]
-            param_list_rep=[list() for _ in range(len(uni_idx))]
+            if fast_gen:
+                id_list=np.array([value['id'] for value in fault_info])
+                
+                id_list=id_list[np.argsort(rep_idx)]
+                cnt_idx=np.cumsum(cnt_idx)[:-1]
+                id_list=np.split(id_list,cnt_idx)
+                
+                fault_info=fault_info[uni_idx]
+                for i in range(len(uni_idx)):
+                    fault_info[i]['id']=id_list[i].flatten()
+            else:
+                id_list_rep=[list() for _ in range(len(uni_idx))]
+                bit_list_rep=[list() for _ in range(len(uni_idx))]
+                param_list_rep=[list() for _ in range(len(uni_idx))]
+                
+                for i,repid in enumerate(rep_idx):
+                    if isinstance(fault_info[i]['id'],int):
+                        id_list_rep[repid].append(fault_info[i]['id'])
+                    else:
+                        id_list_rep[repid]+=fault_info[i]['id']
+                        
+                    if isinstance(fault_info[i]['SA_bit'],int):
+                        bit_list_rep[repid].append(fault_info[i]['SA_bit'])
+                    else:
+                        bit_list_rep[repid]+=fault_info[i]['SA_bit']
+                        
+                    if isinstance(fault_info[i]['param'],str):
+                        param_list_rep[repid].append(fault_info[i]['param'])
+                    else:
+                        param_list_rep[repid]+=fault_info[i]['param']
             
-            for i,repid in enumerate(rep_idx):
-                if isinstance(fault_info[i]['id'],int):
-                    id_list_rep[repid].append(fault_info[i]['id'])
-                else:
-                    id_list_rep[repid]+=fault_info[i]['id']
-                    
-                if isinstance(fault_info[i]['SA_bit'],int):
-                    bit_list_rep[repid].append(fault_info[i]['SA_bit'])
-                else:
-                    bit_list_rep[repid]+=fault_info[i]['SA_bit']
-                    
-                if isinstance(fault_info[i]['param'],int):
-                    param_list_rep[repid].append(fault_info[i]['param'])
-                else:
-                    param_list_rep[repid]+=fault_info[i]['param']
-            
-            fault_info=fault_info[uni_idx]
-            for i in range(len(uni_idx)):
-                fault_info[i]['id']=id_list_rep[i]
-                fault_info[i]['SA_bit']=bit_list_rep[i]
-                fault_info[i]['param']=param_list_rep[i]
+                fault_info=fault_info[uni_idx]
+                for i in range(len(uni_idx)):
+                    fault_info[i]['id']=id_list_rep[i]
+                    fault_info[i]['SA_bit']=bit_list_rep[i]
+                    fault_info[i]['param']=param_list_rep[i]
 
         orig_coor_fd=list(zip(*orig_coors.T))
         new_fault_dict=dict(zip(orig_coor_fd,fault_info))
@@ -1060,7 +1071,7 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, fast_
             if isinstance(faultvalue[0]['id'],np.ndarray):
                 state='fastgen'
                 idlist=np.array([info['id'] for info in faultvalue])
-                maxx=np.max(idlist)
+                maxx=np.max(np.concatenate(idlist))
             elif isinstance(faultvalue[0]['id'],int):
                 state='normal'
                 idlist=[info['id'] for info in faultvalue]

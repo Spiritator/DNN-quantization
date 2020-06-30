@@ -231,6 +231,7 @@ class PEarray:
         self.used_axes=list()
         self.tmp_clk=None
         self.fast_gen=False
+        self.mac_config=None
         
     def setup_dataflow(self, 
                        o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_pack_size=1, o_stall_latency=0, o_dummy_pack_insert=None, o_dummy_pack_n=0,
@@ -2281,6 +2282,42 @@ class PEarray:
 
         return new_fault_dict
     
+    def propagate_interconnect_fd(self, fault_loc, fault_param, mac_config):
+        """ Data contamination by propagate the faulty data through the interconnection between PEs
+        
+        # Arguments
+            fault_loc: Ndarray or Tuple. PE dataflow model coordinate represent as the fault location.
+            fault_param: String or List of Strings. The type of parameter has fault. 
+                One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+                If fault_param is string, all fault location has the same fault parameter type.
+                Else if fault_param is list, the length must be the same as fault_loc for match each location respectively.
+            mac_config: Class. The class of MAC unit configurations.
+        
+        # Returns
+            Converted coordinates. Multiple coordinate return in 2D ndarray.
+        """
+        if isinstance(fault_loc,tuple) or (isinstance(fault_loc,np.ndarray) and len(fault_loc.shape)==1):
+            fault_loc=np.expand_dims(fault_loc,0)
+        elif isinstance(fault_loc,np.ndarray):
+            pass
+        else:
+            raise TypeError('index for transformation must be either tuple or 2D numpy array.')
+            
+        loccomb=list()
+        if isinstance(fault_param,str):
+            for loc in fault_loc:
+                loccomb.append(mac_config.propagated_idx_list(fault_param, loc, (self.n_y,self.n_x)))
+        elif isinstance(fault_param,list):
+            for i,loc in enumerate(fault_loc):
+                loccomb.append(mac_config.propagated_idx_list(fault_param[i], loc, (self.n_y,self.n_x)))
+        
+        fault_loc=np.concatenate(loccomb)
+        
+        if  len(fault_loc.shape)==1:
+            fault_loc=np.expand_dims(fault_loc,0)
+            
+        return fault_loc
+    
     def gen_PEarray_transient_fault_dict(self, n_bit, fault_num, fault_type='flip', param_list=None):
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single cycle transient fault occurs
             multiple times on I/O of PE in a tile processing time.
@@ -2320,7 +2357,7 @@ class PEarray:
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
     
-    def gen_PEarray_SA_fault_dict(self, n_bit, fault_type='flip', param_list=None):
+    def gen_PEarray_SA_fault_dict(self, n_bit, fault_type='flip', param_list=None, mac_config=None):
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
         
         # Arguments
@@ -2340,23 +2377,31 @@ class PEarray:
             param_list=['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']
         self.fast_gen=True
             
-        fault_loc=[[np.random.randint(self.n_y),np.random.randint(self.n_x)]]
+        fault_loc=np.array([[np.random.randint(self.n_y),np.random.randint(self.n_x)]])
         fault_bit=np.random.randint(n_bit)
         fault_param=param_list[np.random.randint(len(param_list))]
         fault_info={'SA_type':fault_type,'SA_bit':fault_bit,'param':fault_param}
         
+        if mac_config is not None:
+            self.mac_config=mac_config
+            fault_loc=self.propagate_interconnect_fd(fault_loc, fault_param, mac_config)
+            n_proped=len(fault_loc)
+        else:
+            n_proped=1
+        
         fault_coors=np.tile(fault_loc,[self.n_clk,1])
-        fault_coors=np.concatenate([fault_coors,np.reshape(np.arange(self.n_clk),[-1,1])],1)
+        fault_clks=np.reshape(np.repeat(np.arange(self.n_clk),n_proped),[-1,1])
+        fault_coors=np.concatenate([fault_coors,fault_clks],1)
         
         fault_coors=list(zip(*fault_coors.T))
-        self.fault_dict=dict(zip(fault_coors,[fault_info.copy() for _ in range(self.n_clk)]))        
+        self.fault_dict=dict(zip(fault_coors,[fault_info.copy() for _ in range(self.n_clk*n_proped)]))        
         
         self.fault_num=len(self.fault_dict)
 
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
         
-    def gen_PEarray_permanent_fault_dict(self, fault_loc, fault_info):
+    def gen_PEarray_permanent_fault_dict(self, fault_loc, fault_info, mac_config=None):
         """ Generate fault dictionary on PEarray of permanent fault. Given the fault location and fault infomation. 
             Copy the fault to all clock cycles for this PE mapping configuration. 
         
@@ -2509,7 +2554,7 @@ class PEarray:
                     else:
                         bit_list_rep[repid]+=fault_value[i]['SA_bit']
                         
-                    if isinstance(fault_value[i]['param'],int):
+                    if isinstance(fault_value[i]['param'],str):
                         param_list_rep[repid].append(fault_value[i]['param'])
                     else:
                         param_list_rep[repid]+=fault_value[i]['param']
@@ -2521,7 +2566,7 @@ class PEarray:
                     fault_value[i]['param']=param_list_rep[i]
             
         return coors, fault_value
-    
+        
     def clear_fd(self):
         """ Clear fault dictionary of PE dataflow model """
         self.fault_num=None
@@ -2718,15 +2763,15 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
         PEarray.ofmap_tile.shrink_reshape_data()
         PEarray.ofmap_tile.shrink_reshape_data(psum=True)
     elif PEarray.ofmap_tile.expand_method=='extract_patches':
-        PEarray.ofmap_tile.shrink_return_patches()
-        PEarray.ofmap_tile.shrink_return_patches(psum=True)
+        PEarray.ofmap_tile.shrink_return_patches(fast_gen=PEarray.fast_gen)
+        PEarray.ofmap_tile.shrink_return_patches(psum=True, fast_gen=PEarray.fast_gen)
     else:
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
         
     if PEarray.wght_tile.expand_method=='reshape':
         PEarray.wght_tile.shrink_reshape_data()
     elif PEarray.wght_tile.expand_method=='extract_patches':
-        PEarray.wght_tile.shrink_return_patches()
+        PEarray.wght_tile.shrink_return_patches(fast_gen=PEarray.fast_gen)
     else:
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
         
@@ -2734,7 +2779,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
         PEarray.wght_tile.shrink_slice_bias()
     
     if PEarray.ifmap_tile.expand_method=='extract_patches':
-        PEarray.ifmap_tile.shrink_return_patches()
+        PEarray.ifmap_tile.shrink_return_patches(fast_gen=PEarray.fast_gen)
     elif PEarray.ifmap_tile.expand_method=='reshape':
         PEarray.ifmap_tile.shrink_reshape_data()
     else:

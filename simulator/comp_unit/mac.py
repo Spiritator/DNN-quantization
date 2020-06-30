@@ -7,6 +7,7 @@ Created on Mon Jun 29 10:55:00 2020
 The MAC unit description for fault transfer to TF computation
 """
 
+import numpy as np
 import json
 from ..layers.quantized_ops import quantizer
 
@@ -14,7 +15,7 @@ class mac_unit:
     """
     The mac unit information holder class. For describe PE I/O interconnection and math of faulty behavior.
     """
-    def __init__(self, quantizers, quant_mode, ifmap_io=None, wght_io=None, psum_io=None):
+    def __init__(self, quantizers, quant_mode=None, ifmap_io=None, wght_io=None, psum_io=None):
         """
         # Arguments
             quantizers: Class or String. The quantize library of simulator. Or the file path to MAC unit setup (.json) file.
@@ -50,9 +51,9 @@ class mac_unit:
             self.wght_io=wght_io
             self.psum_io=psum_io
         else:
-            self.setup(quantizers)
+            self._setup(quantizers)
         
-    def setup(self, setup_file):
+    def _setup(self, setup_file):
         """
         file read in setup for MAC unit
         """
@@ -70,9 +71,60 @@ class mac_unit:
         elif isinstance(self.quantizer,list):
             self.quantizer=[quantizer(**qinfo) for qinfo in self.quantizer]
             
-    def fault_injection(self, ):
+    def get_io(self, param):
+        """ get the I/O description by parameter
+        
+        # Arguments
+            param: String. The type of parameter has fault. 
+                One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']. 
+        
+        # Returns
+            description of I/O (Dictionary)
         """
-        The fault injection mathematical model for used in TF GPU parallel computing
+        if param in ['ifmap_in', 'ifmap_out']:
+            return self.ifmap_io
+        elif param in ['wght_in', 'wght_out']:
+            return self.wght_io
+        elif param in ['psum_in', 'psum_out']:
+            return self.psum_io
+        
+    def propagated_idx_list(self, param, fault_loc, array_shape):
+        """ get the contaminated PE index in array by the fault location and parameter.
+        
+        # Arguments
+            param: String. The type of parameter has fault. 
+                One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']. 
+            fault_loc: Ndarray or List. PE dataflow model coordinate represent as the fault location.
+            array_shape: Tuple or List. The shape of PE array.
+        
+        # Returns
+            Converted coordinates. Multiple coordinate return in 2D ndarray.
+        """
+        if param in ['psum_in', 'psum_out']:
+            return fault_loc
+        
+        ioconfig=self.get_io(param)
+        if ioconfig['type']=='io_pair':
+            if ioconfig['dimension']=='PE_y':
+                dim=0                 
+            elif ioconfig['dimension']=='PE_x':
+                dim=1
+                
+            if ioconfig['direction']=='forward':
+                idxlist=np.arange(fault_loc[dim],array_shape[dim])
+            elif ioconfig['direction']=='backward':
+                idxlist=np.arange(0,fault_loc[dim]+1)
+                
+            fault_loc=np.tile(np.expand_dims(fault_loc,0),[len(idxlist),1])
+            fault_loc[:,dim]=idxlist
+            
+            return fault_loc
+                    
+        else:
+            return fault_loc
+
+    def fault_injection(self, ):
+        """ The fault injection mathematical model for used in TF GPU parallel computing
         
         # Arguments
         

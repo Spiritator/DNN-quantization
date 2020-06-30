@@ -14,6 +14,7 @@ from simulator.layers.quantized_layers import QuantizedConv2D, quantizer
 
 from simulator.comp_unit.PEarray import PEarray, PE_mapping_forward, PE_mapping_backward
 from simulator.comp_unit.tile import tile_PE
+from simulator.comp_unit.mac import mac_unit
 
 # Test example using TPU-like vecter mac
 
@@ -42,9 +43,14 @@ MXU_config='../pe_mapping_config/MXU_config.json'
 
 PE_mapping_forward(ifmap_tile,wght_tile,ofmap_tile,MXU,ifmap_config,wght_config,ofmap_config,MXU_config,pre_plan=True)
 
+#%% setup MAC unit
+
+PE=mac_unit('../pe_mapping_config/mac_unit_config.json')
+
 #%% generate PE array fault dictionary
 
-MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
+#MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
+MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=PE)
 PE_fault_dict=MXU.fault_dict
 
 #%% PE mapping backward

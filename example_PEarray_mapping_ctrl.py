@@ -50,7 +50,7 @@ PE=mac_unit('../pe_mapping_config/mac_unit_config.json')
 #%% generate PE array fault dictionary
 
 #MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
-MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', param_list=['ifmap_out'], mac_config=PE)
+MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=PE)
 PE_fault_dict=MXU.fault_dict
 
 #%% PE mapping backward

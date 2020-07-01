@@ -156,7 +156,7 @@ def inference_scheme(model_func,
                     test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
         
         t = time.time()-t
-        print('evaluate done')
+        #print('evaluate done')
         print('\nruntime: %f s'%t)        
         
         if FT_evaluate:

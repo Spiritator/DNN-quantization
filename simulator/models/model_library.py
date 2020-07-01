@@ -14,6 +14,7 @@ from keras.regularizers import l2
 from keras import metrics
 from keras import backend as K
 import numpy as np
+from tqdm import tqdm
 
 from ..layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
 from ..layers.quantized_ops import quantizer,build_layer_quantizer
@@ -22,25 +23,30 @@ from ..layers.quantized_ops import quantizer,build_layer_quantizer
 def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False,):
     
     print('\nBuilding model : Quantized Lenet 5')
+    pbar=tqdm(total=11)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(8)]
     else:
-        print('Inject input fault')
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
     if ofmap_fault_dict_list is None:
         ofmap_fault_dict_list=[None for i in range(8)]
     else:
-        print('Inject output fault')
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for i in range(8)]
     else:
-        print('Inject weight fault')
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
         
-    print('Building Layer 0')
+    pbar.set_postfix_str('Building Layer 0')
     input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
-    print('Building Layer 1')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 1')
     x = QuantizedConv2D(filters=16,
                         quantizers=layer_quantizer,
                         kernel_size=(5,5),
@@ -51,9 +57,11 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
                         quant_mode=quant_mode)(input_shape)
-    print('Building Layer 2')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 2')
     x = MaxPooling2D(pool_size=(2,2))(x)
-    print('Building Layer 3')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 3')
     x = QuantizedConv2D(filters=36,
                         quantizers=layer_quantizer,
                         kernel_size=(5,5),
@@ -64,14 +72,17 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
                         weight_sa_fault_injection=weight_fault_dict_list[3],
                         quant_mode=quant_mode)(x)
-    print('Building Layer 4')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 4')
     x = MaxPooling2D(pool_size=(2,2))(x)
-    print('Building Layer 5')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 5')
     #x = tf.reshape(x, (batch_size,-1))
     #x = Reshape((-1,))(x)
     #x = Flatten()(x)
     x = QuantizedFlatten()(x)
-    print('Building Layer 6')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 6')
     x = QuantizedDense(128,
                        quantizers=layer_quantizer,
                        activation='relu',
@@ -79,7 +90,8 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                        weight_sa_fault_injection=weight_fault_dict_list[6],
                        quant_mode=quant_mode)(x)
-    print('Building Layer 7')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 7')
     x = QuantizedDense(num_classes,
                        quantizers=layer_quantizer,
                        activation='softmax',
@@ -88,6 +100,9 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        weight_sa_fault_injection=weight_fault_dict_list[7],
                        quant_mode=quant_mode,
                        last_layer=True)(x)
+    pbar.update()
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
 
     model=Model(inputs=input_shape, outputs=x, name='quantized_lenet5')
     
@@ -102,25 +117,30 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
 def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False):
     
     print('\nBuilding model : Quantized 4C2F CNN')
+    pbar=tqdm(total=17)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(14)]
     else:
-        print('Inject input fault')
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
     if ofmap_fault_dict_list is None:
         ofmap_fault_dict_list=[None for i in range(14)]
     else:
-        print('Inject output fault')
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for i in range(14)]
     else:
-        print('Inject weight fault')
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
     
-    print('Building Layer 0')
+    pbar.set_postfix_str('Building Layer 0')
     input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
-    print('Building Layer 1')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 1')
     x = QuantizedConv2D(filters=32,
                         quantizers=layer_quantizer,
                         kernel_size=(3, 3),
@@ -131,7 +151,8 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
                         quant_mode=quant_mode)(input_shape)
-    print('Building Layer 2')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 2')
     x = QuantizedConv2D(filters=32,
                         quantizers=layer_quantizer,
                         kernel_size=(3, 3),
@@ -141,12 +162,15 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
                         weight_sa_fault_injection=weight_fault_dict_list[2],
                         quant_mode=quant_mode)(x)
-    print('Building Layer 3')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 3')
     x = MaxPooling2D(pool_size=(2, 2))(x)
-    print('Building Layer 4')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 4')
     x = Dropout(0.25)(x)
+    pbar.update()
     
-    print('Building Layer 5')
+    pbar.set_postfix_str('Building Layer 5')
     x = QuantizedConv2D(filters=64,
                         quantizers=layer_quantizer,
                         kernel_size=(3, 3),
@@ -157,7 +181,8 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
                         weight_sa_fault_injection=weight_fault_dict_list[5],
                         quant_mode=quant_mode)(x)
-    print('Building Layer 6')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 6')
     x = QuantizedConv2D(filters=64,
                         quantizers=layer_quantizer,
                         kernel_size=(3, 3),
@@ -167,15 +192,19 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                         weight_sa_fault_injection=weight_fault_dict_list[6],
                         quant_mode=quant_mode)(x)
-    print('Building Layer 7')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 7')
     x = MaxPooling2D(pool_size=(2, 2))(x)
-    print('Building Layer 8')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 8')
     x = Dropout(0.25)(x)
+    pbar.update()
     
-    print('Building Layer 9')
+    pbar.set_postfix_str('Building Layer 9')
     #x = Flatten()(x)
     x = QuantizedFlatten()(x)
-    print('Building Layer 10')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 10')
     x = QuantizedDense(512,
                        quantizers=layer_quantizer,
                        activation='relu',
@@ -183,11 +212,14 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[10],
                        weight_sa_fault_injection=weight_fault_dict_list[10],
                        quant_mode=quant_mode)(x)
-    print('Building Layer 11')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 11')
     x = Activation('relu')(x)
-    print('Building Layer 12')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 12')
     x = Dropout(0.5)(x)
-    print('Building Layer 13')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 13')
     x = QuantizedDense(num_classes,
                        quantizers=layer_quantizer,
                        activation='softmax',
@@ -196,6 +228,9 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                        weight_sa_fault_injection=weight_fault_dict_list[13],
                        quant_mode=quant_mode,
                        last_layer=True)(x)
+    pbar.update()
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
     
     model=Model(inputs=input_shape, outputs=x, name='quantized_4C2F')
     
@@ -210,6 +245,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
 def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False):
     
     print('\nBuilding model : Quantized 4C2FBN CNN')
+    pbar=tqdm(total=26)
     
     if BN_nbits is None:
         BN_nbits=nbits
@@ -225,21 +261,25 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(23)]
     else:
-        print('Inject input fault')
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
     if ofmap_fault_dict_list is None:
         ofmap_fault_dict_list=[None for i in range(23)]
     else:
-        print('Inject output fault')
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None,None,None] for i in range(23)]
     else:
-        print('Inject weight fault')
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
         
     channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
     
-    print('Building Layer 0')
+    pbar.set_postfix_str('Building Layer 0')
     input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
-    print('Building Layer 1')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 1')
     x = QuantizedConv2D(filters=32,
                         quantizers=layer_quantizer,
                         kernel_size=(3, 3),
@@ -249,17 +289,20 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
                         quant_mode=quant_mode)(input_shape)
-    print('Building Layer 2')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 2')
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
                                     ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
                                     ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
                                     weight_sa_fault_injection=weight_fault_dict_list[2],
                                     quant_mode=quant_mode)(x)
-    print('Building Layer 3')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 3')
     x = Activation('relu')(x)
+    pbar.update()
 
-    print('Building Layer 4')
+    pbar.set_postfix_str('Building Layer 4')
     x = QuantizedConv2D(filters=32,
                         quantizers=layer_quantizer,
                         kernel_size=(3, 3),
@@ -268,23 +311,28 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
                         weight_sa_fault_injection=weight_fault_dict_list[4],
                         quant_mode=quant_mode)(x)
-    print('Building Layer 5')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 5')
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
                                     ifmap_sa_fault_injection=ifmap_fault_dict_list[5],
                                     ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
                                     weight_sa_fault_injection=weight_fault_dict_list[5],
                                     quant_mode=quant_mode)(x)
-    print('Building Layer 6')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 6')
     x = Activation('relu')(x)
+    pbar.update()
 
 
-    print('Building Layer 7')
+    pbar.set_postfix_str('Building Layer 7')
     x = MaxPooling2D(pool_size=(2, 2))(x)
-    print('Building Layer 8')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 8')
     x = Dropout(0.25)(x)
+    pbar.update()
     
-    print('Building Layer 9')
+    pbar.set_postfix_str('Building Layer 9')
     x = QuantizedConv2D(filters=64,
                         quantizers=layer_quantizer,
                         kernel_size=(3, 3),
@@ -294,18 +342,21 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[9],
                         weight_sa_fault_injection=weight_fault_dict_list[9],
                         quant_mode=quant_mode)(x)
-    print('Building Layer 10')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 10')
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
                                     ifmap_sa_fault_injection=ifmap_fault_dict_list[10],
                                     ofmap_sa_fault_injection=ofmap_fault_dict_list[10],
                                     weight_sa_fault_injection=weight_fault_dict_list[10],
                                     quant_mode=quant_mode)(x)
-    print('Building Layer 11')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 11')
     x = Activation('relu')(x)
+    pbar.update()
 
 
-    print('Building Layer 12')
+    pbar.set_postfix_str('Building Layer 12')
     x = QuantizedConv2D(filters=64,
                         quantizers=layer_quantizer,
                         kernel_size=(3, 3),
@@ -314,45 +365,55 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[12],
                         weight_sa_fault_injection=weight_fault_dict_list[12],
                         quant_mode=quant_mode)(x)
-    print('Building Layer 13')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 13')
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
                                     ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
                                     ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
                                     weight_sa_fault_injection=weight_fault_dict_list[13],
                                     quant_mode=quant_mode)(x)
-    print('Building Layer 14')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 14')
     x = Activation('relu')(x)
+    pbar.update()
 
 
-    print('Building Layer 15')
+    pbar.set_postfix_str('Building Layer 15')
     x = MaxPooling2D(pool_size=(2, 2))(x)
-    print('Building Layer 16')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 16')
     x = Dropout(0.25)(x)
+    pbar.update()
     
-    print('Building Layer 17')
+    pbar.set_postfix_str('Building Layer 17')
     #x = Flatten()(x)
     x = QuantizedFlatten()(x)
-    print('Building Layer 18')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 18')
     x = QuantizedDense(512,
                        quantizers=layer_quantizer,
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[18],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[18],
                        weight_sa_fault_injection=weight_fault_dict_list[18],
                        quant_mode=quant_mode)(x)
-    print('Building Layer 19')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 19')
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
                                     ifmap_sa_fault_injection=ifmap_fault_dict_list[19],
                                     ofmap_sa_fault_injection=ofmap_fault_dict_list[19],
                                     weight_sa_fault_injection=weight_fault_dict_list[19],
                                     quant_mode=quant_mode)(x)
+    pbar.update()
 
-    print('Building Layer 20')
+    pbar.set_postfix_str('Building Layer 20')
     x = Activation('relu')(x)
-    print('Building Layer 21')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 21')
     x = Dropout(0.5)(x)
-    print('Building Layer 22')
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 22')
     x = QuantizedDense(num_classes,
                        quantizers=layer_quantizer,
                        activation='softmax',
@@ -361,6 +422,9 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                        weight_sa_fault_injection=weight_fault_dict_list[22],
                        quant_mode=quant_mode,
                        last_layer=True)(x)
+    pbar.update()
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
     
     model=Model(inputs=input_shape, outputs=x, name='quantized_4C2FBN')
     

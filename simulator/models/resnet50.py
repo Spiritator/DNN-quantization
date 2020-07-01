@@ -19,6 +19,7 @@ from keras_applications import imagenet_utils
 from keras_applications.imagenet_utils import decode_predictions
 from keras_applications.imagenet_utils import _obtain_input_shape
 
+from tqdm import tqdm
 from ..layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedBatchNormalization, QuantizedFlatten
 from ..layers.quantized_ops import quantizer,build_layer_quantizer
 
@@ -86,7 +87,6 @@ def identity_block(input_tensor,
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(10)]
     
-    print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
                         kernel_size=(1, 1),
@@ -189,7 +189,6 @@ def conv_block(input_tensor,
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(12)]
     
-    print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
                         kernel_size=(1, 1), 
@@ -327,6 +326,7 @@ def QuantizedResNet50(include_top=True,
             or invalid input shape.
     """
     print('\nBuilding model : Quantized ResNet50')
+    pbar=tqdm(total=21)
     
     if BN_nbits is None:
         BN_nbits=nbits
@@ -341,15 +341,18 @@ def QuantizedResNet50(include_top=True,
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for _ in range(177)]
     else:
-        print('Inject input fault')
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
     if ofmap_fault_dict_list is None:
         ofmap_fault_dict_list=[None for _ in range(177)]
     else:
-        print('Inject output fault')
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(177)]
     else:
-        print('Inject weight fault')
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
 
     
     if not (weights in {'imagenet', None} or os.path.exists(weights)):
@@ -382,7 +385,7 @@ def QuantizedResNet50(include_top=True,
     else:
         bn_axis = 1
         
-    print('building stage 1 ...')
+    pbar.set_postfix_str('building stage 1')
 
     x = layers.ZeroPadding2D(padding=(3, 3), name='conv1_pad')(img_input)
     x = QuantizedConv2D(64, 
@@ -404,9 +407,9 @@ def QuantizedResNet50(include_top=True,
                                     quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
+    pbar.update()
 
-    print('building stage 2 ...')
-
+    pbar.set_postfix_str('building stage 2 block a')
     x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), 
                    layer_quantizer=layer_quantizer, 
                    layer_BN_quantizer=layer_BN_quantizer, 
@@ -414,6 +417,8 @@ def QuantizedResNet50(include_top=True,
                    ofmap_fault_dict_list=ofmap_fault_dict_list[6:18],
                    weight_fault_dict_list=weight_fault_dict_list[6:18],
                    quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 2 block b')
     x = identity_block(x, 3, [64, 64, 256], stage=2, block='b', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -421,6 +426,8 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[18:28],
                        weight_fault_dict_list=weight_fault_dict_list[18:28],
                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 2 block c')
     x = identity_block(x, 3, [64, 64, 256], stage=2, block='c', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -428,9 +435,9 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[28:38],
                        weight_fault_dict_list=weight_fault_dict_list[28:38],
                        quant_mode=quant_mode)
+    pbar.update()
 
-    print('building stage 3 ...')
-
+    pbar.set_postfix_str('building stage 3 block a')
     x = conv_block(x, 3, [128, 128, 512], stage=3, block='a', 
                    layer_quantizer=layer_quantizer, 
                    layer_BN_quantizer=layer_BN_quantizer, 
@@ -438,12 +445,17 @@ def QuantizedResNet50(include_top=True,
                    ofmap_fault_dict_list=ofmap_fault_dict_list[38:50],
                    weight_fault_dict_list=weight_fault_dict_list[38:50],
                    quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block b')
     x = identity_block(x, 3, [128, 128, 512], stage=3, block='b', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
                        ifmap_fault_dict_list=ifmap_fault_dict_list[50:60],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[50:60],
-                       weight_fault_dict_list=weight_fault_dict_list[50:60],quant_mode=quant_mode)
+                       weight_fault_dict_list=weight_fault_dict_list[50:60],
+                       quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block c')
     x = identity_block(x, 3, [128, 128, 512], stage=3, block='c', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -451,6 +463,8 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[60:70],
                        weight_fault_dict_list=weight_fault_dict_list[60:70],
                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block d')
     x = identity_block(x, 3, [128, 128, 512], stage=3, block='d', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -458,9 +472,9 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[70:80],
                        weight_fault_dict_list=weight_fault_dict_list[70:80],
                        quant_mode=quant_mode)
+    pbar.update()
 
-    print('building stage 4 ...')
-    
+    pbar.set_postfix_str('building stage 4 block a')    
     x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a', 
                    layer_quantizer=layer_quantizer, 
                    layer_BN_quantizer=layer_BN_quantizer, 
@@ -468,6 +482,8 @@ def QuantizedResNet50(include_top=True,
                    ofmap_fault_dict_list=ofmap_fault_dict_list[80:92],
                    weight_fault_dict_list=weight_fault_dict_list[80:92],
                    quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 4 block b')
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -475,6 +491,8 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[92:102],
                        weight_fault_dict_list=weight_fault_dict_list[92:102],
                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 4 block c')
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -482,6 +500,8 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[102:112],
                        weight_fault_dict_list=weight_fault_dict_list[102:112],
                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 4 block d')
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -489,6 +509,8 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[112:122],
                        weight_fault_dict_list=weight_fault_dict_list[112:122],
                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 4 block e')
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -496,6 +518,8 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[122:132],
                        weight_fault_dict_list=weight_fault_dict_list[122:132],
                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 4 block f')
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -503,9 +527,9 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[132:142],
                        weight_fault_dict_list=weight_fault_dict_list[132:142],
                        quant_mode=quant_mode)
+    pbar.update()
 
-    print('building stage 5 ...')
-
+    pbar.set_postfix_str('building stage 5 block a')
     x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a', 
                    layer_quantizer=layer_quantizer, 
                    layer_BN_quantizer=layer_BN_quantizer, 
@@ -513,6 +537,8 @@ def QuantizedResNet50(include_top=True,
                    ofmap_fault_dict_list=ofmap_fault_dict_list[142:154],
                    weight_fault_dict_list=weight_fault_dict_list[142:154],
                    quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 5 block b')
     x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -520,6 +546,8 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[154:164],
                        weight_fault_dict_list=weight_fault_dict_list[154:164],
                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 5 block c')
     x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c', 
                        layer_quantizer=layer_quantizer, 
                        layer_BN_quantizer=layer_BN_quantizer, 
@@ -527,7 +555,9 @@ def QuantizedResNet50(include_top=True,
                        ofmap_fault_dict_list=ofmap_fault_dict_list[164:174],
                        weight_fault_dict_list=weight_fault_dict_list[164:174],
                        quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building output block')
     if include_top:
         x = layers.AveragePooling2D((7, 7), name='avg_pool')(x)
         x = QuantizedFlatten()(x)
@@ -546,6 +576,7 @@ def QuantizedResNet50(include_top=True,
         else:
             warnings.warn('The output shape of `ResNet50(include_top=False)` '
                           'has been changed since Keras 2.2.0.')
+    pbar.update()
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
@@ -555,6 +586,9 @@ def QuantizedResNet50(include_top=True,
         inputs = img_input
     # Create model.
     model = models.Model(inputs, x, name='quantized_resnet50')
+    
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
 
     # load weights
     if weights == 'imagenet':
@@ -617,7 +651,6 @@ def identity_block_fused_BN(input_tensor,
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(7)]
     
-    print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
                         kernel_size=(1, 1),
@@ -693,7 +726,6 @@ def conv_block_fused_BN(input_tensor,
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(8)]
     
-    print('building stage %d block %s ...'%(stage,block))
 
     x = QuantizedConv2D(filters1, 
                         kernel_size=(1, 1), 
@@ -801,21 +833,25 @@ def QuantizedResNet50FusedBN(include_top=True,
             or invalid input shape.
     """
     print('\nBuilding model : Quantized ResNet50')
+    pbar=tqdm(total=21)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for _ in range(124)]
     else:
-        print('Inject input fault')
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
     if ofmap_fault_dict_list is None:
         ofmap_fault_dict_list=[None for _ in range(124)]
     else:
-        print('Inject output fault')
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(124)]
     else:
-        print('Inject weight fault')
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
 
     
     if not os.path.exists(weights):
@@ -841,7 +877,7 @@ def QuantizedResNet50FusedBN(include_top=True,
         else:
             img_input = input_tensor
         
-    print('building stage 1 ...')
+    pbar.set_postfix_str('building stage 1')
 
     x = layers.ZeroPadding2D(padding=(3, 3), name='conv1_pad')(img_input)
     x = QuantizedConv2D(64, 
@@ -856,114 +892,141 @@ def QuantizedResNet50FusedBN(include_top=True,
                         quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
+    pbar.update()
 
-    print('building stage 2 ...')
-
+    pbar.set_postfix_str('building stage 2 block a')
     x = conv_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), 
                             layer_quantizer=layer_quantizer, 
                             ifmap_fault_dict_list=ifmap_fault_dict_list[5:13],
                             ofmap_fault_dict_list=ofmap_fault_dict_list[5:13],
                             weight_fault_dict_list=weight_fault_dict_list[5:13],
                             quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 2 block b')
     x = identity_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='b', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[13:20],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[13:20],
                                 weight_fault_dict_list=weight_fault_dict_list[13:20],
                                 quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 2 block c')
     x = identity_block_fused_BN(x, 3, [64, 64, 256], stage=2, block='c', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[20:27],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[20:27],
                                 weight_fault_dict_list=weight_fault_dict_list[20:27],
                                 quant_mode=quant_mode)
+    pbar.update()
 
-    print('building stage 3 ...')
-
+    pbar.set_postfix_str('building stage 3 block a')
     x = conv_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='a', 
                             layer_quantizer=layer_quantizer, 
                             ifmap_fault_dict_list=ifmap_fault_dict_list[27:35],
                             ofmap_fault_dict_list=ofmap_fault_dict_list[27:35],
                             weight_fault_dict_list=weight_fault_dict_list[27:35],
                             quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block b')
     x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='b', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[35:42],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[35:42],
                                 weight_fault_dict_list=weight_fault_dict_list[35:42],
                                 quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block c')
     x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='c', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[42:49],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[42:49],
                                 weight_fault_dict_list=weight_fault_dict_list[42:49],
                                 quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block d')
     x = identity_block_fused_BN(x, 3, [128, 128, 512], stage=3, block='d', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[49:56],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[49:56],
                                 weight_fault_dict_list=weight_fault_dict_list[49:56],
                                 quant_mode=quant_mode)
+    pbar.update()
 
-    print('building stage 4 ...')
-    
+    pbar.set_postfix_str('building stage 4 block a')    
     x = conv_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='a', 
                             ifmap_fault_dict_list=ifmap_fault_dict_list[56:64],
                             ofmap_fault_dict_list=ofmap_fault_dict_list[56:64],
                             weight_fault_dict_list=weight_fault_dict_list[56:64],
-                            layer_quantizer=layer_quantizer, quant_mode=quant_mode)
+                            layer_quantizer=layer_quantizer, 
+                            quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block b')
     x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='b', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[64:71],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[64:71],
                                 weight_fault_dict_list=weight_fault_dict_list[64:71],
                                 quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block c')
     x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='c', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[71:78],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[71:78],
                                 weight_fault_dict_list=weight_fault_dict_list[71:78],
                                 quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block d')
     x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='d', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[78:85],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[78:85],
                                 weight_fault_dict_list=weight_fault_dict_list[78:85],
                                 quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block e')
     x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='e', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[85:92],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[85:92],
                                 weight_fault_dict_list=weight_fault_dict_list[85:92],
                                 quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 3 block f')
     x = identity_block_fused_BN(x, 3, [256, 256, 1024], stage=4, block='f', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[92:99],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[92:99],
                                 weight_fault_dict_list=weight_fault_dict_list[92:99],
                                 quant_mode=quant_mode)
+    pbar.update()
 
-    print('building stage 5 ...')
-
+    pbar.set_postfix_str('building stage 5 block a')
     x = conv_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='a', 
                             ifmap_fault_dict_list=ifmap_fault_dict_list[99:107],
                             ofmap_fault_dict_list=ofmap_fault_dict_list[99:107],
                             weight_fault_dict_list=weight_fault_dict_list[99:107],
                             layer_quantizer=layer_quantizer, 
                             quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 5 block b')
     x = identity_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='b', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[107:114],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[107:114],
                                 weight_fault_dict_list=weight_fault_dict_list[107:114],
                                 quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building stage 5 block c')
     x = identity_block_fused_BN(x, 3, [512, 512, 2048], stage=5, block='c', 
                                 layer_quantizer=layer_quantizer, 
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[114:121],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[114:121],
                                 weight_fault_dict_list=weight_fault_dict_list[114:121],
                                 quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building output block')
     if include_top:
         x = layers.AveragePooling2D((7, 7), name='avg_pool')(x)
         x = QuantizedFlatten()(x)
@@ -982,6 +1045,7 @@ def QuantizedResNet50FusedBN(include_top=True,
         else:
             warnings.warn('The output shape of `ResNet50(include_top=False)` '
                           'has been changed since Keras 2.2.0.')
+    pbar.update()
 
 
     # Ensure that the model takes into account
@@ -992,6 +1056,9 @@ def QuantizedResNet50FusedBN(include_top=True,
         inputs = img_input
     # Create model.
     model = models.Model(inputs, x, name='quantized_resnet50_fusedBN')
+    
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
 
     # load weights
     if weights is not None:

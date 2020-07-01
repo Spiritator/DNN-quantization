@@ -76,7 +76,7 @@ import keras.layers as layers
 import keras.models as models
 import keras.utils as keras_utils
 
-
+from tqdm import tqdm
 from ..layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
 from ..layers.quantized_ops import quantizer,build_layer_quantizer
 
@@ -177,6 +177,7 @@ def QuantizedMobileNetV1(input_shape=None,
     """
 
     print('\nBuilding model : Quantized MobileNet V1')
+    pbar=tqdm(total=18)
 
     if BN_nbits is None:
         BN_nbits=nbits
@@ -191,15 +192,18 @@ def QuantizedMobileNetV1(input_shape=None,
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for _ in range(102)]
     else:
-        print('Inject input fault')
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
     if ofmap_fault_dict_list is None:
         ofmap_fault_dict_list=[None for _ in range(102)]
     else:
-        print('Inject output fault')
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(102)]
     else:
-        print('Inject weight fault')
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
 
 
 
@@ -289,6 +293,7 @@ def QuantizedMobileNetV1(input_shape=None,
         else:
             img_input = input_tensor
 
+    pbar.set_postfix_str('building standard conv block')
     x = _conv_block(img_input, 32, alpha, strides=(2, 2), 
                     layer_quantizer=layer_quantizer, 
                     layer_BN_quantizer=layer_BN_quantizer, 
@@ -296,6 +301,8 @@ def QuantizedMobileNetV1(input_shape=None,
                     ofmap_fault_dict_list=ofmap_fault_dict_list[1:5],
                     weight_fault_dict_list=weight_fault_dict_list[1:5],
                     quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 1')
     x = _depthwise_conv_block(x, 64, alpha, depth_multiplier, block_id=1, 
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -303,7 +310,9 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[5:12],
                               weight_fault_dict_list=weight_fault_dict_list[5:12],
                               quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building depthwise conv block 2')
     x = _depthwise_conv_block(x, 128, alpha, depth_multiplier,
                               strides=(2, 2), block_id=2,
                               layer_quantizer=layer_quantizer, 
@@ -312,6 +321,8 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[12:19],
                               weight_fault_dict_list=weight_fault_dict_list[12:19],
                               quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 3')
     x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, block_id=3,
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -319,7 +330,9 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[19:26],
                               weight_fault_dict_list=weight_fault_dict_list[19:26],
                               quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building depthwise conv block 4')
     x = _depthwise_conv_block(x, 256, alpha, depth_multiplier,
                               strides=(2, 2), block_id=4,
                               layer_quantizer=layer_quantizer, 
@@ -328,6 +341,8 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[26:33],
                               weight_fault_dict_list=weight_fault_dict_list[26:33],
                               quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 5')
     x = _depthwise_conv_block(x, 256, alpha, depth_multiplier, block_id=5,
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -335,7 +350,9 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[33:40],
                               weight_fault_dict_list=weight_fault_dict_list[33:40],
                               quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building depthwise conv block 6')
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier,
                               strides=(2, 2), block_id=6,
                               layer_quantizer=layer_quantizer, 
@@ -344,6 +361,8 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[40:47],
                               weight_fault_dict_list=weight_fault_dict_list[40:47],
                               quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 7')
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7, 
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -351,6 +370,8 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[47:54],
                               weight_fault_dict_list=weight_fault_dict_list[47:54],
                               quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 8')
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8, 
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -358,6 +379,8 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[54:61],
                               weight_fault_dict_list=weight_fault_dict_list[54:61],
                               quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 9')
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9, 
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -365,6 +388,8 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[61:68],
                               weight_fault_dict_list=weight_fault_dict_list[61:68],
                               quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 10')
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10, 
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -372,6 +397,8 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[68:75],
                               weight_fault_dict_list=weight_fault_dict_list[68:75],
                               quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 11')
     x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11, 
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -379,7 +406,9 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[75:82],
                               weight_fault_dict_list=weight_fault_dict_list[75:82],
                               quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building depthwise conv block 12')
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier,
                               strides=(2, 2), block_id=12,
                               layer_quantizer=layer_quantizer, 
@@ -388,6 +417,8 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[82:89],
                               weight_fault_dict_list=weight_fault_dict_list[82:89],
                               quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 13')
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13,
                               layer_quantizer=layer_quantizer, 
                               layer_BN_quantizer=layer_BN_quantizer, 
@@ -395,7 +426,9 @@ def QuantizedMobileNetV1(input_shape=None,
                               ofmap_fault_dict_list=ofmap_fault_dict_list[89:96],
                               weight_fault_dict_list=weight_fault_dict_list[89:96],
                               quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building output block')
     if include_top:
         if backend.image_data_format() == 'channels_first':
             shape = (int(1024 * alpha), 1, 1)
@@ -422,6 +455,8 @@ def QuantizedMobileNetV1(input_shape=None,
             x = layers.GlobalAveragePooling2D()(x)
         elif pooling == 'max':
             x = layers.GlobalMaxPooling2D()(x)
+    pbar.update()
+    
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
@@ -432,6 +467,9 @@ def QuantizedMobileNetV1(input_shape=None,
 
     # Create model.
     model = models.Model(inputs, x, name='quantized_mobilenet_%0.2f_%s' % (alpha, rows))
+    
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
 
     # load weights
     if weights == 'imagenet':
@@ -537,7 +575,6 @@ def _conv_block(inputs,
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(4)]
     
-    print('building standard conv block...')
     x = layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
     x = QuantizedConv2D(filters, 
                         kernel_size=kernel,
@@ -633,7 +670,6 @@ def _depthwise_conv_block(inputs,
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(7)]
 
-    print('building depthwise conv block %d ...'%block_id)
     x = layers.ZeroPadding2D((1, 1), name='conv_pad_%d' % block_id)(inputs)
     x = QuantizedDepthwiseConv2D(kernel_size=(3, 3),
                                  quantizers=layer_quantizer,
@@ -764,21 +800,25 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
             backend that does not support separable convolutions.
     """
     print('\nBuilding model : Quantized MobileNet V1 Fused BatchNornalization')
+    pbar=tqdm(total=18)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for _ in range(75)]
     else:
-        print('Inject input fault')
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
     if ofmap_fault_dict_list is None:
         ofmap_fault_dict_list=[None for _ in range(75)]
     else:
-        print('Inject output fault')
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(75)]
     else:
-        print('Inject weight fault')
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
         
 
     if not os.path.exists(weights):
@@ -864,19 +904,24 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
         else:
             img_input = input_tensor
 
+    pbar.set_postfix_str('building standard conv block')
     x = _conv_block_fused_BN(img_input, 32, alpha, strides=(2, 2), 
                              layer_quantizer=layer_quantizer, 
                              ifmap_fault_dict_list=ifmap_fault_dict_list[1:4],
                              ofmap_fault_dict_list=ofmap_fault_dict_list[1:4],
                              weight_fault_dict_list=weight_fault_dict_list[1:4],
                              quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 1')
     x = _depthwise_conv_block_fused_BN(x, 64, alpha, depth_multiplier, block_id=1, 
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[4:9],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[4:9],
                                        weight_fault_dict_list=weight_fault_dict_list[4:9],
                                        quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building depthwise conv block 2')
     x = _depthwise_conv_block_fused_BN(x, 128, alpha, depth_multiplier,
                                        strides=(2, 2), block_id=2,
                                        layer_quantizer=layer_quantizer, 
@@ -884,13 +929,17 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[9:14],
                                        weight_fault_dict_list=weight_fault_dict_list[9:14],
                                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 3')
     x = _depthwise_conv_block_fused_BN(x, 128, alpha, depth_multiplier, block_id=3,
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[14:19],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[14:19],
                                        weight_fault_dict_list=weight_fault_dict_list[14:19],
                                        quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building depthwise conv block 4')
     x = _depthwise_conv_block_fused_BN(x, 256, alpha, depth_multiplier,
                                        strides=(2, 2), block_id=4,
                                        layer_quantizer=layer_quantizer, 
@@ -898,13 +947,17 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[19:24],
                                        weight_fault_dict_list=weight_fault_dict_list[19:24],
                                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 5')
     x = _depthwise_conv_block_fused_BN(x, 256, alpha, depth_multiplier, block_id=5,
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[24:29],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[24:29],
                                        weight_fault_dict_list=weight_fault_dict_list[24:29],
                                        quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building depthwise conv block 6')
     x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier,
                                        strides=(2, 2), block_id=6,
                                        layer_quantizer=layer_quantizer, 
@@ -912,37 +965,49 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[29:34],
                                        weight_fault_dict_list=weight_fault_dict_list[29:34],
                                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 7')
     x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=7, 
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[34:39],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[34:39],
                                        weight_fault_dict_list=weight_fault_dict_list[34:39],
                                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 8')
     x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=8, 
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[39:44],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[39:44],
                                        weight_fault_dict_list=weight_fault_dict_list[39:44],
                                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 9')
     x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=9, 
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[44:49],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[44:49],
                                        weight_fault_dict_list=weight_fault_dict_list[44:49],
                                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 10')
     x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=10, 
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[49:54],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[49:54],
                                        weight_fault_dict_list=weight_fault_dict_list[49:54],
                                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 11')
     x = _depthwise_conv_block_fused_BN(x, 512, alpha, depth_multiplier, block_id=11, 
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[54:59],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[54:59],
                                        weight_fault_dict_list=weight_fault_dict_list[54:59],
                                        quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building depthwise conv block 12')
     x = _depthwise_conv_block_fused_BN(x, 1024, alpha, depth_multiplier,
                                        strides=(2, 2), block_id=12,
                                        layer_quantizer=layer_quantizer, 
@@ -950,13 +1015,17 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[59:64],
                                        weight_fault_dict_list=weight_fault_dict_list[59:64],
                                        quant_mode=quant_mode)
+    pbar.update()
+    pbar.set_postfix_str('building depthwise conv block 13')
     x = _depthwise_conv_block_fused_BN(x, 1024, alpha, depth_multiplier, block_id=13,
                                        layer_quantizer=layer_quantizer, 
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[64:69],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[64:69],
                                        weight_fault_dict_list=weight_fault_dict_list[64:69],
                                        quant_mode=quant_mode)
+    pbar.update()
 
+    pbar.set_postfix_str('building output block')
     if include_top:
         if backend.image_data_format() == 'channels_first':
             shape = (int(1024 * alpha), 1, 1)
@@ -983,6 +1052,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
             x = layers.GlobalAveragePooling2D()(x)
         elif pooling == 'max':
             x = layers.GlobalMaxPooling2D()(x)
+    pbar.update()
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
@@ -993,6 +1063,9 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
 
     # Create model.
     model = models.Model(inputs, x, name='quantized_mobilenet_fusedBN_%0.2f_%s' % (alpha, rows))
+    
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
 
     # load weights
     if weights is not None:
@@ -1071,7 +1144,6 @@ def _conv_block_fused_BN(inputs,
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(3)]
     
-    print('building standard conv block...')
     x = layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
     x = QuantizedConv2D(filters, 
                         kernel_size=kernel,
@@ -1158,7 +1230,6 @@ def _depthwise_conv_block_fused_BN(inputs,
     if weight_fault_dict_list is None:
         weight_fault_dict_list=[[None,None] for _ in range(5)]
 
-    print('building depthwise conv block %d ...'%block_id)
     x = layers.ZeroPadding2D((1, 1), name='conv_pad_%d' % block_id)(inputs)
     x = QuantizedDepthwiseConv2D(kernel_size=(3, 3),
                                  quantizers=layer_quantizer,

@@ -10,6 +10,8 @@ Processing element array setting for compuation unit fault mapping
 import numpy as np
 import copy
 import json
+import tqdm as tqdm
+
 from .tile import solve_correspond_io
 
 class axis_info:
@@ -2048,13 +2050,14 @@ class PEarray:
         else:
             return None
     
-    def decompose_slice_pack(self):
+    def decompose_slice_pack(self, print_detail=False):
         """ Decompose PE array dataflow model fault dictionary to duplicated but unpacked state. Need setup dataflow config in advance.
             Transform the fault dictionary by tear down slice pack to each slices for repective data.
             Remove stall and latency for actual PE dataflow for each slice pack. 
             Decompose ifmap, weight and ofmap(psum) at once to get partial sum index for tile fault dictionary which can be further analyzed.
         
         # Arguments
+            print_detail: Bool. Print the progress of decompose slice pack.
         
         # Returns
             Converted and decomposed mapping fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -2063,23 +2066,42 @@ class PEarray:
             raise AttributeError('The dataflow setup is not ready!')
 
         shape_PE_fd=[self.n_y,self.n_x,self.n_clk]
+        
+        if print_detail:
+            ntask=13
+            if self.use_bias:
+                ntask+=4
+            if self.use_psum:
+                ntask+=4
+            pbar=tqdm.tqdm(desc='    Sub-tasks', total=ntask)
+            
         # decompose clock cycle
         self.ofmap_map_fd=copy.deepcopy(self.fault_dict)
         self.ofmap_map_fd,_=self.deserialize_slices(self.ofmap_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
+        if print_detail:
+            pbar.update()
         
         self.wght_map_fd=copy.deepcopy(self.fault_dict)
         self.wght_map_fd,_=self.deserialize_slices(self.wght_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
+        if print_detail:
+            pbar.update()
         
         self.ifmap_map_fd=copy.deepcopy(self.fault_dict)
         self.ifmap_map_fd,_=self.deserialize_slices(self.ifmap_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
+        if print_detail:
+            pbar.update()
         
         if self.use_bias:
             self.bias_map_fd=copy.deepcopy(self.fault_dict)
             self.bias_map_fd,_=self.deserialize_slices(self.bias_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
+            if print_detail:
+                pbar.update()
         
         if self.use_psum:
             self.psum_map_fd=copy.deepcopy(self.fault_dict)
             self.psum_map_fd,_=self.deserialize_slices(self.psum_map_fd,shape_PE_fd,slice_n_clk=self.pack_clk)
+            if print_detail:
+                pbar.update()
             
         # remove dummy slice pack
         if self.ifmap_flow.dummy_pack_insert is not None:
@@ -2087,18 +2109,24 @@ class PEarray:
                                                                               self.ifmap_flow.dummy_pack_insert, 
                                                                               self.ifmap_flow.dummy_pack_n, 
                                                                               self.shape_ifmap_mapping)
+        if print_detail:
+            pbar.update()
             
         if self.wght_flow.dummy_pack_insert is not None:
             self.wght_map_fd,self.shape_wght_mapping=self.remove_dummy_pack(self.wght_map_fd, 
                                                                             self.wght_flow.dummy_pack_insert,
                                                                             self.wght_flow.dummy_pack_n,
                                                                             self.shape_wght_mapping)
+        if print_detail:
+            pbar.update()
             
         if self.ofmap_flow.dummy_pack_insert is not None:
             self.ofmap_map_fd,self.shape_ofmap_mapping=self.remove_dummy_pack(self.ofmap_map_fd, 
                                                                               self.ofmap_flow.dummy_pack_insert, 
                                                                               self.ofmap_flow.dummy_pack_n, 
                                                                               self.shape_ofmap_mapping)
+        if print_detail:
+            pbar.update()
 
         if self.use_bias:
             if self.bias_flow.dummy_pack_insert is not None:
@@ -2106,6 +2134,8 @@ class PEarray:
                                                                                 self.bias_flow.dummy_pack_insert, 
                                                                                 self.bias_flow.dummy_pack_n, 
                                                                                 self.shape_bias_mapping)
+            if print_detail:
+                pbar.update()
 
         if self.use_psum:
             if self.psum_flow.dummy_pack_insert is not None:
@@ -2113,64 +2143,92 @@ class PEarray:
                                                                                 self.psum_flow.dummy_pack_insert, 
                                                                                 self.psum_flow.dummy_pack_n, 
                                                                                 self.shape_psum_mapping)
+            if print_detail:
+                pbar.update()
         
         # remove stall & latency
         if self.ifmap_flow.stall_latency>0:
             self.ifmap_map_fd,self.shape_ifmap_mapping=self.remove_stalllatency(self.ifmap_map_fd, 
                                                                                 self.ifmap_flow.stall_latency, 
                                                                                 self.shape_ifmap_mapping)
+        if print_detail:
+            pbar.update()
             
         if self.wght_flow.stall_latency>0:
             self.wght_map_fd,self.shape_wght_mapping=self.remove_stalllatency(self.wght_map_fd, 
                                                                               self.wght_flow.stall_latency, 
                                                                               self.shape_wght_mapping)
+        if print_detail:
+            pbar.update()
             
         if self.ofmap_flow.stall_latency>0:
             self.ofmap_map_fd,self.shape_ofmap_mapping=self.remove_stalllatency(self.ofmap_map_fd, 
                                                                                 self.ofmap_flow.stall_latency, 
                                                                                 self.shape_ofmap_mapping)
+        if print_detail:
+            pbar.update()
         
         if self.use_bias:
             if self.bias_flow.stall_latency>0:
                 self.bias_map_fd,self.shape_bias_mapping=self.remove_stalllatency(self.bias_map_fd, 
                                                                                   self.bias_flow.stall_latency, 
                                                                                   self.shape_bias_mapping)
+            if print_detail:
+                pbar.update()
+            
         if self.use_psum:
             if self.psum_flow.stall_latency>0:
                 self.psum_map_fd,self.shape_psum_mapping=self.remove_stalllatency(self.psum_map_fd, 
                                                                                   self.psum_flow.stall_latency, 
                                                                                   self.shape_psum_mapping)
+            if print_detail:
+                pbar.update()
 
         # remove fault lies in non-comuputation time
         self.pop_outlier_coors_alldata()
+        if print_detail:
+            pbar.update()
         
         # split slice pack
         if self.ifmap_flow.pack_size>1:
             self.ifmap_map_fd,self.shape_ifmap_mapping=self.deserialize_slices(self.ifmap_map_fd, 
                                                                                mapping_shape=self.shape_ifmap_mapping,
                                                                                pack_size=self.ifmap_flow.pack_size)
+        if print_detail:
+            pbar.update()
 
         if self.wght_flow.pack_size>1:
             self.wght_map_fd,self.shape_wght_mapping=self.deserialize_slices(self.wght_map_fd, 
                                                                              mapping_shape=self.shape_wght_mapping,
                                                                              pack_size=self.wght_flow.pack_size)
+        if print_detail:
+            pbar.update()
 
         if self.ofmap_flow.pack_size>1:
             self.ofmap_map_fd,self.shape_ofmap_mapping=self.deserialize_slices(self.ofmap_map_fd, 
                                                                                mapping_shape=self.shape_ofmap_mapping,
                                                                                pack_size=self.ofmap_flow.pack_size) 
+        if print_detail:
+            pbar.update()
         
         if self.use_bias:
             if self.bias_flow.pack_size>1:
                 self.bias_map_fd,self.shape_bias_mapping=self.deserialize_slices(self.bias_map_fd, 
                                                                                  mapping_shape=self.shape_bias_mapping,
-                                                                                 pack_size=self.bias_flow.pack_size)   
+                                                                                 pack_size=self.bias_flow.pack_size) 
+            if print_detail:
+                pbar.update()
         
         if self.use_psum:
             if self.psum_flow.pack_size>1:
                 self.psum_map_fd,self.shape_psum_mapping=self.deserialize_slices(self.psum_map_fd, 
                                                                                  mapping_shape=self.shape_psum_mapping,
                                                                                  pack_size=self.psum_flow.pack_size)   
+            if print_detail:
+                pbar.update()
+                
+        if print_detail:
+            pbar.close()
                
         fd_return=(self.ifmap_map_fd, self.wght_map_fd, self.ofmap_map_fd)
         if self.use_bias:
@@ -2234,6 +2292,8 @@ class PEarray:
                 iout.append(i)
             elif info['param']=='wght_out':
                 wout.append(i)
+            #TODO
+            # new method distinguish psum_in is psum or bias
             elif info['param']=='psum_in':
                 psin.append(i)
                 
@@ -2257,6 +2317,8 @@ class PEarray:
             if wght_out_dir is not None:
                 index[wout,0:2]=np.add(index[wout,0:2],wght_out_dir)
             
+        #TODO
+        # new method distinguish psum_in is psum or bias
         if len(psin)>0:
             psum_out_dir=self.get_neighboring_axis(self.psum_flow)
             if psum_out_dir=='PE_y':
@@ -2268,14 +2330,16 @@ class PEarray:
                 index[psin,0:2]=np.subtract(index[psin,0:2],psum_out_dir)
 
         edge_arg=self.get_outlier_cond_args(index,[self.n_y,self.n_x,self.n_clk])
-        if not edge_arg.all():
-            edge_arg=np.bitwise_not(edge_arg)
-            
-            index[edge_arg]=np.clip(index[edge_arg],[0,0,0],[self.n_y-1,self.n_x-1,self.n_clk-1])
-            
-            edge_idx=np.squeeze(np.argwhere(edge_arg))
-            for i in edge_idx:
-                fault_value[i].update({'edge':True})
+        index=index[edge_arg]
+        fault_value=fault_value[edge_arg]
+#        if not edge_arg.all():
+#            edge_arg=np.bitwise_not(edge_arg)
+#            
+#            index[edge_arg]=np.clip(index[edge_arg],[0,0,0],[self.n_y-1,self.n_x-1,self.n_clk-1])
+#            
+#            edge_idx=np.squeeze(np.argwhere(edge_arg))
+#            for i in edge_idx:
+#                fault_value[i].update({'edge':True})
                     
         index_fd=list(zip(*index.T))
         new_fault_dict=dict(zip(index_fd,fault_value))
@@ -2606,7 +2670,8 @@ def PE_mapping_forward(ifmap_tile,
                        wght_expand_config,
                        ofmap_expand_config,
                        PEarray_setup_config,
-                       pre_plan=False):
+                       pre_plan=False,
+                       print_detail=False):
     """ Data mapping high level control
         Pre-plan the dataflow for backward PE mapping.    
         Or mapping the tile fault dictionary to PE dataflow model.
@@ -2633,8 +2698,13 @@ def PE_mapping_forward(ifmap_tile,
         
         dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
             Only save the expansion configuration for later PEarray to Tile transform.
+            
+        print_detail: Bool. Print the progress of forward mapping.
 
     """
+    if print_detail:
+        print('\nPE array dataflow forward mapping ...')
+        print('    Task (1/7): Load Tile Config ...',end=' ')
     # load ifmap config
     if isinstance(ifmap_expand_config,str):
         with open(ifmap_expand_config, 'r') as config_file:
@@ -2661,7 +2731,11 @@ def PE_mapping_forward(ifmap_tile,
         pass
     else:
         raise TypeError('ofmap_expand_config must be String or Dictionary.')
+    if print_detail:
+        print('\t| Done.')
         
+    if print_detail:
+        print('    Task (2/7): Load PE Array Config ...',end=' ')
     # load PEarray config
     if isinstance(PEarray_setup_config,str):
         with open(PEarray_setup_config, 'r') as config_file:
@@ -2670,7 +2744,11 @@ def PE_mapping_forward(ifmap_tile,
         pass
     else:
         raise TypeError('PEarray_setup_config must be String or Dictionary.')
-        
+    if print_detail:
+        print('\t| Done.')
+    
+    if print_detail:
+        print('    Task (3/7): Tile Expnasion ...',end=' ') 
     # expand ifmap
     if 'ksizes' not in ifmap_expand_config:
         ifmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ifmap_expand_config)
@@ -2689,31 +2767,51 @@ def PE_mapping_forward(ifmap_tile,
         ofmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
     else:
         ofmap_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
+    if print_detail:
+        print('\t| Done.')
 
     # setup PEarray
+    if print_detail:
+        print('    Task (4/7): Tile Expnasion ...',end=' ') 
     PEarray.setup_dataflow(**PEarray_setup_config)
+    if print_detail:
+        print('\t| Done.')
 
     # premapping
+    if print_detail:
+        print('    Task (5/7): Tile Pre-mapping ...',end=' ') 
     PEarray.premapping_tile('ofmap', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('wght', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('ifmap', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('bias', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('psum', dataflow_pre_plan=pre_plan)
+    if print_detail:
+        print('\t| Done.')
+        
     # duplication
+    if print_detail:
+        print('    Task (6/7): Mapping Duplication ...',end=' ') 
     PEarray.duplicate_mapping('ofmap', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('wght', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('ifmap', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('bias', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('psum', dataflow_pre_plan=pre_plan)
+    if print_detail:
+        print('\t| Done.')
+        
     # alignment
+    if print_detail:
+        print('    Task (7/7): Clock Cycle Alignment ...',end=' ') 
     PEarray.align_slice_pack(dataflow_pre_plan=pre_plan)
+    if print_detail:
+        print('\t| Done.')
     
     if pre_plan:
         return None
     else:
         return PEarray.fault_dict
     
-def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
+def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=False):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to layer.
         
@@ -2727,7 +2825,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
         The fault information Dictionary List of Layer.
     """        
     if print_detail:
-        print('\nMapping PE fault on layer ...')
+        print('\nPE array dataflow backward mapping ...')
     else:
         PEarray.ifmap_tile.print_detail=False
         PEarray.ofmap_tile.print_detail=False
@@ -2745,20 +2843,34 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
     if fault_dict is not None:
         PEarray.fault_dict=fault_dict
         
-    PEarray.decompose_slice_pack()
+    if print_detail:
+        print('    Task (1/6): Decompose Slice Pack ...',end=' ') 
+    PEarray.decompose_slice_pack(print_detail=print_detail)
+    if print_detail:
+        print('\t| Done.')
 
+    if print_detail:
+        print('    Task (2/6): Reduce Mapping ...',end=' ') 
     PEarray.reduce_mapping('ofmap')
     PEarray.reduce_mapping('wght')
     PEarray.reduce_mapping('ifmap')
     PEarray.reduce_mapping('bias')
     PEarray.reduce_mapping('psum')
+    if print_detail:
+        print('\t| Done.')
     
+    if print_detail:
+        print('    Task (3/6): Tile Demapping...',end=' ') 
     PEarray.demapping_tile('ofmap')
     PEarray.demapping_tile('wght')
     PEarray.demapping_tile('ifmap')
     PEarray.demapping_tile('bias')
     PEarray.demapping_tile('psum')
+    if print_detail:
+        print('\t| Done.')
     
+    if print_detail:
+        print('    Task (4/6): Tile Shrinking...',end=' ') 
     if PEarray.ofmap_tile.expand_method=='reshape':
         PEarray.ofmap_tile.shrink_reshape_data()
         PEarray.ofmap_tile.shrink_reshape_data(psum=True)
@@ -2784,20 +2896,28 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
         PEarray.ifmap_tile.shrink_reshape_data()
     else:
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
-    
+    if print_detail:
+        print('\t| Done.')
+         
+    if print_detail:
+        print('    Task (5/6): Solve Fault I/O ...') 
     # organize fault dict and give partial sum index
-    solve_correspond_io(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile)
+    solve_correspond_io(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,print_detail=print_detail)
+    if print_detail:
+        print('\t| Done.')
     
+    if print_detail:
+        print('    Task (6/6): Tile Return to layer ...')
     # ifmap PE mapping to layer
     ifmap_fault_dict=PEarray.ifmap_tile.fault_dict_tile2layer(layer_input_shape)
     if print_detail:
-        print('    mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
+        print('        mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
     
     
     # ofmap PE mapping to layer
     ofmap_fault_dict=PEarray.ofmap_tile.fault_dict_tile2layer(layer_output_shape)
     if print_detail:
-        print('    mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
+        print('        mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
     
     # weight PE mapping to layer
     if len(layer_weight_shape)>1:
@@ -2808,7 +2928,10 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=True):
     weight_fault_dict=PEarray.wght_tile.fault_dict_tile2layer(layer_weight_shape[0],use_bias=use_bias)
     
     if print_detail:
-        print('    mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
+        print('        mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
+        
+    if print_detail:
+        print('        | Done.')
                 
     return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 

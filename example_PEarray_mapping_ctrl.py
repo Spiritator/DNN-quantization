@@ -41,7 +41,7 @@ MXU_config='../pe_mapping_config/MXU_config.json'
 
 #%% pre-plan PE mapping forward with file read-in
 
-PE_mapping_forward(ifmap_tile,wght_tile,ofmap_tile,MXU,ifmap_config,wght_config,ofmap_config,MXU_config,pre_plan=True)
+PE_mapping_forward(ifmap_tile,wght_tile,ofmap_tile,MXU,ifmap_config,wght_config,ofmap_config,MXU_config,pre_plan=True,print_detail=True)
 
 #%% setup MAC unit
 
@@ -50,7 +50,7 @@ PE=mac_unit('../pe_mapping_config/mac_unit_config.json')
 #%% generate PE array fault dictionary
 
 #MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
-MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=PE)
+MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', param_list=['ifmap_out'], mac_config=PE)
 PE_fault_dict=MXU.fault_dict
 
 #%% PE mapping backward
@@ -67,5 +67,5 @@ x=QuantizedConv2D(filters=32,
 model=Model(inputs=input_shape, outputs=x, name='test_model')
 
 # backward mapping
-layer_ifmap_fd, layer_ofmap_fd, layer_weight_fd= PE_mapping_backward(model.layers[1],MXU)
+layer_ifmap_fd, layer_ofmap_fd, layer_weight_fd= PE_mapping_backward(model.layers[1],MXU,print_detail=True)
 

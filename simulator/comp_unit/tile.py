@@ -1174,7 +1174,7 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
             pass
         
     if print_detail:
-        pbar=tqdm.tqdm(desc='\tSolved Fault', total=fault_num)
+        pbar=tqdm.tqdm(desc='\tSolved Fault', total=fault_num, leave=False)
     
     for i in range(fault_num):
         param=None
@@ -1200,6 +1200,11 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
                 state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
                                 
             elif param=='psum_in' and pidx is not None:
+                if bidx is None:                                   
+                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
+                else:
+                    new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
+                            
 #                try:
 #                    if pstate=='repeative':
 #                        pidxx=pidx[0]
@@ -1230,9 +1235,7 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
 #                        else:
 #                            new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
 #                except:
-                #TODO
-                # new method distinguish psum_in is psum or bias
-                state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
+#                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
             
             elif param=='psum_out' and pidx is not None:
                 if oidx is None:

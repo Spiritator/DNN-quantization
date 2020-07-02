@@ -2073,7 +2073,7 @@ class PEarray:
                 ntask+=4
             if self.use_psum:
                 ntask+=4
-            pbar=tqdm.tqdm(desc='    Sub-tasks', total=ntask)
+            pbar=tqdm.tqdm(desc='    Sub-tasks', total=ntask, leave=False)
             
         # decompose clock cycle
         self.ofmap_map_fd=copy.deepcopy(self.fault_dict)
@@ -2267,7 +2267,7 @@ class PEarray:
     #TODO
     # match the new IO defining method
     # if no new method default the old one
-    def neighbor_io_fault_dict_coors(self, fault_dict):
+    def neighbor_io_fault_dict_coors(self, fault_dict, mac_config=None):
         """ Find neighbor PE index of PE array dataflow model. For mapping 'ifmap_out', 'wght_out', 'psum_in' faults.
             These fault info 'param' correspond to upstream or downstream PE I/O. 
             By finding the actual tile data of these index, can know the fault location in convolution.
@@ -2285,17 +2285,15 @@ class PEarray:
         
         iout=list()
         wout=list()
-        psin=list()
+#        psin=list()
         
         for i,info in enumerate(fault_value):
             if info['param']=='ifmap_out':
                 iout.append(i)
             elif info['param']=='wght_out':
                 wout.append(i)
-            #TODO
-            # new method distinguish psum_in is psum or bias
-            elif info['param']=='psum_in':
-                psin.append(i)
+#            elif info['param']=='psum_in':
+#                psin.append(i)
                 
         if len(iout)>0:
             ifmap_out_dir=self.get_neighboring_axis(self.ifmap_flow)
@@ -2317,17 +2315,15 @@ class PEarray:
             if wght_out_dir is not None:
                 index[wout,0:2]=np.add(index[wout,0:2],wght_out_dir)
             
-        #TODO
-        # new method distinguish psum_in is psum or bias
-        if len(psin)>0:
-            psum_out_dir=self.get_neighboring_axis(self.psum_flow)
-            if psum_out_dir=='PE_y':
-                psum_out_dir=np.tile([[1,0]],[len(psin),1])
-            elif wght_out_dir=='PE_x':
-                psum_out_dir=np.tile([[0,1]],[len(psin),1])
-            
-            if psum_out_dir is not None:
-                index[psin,0:2]=np.subtract(index[psin,0:2],psum_out_dir)
+#        if len(psin)>0:
+#            psum_out_dir=self.get_neighboring_axis(self.psum_flow)
+#            if psum_out_dir=='PE_y':
+#                psum_out_dir=np.tile([[1,0]],[len(psin),1])
+#            elif wght_out_dir=='PE_x':
+#                psum_out_dir=np.tile([[0,1]],[len(psin),1])
+#            
+#            if psum_out_dir is not None:
+#                index[psin,0:2]=np.subtract(index[psin,0:2],psum_out_dir)
 
         edge_arg=self.get_outlier_cond_args(index,[self.n_y,self.n_x,self.n_clk])
         index=index[edge_arg]
@@ -2704,7 +2700,7 @@ def PE_mapping_forward(ifmap_tile,
     """
     if print_detail:
         print('\nPE array dataflow forward mapping ...')
-        print('    Task (1/7): Load Tile Config ...',end=' ')
+        print('    Task (1/7): Load Tile Config ...\t',end='\r')
     # load ifmap config
     if isinstance(ifmap_expand_config,str):
         with open(ifmap_expand_config, 'r') as config_file:
@@ -2731,11 +2727,9 @@ def PE_mapping_forward(ifmap_tile,
         pass
     else:
         raise TypeError('ofmap_expand_config must be String or Dictionary.')
-    if print_detail:
-        print('\t| Done.')
         
     if print_detail:
-        print('    Task (2/7): Load PE Array Config ...',end=' ')
+        print('    Task (2/7): Load PE Array Config ...\t',end='\r')
     # load PEarray config
     if isinstance(PEarray_setup_config,str):
         with open(PEarray_setup_config, 'r') as config_file:
@@ -2744,11 +2738,9 @@ def PE_mapping_forward(ifmap_tile,
         pass
     else:
         raise TypeError('PEarray_setup_config must be String or Dictionary.')
-    if print_detail:
-        print('\t| Done.')
     
     if print_detail:
-        print('    Task (3/7): Tile Expnasion ...',end=' ') 
+        print('    Task (3/7): Tile Expnasion ...\t',end='\r') 
     # expand ifmap
     if 'ksizes' not in ifmap_expand_config:
         ifmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ifmap_expand_config)
@@ -2767,44 +2759,36 @@ def PE_mapping_forward(ifmap_tile,
         ofmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
     else:
         ofmap_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
-    if print_detail:
-        print('\t| Done.')
 
     # setup PEarray
     if print_detail:
-        print('    Task (4/7): Tile Expnasion ...',end=' ') 
+        print('    Task (4/7): Tile Expnasion ...\t',end='\r') 
     PEarray.setup_dataflow(**PEarray_setup_config)
-    if print_detail:
-        print('\t| Done.')
 
     # premapping
     if print_detail:
-        print('    Task (5/7): Tile Pre-mapping ...',end=' ') 
+        print('    Task (5/7): Tile Pre-mapping ...\t',end='\r') 
     PEarray.premapping_tile('ofmap', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('wght', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('ifmap', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('bias', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('psum', dataflow_pre_plan=pre_plan)
-    if print_detail:
-        print('\t| Done.')
         
     # duplication
     if print_detail:
-        print('    Task (6/7): Mapping Duplication ...',end=' ') 
+        print('    Task (6/7): Mapping Duplication ...\t',end='\r') 
     PEarray.duplicate_mapping('ofmap', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('wght', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('ifmap', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('bias', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('psum', dataflow_pre_plan=pre_plan)
-    if print_detail:
-        print('\t| Done.')
         
     # alignment
     if print_detail:
-        print('    Task (7/7): Clock Cycle Alignment ...',end=' ') 
+        print('    Task (7/7): Clock Cycle Alignment ...\t',end='\r') 
     PEarray.align_slice_pack(dataflow_pre_plan=pre_plan)
     if print_detail:
-        print('\t| Done.')
+        print('    Task (7/7): All Done.\t\t\t')
     
     if pre_plan:
         return None
@@ -2844,33 +2828,27 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=False):
         PEarray.fault_dict=fault_dict
         
     if print_detail:
-        print('    Task (1/6): Decompose Slice Pack ...',end=' ') 
+        print('    Task (1/6): Decompose Slice Pack ...') 
     PEarray.decompose_slice_pack(print_detail=print_detail)
-    if print_detail:
-        print('\t| Done.')
 
     if print_detail:
-        print('    Task (2/6): Reduce Mapping ...',end=' ') 
+        print('\r    Task (2/6): Reduce Mapping ...\t\t',end=' ') 
     PEarray.reduce_mapping('ofmap')
     PEarray.reduce_mapping('wght')
     PEarray.reduce_mapping('ifmap')
     PEarray.reduce_mapping('bias')
     PEarray.reduce_mapping('psum')
-    if print_detail:
-        print('\t| Done.')
     
     if print_detail:
-        print('    Task (3/6): Tile Demapping...',end=' ') 
+        print('\r    Task (3/6): Tile Demapping...\t',end=' ') 
     PEarray.demapping_tile('ofmap')
     PEarray.demapping_tile('wght')
     PEarray.demapping_tile('ifmap')
     PEarray.demapping_tile('bias')
     PEarray.demapping_tile('psum')
-    if print_detail:
-        print('\t| Done.')
     
     if print_detail:
-        print('    Task (4/6): Tile Shrinking...',end=' ') 
+        print('\r    Task (4/6): Tile Shrinking...',end=' ') 
     if PEarray.ofmap_tile.expand_method=='reshape':
         PEarray.ofmap_tile.shrink_reshape_data()
         PEarray.ofmap_tile.shrink_reshape_data(psum=True)
@@ -2896,28 +2874,19 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=False):
         PEarray.ifmap_tile.shrink_reshape_data()
     else:
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
-    if print_detail:
-        print('\t| Done.')
          
     if print_detail:
-        print('    Task (5/6): Solve Fault I/O ...') 
+        print('\r    Task (5/6): Solve Fault I/O ...') 
     # organize fault dict and give partial sum index
     solve_correspond_io(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,print_detail=print_detail)
-    if print_detail:
-        print('\t| Done.')
     
     if print_detail:
-        print('    Task (6/6): Tile Return to layer ...')
+        print('\r    Task (6/6): Tile Return to layer ...',end=' ')
     # ifmap PE mapping to layer
-    ifmap_fault_dict=PEarray.ifmap_tile.fault_dict_tile2layer(layer_input_shape)
-    if print_detail:
-        print('        mapped layer ifmap %d faults'%(len(ifmap_fault_dict)))
-    
+    ifmap_fault_dict=PEarray.ifmap_tile.fault_dict_tile2layer(layer_input_shape)    
     
     # ofmap PE mapping to layer
     ofmap_fault_dict=PEarray.ofmap_tile.fault_dict_tile2layer(layer_output_shape)
-    if print_detail:
-        print('        mapped layer ofmap %d faults'%(len(ofmap_fault_dict)))
     
     # weight PE mapping to layer
     if len(layer_weight_shape)>1:
@@ -2927,12 +2896,13 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=False):
     
     weight_fault_dict=PEarray.wght_tile.fault_dict_tile2layer(layer_weight_shape[0],use_bias=use_bias)
     
-    if print_detail:
-        print('        mapped layer weight %s faults'%(str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
         
     if print_detail:
-        print('        | Done.')
-                
+        print('\r    Task (6/6): All Done.\t\t\t')
+        
+    if print_detail:
+        print('    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fault_dict),len(ofmap_fault_dict),str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
+
     return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
 
     

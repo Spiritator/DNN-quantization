@@ -103,14 +103,14 @@ def inference_scheme(model_func,
             t = time.time()-t
             print('model build time: %f s'%t)
             
-            print('Building multi GPU model...')
+            print('Building multi GPU model...',end=' ')
             t = time.time()            
             parallel_model = multi_gpu_model(model, gpus=gpu_num)
             parallel_model.compile( **compile_augment)
             if show_summary:
                 parallel_model.summary()
             t = time.time()-t
-            print('multi GPU model build time: %f s'%t)            
+            print('/rmulti GPU model build time: %f s'%t)            
         else:
             model.compile( **compile_augment)
             t = time.time()-t

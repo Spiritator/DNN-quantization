@@ -2247,9 +2247,6 @@ class PEarray:
             fault_dict[coor].update({'id':i})
         return fault_dict
     
-    #TODO
-    # match the new IO defining method
-    # if no new method default the old one
     def get_neighboring_axis(self, flow):
         """ Get the neighboring axis of a parameter flow
         
@@ -2264,9 +2261,6 @@ class PEarray:
         else:
             return None
     
-    #TODO
-    # match the new IO defining method
-    # if no new method default the old one
     def neighbor_io_fault_dict_coors(self, fault_dict, mac_config=None):
         """ Find neighbor PE index of PE array dataflow model. For mapping 'ifmap_out', 'wght_out', 'psum_in' faults.
             These fault info 'param' correspond to upstream or downstream PE I/O. 
@@ -2274,6 +2268,7 @@ class PEarray:
         
         # Arguments
             fault_dict: Dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+            mac_config: Class. The class of MAC unit configurations.
         
         # Returns
             Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -2296,24 +2291,62 @@ class PEarray:
 #                psin.append(i)
                 
         if len(iout)>0:
-            ifmap_out_dir=self.get_neighboring_axis(self.ifmap_flow)
-            if ifmap_out_dir=='PE_y':
-                ifmap_out_dir=np.tile([[1,0]],[len(iout),1])
-            elif ifmap_out_dir=='PE_x':
-                ifmap_out_dir=np.tile([[0,1]],[len(iout),1])
+            if mac_config is None:
+                ifmap_out_dir=self.get_neighboring_axis(self.ifmap_flow)
+                if ifmap_out_dir=='PE_y':
+                    ifmap_out_dir=np.tile([[1,0]],[len(iout),1])
+                elif ifmap_out_dir=='PE_x':
+                    ifmap_out_dir=np.tile([[0,1]],[len(iout),1])
+                
+                if ifmap_out_dir is not None:
+                    index[iout,0:2]=np.add(index[iout,0:2],ifmap_out_dir)
+            else:
+                if mac_config.ifmap_io['type']=='io_pair':
+                    ifmap_out_dir=mac_config.ifmap_io['dimension']
+                    if mac_config.ifmap_io['direction']=='forward':
+                        polarity=1
+                    elif mac_config.ifmap_io['direction']=='backward':
+                        polarity=-1
             
-            if ifmap_out_dir is not None:
-                index[iout,0:2]=np.add(index[iout,0:2],ifmap_out_dir)
+                    if ifmap_out_dir=='PE_y':
+                        ifmap_out_dir=np.tile([[polarity,0]],[len(iout),1])
+                    elif ifmap_out_dir=='PE_x':
+                        ifmap_out_dir=np.tile([[0,polarity]],[len(iout),1])
+                    else:
+                        raise ValueError('Mac unit I/O pair dimension must be PE_x ot PE_y.')
+                        
+                    index[iout,0:2]=np.add(index[iout,0:2],ifmap_out_dir)
+                else:
+                    pass
             
         if len(wout)>0:
-            wght_out_dir=self.get_neighboring_axis(self.wght_flow)
-            if wght_out_dir=='PE_y':
-                wght_out_dir=np.tile([[1,0]],[len(wout),1])
-            elif wght_out_dir=='PE_x':
-                wght_out_dir=np.tile([[0,1]],[len(wout),1])
+            if mac_config is None:
+                wght_out_dir=self.get_neighboring_axis(self.wght_flow)
+                if wght_out_dir=='PE_y':
+                    wght_out_dir=np.tile([[1,0]],[len(wout),1])
+                elif wght_out_dir=='PE_x':
+                    wght_out_dir=np.tile([[0,1]],[len(wout),1])
+                
+                if wght_out_dir is not None:
+                    index[wout,0:2]=np.add(index[wout,0:2],wght_out_dir)
+            else:
+                if mac_config.wght_io['type']=='io_pair':
+                    wght_out_dir=mac_config.wght_io['dimension']
+                    if mac_config.wght_io['direction']=='forward':
+                        polarity=1
+                    elif mac_config.wght_io['direction']=='backward':
+                        polarity=-1
             
-            if wght_out_dir is not None:
-                index[wout,0:2]=np.add(index[wout,0:2],wght_out_dir)
+                    if wght_out_dir=='PE_y':
+                        wght_out_dir=np.tile([[polarity,0]],[len(wout),1])
+                    elif wght_out_dir=='PE_x':
+                        wght_out_dir=np.tile([[0,polarity]],[len(wout),1])
+                    else:
+                        raise ValueError('Mac unit I/O pair dimension must be PE_x ot PE_y.')
+                        
+                    index[wout,0:2]=np.add(index[wout,0:2],wght_out_dir)
+                else:
+                    pass
             
 #        if len(psin)>0:
 #            psum_out_dir=self.get_neighboring_axis(self.psum_flow)
@@ -2425,6 +2458,7 @@ class PEarray:
             fault_type: String. The type of fault.
             param_list: List of String. The available parameters can have fault on it. 
                 The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+            mac_config: Class. The class of MAC unit configurations.
         
         # Returns
             Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -2459,7 +2493,7 @@ class PEarray:
         self.fault_num=len(self.fault_dict)
 
         self.fault_dict=self.assign_id(self.fault_dict)
-        self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
+        self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict, mac_config=mac_config)
         
     def gen_PEarray_permanent_fault_dict(self, fault_loc, fault_info, mac_config=None):
         """ Generate fault dictionary on PEarray of permanent fault. Given the fault location and fault infomation. 
@@ -2470,6 +2504,7 @@ class PEarray:
             fault_info: Dictionary. The fault information dictionay that includes 'SA_type', 'SA_bit', 'param'.
             param_list: List of String. The available parameters can have fault on it. 
                 The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+            mac_config: Class. The class of MAC unit configurations.
         
         # Returns
             Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.

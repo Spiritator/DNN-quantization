@@ -888,7 +888,7 @@ class tile_PE(tile):
         orig_coors,uni_idx,rep_idx,cnt_idx=np.unique(orig_coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
         
         if len(uni_idx)==len(rep_idx):
-            pass
+            fault_info=fault_info[uni_idx]
         else:
             if fast_gen:
                 id_list=np.array([value['id'] for value in fault_info])
@@ -1056,11 +1056,11 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
     psum_fd=ofmap_tile.psum_fault_dict
     bias_fd=wght_tile.bias_fault_dict
     
-    ofmap_coors=np.array(list(ofmap_fd.keys()))
+    #ofmap_coors=np.array(list(ofmap_fd.keys()))
     ifmap_coors=np.array(list(ifmap_fd.keys()))
     wght_coors =np.array(list(wght_fd.keys()))
     psum_coors =np.array(list(psum_fd.keys()))
-    bias_coors =np.array(list(bias_fd.keys()))
+    #bias_coors =np.array(list(bias_fd.keys()))
     
     ofmap_vl=np.array(list(ofmap_fd.values()))
     ifmap_vl=np.array(list(ifmap_fd.values()))
@@ -1074,6 +1074,11 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
                 state='fastgen'
                 idlist=np.array([info['id'] for info in faultvalue])
                 maxx=np.max(np.concatenate(idlist))
+                if idlist.dtype==np.object:
+                    idl_cnt=np.array([len(i) for i in idlist])
+                    idl_cnt=np.append([0],np.cumsum(idl_cnt)[:-1])
+                    idlist=np.concatenate(idlist)
+                    idlist=(idlist,idl_cnt)
             elif isinstance(faultvalue[0]['id'],int):
                 state='normal'
                 idlist=[info['id'] for info in faultvalue]
@@ -1098,10 +1103,7 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
     if fault_num==None:
         fault_num=max([maxo,maxi,maxw,maxp,maxb])+1
         
-    new_ofmap_fd=dict()
-    new_ifmap_fd=dict()
-    new_wght_fd=dict()
-    new_bias_fd=dict()
+    new_solved_fd=dict()
     
     def state_idxget(idlist,faultcoors,faultvalue,state,faultid,paramin):
         if state is None:
@@ -1110,15 +1112,31 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
             faultindex=None
             
         elif state=='fastgen':
-            idx=np.argwhere(idlist==faultid)
-            if len(idx)==0:
-                idx=None
-                param=None
-                faultindex=None
-            else:
-                idx=idx[0][0]
-                param=faultvalue[idx]['param']
-                faultindex=faultcoors[idx]
+            if isinstance(idlist,np.ndarray):
+                idx=np.argwhere(idlist==faultid)
+                if len(idx)==0:
+                    idx=None
+                    param=None
+                    faultindex=None
+                else:
+                    idx=idx[0][0]
+                    param=faultvalue[idx]['param']
+                    faultindex=faultcoors[idx]
+                    
+            elif isinstance(idlist,tuple):
+                idl_cnt=idlist[1]
+                idlist=idlist[0]
+                
+                idx=np.argwhere(idlist==faultid)
+                if len(idx)==0:
+                    idx=None
+                    param=None
+                    faultindex=None
+                else:
+                    idx=idx[0][0]
+                    idx=np.max(np.argwhere(idl_cnt<=idx))
+                    param=faultvalue[idx]['param']
+                    faultindex=faultcoors[idx]
             
         elif state=='normal':
             try:
@@ -1146,33 +1164,49 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
         
         return idx,param,faultindex
     
-    def state_make_new_fd(state,faultid,paramin,opindex,windex,faultvalue,idx,newfd,dataindex):
+    def state_make_new_fd(state,faultid,paramin,opindex,windex,iindex,faultvalue,idx,newfd):
         try:
-            psidx=tuple(np.append(opindex[[0,3,1,2]],windex[[2,0,1]]))
+            # psum index (Batch, Output Channel, Ofmap Row, Ofmap Column, Ifmap Channel, Kernel Row, Kernel Column, Ifmap Row, Ifmap Column)
+            psidx=tuple(np.concatenate([opindex[[0,3,1,2]],windex[[2,0,1]],iindex[[1,2]]]))
             if state is None:
                 pass
             elif state=='fastgen':
                 try:
-                    newfv=newfd[tuple(dataindex)]
+                    newfv=newfd[tuple(opindex)]
                     newfv['psum_idx'].append(psidx)
                 except KeyError:
                     newfv=faultvalue[idx].copy()
                     newfv.update({'psum_idx':[psidx]})
-                    newfd[tuple(dataindex)]=newfv
+                    newfd[tuple(opindex)]=newfv
             elif state=='normal':
                 newfv=faultvalue[idx].copy()
                 newfv.update({'psum_idx':psidx})
-                newfd[tuple(dataindex)]=newfv
+                newfd[tuple(opindex)]=newfv
             elif state=='repeative':
-                newfv={'SA_bit':faultvalue[idx[0]]['SA_bit'][idx[1]],
-                       'SA_type':faultvalue[idx[0]]['SA_type'][idx[1]],
-                       'param':paramin,
-                       'psum_idx':psidx,
-                       'id':faultid}
-                newfd[tuple(dataindex)]=newfv
+                try:
+                    newfv=newfd[tuple(opindex)]
+                    newfv['SA_bit'].append(faultvalue[idx[0]]['SA_bit'][idx[1]])
+                    newfv['SA_type'].append(faultvalue[idx[0]]['SA_type'][idx[1]])
+                    newfv['param'].append(paramin)
+                    newfv['psum_idx'].append(psidx)
+                    newfv['id'].append(faultid)
+                except KeyError:
+                    newfv={'SA_bit':[faultvalue[idx[0]]['SA_bit'][idx[1]]],
+                           'SA_type':[faultvalue[idx[0]]['SA_type'][idx[1]]],
+                           'param':[paramin],
+                           'psum_idx':[psidx],
+                           'id':[faultid]}
+                    newfd[tuple(opindex)]=newfv
         except TypeError:
             pass
         
+
+    #TODO 
+    # the fast acces 'fast gen' method
+#    if pstate=='fastgen' and wstate=='fastgen' and istate=='fastgen':
+#        #do the work
+    
+    
     if print_detail:
         pbar=tqdm.tqdm(desc='\tSolved Fault', total=fault_num, leave=False)
     
@@ -1182,28 +1216,30 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
         pidx,param,psum_index=state_idxget(psum_id,psum_coors,psum_vl,pstate,i,param)
         widx,param,wght_index=state_idxget(wght_id,wght_coors,wght_vl,wstate,i,param)
         iidx,param,ifmap_index=state_idxget(ifmap_id,ifmap_coors,ifmap_vl,istate,i,param)
-        oidx,param,ofmap_index=state_idxget(ofmap_id,ofmap_coors,ofmap_vl,ostate,i,param)
-        bidx,param,bias_index=state_idxget(bias_id,bias_coors,bias_vl,bstate,i,param)
+        #oidx,param,ofmap_index=state_idxget(ofmap_id,ofmap_coors,ofmap_vl,ostate,i,param)
+        #bidx,param,bias_index=state_idxget(bias_id,bias_coors,bias_vl,bstate,i,param)
         
-        # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, Tck)
+        # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, TcK, TrI, TcI)
         if param is not None:
-            if param=='ifmap_in' and iidx is not None:
-                state_make_new_fd(istate,i,param,psum_index,wght_index,ifmap_vl,iidx,new_ifmap_fd,ifmap_index)
-                            
-            elif param=='ifmap_out' and iidx is not None:
-                state_make_new_fd(istate,i,param,psum_index,wght_index,ifmap_vl,iidx,new_ifmap_fd,ifmap_index)
+            state_make_new_fd(pstate,i,param,psum_index,wght_index,ifmap_index,psum_vl,pidx,new_solved_fd)
             
-            elif param=='wght_in' and widx is not None:
-                state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
-                            
-            elif param=='wght_out'and widx is not None:
-                state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
-                                
-            elif param=='psum_in' and pidx is not None:
-                if bidx is None:                                   
-                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
-                else:
-                    new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
+#            if param=='ifmap_in' and iidx is not None:
+#                state_make_new_fd(istate,i,param,psum_index,wght_index,ifmap_vl,iidx,new_ifmap_fd,ifmap_index)
+#                            
+#            elif param=='ifmap_out' and iidx is not None:
+#                state_make_new_fd(istate,i,param,psum_index,wght_index,ifmap_vl,iidx,new_ifmap_fd,ifmap_index)
+#            
+#            elif param=='wght_in' and widx is not None:
+#                state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
+#                            
+#            elif param=='wght_out'and widx is not None:
+#                state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
+#                                
+#            elif param=='psum_in' and pidx is not None:
+#                if bidx is None:                                   
+#                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
+#                else:
+#                    new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
                             
 #                try:
 #                    if pstate=='repeative':
@@ -1236,14 +1272,14 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
 #                            new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
 #                except:
 #                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
-            
-            elif param=='psum_out' and pidx is not None:
-                if oidx is None:
-                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
-                    new_ofmap_fd[tuple(psum_index)].update({'ofmap':False})
-                else:
-                    state_make_new_fd(ostate,i,param,ofmap_index,wght_index,ofmap_vl,oidx,new_ofmap_fd,ofmap_index)                   
-                    new_ofmap_fd[tuple(ofmap_index)].update({'ofmap':True})
+#            
+#            elif param=='psum_out' and pidx is not None:
+#                if oidx is None:
+#                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
+#                    new_ofmap_fd[tuple(psum_index)].update({'ofmap':False})
+#                else:
+#                    state_make_new_fd(ostate,i,param,ofmap_index,wght_index,ofmap_vl,oidx,new_ofmap_fd,ofmap_index)                   
+#                    new_ofmap_fd[tuple(ofmap_index)].update({'ofmap':True})
                     
         if print_detail:
             pbar.update()
@@ -1251,8 +1287,5 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
     if print_detail:
         pbar.close()
     
-    ofmap_tile.fault_dict=new_ofmap_fd
-    ifmap_tile.fault_dict=new_ifmap_fd
-    wght_tile.fault_dict=new_wght_fd
-    wght_tile.bias_fault_dict=new_bias_fd
+    return new_solved_fd
             

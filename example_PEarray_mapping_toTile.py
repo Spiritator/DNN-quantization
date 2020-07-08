@@ -159,7 +159,7 @@ MXU.align_slice_pack(dataflow_pre_plan=True)
 #                (13,3,8796):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
 #                (3,10,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
 #                (15,6,5207):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
-#
+
 #MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
 #PE_fault_dict=MXU.fault_dict
 #
@@ -364,10 +364,6 @@ shrink_fault_dict_returned_i=ifmap_tile.shrink_return_patches()
 
 #%% organize fault dict and give partial sum index
 
-solve_correspond_io(ofmap_tile,wght_tile,ifmap_tile)
-final_solved_ofmap_fd=ofmap_tile.fault_dict
-final_solved_ifmap_fd=ifmap_tile.fault_dict
-final_solved_wght_fd=wght_tile.fault_dict
-final_solved_bias_fd=wght_tile.bias_fault_dict
+#PE_mac_fault_dict=solve_correspond_io(ofmap_tile,wght_tile,ifmap_tile)
 
 

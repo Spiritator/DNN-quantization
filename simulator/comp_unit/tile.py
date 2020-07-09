@@ -271,7 +271,7 @@ class tile_PE(tile):
         
         return extracted_shape
     
-    def extract_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, get_cond_idx=False):
+    def extract_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, patches_unravel=[0,1,2], get_cond_idx=False):
         """ Index transformation for tf.extract_image_patches for ifmap expansion. 
             This was used for convert 4D ifmap tile to ofmap column and row with all the partial product input fmap.
             [batch, row, column, # of kernel 2D * # of ifmap channel]
@@ -287,6 +287,8 @@ class tile_PE(tile):
             padding: String. 'same' or 'valid'. The type of padding algorithm to use.
             edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
                 the exceeded area with zero and count as an ofmap pixel or not.
+            patches_unravel: List of Integer. The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
+                [row, col, channel] are the needed data to accumulate output a pixel.
             get_cond_idx: Bool. Return condition index or not.
         
         # Returns
@@ -368,8 +370,15 @@ class tile_PE(tile):
         extracted_batch=np.expand_dims(extracted_batch,-1)
         
         extracted_psum=index[:,-1][cond_idx[:,0]]
-        extracted_psum=np.add(np.subtract(np.multiply(extracted_psum,ksizes[1]*ksizes[2]),cond_idx[:,1]),ksizes[1]*ksizes[2]-1)
+        extracted_psum=np.expand_dims(extracted_psum,0)
+        
+        patches_rcm=np.unravel_index(np.subtract(ksizes[1]*ksizes[2]-1,cond_idx[:,1]),ksizes[1:3])
+        patches_rcm=np.concatenate([patches_rcm,extracted_psum],axis=0)
+        
+        patches_unravel=np.argsort(np.array(patches_unravel))[::-1]
+        extracted_psum=np.ravel_multi_index(patches_rcm[patches_unravel],np.array([ksizes[1],ksizes[2],fmap_shape[3]])[patches_unravel])
         extracted_psum=np.expand_dims(extracted_psum,-1)
+        #extracted_psum=np.add(np.subtract(np.multiply(extracted_psum,ksizes[1]*ksizes[2]),cond_idx[:,1]),ksizes[1]*ksizes[2]-1) # rework
         
         extracted_index=np.concatenate([extracted_batch,extracted_2D,extracted_psum],axis=1)
 
@@ -378,7 +387,7 @@ class tile_PE(tile):
         else:
             return extracted_index
     
-    def return_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False):
+    def return_patches_idx(self, index, fmap_shape, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, patches_unravel=[0,1,2]):
         """ Index transformation for reverse tf.extract_image_patches for ifmap shrink in PE to Tile mapping. 
             This was used for convert ofmap column and row with all the partial product input fmap to 4D ifmap tile.
             [batch, row, column, # of kernel 2D * # of ifmap channel] -> [batch, row, column, in channel]
@@ -394,6 +403,8 @@ class tile_PE(tile):
             padding: String. 'same' or 'valid'. The type of padding algorithm to use.
             edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
                 the exceeded area with zero and count as an ofmap pixel or not.
+            patches_unravel: List of Integer. The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
+                [row, col, channel] are the needed data to accumulate output a pixel.
             get_cond_idx: Bool. Return condition index or not.
         
         # Returns
@@ -413,10 +424,20 @@ class tile_PE(tile):
         returned_2D=index[:,1:3]
         extracted_psum=index[:,-1]
         
-        idx_patches_candidate=np.remainder(extracted_psum,ksizes[1]*ksizes[2])
-#        idx_patches_candidate=np.subtract(ksizes[1]*ksizes[2]-1,idx_patches_candidate)
+        patches_unravel=np.argsort(np.array(patches_unravel))[::-1]
+        restore_index=np.zeros((3,),dtype=int)
+        for i in range(3):
+            restore_index[patches_unravel[i]]=i
+            
+        extracted_psum=np.unravel_index(extracted_psum,np.array([ksizes[1],ksizes[2],fmap_shape[3]])[patches_unravel])
+        extracted_psum=np.array(extracted_psum)[restore_index]
         
-        ifchannel_idx=np.floor_divide(extracted_psum,ksizes[1]*ksizes[2])
+        idx_patches_candidate=extracted_psum[0:2]
+        idx_patches_candidate=np.ravel_multi_index(idx_patches_candidate,ksizes[1:3])
+#        idx_patches_candidate=np.remainder(extracted_psum,ksizes[1]*ksizes[2])
+
+        ifchannel_idx=extracted_psum[-1]
+#        ifchannel_idx=np.floor_divide(extracted_psum,ksizes[1]*ksizes[2]) # rework
         
         if strides[1]>1 or strides[2]>1:
             returned_2D=np.multiply(returned_2D,[strides[1:3]])
@@ -424,11 +445,9 @@ class tile_PE(tile):
             returned_2D=np.subtract(returned_2D,[[np.floor_divide(dilated_ksize_row,2),np.floor_divide(dilated_ksize_col,2)]])
 
         base_kcoor_reduction=list(np.ndindex(ksizes[1:3]))
-#        base_kcoor_reduction.reverse()
         base_kcoor_reduction=np.multiply(base_kcoor_reduction,dilation_rates[1:3])
 
         returned_2D=np.add(returned_2D,base_kcoor_reduction[idx_patches_candidate])
-        
         
         batch_idx=np.expand_dims(batch_idx,-1)
         ifchannel_idx=np.expand_dims(ifchannel_idx,-1)
@@ -658,7 +677,7 @@ class tile_PE(tile):
     
         return new_fault_dict
             
-    def expand_extract_patches(self, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, 
+    def expand_extract_patches(self, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, patches_unravel=[0,1,2],
             reshape_patches=False, patches_prior=None, expect_shape=None, reshape_prior=None, slicing_dims=None, slices_permute=None,
             tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1,
             dataflow_pre_plan=False):
@@ -680,8 +699,12 @@ class tile_PE(tile):
             
             edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
                 the exceeded area with zero and count as an ofmap pixel or not.
+                
+            patches_unravel: List of Integer. The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
+                [row, col, channel] are the needed data to accumulate output a pixel.
          
             reshape_patches: Bool. Reshape the result of extract patches or not.
+            
             patches_prior: List or Tuple of Integer or String. The list for unravel priority of patches dimensions. 
                 The integer list is the dimension index. The string list is consist of 'Tm', 'Tn', 'Tr', 'Tc'.
                 
@@ -724,6 +747,7 @@ class tile_PE(tile):
             self.dilation_rates=dilation_rates
             self.padding=padding
             self.edge_fill=edge_fill
+            self.patches_unravel=patches_unravel
         
         extracted_shape=self.get_extracted_shape(fmap_shape=self.tile_shape,
                                                  ksizes=ksizes,
@@ -769,6 +793,7 @@ class tile_PE(tile):
                                                               dilation_rates=dilation_rates,
                                                               padding=padding,
                                                               edge_fill=edge_fill,
+                                                              patches_unravel=patches_unravel,
                                                               get_cond_idx=True)
             fault_info=[fault_info[i] for i in cond_idx[:,0]]
             
@@ -878,7 +903,8 @@ class tile_PE(tile):
                                            strides=self.strides,
                                            dilation_rates=self.dilation_rates,
                                            padding=self.padding,
-                                           edge_fill=self.edge_fill)
+                                           edge_fill=self.edge_fill,
+                                           patches_unravel=self.patches_unravel)
         
         # pop inalid edge condition that doesn't exist in tile
         orig_coors,cond_idx=self.pop_outlier_idx(orig_coors,list(self.tile_shape),get_cond_idx=True)

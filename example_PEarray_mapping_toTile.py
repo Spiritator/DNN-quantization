@@ -49,8 +49,9 @@ ifmap_tile.expand_extract_patches(ksizes=(1,3,3,1),
                                   dilation_rates=(1,1,1,1),
                                   padding='same',
                                   edge_fill=False,
+                                  patches_unravel=[0,1,2],
                                   reshape_patches=True,
-                                  patches_prior=[3,2,1,0],
+                                  patches_prior=[3,1,2,0],
                                   expect_shape=(1*28*28,144),
                                   reshape_prior=[1,0],
                                   slicing_dims=(1*28*28,16),
@@ -156,13 +157,13 @@ MXU.align_slice_pack(dataflow_pre_plan=True)
 #                (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'},
 #                (0,0,444):{'SA_type':'flip','SA_bit':1,'param':'psum_in'},
 #                (15,15,8787):{'SA_type':'flip','SA_bit':3,'param':'ifmap_out'},
-#                (13,3,8796):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
+#                (13,3,8553):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
 #                (3,10,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
 #                (15,6,5207):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
-
+#
 #MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
 #PE_fault_dict=MXU.fault_dict
-#
+
 #MXU.fault_dict=MXU.neighbor_io_fault_dict_coors(MXU.fault_dict)
 #PE_fault_dict_neighbor=MXU.fault_dict
 
@@ -364,6 +365,6 @@ shrink_fault_dict_returned_i=ifmap_tile.shrink_return_patches()
 
 #%% organize fault dict and give partial sum index
 
-#PE_mac_fault_dict=solve_correspond_io(ofmap_tile,wght_tile,ifmap_tile)
+PE_mac_fault_dict=solve_correspond_io(ofmap_tile,wght_tile,ifmap_tile)
 
 

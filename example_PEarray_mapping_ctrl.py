@@ -53,13 +53,13 @@ PE=mac_unit('../pe_mapping_config/mac_unit_config.json')
 #MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=PE)
 #PE_fault_dict=MXU.fault_dict
 
-#fault_info={'SA_type':'flip','SA_bit':3,'param':'wght_in'}
-#MXU.gen_PEarray_permanent_fault_dict((6,2), fault_info, mac_config=PE)
-#PE_fault_dict=MXU.fault_dict
-
 fault_info={'SA_type':'flip','SA_bit':3,'param':'wght_in'}
-MXU.gen_PEarray_permanent_fault_dict((0,0), fault_info, mac_config=None)
+MXU.gen_PEarray_permanent_fault_dict((6,2), fault_info, mac_config=PE)
 PE_fault_dict=MXU.fault_dict
+
+#fault_info={'SA_type':'flip','SA_bit':3,'param':'wght_in'}
+#MXU.gen_PEarray_permanent_fault_dict((0,0), fault_info, mac_config=None)
+#PE_fault_dict=MXU.fault_dict
 
 #%% PE mapping backward
 

@@ -1694,7 +1694,8 @@ class PEarray:
                                                 target_shape=tile_shape,
                                                 target_prior=flow.permute_info.tile_mapping_prior)
         
-        
+        #TODO
+        # collapse repeatitive coors
         
         if tile.expansion:
             mapped_coors_fd=list(zip(*mapped_coors.T))
@@ -2199,15 +2200,15 @@ class PEarray:
 
         # remove fault lies in non-comuputation time
         if len(self.ifmap_map_fd)>0:
-            self.pop_outlier_coors(self.ifmap_map_fd, self.shape_ifmap_mapping)
+            self.ifmap_map_fd=self.pop_outlier_coors(self.ifmap_map_fd, self.shape_ifmap_mapping)
         if len(self.wght_map_fd)>0:
-            self.pop_outlier_coors(self.wght_map_fd, self.shape_wght_mapping)
+            self.wght_map_fd=self.pop_outlier_coors(self.wght_map_fd, self.shape_wght_mapping)
         if len(self.ofmap_map_fd)>0:
-            self.pop_outlier_coors(self.ofmap_map_fd, self.shape_ofmap_mapping)
+            self.ofmap_map_fd=self.pop_outlier_coors(self.ofmap_map_fd, self.shape_ofmap_mapping)
         if len(self.bias_map_fd)>0:
-            self.pop_outlier_coors(self.bias_map_fd, self.shape_bias_mapping)
+            self.bias_map_fd=self.pop_outlier_coors(self.bias_map_fd, self.shape_bias_mapping)
         if len(self.psum_map_fd)>0:
-            self.pop_outlier_coors(self.psum_map_fd, self.shape_psum_mapping)
+            self.psum_map_fd=self.pop_outlier_coors(self.psum_map_fd, self.shape_psum_mapping)
         if print_detail:
             pbar.update()
         
@@ -2537,7 +2538,7 @@ class PEarray:
             raise ValueError('Dataflow setup not ready!')
         self.fast_gen=True
             
-        fault_loc=[list(fault_loc)]
+        fault_loc=np.array([list(fault_loc)])
         
         if mac_config is not None:
             self.mac_config=mac_config

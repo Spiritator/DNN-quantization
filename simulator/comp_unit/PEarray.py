@@ -1694,8 +1694,9 @@ class PEarray:
                                                 target_shape=tile_shape,
                                                 target_prior=flow.permute_info.tile_mapping_prior)
         
-        #TODO
-        # collapse repeatitive coors
+        # collapse repeatitive coors for fault contamination cases
+        if len(mapped_coors)>0:
+            mapped_coors,fault_value=self.collapse_repeative_coors(mapped_coors,fault_value)
         
         if tile.expansion:
             mapped_coors_fd=list(zip(*mapped_coors.T))

@@ -907,8 +907,8 @@ class tile_PE(tile):
                                            patches_unravel=self.patches_unravel)
         
         # pop inalid edge condition that doesn't exist in tile
-        orig_coors,cond_idx=self.pop_outlier_idx(orig_coors,list(self.tile_shape),get_cond_idx=True)
-        fault_info=fault_info[cond_idx]
+#        orig_coors,cond_idx=self.pop_outlier_idx(orig_coors,list(self.tile_shape),get_cond_idx=True)
+#        fault_info=fault_info[cond_idx]
         
         # deal with repeative orig_coors
         orig_coors,uni_idx,rep_idx,cnt_idx=np.unique(orig_coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
@@ -1102,7 +1102,7 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
                 maxx=np.max(np.concatenate(idlist))
                 if idlist.dtype==np.object:
                     idl_cnt=np.array([len(i) for i in idlist])
-                    idl_cnt=np.append([0],np.cumsum(idl_cnt)[:-1])
+                    idl_cnt=np.cumsum(idl_cnt)-1
                     idlist=np.concatenate(idlist)
                     idlist=(idlist,idl_cnt)
             elif isinstance(faultvalue[0]['id'],int):
@@ -1160,7 +1160,7 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
                     faultindex=None
                 else:
                     idx=idx[0][0]
-                    idx=np.max(np.argwhere(idl_cnt<=idx))
+                    idx=np.searchsorted(idl_cnt,idx)
                     param=faultvalue[idx]['param']
                     faultindex=faultcoors[idx]
             

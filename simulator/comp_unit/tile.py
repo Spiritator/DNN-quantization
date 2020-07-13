@@ -1069,7 +1069,368 @@ class tile_PE(tile):
         self.tilted_slice_shape=None
         self.bias_slice_shape=None
 
-     
+class io_data_solver:
+    """
+    The PE dataflow mapping fault list data solving class. 
+    For solveing the PE fault to each corresponding data on ifmap, weight, ofmap.
+    Produces a fault dictionary of the layer ofmap shape which contains fault information.
+    As well as fault id and parrtial sum index.
+    """
+    def __init__(self, ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
+        self.ofmap_tile=ofmap_tile
+        self.wght_tile=wght_tile
+        self.ifmap_tile=ifmap_tile
+        self.fault_num=fault_num
+        
+    def state_setting(self, faultvalue):
+        """
+        Distinguish and set the state of an data type
+        """
+        if len(faultvalue)>0:
+            if isinstance(faultvalue[0]['id'],np.ndarray):
+                state='fastgen'
+                idlist=np.array([info['id'] for info in faultvalue])
+                maxx=np.max(np.concatenate(idlist))
+                if idlist.dtype==np.object:
+                    idl_cnt=np.array([len(i) for i in idlist])
+                    idl_cnt=np.cumsum(idl_cnt)-1
+                    idlist=np.concatenate(idlist)
+                    idlist=(idlist,idl_cnt)
+            elif isinstance(faultvalue[0]['id'],int):
+                state='normal'
+                idlist=[info['id'] for info in faultvalue]
+                maxx=max(idlist)
+            elif isinstance(faultvalue[0]['id'],list):
+                state='repeative'
+                idlist=[info['id'] for info in faultvalue]
+                maxx=max([max(idl) for idl in idlist])
+        else:
+            idlist=list()
+            state=None
+            maxx=-1
+        
+        return idlist,state,maxx
+    
+    def state_idxget(idlist,faultcoors,faultvalue,state,faultid,paramin):
+        """
+        Extract the data coordinate index and fault parameter by fault id
+        """
+        if state is None:
+            idx=None
+            param=None
+            faultindex=None
+            
+        elif state=='fastgen':
+            if isinstance(idlist,np.ndarray):
+                idx=np.argwhere(idlist==faultid)
+                if len(idx)==0:
+                    idx=None
+                    param=None
+                    faultindex=None
+                else:
+                    idx=idx[0][0]
+                    param=faultvalue[idx]['param']
+                    faultindex=faultcoors[idx]
+                    
+            elif isinstance(idlist,tuple):
+                idl_cnt=idlist[1]
+                idlist=idlist[0]
+                
+                idx=np.argwhere(idlist==faultid)
+                if len(idx)==0:
+                    idx=None
+                    param=None
+                    faultindex=None
+                else:
+                    idx=idx[0][0]
+                    idx=np.searchsorted(idl_cnt,idx)
+                    param=faultvalue[idx]['param']
+                    faultindex=faultcoors[idx]
+            
+        elif state=='normal':
+            try:
+                idx=idlist.index(faultid)
+                param=faultvalue[idx]['param']
+                faultindex=faultcoors[idx]
+            except ValueError:
+                idx=None
+                param=None
+                faultindex=None
+                
+        elif state=='repeative':
+            idx=None
+            param=None
+            faultindex=None
+            for ii,idl in enumerate(idlist):
+                if faultid in idl:
+                    ii2=idl.index(faultid)
+                    idx=[ii,ii2]
+                    param=faultvalue[ii]['param'][ii2]
+                    faultindex=faultcoors[ii]
+        
+        if paramin is not None:
+            param=paramin
+        
+        return idx,param,faultindex
+    
+    def state_make_new_fd(state,faultid,paramin,opindex,windex,iindex,faultvalue,idx,newfd):
+        """
+        Add new fault information to new fault dict
+        Individually append (slow loop version)
+        """
+        try:
+            # psum index (Batch, Output Channel, Ofmap Row, Ofmap Column, Ifmap Channel, Kernel Row, Kernel Column, Ifmap Row, Ifmap Column)
+            psidx=tuple(np.concatenate([opindex[[0,3,1,2]],windex[[2,0,1]],iindex[[1,2]]]))
+            if state is None:
+                pass
+            elif state=='fastgen':
+                try:
+                    newfv=newfd[tuple(opindex)]
+                    newfv['psum_idx'].append(psidx)
+                except KeyError:
+                    newfv=faultvalue[idx].copy()
+                    newfv.update({'psum_idx':[psidx]})
+                    newfd[tuple(opindex)]=newfv
+            elif state=='normal':
+                newfv=faultvalue[idx].copy()
+                newfv.update({'psum_idx':psidx})
+                newfd[tuple(opindex)]=newfv
+            elif state=='repeative':
+                try:
+                    newfv=newfd[tuple(opindex)]
+                    newfv['SA_bit'].append(faultvalue[idx[0]]['SA_bit'][idx[1]])
+                    newfv['SA_type'].append(faultvalue[idx[0]]['SA_type'][idx[1]])
+                    newfv['param'].append(paramin)
+                    newfv['psum_idx'].append(psidx)
+                    newfv['id'].append(faultid)
+                except KeyError:
+                    newfv={'SA_bit':[faultvalue[idx[0]]['SA_bit'][idx[1]]],
+                           'SA_type':[faultvalue[idx[0]]['SA_type'][idx[1]]],
+                           'param':[paramin],
+                           'psum_idx':[psidx],
+                           'id':[faultid]}
+                    newfd[tuple(opindex)]=newfv
+        except TypeError:
+            pass
+
+    def state_fast_gen_new_fd(self, print_detail=False):
+        """
+        Extract the data coordinate index and fault parameter by fault id
+        Add new fault information to new fault dict
+        Numpy generation (fast version)
+        """
+        #TODO
+        # WHAT IF the searchsort result are repeatitive, HOW TO filt no index condition
+        
+        
+        # the fast access 'fast gen' method
+        if self.pstate!='fastgen' or self.wstate!='fastgen' or self.istate!='fastgen':
+            raise ValueError('All psum_state, wght_state, ifmap_state are must be \'fast_gen\' to run fast generation method.')
+            
+        if print_detail:
+            print('    GenFD (1/5): Solve Partial Sum Coordinates...',end=' ') 
+
+        new_solved_fd=dict()
+            
+        # solve psum, use as basis for fault id search
+        if isinstance(self.psum_id,np.ndarray):
+            pshape_cnt=self.psum_id.shape
+            if len(pshape_cnt)>1:
+                psum_id=self.psum_id.flatten()
+        elif isinstance(self.psum_id,tuple):
+            pshape_cnt=self.psum_id[1]
+            psum_id=self.psum_id[0]
+        
+        if print_detail:
+            print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
+            
+        # solve ifmap
+        if isinstance(self.ifmap_id,np.ndarray):
+            ishape=self.ifmap_id.shape
+            if len(ishape)>1:
+                ifmap_id=self.ifmap_id.flatten()
+                sorter_i=np.argsort(ifmap_id)
+                search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
+                search_i=sorter_i[search_i]
+                search_i=np.floor_divide(search_i,ishape[1])
+                ifmap_index=self.ifmap_coors[search_i]
+            else:
+                sorter_i=np.argsort(self.ifmap_id)
+                search_i=np.searchsorted(self.ifmap_id,psum_id,sorter=sorter_i)
+                search_i=sorter_i[search_i]
+                ifmap_index=self.ifmap_coors[search_i]
+        elif isinstance(self.ifmap_id,tuple):
+            ifmap_idl_cnt=self.ifmap_id[1]
+            ifmap_id=self.ifmap_id[0]
+            sorter_i=np.argsort(ifmap_id)
+            search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
+            search_i=sorter_i[search_i]
+            search_i=np.searchsorted(ifmap_idl_cnt,search_i)
+            ifmap_index=self.ifmap_coors[search_i]
+
+        if print_detail:
+            print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
+            
+        # solve weight
+        if isinstance(self.wght_id,np.ndarray):
+            wshape=self.wght_id.shape
+            if len(wshape)>1:
+                wght_id=self.wght_id.flatten()
+                sorter_w=np.argsort(wght_id)
+                search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
+                search_w=sorter_w[search_w]
+                search_w=np.floor_divide(search_w,wshape[1])
+                wght_index=self.wght_coors[search_w]
+            else:
+                sorter_w=np.argsort(self.wght_id)
+                search_w=np.searchsorted(self.wght_id,psum_id,sorter=sorter_w)
+                search_w=sorter_w[search_w]
+                wght_index=self.wght_coors[search_w]
+        elif isinstance(self.wght_id,tuple):
+            wght_idl_cnt=self.wght_id[1]
+            wght_id=self.wght_id[0]
+            sorter_w=np.argsort(wght_id)
+            search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
+            search_w=sorter_w[search_w]
+            search_w=np.searchsorted(wght_idl_cnt,search_w)
+            wght_index=self.wght_coors[search_w]
+        
+        if print_detail:
+            print('\r    GenFD (4/5): Build Partial Sum Indexes...\t\t',end=' ')         
+        
+        # build psum_idx
+        if isinstance(pshape_cnt,tuple):
+            if len(pshape_cnt)>1:
+                outpsum_index=np.repeat(self.psum_coors,pshape_cnt[1],axis=0)
+        elif isinstance(pshape_cnt,np.ndarray):
+            cnt0=pshape_cnt[0]+1
+            idlrep=pshape_cnt[1:]-pshape_cnt[:-1]
+            idlrep=np.concatenate([[cnt0],idlrep])
+            idlconstruct=np.repeat(np.arange(len(idlrep)),idlrep)
+            outpsum_index=self.psum_coors[idlconstruct]
+            
+        psum_index=np.concatenate([outpsum_index[:,[0,3,1,2]],wght_index[:,[2,0,1]],ifmap_index[:,[1,2]]],axis=1)
+        if isinstance(pshape_cnt,tuple):
+            if len(pshape_cnt)>1:
+                psum_index=np.split(psum_index,pshape_cnt[0])
+        elif isinstance(pshape_cnt,np.ndarray):
+            psum_index=np.split(psum_index,idlrep)
+
+        if print_detail:
+            print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t',end=' ')         
+
+        for i,opidx in enumerate(self.psum_coors):
+            newfv=self.psum_vl[i].copy()
+            newfv.update({'psum_idx':psum_index[i]})
+            new_solved_fd[tuple(opidx)]=newfv
+            
+        return new_solved_fd
+    
+    def state_loop_gen_new_fd(self, save2tile=False, print_detail=False):
+        """
+        Extract the data coordinate index and fault parameter by fault id
+        Add new fault information to new fault dict
+        For loop generation (slower version, for user raw input PE fault dictionary)
+        """
+        # solving by loop
+        new_solved_fd=dict()
+        
+        if print_detail:
+            pbar=tqdm.tqdm(desc='\tSolved Fault', total=self.fault_num, leave=False)
+        
+        for i in range(self.fault_num):
+            param=None
+            
+            if save2tile:
+                oidx,param,ofmap_index=self.state_idxget(self.ofmap_id, self.ofmap_coors, self.ofmap_vl, self.ostate,i,param)
+                bidx,param,bias_index=self.state_idxget(self.bias_id, self.bias_coors, self.bias_vl, self.bstate,i,param)
+            pidx,param,psum_index=self.state_idxget(self.psum_id, self.psum_coors, self.psum_vl, self.pstate,i,param)
+            widx,param,wght_index=self.state_idxget(self.wght_id, self.wght_coors, self.wght_vl, self.wstate,i,param)
+            iidx,param,ifmap_index=self.state_idxget(self.ifmap_id, self.ifmap_coors, self.ifmap_vl, self.istate,i,param)
+            
+            # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, TcK, TrI, TcI)
+            if param is not None:
+                self.state_make_new_fd(self.pstate,i,param,psum_index,wght_index,ifmap_index,self.psum_vl,pidx,new_solved_fd)
+                        
+            if print_detail:
+                pbar.update()
+            
+        if print_detail:
+            pbar.close()
+        
+        return new_solved_fd
+
+    def solve_correspond_io(self, save2tile=False, print_detail=False):
+        """ Solving the PE array to Tile mapping fault dictionarys.
+            Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
+            and find the relation between them. Give fault info (psum index).
+        
+        # Arguments                   
+            save2tile: Bool. If true, save the solving result fault dict to repective tile.
+                Else false, return the fault dictionary of the layer ofmap shape which contains solved information.
+            print_detail: Bool. Print the solving process.
+        # Returns
+            Solved fault dictionary.
+
+        """
+        if save2tile:
+            ofmap_fd=self.ofmap_tile.fault_dict
+            bias_fd=self.wght_tile.bias_fault_dict
+        ifmap_fd=self.ifmap_tile.fault_dict
+        wght_fd=self.wght_tile.fault_dict
+        psum_fd=self.ofmap_tile.psum_fault_dict
+        
+        if save2tile:
+            self.ofmap_coors=np.array(list(ofmap_fd.keys()))
+            self.bias_coors =np.array(list(bias_fd.keys()))
+        self.ifmap_coors=np.array(list(ifmap_fd.keys()))
+        self.wght_coors =np.array(list(wght_fd.keys()))
+        self.psum_coors =np.array(list(psum_fd.keys()))
+ 
+        if save2tile:       
+            self.ofmap_vl=np.array(list(ofmap_fd.values()))
+            self.bias_vl =np.array(list(bias_fd.values()))
+        self.ifmap_vl=np.array(list(ifmap_fd.values()))
+        self.wght_vl =np.array(list(wght_fd.values()))
+        self.psum_vl =np.array(list(psum_fd.values()))
+       
+        if save2tile:       
+            self.ofmap_id,self.ostate,maxo=self.state_setting(self.ofmap_vl)
+            self.bias_id,self.bstate,maxb=self.state_setting(self.bias_vl)
+        self.ifmap_id,self.istate,maxi=self.state_setting(self.ifmap_vl)
+        self.wght_id,self.wstate,maxw=self.state_setting(self.wght_vl)
+        self.psum_id,self.pstate,maxp=self.state_setting(self.psum_vl)
+        
+        if self.fault_num==None:
+            if not save2tile:
+                self.fault_num=max([maxi,maxw,maxp])+1
+            else:
+                self.fault_num=max([maxo,maxi,maxw,maxp,maxb])+1
+            
+        # solving by fast gen method
+        if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
+            new_solved_fd=self.state_fast_gen_new_fd()
+        else:
+            new_solved_fd=self.state_loop_gen_new_fd(save2tile,print_detail)
+            
+        return new_solved_fd
+    
+    def tile2layer(self, ):
+        """Restore the fault dictionary from tile to entire layer
+
+        # Arguments
+            layer_shape: Tuple. The shape of a layer parameter were divided into tile.
+            use_bias: Use bias in weight tile or not.
+        
+        # Returns
+            The fault information Dictionary of a layer parameter (feature maps or weights).
+        """
+        
+    
+#TODO
+# the save2tile option
+        
+        
 def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print_detail=False):
     """ Solving the PE array to Tile mapping fault dictionarys.
         Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
@@ -1228,10 +1589,89 @@ def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print
         
 
     #TODO 
-    # the fast acces 'fast gen' method
-#    if pstate=='fastgen' and wstate=='fastgen' and istate=='fastgen':
-#        #do the work
-    
+    # the fast access 'fast gen' method
+    if pstate=='fastgen' and wstate=='fastgen' and istate=='fastgen':
+        # solve psum, use as basis for fault id search
+        if isinstance(psum_id,np.ndarray):
+            pshape_cnt=psum_id.shape
+            if len(pshape_cnt)>1:
+                psum_id=psum_id.flatten()
+        elif isinstance(psum_id,tuple):
+            pshape_cnt=psum_id[1]
+            psum_id=psum_id[0]
+        
+        # solve ifmap
+        if isinstance(ifmap_id,np.ndarray):
+            ishape=ifmap_id.shape
+            if len(ishape)>1:
+                ifmap_id=ifmap_id.flatten()
+                sorter_i=np.argsort(ifmap_id)
+                search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
+                search_i=sorter_i[search_i]
+                search_i=np.floor_divide(search_i,ishape[1])
+                ifmap_index=ifmap_coors[search_i]
+            else:
+                sorter_i=np.argsort(ifmap_id)
+                search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
+                search_i=sorter_i[search_i]
+                ifmap_index=ifmap_coors[search_i]
+        elif isinstance(ifmap_id,tuple):
+            ifmap_idl_cnt=ifmap_id[1]
+            ifmap_id=ifmap_id[0]
+            sorter_i=np.argsort(ifmap_id)
+            search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
+            search_i=sorter_i[search_i]
+            search_i=np.searchsorted(ifmap_idl_cnt,search_i)
+            ifmap_index=ifmap_coors[search_i]
+            
+        # solve weight
+        if isinstance(wght_id,np.ndarray):
+            wshape=wght_id.shape
+            if len(wshape)>1:
+                wght_id=wght_id.flatten()
+                sorter_w=np.argsort(wght_id)
+                search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
+                search_w=sorter_w[search_w]
+                search_w=np.floor_divide(search_w,wshape[1])
+                wght_index=wght_coors[search_w]
+            else:
+                sorter_w=np.argsort(wght_id)
+                search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
+                search_w=sorter_w[search_w]
+                wght_index=wght_coors[search_w]
+        elif isinstance(wght_id,tuple):
+            wght_idl_cnt=wght_id[1]
+            wght_id=wght_id[0]
+            sorter_w=np.argsort(wght_id)
+            search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
+            search_w=sorter_w[search_w]
+            search_w=np.searchsorted(wght_idl_cnt,search_w)
+            wght_index=wght_coors[search_w]
+        
+        # build psum_idx
+        if isinstance(pshape_cnt,tuple):
+            if len(pshape_cnt)>1:
+                outpsum_index=np.repeat(psum_coors,pshape_cnt[1],axis=0)
+        elif isinstance(pshape_cnt,np.ndarray):
+            cnt0=pshape_cnt[0]+1
+            idlrep=pshape_cnt[1:]-pshape_cnt[:-1]
+            idlrep=np.concatenate([[cnt0],idlrep])
+            idlconstruct=np.repeat(np.arange(len(idlrep)),idlrep)
+            outpsum_index=psum_coors[idlconstruct]
+            
+        psum_index=np.concatenate([outpsum_index[:,[0,3,1,2]],wght_index[:,[2,0,1]],ifmap_index[:,[1,2]]],axis=1)
+        if isinstance(pshape_cnt,tuple):
+            if len(pshape_cnt)>1:
+                psum_index=np.split(psum_index,pshape_cnt[0])
+        elif isinstance(pshape_cnt,np.ndarray):
+            psum_index=np.split(psum_index,idlrep)
+
+        for i,opidx in enumerate(psum_coors):
+            newfv=psum_vl[i].copy()
+            newfv.update({'psum_idx':psum_index[i]})
+            new_solved_fd[tuple(opidx)]=newfv
+            
+        return new_solved_fd
     
     if print_detail:
         pbar=tqdm.tqdm(desc='\tSolved Fault', total=fault_num, leave=False)

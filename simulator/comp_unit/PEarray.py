@@ -12,7 +12,7 @@ import copy
 import json
 import tqdm as tqdm
 
-from .tile import solve_correspond_io
+from .tile import io_data_solver
 
 class axis_info:
     """
@@ -2869,7 +2869,7 @@ def PE_mapping_forward(ifmap_tile,
     else:
         return PEarray.fault_dict
     
-def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=False):
+def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_detail=False):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to layer.
         
@@ -2952,9 +2952,10 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, print_detail=False):
     if print_detail:
         print('\r    Task (5/6): Solve Fault I/O ...') 
     # organize fault dict and give partial sum index
-    PE_mac_fault_dict=solve_correspond_io(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,print_detail=print_detail)
+    solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile)
+    PE_mac_fault_dict=solver.solve_correspond_io(save2tile,print_detail)
     #TODO
-    # the new PE mac fault dict
+    # the new PE mac fault dict tile2layer
     
 #    if print_detail:
 #        print('\r    Task (6/6): Tile Return to layer ...',end=' ')

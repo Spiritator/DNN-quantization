@@ -50,11 +50,17 @@ PE=mac_unit('../pe_mapping_config/mac_unit_config.json')
 #%% generate PE array fault dictionary
 
 #MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
+
 MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=PE)
 PE_fault_dict=MXU.fault_dict
 
-#fault_info={'SA_type':'flip','SA_bit':3,'param':'wght_in'}
-#MXU.gen_PEarray_permanent_fault_dict((6,2), fault_info, mac_config=PE)
+# figure out this case
+#fault_info={'SA_type':'flip','SA_bit':0,'param':'wght_in'}
+#MXU.gen_PEarray_permanent_fault_dict((12,0), fault_info, mac_config=PE)
+#PE_fault_dict=MXU.fault_dict
+
+#fault_info={'SA_type':'flip','SA_bit':6,'param':'wght_in'}
+#MXU.gen_PEarray_permanent_fault_dict((5,3), fault_info, mac_config=PE)
 #PE_fault_dict=MXU.fault_dict
 
 #fault_info={'SA_type':'flip','SA_bit':3,'param':'wght_in'}

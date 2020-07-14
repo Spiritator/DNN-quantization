@@ -2954,6 +2954,8 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     # organize fault dict and give partial sum index
     solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile)
     PE_mac_fault_dict=solver.solve_correspond_io(save2tile,print_detail)
+    
+    
     #TODO
     # the new PE mac fault dict tile2layer
     

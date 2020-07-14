@@ -1082,7 +1082,7 @@ class io_data_solver:
         self.ifmap_tile=ifmap_tile
         self.fault_num=fault_num
         
-    def state_setting(self, faultvalue):
+    def _state_setting(self, faultvalue):
         """
         Distinguish and set the state of an data type
         """
@@ -1111,7 +1111,7 @@ class io_data_solver:
         
         return idlist,state,maxx
     
-    def state_idxget(idlist,faultcoors,faultvalue,state,faultid,paramin):
+    def _state_idxget(idlist,faultcoors,faultvalue,state,faultid,paramin):
         """
         Extract the data coordinate index and fault parameter by fault id
         """
@@ -1173,7 +1173,7 @@ class io_data_solver:
         
         return idx,param,faultindex
     
-    def state_make_new_fd(state,faultid,paramin,opindex,windex,iindex,faultvalue,idx,newfd):
+    def _state_make_new_fd(state,faultid,paramin,opindex,windex,iindex,faultvalue,idx,newfd):
         """
         Add new fault information to new fault dict
         Individually append (slow loop version)
@@ -1212,8 +1212,51 @@ class io_data_solver:
                     newfd[tuple(opindex)]=newfv
         except TypeError:
             pass
+        
+    def _get_base_data_id(self, data_id):
+        """
+        Solve base data fault id list for find other data coordinate
+        """
+        if isinstance(data_id,np.ndarray):
+            shape_cnt=data_id.shape
+            if len(shape_cnt)>1:
+                data_idf=data_id.flatten()
+        elif isinstance(data_id,tuple):
+            shape_cnt=data_id[1]
+            data_idf=data_id[0]
+        
+        return data_idf,shape_cnt
+        
+    def _get_data_coor_by_id(self, data_id, search_id, data_coors):
+        """
+        Get data coordinate by giving fault id list
+        """
+        if isinstance(data_id,np.ndarray):
+            datashape=data_id.shape
+            if len(datashape)>1:
+                data_idf=data_id.flatten()
+                sorter=np.argsort(data_idf)
+                search=np.searchsorted(data_idf,search_id,sorter=sorter)
+                search=sorter[search]
+                search=np.floor_divide(search,datashape[1])
+                found_index=data_coors[search]
+            else:
+                sorter=np.argsort(data_id)
+                search=np.searchsorted(data_id,search_id,sorter=sorter)
+                search=sorter[search]
+                found_index=data_coors[search]
+        elif isinstance(data_id,tuple):
+            data_idl_cnt=data_id[1]
+            data_idf=data_id[0]
+            sorter=np.argsort(data_idf)
+            search=np.searchsorted(data_idf,search_id,sorter=sorter)
+            search=sorter[search]
+            search=np.searchsorted(data_idl_cnt,search)
+            found_index=data_coors[search]
+            
+        return found_index
 
-    def state_fast_gen_new_fd(self, print_detail=False):
+    def fast_gen_new_fd(self, save2tile=False, print_detail=False):
         """
         Extract the data coordinate index and fault parameter by fault id
         Add new fault information to new fault dict
@@ -1223,117 +1266,141 @@ class io_data_solver:
         # WHAT IF the searchsort result are repeatitive, HOW TO filt no index condition
         
         
-        # the fast access 'fast gen' method
         if self.pstate!='fastgen' or self.wstate!='fastgen' or self.istate!='fastgen':
-            raise ValueError('All psum_state, wght_state, ifmap_state are must be \'fast_gen\' to run fast generation method.')
+            raise ValueError('All psum_state, wght_state, ifmap_state are must be \'fast_gen\' to run fast generation method.')        
             
-        if print_detail:
-            print('    GenFD (1/5): Solve Partial Sum Coordinates...',end=' ') 
-
         new_solved_fd=dict()
             
-        # solve psum, use as basis for fault id search
-        if isinstance(self.psum_id,np.ndarray):
-            pshape_cnt=self.psum_id.shape
-            if len(pshape_cnt)>1:
-                psum_id=self.psum_id.flatten()
-        elif isinstance(self.psum_id,tuple):
-            pshape_cnt=self.psum_id[1]
-            psum_id=self.psum_id[0]
-        
-        if print_detail:
-            print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
+        if not save2tile:
+            if print_detail:
+                print('    GenFD (1/5): Solve Partial Sum Coordinates...',end=' ')     
+            # solve psum, use as basis for fault id search
+            search_id, shape_cnt=self._get_base_data_id(self.psum_id)
             
-        # solve ifmap
-        if isinstance(self.ifmap_id,np.ndarray):
-            ishape=self.ifmap_id.shape
-            if len(ishape)>1:
-                ifmap_id=self.ifmap_id.flatten()
-                sorter_i=np.argsort(ifmap_id)
-                search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
-                search_i=sorter_i[search_i]
-                search_i=np.floor_divide(search_i,ishape[1])
-                ifmap_index=self.ifmap_coors[search_i]
-            else:
-                sorter_i=np.argsort(self.ifmap_id)
-                search_i=np.searchsorted(self.ifmap_id,psum_id,sorter=sorter_i)
-                search_i=sorter_i[search_i]
-                ifmap_index=self.ifmap_coors[search_i]
-        elif isinstance(self.ifmap_id,tuple):
-            ifmap_idl_cnt=self.ifmap_id[1]
-            ifmap_id=self.ifmap_id[0]
-            sorter_i=np.argsort(ifmap_id)
-            search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
-            search_i=sorter_i[search_i]
-            search_i=np.searchsorted(ifmap_idl_cnt,search_i)
-            ifmap_index=self.ifmap_coors[search_i]
+            if print_detail:
+                print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
+            # solve ifmap
+            ifmap_index=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
+            
+            if print_detail:
+                print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
+            # solve weight
+            wght_index=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
+            
 
-        if print_detail:
-            print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
+        else:
+            if print_detail:
+                print('    GenFD (1/5): Solve Base Data Coordinates...',end=' ') 
             
-        # solve weight
-        if isinstance(self.wght_id,np.ndarray):
-            wshape=self.wght_id.shape
-            if len(wshape)>1:
-                wght_id=self.wght_id.flatten()
-                sorter_w=np.argsort(wght_id)
-                search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
-                search_w=sorter_w[search_w]
-                search_w=np.floor_divide(search_w,wshape[1])
-                wght_index=self.wght_coors[search_w]
-            else:
-                sorter_w=np.argsort(self.wght_id)
-                search_w=np.searchsorted(self.wght_id,psum_id,sorter=sorter_w)
-                search_w=sorter_w[search_w]
-                wght_index=self.wght_coors[search_w]
-        elif isinstance(self.wght_id,tuple):
-            wght_idl_cnt=self.wght_id[1]
-            wght_id=self.wght_id[0]
-            sorter_w=np.argsort(wght_id)
-            search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
-            search_w=sorter_w[search_w]
-            search_w=np.searchsorted(wght_idl_cnt,search_w)
-            wght_index=self.wght_coors[search_w]
+            param=self.psum_vl[0]['param']
+            if param=='ifmap_in' or param=='ifmap_out':
+                search_id, shape_cnt=self._get_base_data_id(self.ifmap_id)
+            elif param=='wght_in' or param=='wght_out':
+                search_id, shape_cnt=self._get_base_data_id(self.wght_id)
+            elif param=='psum_in' or param=='psum_out':
+                search_id, shape_cnt=self._get_base_data_id(self.psum_id)
+                
+            if param=='ifmap_in' or param=='ifmap_out':
+                if print_detail:
+                    print('\r    GenFD (2/5): Solve Output Feature Map Coordinates...',end=' ') 
+                # solve ifmap
+                outpsum_index=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
+                if print_detail:
+                    print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
+                # solve weight
+                wght_index=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
+                
+            elif param=='wght_in' or param=='wght_out':
+                if print_detail:
+                    print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
+                # solve ifmap
+                ifmap_index=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
+                if print_detail:
+                    print('\r    GenFD (3/5): Solve Output Feature Map Coordinates...',end=' ') 
+                # solve weight
+                outpsum_index=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
+                
+            elif param=='psum_in' or param=='psum_out':
+                if print_detail:
+                    print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
+                # solve ifmap
+                ifmap_index=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
+                if print_detail:
+                    print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
+                # solve weight
+                wght_index=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
+        
         
         if print_detail:
             print('\r    GenFD (4/5): Build Partial Sum Indexes...\t\t',end=' ')         
         
         # build psum_idx
-        if isinstance(pshape_cnt,tuple):
-            if len(pshape_cnt)>1:
-                outpsum_index=np.repeat(self.psum_coors,pshape_cnt[1],axis=0)
-        elif isinstance(pshape_cnt,np.ndarray):
-            cnt0=pshape_cnt[0]+1
-            idlrep=pshape_cnt[1:]-pshape_cnt[:-1]
+        if not save2tile:
+            based_coors=self.psum_coors
+            based_vl=self.psum_vl
+        else:
+            if param=='ifmap_in' or param=='ifmap_out':
+                based_coors=self.ifmap_coors
+                based_vl=self.ifmap_vl
+            elif param=='wght_in' or param=='wght_out':
+                based_coors=self.wght_coors
+                based_vl=self.wght_vl
+            elif param=='psum_in' or param=='psum_out':
+                based_coors=self.psum_coors
+                based_vl=self.psum_vl
+            
+        if isinstance(shape_cnt,tuple):
+            if len(shape_cnt)>1:
+                outpsum_index=np.repeat(based_coors,shape_cnt[1],axis=0)
+        elif isinstance(shape_cnt,np.ndarray):
+            cnt0=shape_cnt[0]+1
+            idlrep=shape_cnt[1:]-shape_cnt[:-1]
             idlrep=np.concatenate([[cnt0],idlrep])
             idlconstruct=np.repeat(np.arange(len(idlrep)),idlrep)
-            outpsum_index=self.psum_coors[idlconstruct]
+            outpsum_index=based_coors[idlconstruct]
             
         psum_index=np.concatenate([outpsum_index[:,[0,3,1,2]],wght_index[:,[2,0,1]],ifmap_index[:,[1,2]]],axis=1)
-        if isinstance(pshape_cnt,tuple):
-            if len(pshape_cnt)>1:
-                psum_index=np.split(psum_index,pshape_cnt[0])
-        elif isinstance(pshape_cnt,np.ndarray):
+        if isinstance(shape_cnt,tuple):
+            if len(shape_cnt)>1:
+                psum_index=np.split(psum_index,shape_cnt[0])
+        elif isinstance(shape_cnt,np.ndarray):
             psum_index=np.split(psum_index,idlrep)
 
         if print_detail:
             print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t',end=' ')         
 
-        for i,opidx in enumerate(self.psum_coors):
-            newfv=self.psum_vl[i].copy()
+        for i,opidx in enumerate(based_coors):
+            newfv=based_vl[i].copy()
             newfv.update({'psum_idx':psum_index[i]})
             new_solved_fd[tuple(opidx)]=newfv
             
-        return new_solved_fd
+        if not save2tile:
+            return new_solved_fd
+        else:
+            if param=='ifmap_in' or param=='ifmap_out':
+                fd_assigner=(new_solved_fd,dict(),dict(),dict())
+            elif param=='wght_in' or param=='wght_out':
+                fd_assigner=(dict(),new_solved_fd,dict(),dict())
+            elif param=='psum_in' or param=='psum_out':
+                fd_assigner=(dict(),dict(),dict(),new_solved_fd)
+
+            self.ifmap_tile.fault_dict, self.wght_tile.fault_dict, self.wght_tile.bias_fault_dict, self.ofmap_tile.fault_dict = fd_assigner
+            return new_solved_fd
+
     
-    def state_loop_gen_new_fd(self, save2tile=False, print_detail=False):
+    def loop_gen_new_fd(self, save2tile=False, print_detail=False):
         """
         Extract the data coordinate index and fault parameter by fault id
         Add new fault information to new fault dict
         For loop generation (slower version, for user raw input PE fault dictionary)
         """
-        # solving by loop
-        new_solved_fd=dict()
+        if not save2tile:
+            new_solved_fd=dict()
+        else:
+            new_ifmap_fd=dict()
+            new_wght_fd=dict()
+            new_ofmap_fd=dict()
+            new_bias_fd=dict()
         
         if print_detail:
             pbar=tqdm.tqdm(desc='\tSolved Fault', total=self.fault_num, leave=False)
@@ -1342,24 +1409,52 @@ class io_data_solver:
             param=None
             
             if save2tile:
-                oidx,param,ofmap_index=self.state_idxget(self.ofmap_id, self.ofmap_coors, self.ofmap_vl, self.ostate,i,param)
-                bidx,param,bias_index=self.state_idxget(self.bias_id, self.bias_coors, self.bias_vl, self.bstate,i,param)
-            pidx,param,psum_index=self.state_idxget(self.psum_id, self.psum_coors, self.psum_vl, self.pstate,i,param)
-            widx,param,wght_index=self.state_idxget(self.wght_id, self.wght_coors, self.wght_vl, self.wstate,i,param)
-            iidx,param,ifmap_index=self.state_idxget(self.ifmap_id, self.ifmap_coors, self.ifmap_vl, self.istate,i,param)
+                oidx,param,ofmap_index=self._state_idxget(self.ofmap_id, self.ofmap_coors, self.ofmap_vl, self.ostate,i,param)
+                bidx,param,bias_index=self._state_idxget(self.bias_id, self.bias_coors, self.bias_vl, self.bstate,i,param)
+            pidx,param,psum_index=self._state_idxget(self.psum_id, self.psum_coors, self.psum_vl, self.pstate,i,param)
+            widx,param,wght_index=self._state_idxget(self.wght_id, self.wght_coors, self.wght_vl, self.wstate,i,param)
+            iidx,param,ifmap_index=self._state_idxget(self.ifmap_id, self.ifmap_coors, self.ifmap_vl, self.istate,i,param)
             
             # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, TcK, TrI, TcI)
             if param is not None:
-                self.state_make_new_fd(self.pstate,i,param,psum_index,wght_index,ifmap_index,self.psum_vl,pidx,new_solved_fd)
+                if not save2tile:
+                    self._state_make_new_fd(self.pstate,i,param,psum_index,wght_index,ifmap_index,self.psum_vl,pidx,new_solved_fd)
+                else:
+                    if (param=='ifmap_in' or param=='ifmap_out') and iidx is not None:
+                        self._state_make_new_fd(self.istate,i,param,psum_index,wght_index,ifmap_index,self.ifmap_vl,iidx,new_ifmap_fd)
+                    
+                    elif (param=='wght_in' or param=='wght_out') and widx is not None:
+                        self._state_make_new_fd(self.wstate,i,param,psum_index,wght_index,ifmap_index,self.wght_vl,widx,new_wght_fd)
+                                        
+                    elif param=='psum_in' and pidx is not None:
+                        if bidx is None:                                   
+                            self._state_make_new_fd(self.pstate,i,param,psum_index,wght_index,ifmap_index,self.psum_vl,pidx,new_ofmap_fd)
+                        else:
+                            new_bias_fd[tuple(bias_index)]=self.bias_vl[bidx]
+                                                        
+                    elif param=='psum_out' and pidx is not None:
+                        if oidx is None:
+                            self._state_make_new_fd(self.pstate,i,param,psum_index,wght_index,ifmap_index,self.psum_vl,pidx,new_ofmap_fd)
+                            new_ofmap_fd[tuple(psum_index)].update({'ofmap':False})
+                        else:
+                            self._state_make_new_fd(self.ostate,i,param,ofmap_index,wght_index,ifmap_index,self.ofmap_vl,oidx,new_ofmap_fd)                   
+                            new_ofmap_fd[tuple(ofmap_index)].update({'ofmap':True})
                         
             if print_detail:
                 pbar.update()
             
         if print_detail:
             pbar.close()
+            
+        if not save2tile:
+            return new_solved_fd
+        else:
+            self.ofmap_tile.fault_dict=new_ofmap_fd
+            self.ifmap_tile.fault_dict=new_ifmap_fd
+            self.wght_tile.fault_dict=new_wght_fd
+            self.wght_tile.bias_fault_dict=new_bias_fd
+            return new_ifmap_fd, new_wght_fd, new_bias_fd, new_ofmap_fd
         
-        return new_solved_fd
-
     def solve_correspond_io(self, save2tile=False, print_detail=False):
         """ Solving the PE array to Tile mapping fault dictionarys.
             Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
@@ -1395,11 +1490,11 @@ class io_data_solver:
         self.psum_vl =np.array(list(psum_fd.values()))
        
         if save2tile:       
-            self.ofmap_id,self.ostate,maxo=self.state_setting(self.ofmap_vl)
-            self.bias_id,self.bstate,maxb=self.state_setting(self.bias_vl)
-        self.ifmap_id,self.istate,maxi=self.state_setting(self.ifmap_vl)
-        self.wght_id,self.wstate,maxw=self.state_setting(self.wght_vl)
-        self.psum_id,self.pstate,maxp=self.state_setting(self.psum_vl)
+            self.ofmap_id,self.ostate,maxo=self._state_setting(self.ofmap_vl)
+            self.bias_id,self.bstate,maxb=self._state_setting(self.bias_vl)
+        self.ifmap_id,self.istate,maxi=self._state_setting(self.ifmap_vl)
+        self.wght_id,self.wstate,maxw=self._state_setting(self.wght_vl)
+        self.psum_id,self.pstate,maxp=self._state_setting(self.psum_vl)
         
         if self.fault_num==None:
             if not save2tile:
@@ -1409,34 +1504,53 @@ class io_data_solver:
             
         # solving by fast gen method
         if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
-            new_solved_fd=self.state_fast_gen_new_fd()
+            new_solved_fd=self.fast_gen_new_fd(save2tile,print_detail)
         else:
-            new_solved_fd=self.state_loop_gen_new_fd(save2tile,print_detail)
+            new_solved_fd=self.loop_gen_new_fd(save2tile,print_detail)
             
+        self.fault_dict_solved=new_solved_fd
         return new_solved_fd
     
-    def tile2layer(self, ):
-        """Restore the fault dictionary from tile to entire layer
+    def tile2layer(self, fault_dict=None, based_tile='ofmap', layer=None, layer_input_shape=None, layer_weight_shape=None, layer_output_shape=None, use_bias=False):
+        """ Restore the fault dictionary from tile to entire layer
+            This tile2layer combines all ifmap, weight, ofmap tile.
+            Solves tile2layer for both fault dict coordinates and partial sum indexes.
+            By consider the duplication cause by tiling cut in input channel or kernel 2D.
 
         # Arguments
-            layer_shape: Tuple. The shape of a layer parameter were divided into tile.
+            fault_dict: Dictionary. The fault dictionary be duplicate expnand to layer. Contains fault information with partial sum indexes.
+            based_tile: String. The tile which the coordinates of fault dictionary indicate to.
+            layer: Class. Keras Layer class, for extract the layer input, weight, output shapes
+            layer_input_shape: Tuple. The shape of a layer input parameter were divided into tile.
+            layer_weight_shape: Tuple. The shape of a layer weight parameter were divided into tile.
+            layer_output_shape: Tuple. The shape of a layer output parameter were divided into tile.
             use_bias: Use bias in weight tile or not.
         
         # Returns
             The fault information Dictionary of a layer parameter (feature maps or weights).
         """
+        #TODO
+        # the combined inter tile tile2layer
+        if fault_dict is None:
+            fault_dict=self.fault_dict_solved
         
-    
-#TODO
-# the save2tile option
+        if layer is not None:
+            layer_input_shape=layer.input_shape
+            layer_output_shape=layer.output_shape
+            layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
+            
+        # find out how the ofmap being splited into tile level psum
         
-        
-def solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print_detail=False):
+
+# this function is depricated   
+def _solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print_detail=False):
     """ Solving the PE array to Tile mapping fault dictionarys.
         Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
         and find the relation between them. Give fault info (psum index).
     
     """
+    print('Warning: this function is depricated, use class io_data_solver instead!')
+    
     ofmap_fd=ofmap_tile.fault_dict
     ifmap_fd=ifmap_tile.fault_dict
     wght_fd=wght_tile.fault_dict

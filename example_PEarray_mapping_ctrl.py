@@ -59,8 +59,8 @@ PE_fault_dict=MXU.fault_dict
 #MXU.gen_PEarray_permanent_fault_dict((12,0), fault_info, mac_config=PE)
 #PE_fault_dict=MXU.fault_dict
 
-#fault_info={'SA_type':'flip','SA_bit':6,'param':'wght_in'}
-#MXU.gen_PEarray_permanent_fault_dict((5,3), fault_info, mac_config=PE)
+#fault_info={'SA_type':'flip','SA_bit':6,'param':'wght_out'}
+#MXU.gen_PEarray_permanent_fault_dict((9,7), fault_info, mac_config=PE)
 #PE_fault_dict=MXU.fault_dict
 
 #fault_info={'SA_type':'flip','SA_bit':3,'param':'wght_in'}

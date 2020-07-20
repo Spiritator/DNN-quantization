@@ -1504,12 +1504,55 @@ class io_data_solver:
             
         # solving by fast gen method
         if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
-            new_solved_fd=self.fast_gen_new_fd(save2tile,print_detail)
+            fault_dict_solved=self.fast_gen_new_fd(save2tile,print_detail)
         else:
-            new_solved_fd=self.loop_gen_new_fd(save2tile,print_detail)
+            fault_dict_solved=self.loop_gen_new_fd(save2tile,print_detail)
             
-        self.fault_dict_solved=new_solved_fd
-        return new_solved_fd
+        self.fault_dict_solved=fault_dict_solved
+        return fault_dict_solved
+ 
+    def _pop_outlier_idx(self, index, shape, get_cond_idx=False):
+        """ Remove coordinates in fault dictionary that lies outside of current shape."""        
+        index_bound=np.floor_divide(index,shape)
+        cond_arg=np.max(index_bound,axis=1)<1
+        cond_tmp=np.min(index_bound,axis=1)>=0
+        cond_arg=np.bitwise_and(cond_arg,cond_tmp)        
+        
+        poped_index=index[cond_arg]
+        
+        if get_cond_idx:
+            return poped_index,cond_arg
+        else:
+            return poped_index
+    
+    def _gen_base_coor(self, tile_shape, layer_shape, is_ifmap=None):
+        """ Generate layer base coordinates for tile to layer duplication """
+        restore_multiple=np.floor_divide(layer_shape,tile_shape)
+        
+        if is_ifmap is not None:
+            if is_ifmap:
+                restore_multiple=restore_multiple[[0,3,2,1]]
+                reorder_shape=np.array(tile_shape)[[0,3,2,1]]
+            else:
+                restore_multiple=restore_multiple[[3,2,1,0]]
+                reorder_shape=np.array(tile_shape)[[3,2,1,0]]
+        else:
+            reorder_shape=layer_shape
+                
+        base_coor=list(np.ndindex(*np.add(restore_multiple,[1,1,1,1])))            
+        base_coor=np.multiply(base_coor,np.tile(reorder_shape,[len(base_coor),1]))
+           
+        if is_ifmap is not None:
+            if is_ifmap:
+                restore_multiple=restore_multiple[[0,3,2,1]]
+                base_coor=base_coor[:,[0,3,2,1]]
+            else:
+                restore_multiple=restore_multiple[[3,2,1,0]]
+                base_coor=base_coor[:,[3,2,1,0]]
+                
+        base_coor=self._pop_outlier_idx(base_coor, layer_shape)
+        
+        return base_coor, restore_multiple
     
     def tile2layer(self, fault_dict=None, based_tile='ofmap', layer=None, layer_input_shape=None, layer_weight_shape=None, layer_output_shape=None, use_bias=False):
         """ Restore the fault dictionary from tile to entire layer
@@ -1538,8 +1581,90 @@ class io_data_solver:
             layer_input_shape=layer.input_shape
             layer_output_shape=layer.output_shape
             layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
+        
+        # unpack partial sum index
+        fd_coor=np.array(list(fault_dict.keys()))
+        fd_value=np.array(list(fault_dict.values()))
+        psum_idx=np.array([info['psum_idx'] for info in fd_value])
+        if psum_idx.dtype!=np.object:
+            psidx_cnt=psum_idx.shape
+            psum_idx=np.concatenate(psum_idx)
+        else:
+            psidx_cnt=np.array([len(i) for i in psum_idx])
+            psidx_cnt=np.cumsum(psidx_cnt)-1
+            psum_idx=np.concatenate(psum_idx)
+        
+        ofmap_coor=psum_idx[:,[0,2,3,1]]
+        wght_coor=psum_idx[:,[5,6,4,1]]
+        ifmap_coor=psum_idx[:,[0,7,8,4]]
+        
+        # get base coors
+        base_coor_o, restore_multiple_o=self._gen_base_coor(self.ofmap_tile.tile_shape, layer_output_shape, is_ifmap=True)
+        base_coor_w, restore_multiple_w=self._gen_base_coor(self.wght_tile.tile_shape, layer_weight_shape[0], is_ifmap=False)
+        base_coor_i, restore_multiple_i=self._gen_base_coor(self.ifmap_tile.tile_shape, layer_input_shape, is_ifmap=True)
+        
+        # consistency check
+        if restore_multiple_i[0]!=restore_multiple_o[0] or restore_multiple_i[3]!=restore_multiple_w[2] or restore_multiple_o[3]!=restore_multiple_o[3]:
+            raise ValueError('The tile shape is inconsistent! \nInput (batch, row, col, channel)=%s \nWeight (row,col,in-channel,out-channel)=%s \nOutput (batch,row,col,channel)=%s'%(str(self.ifmap_tile.tile_shape),str(self.wght_tile.tile_shape),str(self.ofmap_tile.tile_shape)))
+        # verify row col of ofmap to ifmap tile
+        if self.ifmap_tile.extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or self.ifmap_tile.extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
+            raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+               
+        # ofmap form 
+        base_coor_o=np.repeat(base_coor_o,restore_multiple_w[2],axis=0) # repeatition for tile level psum
+        if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
+            base_coor_o=np.repeat(base_coor_o, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
+        # match w->o
+        base_coor_w=np.split(base_coor_w,restore_multiple_w[3]) # split output channel
+        base_coor_w=np.repeat(base_coor_w,restore_multiple_o[1]*restore_multiple_o[2],axis=0) # duplicate for ofmap 2D tiles
+        base_coor_w=np.concatenate(base_coor_w)
+        base_coor_w=np.tile(base_coor_w,[restore_multiple_o[0],1]) # duplicate for batch
+        # match i->o
+        base_coor_i=np.split(base_coor_i,restore_multiple_i[0]) # split batch
+        base_coor_i=np.stack(base_coor_i) # new batch dims
+        base_coor_i=np.split(base_coor_i,restore_multiple_i[3],axis=1) # split output channel
+        base_coor_i=np.stack(base_coor_i) # new input channel psum dims
+        base_coor_i=np.transpose(base_coor_i,[1,2,0,3]) # reorder axes for interleave input channel psum
+        base_coor_i=np.reshape(base_coor_i,[-1,4]) # serialize (batch, ofmap 2D, input channel psum)
+        if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
+            base_coor_i=np.repeat(base_coor_i, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
             
-        # find out how the ofmap being splited into tile level psum
+        
+        #TODO
+        # the overlapped area may have repeat fault coor on ifmap
+        # np.unique stuff 
+
+    def clear(self):
+        """
+        Clear solved fault dict and mapping data generate along the solving process for next generation.
+        """
+        self.fault_num=None
+        self.fault_dict_solved=dict()
+        self.ofmap_coors=None
+        self.bias_coors =None
+        self.ifmap_coors=None
+        self.wght_coors =None
+        self.psum_coors =None
+        self.ofmap_vl=None
+        self.bias_vl =None
+        self.ifmap_vl=None
+        self.wght_vl =None
+        self.psum_vl =None
+        self.ofmap_id=None
+        self.bias_id=None
+        self.ifmap_id=None
+        self.wght_id=None
+        self.psum_id=None
+        self.ostate=None
+        self.bstate=None
+        self.istate=None
+        self.wstate=None
+        self.pstate=None
+        
+    def clear_layer(self):
+        """
+        Clear tile to layer mapping configuration
+        """
         
 
 # this function is depricated   

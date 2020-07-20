@@ -72,14 +72,14 @@ PE_fault_dict=MXU.fault_dict
 # create test model
 input_shape=Input(batch_shape=(1,28,28,16))
 x=QuantizedConv2D(filters=32,
-                      quantizers=quantizer(8,6),
-                      kernel_size=(3,3),
-                      padding='same',
-                      strides=(1, 1),                              
-                      activation='relu',
-                      quant_mode='hybrid')(input_shape)
+                  quantizers=quantizer(8,6),
+                  kernel_size=(3,3),
+                  padding='same',
+                  strides=(1, 1),                              
+                  activation='relu',
+                  quant_mode='hybrid')(input_shape)
 model=Model(inputs=input_shape, outputs=x, name='test_model')
 
 # backward mapping
-PE_mac_fault_dict = PE_mapping_backward(model.layers[1],MXU,print_detail=True)
+PE_mac_fault_dict = PE_mapping_backward(model.layers[1], MXU, print_detail=True)
 

@@ -2889,14 +2889,11 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
         PEarray.ofmap_tile.print_detail=False
         PEarray.wght_tile.print_detail=False
     
-    layer_input_shape=layer.input_shape
-    layer_output_shape=layer.output_shape
     layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
-    
     if len(layer_weight_shape)==0:
         if print_detail:
             print('    no weight layer Skipped!')
-        return None, None, [None,None]
+        return None
     
     if fault_dict is not None:
         PEarray.fault_dict=fault_dict
@@ -2955,34 +2952,27 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile)
     PE_mac_fault_dict=solver.solve_correspond_io(save2tile,print_detail)
     
-    
-    #TODO
-    # the new PE mac fault dict tile2layer
-    
-#    if print_detail:
-#        print('\r    Task (6/6): Tile Return to layer ...',end=' ')
-#    # ifmap PE mapping to layer
-#    ifmap_fault_dict=PEarray.ifmap_tile.fault_dict_tile2layer(layer_input_shape)    
-#    
-#    # ofmap PE mapping to layer
-#    ofmap_fault_dict=PEarray.ofmap_tile.fault_dict_tile2layer(layer_output_shape)
-#    
-#    # weight PE mapping to layer
-#    if len(layer_weight_shape)>1:
-#        use_bias=True
-#    else:
-#        use_bias=False
-#    
-#    weight_fault_dict=PEarray.wght_tile.fault_dict_tile2layer(layer_weight_shape[0],use_bias=use_bias)
-#    
-#        
-#    if print_detail:
-#        print('\r    Task (6/6): All Done.\t\t\t')
-#        
-#    if print_detail:
-#        print('    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fault_dict),len(ofmap_fault_dict),str([len(weight_fault_dict[0]),len(weight_fault_dict[1])])))
-#
-#    return ifmap_fault_dict, ofmap_fault_dict, weight_fault_dict
+    if print_detail:
+        print('\r    Task (6/6): Tile Return to layer ...',end=' ')
+    # inter tile fault dictionary transform to layer
+    if not save2tile:
+        PE_mac_fault_dict=solver.tile2layer(based_tile='ofmap',layer=layer)
+    else:
+        ifmap_fd=solver.tile2layer(based_tile='ifmap',layer=layer)
+        wght_fd=solver.tile2layer(based_tile='wght',layer=layer)
+        ofmap_fd=solver.tile2layer(based_tile='ofmap',layer=layer)
+        PE_mac_fault_dict=(ifmap_fd, wght_fd, None, ofmap_fd)
+        
+    if print_detail:
+        print('\r    Task (6/6): All Done.\t\t\t')
+        
+    if print_detail:
+        if not save2tile:
+            report_2layer=solver.report_layer_map()
+            print('    mapped layer faults | ofmap %d | total psum index %d '%(report_2layer['num_layer_fault_coor'], report_2layer['num_layer_psum_idx']))
+        else:
+            print('    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fd),len(ofmap_fd),str([len(wght_fd),0])))
+
     return PE_mac_fault_dict
 
     

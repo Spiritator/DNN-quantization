@@ -7,6 +7,7 @@ Created on Mon Jun 29 10:55:00 2020
 The MAC unit description for fault transfer to TF computation
 """
 
+import tensorflow as tf
 import numpy as np
 import json
 from ..layers.quantized_ops import quantizer
@@ -123,11 +124,18 @@ class mac_unit:
         else:
             return fault_loc
 
-    def fault_injection(self, ):
+    def fault_injection(self, ifmap, wght, ofmap, fault_dict, quantizer):
         """ The fault injection mathematical model for used in TF GPU parallel computing
         
         # Arguments
-        
+            ifmap: Tensor. Quantized Tensor. Layer input.
+            wght: Tensor. Quantized Tensor. Layer output.
+            ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+            fault_dict: Dictionary or List. The dictionary contain fault list information.
+            quantizer: Class. The quantizer class contain following quantize operation infromation.
+                word_width: Variable. The fix-point representation of the parameter word length.
+                fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+                rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
         
         # Returns
             Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.

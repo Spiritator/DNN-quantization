@@ -909,6 +909,7 @@ class tile_PE(tile):
         # pop inalid edge condition that doesn't exist in tile
 #        orig_coors,cond_idx=self.pop_outlier_idx(orig_coors,list(self.tile_shape),get_cond_idx=True)
 #        fault_info=fault_info[cond_idx]
+        # keep the edge condition for correspond io solving, also for tile2layer. Problem solve by fault injection.
         
         # deal with repeative orig_coors
         orig_coors,uni_idx,rep_idx,cnt_idx=np.unique(orig_coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
@@ -1287,7 +1288,6 @@ class io_data_solver:
             # solve weight
             wght_index=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
             
-
         else:
             if print_detail:
                 print('    GenFD (1/5): Solve Base Data Coordinates...',end=' ') 
@@ -1329,7 +1329,6 @@ class io_data_solver:
                     print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
                 # solve weight
                 wght_index=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
-        
         
         if print_detail:
             print('\r    GenFD (4/5): Build Partial Sum Indexes...\t\t',end=' ')         
@@ -1387,7 +1386,6 @@ class io_data_solver:
             self.ifmap_tile.fault_dict, self.wght_tile.fault_dict, self.wght_tile.bias_fault_dict, self.ofmap_tile.fault_dict = fd_assigner
             return new_solved_fd
 
-    
     def loop_gen_new_fd(self, save2tile=False, print_detail=False):
         """
         Extract the data coordinate index and fault parameter by fault id
@@ -1554,7 +1552,7 @@ class io_data_solver:
         
         return base_coor, restore_multiple
     
-    def tile2layer(self, fault_dict=None, based_tile='ofmap', layer=None, layer_input_shape=None, layer_weight_shape=None, layer_output_shape=None, use_bias=False):
+    def tile2layer(self, fault_dict=None, based_tile='ofmap', layer=None, layer_input_shape=None, layer_weight_shape=None, layer_output_shape=None):
         """ Restore the fault dictionary from tile to entire layer
             This tile2layer combines all ifmap, weight, ofmap tile.
             Solves tile2layer for both fault dict coordinates and partial sum indexes.
@@ -1562,20 +1560,24 @@ class io_data_solver:
 
         # Arguments
             fault_dict: Dictionary. The fault dictionary be duplicate expnand to layer. Contains fault information with partial sum indexes.
-            based_tile: String. The tile which the coordinates of fault dictionary indicate to.
+            based_tile: String. The tile which the coordinates of fault dictionary indicate to. Must be one of 'ofmap','wght','ifmap'.
             layer: Class. Keras Layer class, for extract the layer input, weight, output shapes
             layer_input_shape: Tuple. The shape of a layer input parameter were divided into tile.
             layer_weight_shape: Tuple. The shape of a layer weight parameter were divided into tile.
             layer_output_shape: Tuple. The shape of a layer output parameter were divided into tile.
-            use_bias: Use bias in weight tile or not.
         
         # Returns
             The fault information Dictionary of a layer parameter (feature maps or weights).
         """
-        #TODO
         # the combined inter tile tile2layer
+        if based_tile not in ['ofmap','wght','ifmap']:
+            raise ValueError('based_tile must be one of \'ofmap\',\'wght\',\'ifmap\'.')
+        
         if fault_dict is None:
             fault_dict=self.fault_dict_solved
+            
+        if len(fault_dict)==0:
+            return dict()
         
         if layer is not None:
             layer_input_shape=layer.input_shape
@@ -1593,11 +1595,9 @@ class io_data_solver:
             psidx_cnt=np.array([len(i) for i in psum_idx])
             psidx_cnt=np.cumsum(psidx_cnt)-1
             psum_idx=np.concatenate(psum_idx)
-        
-        ofmap_coor=psum_idx[:,[0,2,3,1]]
-        wght_coor=psum_idx[:,[5,6,4,1]]
-        ifmap_coor=psum_idx[:,[0,7,8,4]]
-        
+            
+        self.num_psum_idx=len(psum_idx)
+                
         # get base coors
         base_coor_o, restore_multiple_o=self._gen_base_coor(self.ofmap_tile.tile_shape, layer_output_shape, is_ifmap=True)
         base_coor_w, restore_multiple_w=self._gen_base_coor(self.wght_tile.tile_shape, layer_weight_shape[0], is_ifmap=False)
@@ -1622,17 +1622,112 @@ class io_data_solver:
         # match i->o
         base_coor_i=np.split(base_coor_i,restore_multiple_i[0]) # split batch
         base_coor_i=np.stack(base_coor_i) # new batch dims
-        base_coor_i=np.split(base_coor_i,restore_multiple_i[3],axis=1) # split output channel
+        base_coor_i=np.split(base_coor_i,restore_multiple_i[3],axis=1) # split input channel
         base_coor_i=np.stack(base_coor_i) # new input channel psum dims
         base_coor_i=np.transpose(base_coor_i,[1,2,0,3]) # reorder axes for interleave input channel psum
+        base_coor_i=np.tile(base_coor_i,[1,restore_multiple_o[3],1,1]) # duplicate for ofmap channel tile cut
         base_coor_i=np.reshape(base_coor_i,[-1,4]) # serialize (batch, ofmap 2D, input channel psum)
         if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
             base_coor_i=np.repeat(base_coor_i, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
-            
         
-        #TODO
-        # the overlapped area may have repeat fault coor on ifmap
-        # np.unique stuff 
+        # the base partial sum indexes
+        base_coor_psum_idx=np.concatenate([base_coor_o[:,[0,3,1,2]],base_coor_w[:,[2,0,1]],base_coor_i[:,[1,2]]],axis=1)
+        
+        # based tile layer fault coors
+        if based_tile=='ofmap':
+            layer_base_coor=base_coor_o
+        elif based_tile=='wght':
+            layer_base_coor=base_coor_w
+        elif based_tile=='ifmap':
+            layer_base_coor=base_coor_i
+            
+        layer_fault_coor=list()
+        for i in range(4):
+            layer_fault_coor.append(np.add.outer(layer_base_coor[:,i],fd_coor[:,i]))
+        layer_fault_coor=np.stack(layer_fault_coor,axis=-1)
+        layer_fault_coor=np.reshape(layer_fault_coor,[-1,4])
+        #layer_fault_coor=np.add(np.repeat(base_coor_o,len(fd_coor),axis=0),np.tile(fd_coor,[len(base_coor_o),1])) # slower not use
+        
+        # partial sum indexes to layer fault coors
+        layer_psum_idx=list()
+        for i in range(9):
+            layer_psum_idx.append(np.add.outer(base_coor_psum_idx[:,i],psum_idx[:,i]))
+        layer_psum_idx=np.stack(layer_psum_idx,axis=-1)
+        layer_psum_idx=np.reshape(layer_psum_idx,[-1,9])
+        self.num_layer_psum_idx=len(layer_psum_idx)
+        
+        self.num_base_coor=len(base_coor_psum_idx)
+        
+        if isinstance(psidx_cnt,tuple):
+            layer_psum_idx=np.split(layer_psum_idx,psidx_cnt[0]*self.num_base_coor)
+        else:
+            layer_psum_idx=np.split(layer_psum_idx,np.tile(psidx_cnt,self.num_base_coor))
+            
+        fd_value=np.tile(fd_value,self.num_base_coor)
+        
+        # deal with repeative layer fault coors
+        layer_fault_coor,uni_idx,rep_idx,cnt_idx=np.unique(layer_fault_coor,return_index=True,return_inverse=True,return_counts=True,axis=0)
+        self.num_layer_fault_coor=len(layer_fault_coor)
+
+        # collapse duplicate coors
+        if len(uni_idx)==len(rep_idx):
+            fd_value=fd_value[uni_idx]
+        else:
+            if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
+                sorter=np.argsort(rep_idx)
+                cnt_idx=np.cumsum(cnt_idx)[:-1]
+                
+                layer_psum_idx=np.array(layer_psum_idx)
+                layer_psum_idx=layer_psum_idx[sorter]
+                layer_psum_idx=np.split(layer_psum_idx,cnt_idx)
+                
+                fd_value=fd_value[uni_idx]
+                for i in range(len(uni_idx)):
+                    fd_value[i]['psum_idx']=np.concatenate(layer_psum_idx[i])
+            else:
+                psum_idx_rep=[list() for _ in range(len(uni_idx))]
+                id_list_rep=[list() for _ in range(len(uni_idx))]
+                bit_list_rep=[list() for _ in range(len(uni_idx))]
+                param_list_rep=[list() for _ in range(len(uni_idx))]
+                
+                for i,repid in enumerate(rep_idx):
+                    if isinstance(fd_value[i]['psum_idx'],tuple):
+                        psum_idx_rep[repid].append(fd_value[i]['psum_idx'])
+                    else:
+                        psum_idx_rep[repid]+=fd_value[i]['psum_idx']
+
+                    if isinstance(fd_value[i]['id'],int):
+                        id_list_rep[repid].append(fd_value[i]['id'])
+                    else:
+                        id_list_rep[repid]+=fd_value[i]['id']
+                        
+                    if isinstance(fd_value[i]['SA_bit'],int):
+                        bit_list_rep[repid].append(fd_value[i]['SA_bit'])
+                    else:
+                        bit_list_rep[repid]+=fd_value[i]['SA_bit']
+                        
+                    if isinstance(fd_value[i]['param'],str):
+                        param_list_rep[repid].append(fd_value[i]['param'])
+                    else:
+                        param_list_rep[repid]+=fd_value[i]['param']
+            
+                fd_value=fd_value[uni_idx]
+                for i in range(len(uni_idx)):
+                    fd_value[i]['psum_idx']=psum_idx_rep[i]
+                    fd_value[i]['id']=id_list_rep[i]
+                    fd_value[i]['SA_bit']=bit_list_rep[i]
+                    fd_value[i]['param']=param_list_rep[i]
+
+        layer_fault_coor_fd=list(zip(*layer_fault_coor.T))
+        layer_fault_dict=dict(zip(layer_fault_coor_fd,fd_value))
+        
+        return layer_fault_dict
+    
+    def report_layer_map(self):
+        return {'num_base_coor':self.num_base_coor,
+                'num_psum_idx':self.num_psum_idx,
+                'num_layer_fault_coor':self.num_layer_fault_coor,
+                'num_layer_psum_idx':self.num_layer_psum_idx}
 
     def clear(self):
         """
@@ -1665,7 +1760,10 @@ class io_data_solver:
         """
         Clear tile to layer mapping configuration
         """
-        
+        self.num_base_coor=0
+        self.num_layer_fault_coor=0
+        self.num_layer_psum_idx=0
+        self.num_psum_idx=0
 
 # this function is depricated   
 def _solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print_detail=False):

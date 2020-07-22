@@ -392,9 +392,6 @@ x=QuantizedConv2D(filters=64,
 model=Model(inputs=input_shape, outputs=x, name='test_model')
 
 # transform fault dictionary from tile to layer
-fault_dict_layer=solver.tile2layer(fault_dict_solved,
-                                   based_tile='ofmap',
-                                   layer=model.layers[1],
-                                   use_bias=True)
+fault_dict_layer=solver.tile2layer(fault_dict_solved, based_tile='ofmap', layer=model.layers[1])
 
 

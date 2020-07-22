@@ -22,6 +22,11 @@ class mac_unit:
             quantizers: Class or String. The quantize library of simulator. Or the file path to MAC unit setup (.json) file.
                 Default ifmap input/output, weight input/output, partial sum input/output are the same configuration.
                 If using setup (.json) file, this will include all the following arguments input.
+                Quantizer Parameters:
+                    word_width: Variable. The fix-point representation of the parameter word length.
+                    fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+                    rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+
             quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
                 'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
             ifmap_io: Dictionary. Input feature map data I/O description.
@@ -124,7 +129,28 @@ class mac_unit:
         else:
             return fault_loc
 
-    def fault_injection(self, ifmap, wght, ofmap, fault_dict, quantizer):
+    def inject_mac_math_fault_ndarray(self, ifmap, wght, ofmap, fault_dict, fast_gen=False):
+        """ The fault injection mathematical model for used in numpy computing
+        
+        # Arguments
+            ifmap: Ndarray. Quantized array. Layer input.
+            wght: Ndarray. Quantized array. Layer output.
+            ofmap: Ndarray. The array to be injected fault by math alteration. Quantized array. Layer output.
+            fault_dict: Dictionary or List. The dictionary contain fault list information.
+            quantizer: Class. The quantizer class contain following quantize operation infromation.
+                word_width: Variable. The fix-point representation of the parameter word length.
+                fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+                rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            fast_gen: Bool. Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+                The fault dictionay is form by fault data contamination.
+        
+        # Returns
+            Ndarray. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        
+        """
+        
+        
+    def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, fast_gen=False):
         """ The fault injection mathematical model for used in TF GPU parallel computing
         
         # Arguments
@@ -136,6 +162,8 @@ class mac_unit:
                 word_width: Variable. The fix-point representation of the parameter word length.
                 fractional_bits: Variable. Number of fractional bits in a fix-point parameter
                 rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            fast_gen: Bool. Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+                The fault dictionay is form by fault data contamination.
         
         # Returns
             Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.

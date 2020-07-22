@@ -28,6 +28,7 @@ class quantizer:
         self.min_value=-np.power(2,nb-fb-1)
         self.max_value=np.power(2,nb-fb-1)-np.power(0.5,fb)
         self.ovf_val=np.power(2,nb-1)
+        self.ovf_capper=np.power(2,nb)
 
     def round_through(self,x):
         '''Element-wise rounding to the closest integer with full gradient propagation.
@@ -87,13 +88,9 @@ class quantizer:
             else:
                 Xq = K.clip(tf.divide(Xq,self.shift_factor), self.min_value, self.max_value)
         else:
-            greater_than=tf.cast(tf.greater(Xq,self.ovf_val-1),'float32')
-            less_than=tf.cast(tf.less(Xq,-self.ovf_val),'float32')
-            
-            overflow_alter=tf.multiply(tf.multiply(tf.add(tf.floordiv(Xq,self.ovf_val),1),self.ovf_val),greater_than)
-            underflow_alter=tf.multiply(tf.multiply(tf.add(tf.floordiv(Xq,-self.ovf_val),1),self.ovf_val),less_than)
-            
-            Xq=tf.add(tf.subtract(Xq,overflow_alter),underflow_alter)
+            Xq=tf.add(Xq,self.ovf_val)
+            Xq=tf.floormod(Xq,self.ovf_capper)
+            Xq=tf.subtract(Xq,self.ovf_val)
             
             Xq=tf.divide(Xq,self.shift_factor)
             

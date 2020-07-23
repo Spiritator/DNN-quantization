@@ -44,8 +44,7 @@ def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,t
     if stuck_at!='1' and stuck_at!='0' and stuck_at!='flip':
         raise ValueError('You must stuck at \'0\' , \'1\' or \'flip\'.')
         
-    fault_value=quantizer.quantize_1half(original_value)
-    fault_value=tf.cast(fault_value,tf.int32)
+    fault_value=quantizer.left_shift_2int(original_value)
     
     if stuck_at=='1':
         modulator=np.left_shift(1,fault_bit)
@@ -57,8 +56,7 @@ def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,t
         modulator=np.left_shift(1,fault_bit)
         fault_value=tf.bitwise.bitwise_xor(fault_value,modulator)
     
-    fault_value=tf.cast(fault_value,tf.float32)    
-    fault_value=quantizer.quantize_2half(fault_value)
+    fault_value=quantizer.right_shift_back(fault_value)
     
     if tensor_return:
         return fault_value
@@ -101,8 +99,7 @@ def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer
     if len(fault_bit) != len(stuck_at):
         raise ValueError('Fault location list and stuck at type list must be the same length')
         
-    fault_value=quantizer.quantize_1half(original_value)
-    fault_value=tf.cast(fault_value,tf.int32)
+    fault_value=quantizer.left_shift_2int(original_value)
     
     modulator0=-1
     modulator1=0
@@ -125,8 +122,7 @@ def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer
     if modulatorF != 0:
         fault_value=tf.bitwise.bitwise_xor(fault_value,modulatorF)
     
-    fault_value=tf.cast(fault_value,tf.float32)    
-    fault_value=quantizer.quantize_2half(fault_value)
+    fault_value=quantizer.right_shift_back(fault_value)
     
     if tensor_return:
         return fault_value

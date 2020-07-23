@@ -2,7 +2,9 @@
 
 '''
 reference: https://github.com/BertMoons/QuantizedNeuralNetworks-Keras-Tensorflow
-all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-Tensorflow
+all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-
+    # Reference:
+    - [QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
 
 @author: Yung-Yu Tsai
 
@@ -15,6 +17,18 @@ import numpy as np
 
 class quantizer:
     def __init__(self,nb,fb,rounding_method='nearest',overflow_mode=False,stop_gradient=False):
+        """ Setup fixed-point quantization parameter
+
+        # Arguments
+            nb: Integer. The word-length of this fixed-point number.
+            fb: Integer. The number fractional bits in this fixed-point number.
+            rounding_method: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'. 
+            overflow_mode: Bool. The method of handle overflow and underflow simulation.
+                If True, the overflow and underflow value will wrap-around like in fixed-point number in RTL description.
+                Else False, the overflow and underflow value will saturate at the max and min number this fixed-point number can represent.
+            stop_gradient: Bool. Whether to let the gradient pass through the quantization function or not.
+        
+        """
         if not isinstance(nb,int) or not isinstance(fb,int):
             raise ValueError('The word width and fractional bits augment must be integer type!')
         if nb<=fb-1:
@@ -24,6 +38,7 @@ class quantizer:
         self.rounding_method=rounding_method
         self.overflow_mode=overflow_mode
         self.stop_gradient=stop_gradient
+        
         self.shift_factor = np.power(2.,fb)
         self.min_value=-np.power(2,nb-fb-1)
         self.max_value=np.power(2,nb-fb-1)-np.power(0.5,fb)
@@ -67,13 +82,7 @@ class quantizer:
     
     
     def quantize(self, X, clip_through=None, overflow_sim=None):
-    
-        '''The weights' binarization function, 
-    
-        # Reference:
-        - [QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
-    
-        '''
+        """ Quantize input X data """
         if clip_through is None:
             clip_through=self.stop_gradient
         if overflow_sim is None:
@@ -97,54 +106,33 @@ class quantizer:
         return Xq
         
         
-    def quantize_1half(self, X, clip_through=False, overflow_sim=None):
-    
-        '''The weights' binarization function, 
-    
-        # Reference:
-        - [QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
-    
-        '''
-        if clip_through is None:
-            clip_through=self.stop_gradient
-        if overflow_sim is None:
-            overflow_sim=self.overflow_mode
-        #sess = tf.InteractiveSession()
+    def left_shift_2int(self, X):
+        """ 
+        Shift left to the integer interval. 
+        Notice that the input X should be previously quantized.
+        Or else, there might be unexpected fault.
+        Shifted data was casted to integer type for bitwise operation.
+        Which should be right_shift_back to its original fixed-point state.
+        """
         Xq = tf.multiply(X,self.shift_factor)
-        Xq = self.round_through(Xq)
-        
-        if not overflow_sim:
-            if clip_through:
-                Xq = clip_through(Xq, self.min_value*self.shift_factor, self.max_value*self.shift_factor)    
-            else:
-                Xq = K.clip(Xq, self.min_value*self.shift_factor, self.max_value*self.shift_factor)
-        else:
-            greater_than=tf.cast(tf.greater(Xq,self.ovf_val-1),'float32')
-            less_than=tf.cast(tf.less(Xq,-self.ovf_val),'float32')
-            
-            overflow_alter=tf.multiply(tf.multiply(tf.add(tf.floordiv(Xq,self.ovf_val),1),self.ovf_val),greater_than)
-            underflow_alter=tf.multiply(tf.multiply(tf.add(tf.floordiv(Xq,-self.ovf_val),1),self.ovf_val),less_than)
-            
-            Xq=tf.add(tf.subtract(Xq,overflow_alter),underflow_alter)
+        Xq = tf.cast(Xq,tf.int32)
             
         return Xq
     
-    def quantize_2half(self, X):
-    
-        '''The weights' binarization function, 
-    
-        # Reference:
-        - [QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
-    
-        '''
+    def right_shift_back(self, X):
+        """ 
+        Shift back to fixed-point data decimal point with fractional value.
+        Reverse the left_shift_2int function.
+        """
         
-        #sess = tf.InteractiveSession()
-        #W = tf.constant(W)
-        Xq = tf.divide(X,self.shift_factor)       
+        Xq = tf.cast(X,tf.float32)   
+        Xq = tf.divide(Xq,self.shift_factor)
+        
         return Xq
     
 
 def build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient):
+    """ Layer quantizer builder. For generate different setup for ifmap, weight, ofmap individually. """
     multi_setting=False
     
     if isinstance(nbits,list) or isinstance(fbits,list) or isinstance(rounding_method,list) or isinstance(overflow_mode,list) or isinstance(stop_gradient,list):

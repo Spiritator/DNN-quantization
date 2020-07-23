@@ -2304,15 +2304,15 @@ class PEarray:
         
         iout=list()
         wout=list()
-#        psin=list()
+        psin=list()
         
         for i,info in enumerate(fault_value):
             if info['param']=='ifmap_out':
                 iout.append(i)
             elif info['param']=='wght_out':
                 wout.append(i)
-#            elif info['param']=='psum_in':
-#                psin.append(i)
+            elif info['param']=='psum_in':
+                psin.append(i)
                 
         if len(iout)>0:
             if mac_config is None:
@@ -2372,15 +2372,34 @@ class PEarray:
                 else:
                     pass
             
-#        if len(psin)>0:
-#            psum_out_dir=self.get_neighboring_axis(self.psum_flow)
-#            if psum_out_dir=='PE_y':
-#                psum_out_dir=np.tile([[1,0]],[len(psin),1])
-#            elif wght_out_dir=='PE_x':
-#                psum_out_dir=np.tile([[0,1]],[len(psin),1])
-#            
-#            if psum_out_dir is not None:
-#                index[psin,0:2]=np.subtract(index[psin,0:2],psum_out_dir)
+        if len(psin)>0:
+            if mac_config is None:
+                psum_out_dir=self.get_neighboring_axis(self.psum_flow)
+                if psum_out_dir=='PE_y':
+                    psum_out_dir=np.tile([[1,0]],[len(psin),1])
+                elif wght_out_dir=='PE_x':
+                    psum_out_dir=np.tile([[0,1]],[len(psin),1])
+                
+                if psum_out_dir is not None:
+                    index[psin,0:2]=np.subtract(index[psin,0:2],psum_out_dir)
+            else:
+                if mac_config.psum_io['type']=='io_pair':
+                    psum_out_dir=mac_config.psum_io['dimension']
+                    if mac_config.psum_io['direction']=='forward':
+                        polarity=-1
+                    elif mac_config.psum_io['direction']=='backward':
+                        polarity=1
+            
+                    if psum_out_dir=='PE_y':
+                        psum_out_dir=np.tile([[polarity,0]],[len(psin),1])
+                    elif psum_out_dir=='PE_x':
+                        psum_out_dir=np.tile([[0,polarity]],[len(psin),1])
+                    else:
+                        raise ValueError('Mac unit I/O pair dimension must be PE_x ot PE_y.')
+                        
+                    index[psin,0:2]=np.add(index[psin,0:2],psum_out_dir)
+                else:
+                    pass
 
         edge_arg=self.get_outlier_cond_args(index,[self.n_y,self.n_x,self.n_clk])
         index=index[edge_arg]

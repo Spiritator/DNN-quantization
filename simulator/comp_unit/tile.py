@@ -1662,8 +1662,9 @@ class io_data_solver:
             layer_psum_idx=np.split(layer_psum_idx,psidx_cnt[0]*self.num_base_coor)
         else:
             layer_psum_idx=np.split(layer_psum_idx,np.tile(psidx_cnt,self.num_base_coor))
-            
-        fd_value=np.tile(fd_value,self.num_base_coor)
+        
+        # duplicate by np.tile is call by reference not value
+        #fd_value=np.tile(fd_value,self.num_base_coor)
         
         # deal with repeative layer fault coors
         layer_fault_coor,uni_idx,rep_idx,cnt_idx=np.unique(layer_fault_coor,return_index=True,return_inverse=True,return_counts=True,axis=0)
@@ -1671,7 +1672,7 @@ class io_data_solver:
 
         # collapse duplicate coors
         if len(uni_idx)==len(rep_idx):
-            fd_value=fd_value[uni_idx]
+            new_fd_value=fd_value[np.remainder(uni_idx,self.num_base_coor)]
         else:
             if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
                 sorter=np.argsort(rep_idx)
@@ -1681,9 +1682,13 @@ class io_data_solver:
                 layer_psum_idx=layer_psum_idx[sorter]
                 layer_psum_idx=np.split(layer_psum_idx,cnt_idx)
                 
-                fd_value=fd_value[uni_idx]
-                for i in range(len(uni_idx)):
-                    fd_value[i]['psum_idx']=np.concatenate(layer_psum_idx[i])
+                #fd_value=fd_value[np.remainder(uni_idx,self.num_base_coor)]
+                
+                new_fd_value=list()
+                for i,uidx in enumerate(uni_idx):
+                    new_fv=fd_value[np.remainder(uidx,self.num_base_coor)].copy()
+                    new_fv['psum_idx']=np.concatenate(layer_psum_idx[i])
+                    new_fd_value.append(new_fv)
             else:
                 psum_idx_rep=[list() for _ in range(len(uni_idx))]
                 id_list_rep=[list() for _ in range(len(uni_idx))]
@@ -1711,15 +1716,18 @@ class io_data_solver:
                     else:
                         param_list_rep[repid]+=fd_value[i]['param']
             
-                fd_value=fd_value[uni_idx]
-                for i in range(len(uni_idx)):
-                    fd_value[i]['psum_idx']=psum_idx_rep[i]
-                    fd_value[i]['id']=id_list_rep[i]
-                    fd_value[i]['SA_bit']=bit_list_rep[i]
-                    fd_value[i]['param']=param_list_rep[i]
+                #fd_value=fd_value[uni_idx]
+                new_fd_value=list()
+                for i,uidx in enumerate(uni_idx):
+                    new_fv=fd_value[np.remainder(uidx,self.num_base_coor)].copy()
+                    new_fv['psum_idx']=psum_idx_rep[i]
+                    new_fv['id']=id_list_rep[i]
+                    new_fv['SA_bit']=bit_list_rep[i]
+                    new_fv['param']=param_list_rep[i]
+                    new_fd_value.append(new_fv)
 
         layer_fault_coor_fd=list(zip(*layer_fault_coor.T))
-        layer_fault_dict=dict(zip(layer_fault_coor_fd,fd_value))
+        layer_fault_dict=dict(zip(layer_fault_coor_fd,new_fd_value))
         
         return layer_fault_dict
     

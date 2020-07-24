@@ -42,8 +42,10 @@ from keras.models import Model
 from keras.layers import Input
 from simulator.layers.quantized_layers import QuantizedConv2D
 
+import tensorflow as tf
 import pickle
 import numpy as np
+import keras.backend as K
 
 #%% create test model & load fault dictionary
 
@@ -60,20 +62,23 @@ x=QuantizedConv2D(filters=64,
 model=Model(inputs=input_shape, outputs=x, name='test_model')
 
 
-with open('../pe_mapping_config/fault_dict_solved_layer.pickle', 'rb') as fdfile:
+with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as fdfile:
     fault_dict_solved_layer = pickle.load(fdfile)
 
 #%% test inject mac math fault ndarray method
     
 ifmap=np.reshape(np.arange(4*56*56*32,dtype='float32'),[4,56,56,32])
+ifmapT=tf.Variable(ifmap)
 weight=np.reshape(np.arange(3*3*32*64,dtype='float32'),[3,3,32,64])
+weightT=tf.Variable(weight)
 ofmap=np.zeros([4,56,56,64],dtype='float32')
+ofmapT=tf.Variable(ofmap)
 
-ofmap_alter=PE.inject_mac_math_fault_ndarray(ifmap,
-                                             weight,
-                                             ofmap,
-                                             fault_dict_solved_layer,
-                                             qtz,
-                                             padding='same',
-                                             fast_gen=True)
-    
+ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
+                                            weightT,
+                                            ofmapT,
+                                            fault_dict_solved_layer,
+                                            qtz,
+                                            padding='same',
+                                            fast_gen=True)
+

@@ -128,16 +128,36 @@ class mac_unit:
                     
         else:
             return fault_loc
+        
+    def _polarity_check(self, fault_type, fault_bit, FI_param, wl):
+        """ Get the polarity of parameter 
+            
+        """
+        modulator=np.left_shift(1,fault_bit)
+        polarity=tf.bitwise.bitwise_and(FI_param,modulator)
+        polarity=tf.math.sign(polarity)
+        if fault_type=='flip':
+            polarity=tf.math.add(tf.multiply(polarity,-2),1)
+        elif fault_type=='0':    
+            polarity=tf.math.negative(polarity)
+        elif fault_type=='1':    
+            polarity=tf.math.subtract(1,polarity)
+                
+        if fault_bit==wl-1:
+            polarity=tf.math.negative(polarity)
+            
+        return polarity
 
-    def inject_mac_math_fault_ndarray(self, ifmap, wght, ofmap, fault_dict, quantizer, ksizes=(3,3), padding='valid', dilation_rates=(1,1), fast_gen=True):
+
+    def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, quantizer=None, ksizes=(3,3), padding='valid', dilation_rates=(1,1), fast_gen=True):
         """ The fault injection mathematical model for used in numpy computing
         
         # Arguments
-            ifmap: Ndarray. Quantized array. Layer input.
-            wght: Ndarray. Quantized array. Layer output.
-            ofmap: Ndarray. The array to be injected fault by math alteration. Quantized array. Layer output.
+            ifmap: Tensor. Quantized Tensor. Layer input.
+            wght: Tensor. Quantized Tensor. Layer output.
+            ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
             fault_dict: Dictionary or List. The dictionary contain fault list information.
-            quantizer: Class. The quantizer class contain following quantize operation infromation.
+            quantizer: Class or List. The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
                 word_width: Variable. The fix-point representation of the parameter word length.
                 fractional_bits: Variable. Number of fractional bits in a fix-point parameter
                 rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
@@ -148,7 +168,7 @@ class mac_unit:
                 The fault dictionay is form by fault data contamination.
         
         # Returns
-            Ndarray. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+            Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
         # Reminder!!
             padding: Padding is tie to layer setting. If user treat padding as a seperate layer.
@@ -156,6 +176,25 @@ class mac_unit:
                 The tile setting must be padding='valid' which means no padding.
                 Or else there might be fault.
         """
+        if quantizer is None:
+            if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+                quantizer_input =self.quantizer[0]
+                quantizer_weight =self.quantizer[1]
+                quantizer_output =self.quantizer[2]
+            else:
+                quantizer_input =self.quantizer
+                quantizer_weight =self.quantizer
+                quantizer_output =self.quantizer
+        else:
+            if isinstance(quantizer,list) and len(quantizer)==3:
+                quantizer_input =quantizer[0]
+                quantizer_weight =quantizer[1]
+                quantizer_output =quantizer[2]
+            else:
+                quantizer_input =quantizer
+                quantizer_weight =quantizer
+                quantizer_output =quantizer
+        
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
         # (coor idx, num of psidx, psum idx)
@@ -177,55 +216,37 @@ class mac_unit:
                     psum_idx_ifmap[:,:,1]=np.add(psum_idx_ifmap[:,:,1],dilated_ksize_row_edge)
                     psum_idx_ifmap[:,:,2]=np.add(psum_idx_ifmap[:,:,2],dilated_ksize_col_edge)
                 
-                    pad=((0,0),(dilated_ksize_row_edge,dilated_ksize_row_edge),(dilated_ksize_col_edge,dilated_ksize_col_edge),(0,0))
-                    ifmap=np.pad(ifmap,pad,'constant',constant_values=0)
+                    pad=[[0,0],[dilated_ksize_row_edge,dilated_ksize_row_edge],[dilated_ksize_col_edge,dilated_ksize_col_edge],[0,0]]
+                    ifmap=tf.pad(ifmap,pad,'constant',constant_values=0)
     
-    
-                ifmap_alloc=ifmap[psum_idx_ifmap[:,:,0],psum_idx_ifmap[:,:,1],psum_idx_ifmap[:,:,2],psum_idx_ifmap[:,:,3]]
-                wght_alloc=wght[psum_idx_wght[:,:,0],psum_idx_wght[:,:,1],psum_idx_wght[:,:,2],psum_idx_wght[:,:,3]]
+                ifmap_alloc=tf.gather_nd(ifmap,psum_idx_ifmap)
+                wght_alloc=tf.gather_nd(wght,psum_idx_wght) 
                 
-                ifmap_alloc=quantizer.left_shift_2int(ifmap_alloc)
-                wght_alloc=quantizer.left_shift_2int(wght_alloc)
+                ifmap_alloc=quantizer_input.left_shift_2int(ifmap_alloc)
+                wght_alloc=quantizer_weight.left_shift_2int(wght_alloc)
             
-            ofmap_alloc=ofmap[psum_idx_ofmap[:,:,0],psum_idx_ofmap[:,:,1],psum_idx_ofmap[:,:,2],psum_idx_ofmap[:,:,3]]
-            ofmap_alloc=quantizer.left_shift_2int(ofmap_alloc)
+            ofmap_alloc=tf.gather_nd(ofmap,psum_idx_ofmap)
+            ofmap_alloc=quantizer_output.left_shift_2int(ofmap_alloc)
 
-    #        if fault_param=='ifmap_in' or fault_param=='ifmap_out':
-    #            FI_param=ifmapin
-    #            wlpolar=wl
-    #        elif fault_param=='wght_in' or fault_param=='wght_out':
-    #            FI_param=wght_in
-    #            wlpolar=wl
-    #        elif fault_param=='psum_in' or fault_param=='psum_out':
-    #            FI_param=psum_out_ff
-    #            if quantize_mode=='intrinsic':
-    #                wlpolar=wl        
-    #            elif quantize_mode=='hybrid':
-    #                wlpolar=2*wl
-    #            
-    #        if quantize_mode=='intrinsic':
-    #            wlpsum=wl
-    #        elif quantize_mode=='hybrid':
-    #            wlpsum=2*wl
-    #        
-    #        if SA_type=='flip':
-    #            if np.binary_repr(FI_param,wlpolar)[wlpolar-1-fault_bit]=='1':
-    #                polarity_check=-1
-    #            elif np.binary_repr(FI_param,wlpolar)[wlpolar-1-fault_bit]=='0':
-    #                polarity_check=1
-    #        elif SA_type=='0':    
-    #            if np.binary_repr(FI_param,wlpolar)[wlpolar-1-fault_bit]=='1':
-    #                polarity_check=-1
-    #            else:
-    #                polarity_check=0
-    #        elif SA_type=='1':    
-    #            if np.binary_repr(FI_param,wlpolar)[wlpolar-1-fault_bit]=='0':
-    #                polarity_check=1
-    #            else:
-    #                polarity_check=0
-    #                
-    #        if fault_bit==wlpolar-1:
-    #            polarity_check*=-1
+            if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+                FI_param = ifmap_alloc
+                wlpolar = quantizer_input.nb
+            elif fault_param=='wght_in' or fault_param=='wght_out':
+                FI_param = wght_alloc
+                wlpolar = quantizer_weight.nb
+            elif fault_param=='psum_in' or fault_param=='psum_out':
+                FI_param = ofmap_alloc
+                if self.quant_mode=='intrinsic':
+                    wlpolar = quantizer_output.nb
+                elif self.quant_mode=='hybrid':
+                    wlpolar = quantizer_input.nb+quantizer_weight.nb
+            
+            polarity=self._polarity_check(fault_type, fault_bit, FI_param, wlpolar)
+                
+#            if quantize_mode=='intrinsic':
+#                wlpsum=wl
+#            elif quantize_mode=='hybrid':
+#                wlpsum=2*wl
     #        
     #        if fault_param=='ifmap_in' or fault_param=='ifmap_out':
     #            ifmap_out_mk=ifmap_out_ff+polarity_check*(2**fault_bit)
@@ -279,29 +300,7 @@ class mac_unit:
     
         return 'pupu'
 
-        
-    def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, quantizer, fast_gen=False):
-        """ The fault injection mathematical model for used in TF GPU parallel computing
-        
-        # Arguments
-            ifmap: Tensor. Quantized Tensor. Layer input.
-            wght: Tensor. Quantized Tensor. Layer output.
-            ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
-            fault_dict: Dictionary or List. The dictionary contain fault list information.
-            quantizer: Class. The quantizer class contain following quantize operation infromation.
-                word_width: Variable. The fix-point representation of the parameter word length.
-                fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-                rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
-            fast_gen: Bool. Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
-                The fault dictionay is form by fault data contamination.
-        
-        # Returns
-            Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
-
-        """
-        
-        # tf.gather_nd
-        
+                
     #TODO
     # the generation for mac fault injection
 

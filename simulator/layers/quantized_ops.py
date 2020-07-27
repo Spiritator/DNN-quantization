@@ -45,7 +45,7 @@ class quantizer:
         self.ovf_val=np.power(2,nb-1)
         self.ovf_capper=np.power(2,nb)
 
-    def round_through(self,x):
+    def round_through(self, x, rounding_method=None):
         '''Element-wise rounding to the closest integer with full gradient propagation.
         A trick from [Sergey Ioffe](http://stackoverflow.com/a/36480182)
         '''
@@ -54,15 +54,17 @@ class quantizer:
         
         def floor_fn():
             return tf.floor(x)
-
         
-        if self.rounding_method == 'nearest':
+        if rounding_method is None:
+            rounding_method=self.rounding_method
+        
+        if rounding_method == 'nearest':
             rounded = tf.rint(x)
-        elif self.rounding_method == 'down':
+        elif rounding_method == 'down':
             rounded = tf.floor(x)
-        elif self.rounding_method == 'stochastic':
+        elif rounding_method == 'stochastic':
             rounded=tf.cond(tf.greater(tf.reduce_mean(x-tf.floor(x)), 0.5), ceil_fn, floor_fn)
-        elif self.rounding_method == 'zero':
+        elif rounding_method == 'zero':
             neg_alter=tf.add(tf.multiply(tf.cast(tf.less(x,0),'float32'),-2.0),1.0)
             rounded=tf.multiply(tf.floor(tf.multiply(x,neg_alter)),neg_alter)
         else:
@@ -72,14 +74,57 @@ class quantizer:
         return rounded_through
     
     
-    def clip_through(self, x, min_val, max_val):
+    def clip_through(self, X, min_val=None, max_val=None):
         '''Element-wise clipping with gradient propagation
         Analogue to round_through
         '''
-        clipped = K.clip(x, min_val, max_val)
-        clipped_through= x + K.stop_gradient(clipped-x)
+        if min_val is None:
+            min_val=self.min_value
+        if max_val is None:
+            max_val=self.max_value
+            
+        clipped = K.clip(X, min_val, max_val)
+        clipped_through= X + K.stop_gradient(clipped-X)
         return clipped_through 
     
+    def clip(self, X, min_val=None, max_val=None):
+        """ Element-wise clipping without gradient propagation """
+        if min_val is None:
+            min_val=self.min_value
+        if max_val is None:
+            max_val=self.max_value
+            
+        Xq = K.clip(X, min_val, max_val)
+        return Xq
+    
+    def wrap_around(self, X, ovf_val=None, ovf_capper=None):
+        """ Wrap around of overflow and underflow approach """
+        if ovf_val is None:
+            ovf_val=self.ovf_val
+        if ovf_capper is None:
+            ovf_capper=self.ovf_capper
+        
+        Xq=tf.add(X,ovf_val)
+        Xq=tf.floormod(Xq,ovf_capper)
+        Xq=tf.subtract(Xq,ovf_val)
+        return Xq
+    
+    def capping(self, X, clip_through=None, overflow_sim=None):
+        if clip_through is None:
+            clip_through=self.stop_gradient
+        if overflow_sim is None:
+            overflow_sim=self.overflow_mode
+
+        if not overflow_sim:
+            Xq=tf.divide(X,self.shift_factor)
+            if clip_through:
+                Xq = self.clip_through(Xq)    
+            else:
+                Xq = self.clip(Xq)
+        else:
+            Xq=self.wrap_around(Xq)
+
+        return Xq
     
     def quantize(self, X, clip_through=None, overflow_sim=None):
         """ Quantize input X data """
@@ -92,19 +137,16 @@ class quantizer:
         Xq = self.round_through(Xq)
         
         if not overflow_sim:
+            Xq=tf.divide(Xq,self.shift_factor)
             if clip_through:
-                Xq = clip_through(tf.divide(Xq,self.shift_factor), self.min_value, self.max_value)    
+                Xq = self.clip_through(Xq)    
             else:
-                Xq = K.clip(tf.divide(Xq,self.shift_factor), self.min_value, self.max_value)
+                Xq = self.clip(Xq)
         else:
-            Xq=tf.add(Xq,self.ovf_val)
-            Xq=tf.floormod(Xq,self.ovf_capper)
-            Xq=tf.subtract(Xq,self.ovf_val)
-            
+            Xq=self.wrap_around(Xq)
             Xq=tf.divide(Xq,self.shift_factor)
             
         return Xq
-        
         
     def left_shift_2int(self, X):
         """ 
@@ -130,6 +172,31 @@ class quantizer:
         
         return Xq
     
+    def quantize_2half(self, X, rounding_method=None, clip_through=None, overflow_sim=None):
+        """ The second half of qunatize operation
+            That is rounding, capping, shift back.
+        """
+        if rounding_method is None:
+            rounding_method=self.rounding_method
+        if clip_through is None:
+            clip_through=self.stop_gradient
+        if overflow_sim is None:
+            overflow_sim=self.overflow_mode
+
+        Xq = self.round_through(X, rounding_method)
+        
+        if not overflow_sim:
+            Xq=tf.divide(Xq,self.shift_factor)
+            if clip_through:
+                Xq = self.clip_through(Xq)    
+            else:
+                Xq = self.clip(Xq)
+        else:
+            Xq=self.wrap_around(Xq)
+            Xq=tf.divide(Xq,self.shift_factor)
+            
+        return Xq
+
 
 def build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient):
     """ Layer quantizer builder. For generate different setup for ifmap, weight, ofmap individually. """

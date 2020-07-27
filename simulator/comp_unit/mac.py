@@ -146,10 +146,12 @@ class mac_unit:
         if fault_bit==wl-1:
             polarity=tf.math.negative(polarity)
             
+        polarity=tf.cast(polarity,tf.float32)
+            
         return polarity
 
 
-    def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, quantizer=None, ksizes=(3,3), padding='valid', dilation_rates=(1,1), fast_gen=True):
+    def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, quantizer=None, ksizes=(3,3), padding='valid', dilation_rates=(1,1), sim_truncarry=False, fast_gen=True):
         """ The fault injection mathematical model for used in numpy computing
         
         # Arguments
@@ -164,6 +166,10 @@ class mac_unit:
             ksize: Tuple. Size 2, the kernel size (row, col).
             padding: String. 'same' or 'valid'. The type of padding algorithm to use.
             dilation_rate: Tuple. Size 2, the dilation rate (row, col).
+            sim_truncarry: Bool. simulate the truncation carry during mac math fault injection. 
+                The truncation carry is cause by the carry-out of thrown away fractional bits. 
+                It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
+                How ever this could cause huge time overhead for absolute bit-true model.
             fast_gen: Bool. Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
                 The fault dictionay is form by fault data contamination.
         
@@ -197,6 +203,7 @@ class mac_unit:
         
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
+        fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
         # (coor idx, num of psidx, psum idx)
         psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
         psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
@@ -242,52 +249,48 @@ class mac_unit:
                     wlpolar = quantizer_input.nb+quantizer_weight.nb
             
             polarity=self._polarity_check(fault_type, fault_bit, FI_param, wlpolar)
+                            
+            if fault_param=='ifmap_in' or fault_param=='ifmap_out' or fault_param=='wght_in' or fault_param=='wght_out':
+                if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+                    psum_alter= tf.multiply(wght_alloc,2**fault_bit)
+                elif fault_param=='wght_in' or fault_param=='wght_out':
+                    psum_alter= tf.multiply(ifmap_alloc,2**fault_bit)
                 
-#            if quantize_mode=='intrinsic':
-#                wlpsum=wl
-#            elif quantize_mode=='hybrid':
-#                wlpsum=2*wl
-    #        
-    #        if fault_param=='ifmap_in' or fault_param=='ifmap_out':
-    #            ifmap_out_mk=ifmap_out_ff+polarity_check*(2**fault_bit)
-    #            wght_out_mk=wght_out_ff
-    #        
-    #            psum_out_mk=overflowcap(psum_out_ff + psum_holdmk, wlpsum)
-    #        
-    #            if polarity_check==0:
-    #                psum_holdmk=0
-    #            else:
-    #                psum_holdmk= wght_in*(2**fault_bit)
-    #                
-    #                if quantize_mode=='intrinsic':
-    #                    if polarity_check==-1:
-    #                        truncarry=int(psum_holdmk%scale_factor > ifmapin*wght_in%scale_factor)
-    #                    elif polarity_check==1:
-    #                        truncarry=int(psum_holdmk%scale_factor + ifmapin*wght_in%scale_factor > scale_factor)
-    #                    psum_holdmk= polarity_check * (overflowcap(psum_holdmk//scale_factor,wlpsum) + truncarry)
-    #                elif quantize_mode=='hybrid':
-    #                    psum_holdmk= polarity_check * overflowcap(psum_holdmk, wlpsum)
-    #                
-    #        elif fault_param=='wght_in' or fault_param=='wght_out':
-    #            ifmap_out_mk=ifmap_out_ff
-    #            wght_out_mk=wght_out_ff+polarity_check*(2**fault_bit)
-    #        
-    #            psum_out_mk=overflowcap(psum_out_ff + psum_holdmk, wlpsum)
-    #        
-    #            if polarity_check==0:
-    #                psum_holdmk=0
-    #            else:
-    #                psum_holdmk= ifmapin*(2**fault_bit)
-    #                
-    #                if quantize_mode=='intrinsic':
-    #                    if polarity_check==-1:
-    #                        truncarry=int(psum_holdmk%scale_factor > ifmapin*wght_in%scale_factor)
-    #                    elif polarity_check==1:
-    #                        truncarry=int(psum_holdmk%scale_factor + ifmapin*wght_in%scale_factor > scale_factor)
-    #                    psum_holdmk= polarity_check * (overflowcap(psum_holdmk//scale_factor,wlpsum) + truncarry)
-    #                elif quantize_mode=='hybrid':
-    #                    psum_holdmk= polarity_check * overflowcap(psum_holdmk, wlpsum)
-    #                
+                if self.quant_mode=='intrinsic':
+                    if sim_truncarry:
+                        trivia_alter= tf.floormod(psum_alter, quantizer_output.shift_factor)
+                        trivia_conv= tf.floormod(tf.multiply(ifmap_alloc,wght_alloc), quantizer_output.shift_factor)
+                        trivia_conv= tf.multiply(trivia_conv, polarity)
+                        truncarry= tf.add(trivia_alter, trivia_conv)
+                        
+                        comparator= tf.multiply(tf.floordiv(tf.add(polarity,1),2), quantizer_output.shift_factor-1)
+                        truncarry= tf.sign(tf.subtract(truncarry, comparator))
+                    
+                    psum_alter=quantizer_output.right_shift_back(psum_alter)
+                    psum_alter=quantizer_output.round_through(psum_alter)
+                    psum_alter=quantizer_output.capping(psum_alter)
+                    if sim_truncarry:
+                        psum_alter=tf.add(psum_alter,truncarry)
+                    psum_alter=tf.multiply(psum_alter, polarity)
+                    
+                    # sum all psum_alter
+                    psum_alter=tf.reduce_sum(psum_alter, axis=1)
+                    psum_alter=quantizer_output.quantize_2half(psum_alter)
+                    
+                elif self.quant_mode=='hybrid':
+                    psum_alter=tf.multiply(polarity, psum_alter)
+                    
+                    # sum all psum_alter
+                    psum_alter=tf.reduce_sum(psum_alter, axis=1)
+                    psum_alter=quantizer_output.right_shift_back(psum_alter)
+                    psum_alter=quantizer_output.quantize_2half(psum_alter)
+                
+                # add psum_alter back to ofmap
+                output=tf.add(fdoutput_alloc, psum_alter)
+                output=quantizer_output.quantize(output)
+                output=tf.scatter_nd_update(ofmap,fd_coor,output)
+                    
+                
     #        elif fault_param=='psum_in' or fault_param=='psum_out':
     #            ifmap_out_mk=ifmap_out_ff
     #            wght_out_mk=wght_out_ff
@@ -298,7 +301,7 @@ class mac_unit:
         else:
             pass
     
-        return 'pupu'
+        return output
 
                 
     #TODO

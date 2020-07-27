@@ -67,9 +67,9 @@ with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as
 
 #%% test inject mac math fault ndarray method
     
-ifmap=np.reshape(np.arange(4*56*56*32,dtype='float32'),[4,56,56,32])
+ifmap=np.reshape(np.divide(np.arange(-200704,4*56*56*32/2,dtype='float32'),2**6),[4,56,56,32])
 ifmapT=tf.Variable(ifmap)
-weight=np.reshape(np.arange(3*3*32*64,dtype='float32'),[3,3,32,64])
+weight=np.reshape(np.divide(np.arange(-9216,3*3*32*64/2,dtype='float32'),2**6),[3,3,32,64])
 weightT=tf.Variable(weight)
 ofmap=np.zeros([4,56,56,64],dtype='float32')
 ofmapT=tf.Variable(ofmap)
@@ -81,4 +81,6 @@ ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
                                             qtz,
                                             padding='same',
                                             fast_gen=True)
+
+ofmap_alter=K.eval(ofmap_alter)
 

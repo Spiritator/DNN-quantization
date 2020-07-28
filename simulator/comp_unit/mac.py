@@ -151,7 +151,10 @@ class mac_unit:
         return polarity
 
 
-    def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, quantizer=None, ksizes=(3,3), padding='valid', dilation_rates=(1,1), sim_truncarry=False, fast_gen=True):
+    def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, 
+                                     quantizer=None, 
+                                     ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
+                                     sim_truncarry=False, fast_gen=True):
         """ The fault injection mathematical model for used in numpy computing
         
         # Arguments
@@ -204,11 +207,12 @@ class mac_unit:
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
         fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
-        # (coor idx, num of psidx, psum idx)
-        psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
-        psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
         
         if fast_gen:
+            # (coor idx, num of psidx, psum idx)
+            psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
+            psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
+        
             fault_param=fd_value[0]['param']
             fault_type=fd_value[0]['SA_type']
             fault_bit=fd_value[0]['SA_bit']
@@ -285,21 +289,74 @@ class mac_unit:
                     psum_alter=quantizer_output.right_shift_back(psum_alter)
                     psum_alter=quantizer_output.quantize_2half(psum_alter)
                 
-                # add psum_alter back to ofmap
-                output=tf.add(fdoutput_alloc, psum_alter)
-                output=quantizer_output.quantize(output)
-                output=tf.scatter_nd_update(ofmap,fd_coor,output)
-                    
+            #TODO
+            # there is no way to know the psum of exact time frame
+            # fault on psum do it the way in PE RTL test
+            elif fault_param=='psum_in' or fault_param=='psum_out':
+                psum_alter=tf.multiply(polarity,2**fault_bit)
                 
-    #        elif fault_param=='psum_in' or fault_param=='psum_out':
-    #            ifmap_out_mk=ifmap_out_ff
-    #            wght_out_mk=wght_out_ff
-    #        
-    #            psum_out_mk=overflowcap(psum_out_ff + polarity_check*(2**fault_bit), wlpsum)
-    #        
-    #            psum_holdmk= 0
-        else:
-            pass
+                psum_alter=tf.reduce_sum(psum_alter, axis=1)
+                psum_alter=quantizer_output.right_shift_back(psum_alter)
+                psum_alter=quantizer_output.quantize_2half(psum_alter)
+
+            # add psum_alter back to ofmap
+            output=tf.add(fdoutput_alloc, psum_alter)
+            output=quantizer_output.quantize(output)
+            output=tf.scatter_nd_update(ofmap,fd_coor,output)
+
+                
+        else: # slow loop gen
+            if isinstance(fd_value[0]['id'],int):
+                state='normal'
+                        
+                psum_idx_list=list()
+                fault_param=list()
+                fault_type=list()
+                fault_bit=list()
+                for info in fd_value:
+                    psum_idx_list.append(info['psum_idx'])
+                    fault_param.append(info['param'])
+                    fault_type.append(info['SA_type'])
+                    fault_bit.append(info['SA_bit'])
+                    
+                # (coor idx, num of psidx, psum idx)
+                psum_idx_list=np.array(psum_idx_list)
+                psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
+
+                fault_param=np.array(fault_param)
+                fault_type=np.array(fault_type)
+                fault_bit=np.array(fault_bit)
+            
+            elif isinstance(fd_value[0]['id'],list):
+                state='repeative'
+                
+                psum_idx_list=list()
+                cnt_psidx=list()
+                fault_param=list()
+                fault_type=list()
+                fault_bit=list()
+                for info in fd_value:
+                    cnt_psidx.append(len(info['psum_idx']))
+                    psum_idx_list.append(info['psum_idx'])
+                    fault_param.append(info['param'])
+                    fault_type.append(info['SA_type'])
+                    fault_bit.append(info['SA_bit'])
+                
+                cnt_psidx=np.cumsum(cnt_psidx)-1
+                # (coor idx, num of fault, num of psidx, psum idx)
+                psum_idx_list=np.array(psum_idx_list)
+                # (coor idx * num of fault, num of psidx, psum idx)
+                psum_idx_list=np.concatenate(psum_idx_list)
+                psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
+
+                fault_param=np.array(fault_param)
+                fault_type=np.array(fault_type)
+                fault_bit=np.array(fault_bit)
+                fault_param=np.concatenate(fault_param)
+                fault_type=np.concatenate(fault_type)
+                fault_bit=np.concatenate(fault_bit)
+                
+                    
     
         return output
 

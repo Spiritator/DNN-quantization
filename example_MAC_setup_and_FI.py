@@ -47,7 +47,7 @@ import pickle
 import numpy as np
 import keras.backend as K
 
-#%% create test model & load fault dictionary
+#%% create test model & layer data 
 
 qtz=quantizer(8,6,rounding_method='down')
 
@@ -61,12 +61,6 @@ x=QuantizedConv2D(filters=64,
                   quant_mode='hybrid')(input_shape)
 model=Model(inputs=input_shape, outputs=x, name='test_model')
 
-
-with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as fdfile:
-    fault_dict_solved_layer = pickle.load(fdfile)
-
-#%% test inject mac math fault ndarray method
-    
 ifmap=np.reshape(np.divide(np.arange(-200704,4*56*56*32/2,dtype='float32'),2**6),[4,56,56,32])
 ifmapT=tf.Variable(ifmap)
 weight=np.reshape(np.divide(np.arange(-9216,3*3*32*64/2,dtype='float32'),2**6),[3,3,32,64])
@@ -74,13 +68,33 @@ weightT=tf.Variable(weight)
 ofmap=np.zeros([4,56,56,64],dtype='float32')
 ofmapT=tf.Variable(ofmap)
 
-ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
+#%% test inject mac math fault & load fault dictionary
+    
+#with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as fdfile:
+#    fault_dict_solved_layer = pickle.load(fdfile)
+#
+#ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
+#                                            weightT,
+#                                            ofmapT,
+#                                            fault_dict_solved_layer,
+#                                            qtz,
+#                                            padding='same',
+#                                            fast_gen=True)
+#
+#ofmap_alter=K.eval(ofmap_alter)
+
+#%% test inject mac math fault not fast gen
+
+with open('../pe_mapping_config/fault_dict_solved_layer_scatter.pickle', 'rb') as fdfile:
+    fault_dict_solved_scatter = pickle.load(fdfile)
+
+ofmap_alt_scatter=PE.inject_mac_math_fault_tensor(ifmapT,
                                             weightT,
                                             ofmapT,
-                                            fault_dict_solved_layer,
+                                            fault_dict_solved_scatter,
                                             qtz,
                                             padding='same',
-                                            fast_gen=True)
+                                            fast_gen=False)
 
-ofmap_alter=K.eval(ofmap_alter)
+ofmap_alt_scatter=K.eval(ofmap_alt_scatter)
 

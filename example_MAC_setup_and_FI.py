@@ -70,31 +70,31 @@ ofmapT=tf.Variable(ofmap)
 
 #%% test inject mac math fault & load fault dictionary
     
-#with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as fdfile:
-#    fault_dict_solved_layer = pickle.load(fdfile)
-#
-#ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
-#                                            weightT,
-#                                            ofmapT,
-#                                            fault_dict_solved_layer,
-#                                            qtz,
-#                                            padding='same',
-#                                            fast_gen=True)
-#
-#ofmap_alter=K.eval(ofmap_alter)
+with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as fdfile:
+    fault_dict_solved_layer = pickle.load(fdfile)
+
+ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
+                                            weightT,
+                                            ofmapT,
+                                            fault_dict_solved_layer,
+                                            qtz,
+                                            padding='same',
+                                            fast_gen=True)
+
+ofmap_alter=K.eval(ofmap_alter)
 
 #%% test inject mac math fault not fast gen
 
-with open('../pe_mapping_config/fault_dict_solved_layer_scatter.pickle', 'rb') as fdfile:
-    fault_dict_solved_scatter = pickle.load(fdfile)
-
-ofmap_alt_scatter=PE.inject_mac_math_fault_tensor(ifmapT,
-                                            weightT,
-                                            ofmapT,
-                                            fault_dict_solved_scatter,
-                                            qtz,
-                                            padding='same',
-                                            fast_gen=False)
-
-ofmap_alt_scatter=K.eval(ofmap_alt_scatter)
+#with open('../pe_mapping_config/fault_dict_solved_layer_scatter.pickle', 'rb') as fdfile:
+#    fault_dict_solved_scatter = pickle.load(fdfile)
+#
+#ofmap_alt_scatter=PE.inject_mac_math_fault_tensor(ifmapT,
+#                                            weightT,
+#                                            ofmapT,
+#                                            fault_dict_solved_scatter,
+#                                            qtz,
+#                                            padding='same',
+#                                            fast_gen=False)
+#
+#ofmap_alt_scatter=K.eval(ofmap_alt_scatter)
 

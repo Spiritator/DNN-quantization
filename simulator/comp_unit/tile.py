@@ -911,7 +911,7 @@ class tile_PE(tile):
 #        fault_info=fault_info[cond_idx]
         # keep the edge condition for correspond io solving, also for tile2layer. Problem solve by fault injection.
         
-        # deal with repeative orig_coors
+        # deal with repetitive orig_coors
         orig_coors,uni_idx,rep_idx,cnt_idx=np.unique(orig_coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
         
         if len(uni_idx)==len(rep_idx):
@@ -1109,7 +1109,7 @@ class io_data_solver:
                 idlist=[info['id'] for info in faultvalue]
                 maxx=max(idlist)
             elif isinstance(faultvalue[0]['id'],list):
-                state='repeative'
+                state='repetitive'
                 idlist=[info['id'] for info in faultvalue]
                 maxx=max([max(idl) for idl in idlist])
         else:
@@ -1165,7 +1165,7 @@ class io_data_solver:
                 param=None
                 faultindex=None
                 
-        elif state=='repeative':
+        elif state=='repetitive':
             idx=None
             param=None
             faultindex=None
@@ -1203,7 +1203,7 @@ class io_data_solver:
                 newfv=faultvalue[idx].copy()
                 newfv.update({'psum_idx':psidx})
                 newfd[tuple(opindex)]=newfv
-            elif state=='repeative':
+            elif state=='repetitive':
                 try:
                     newfv=newfd[tuple(opindex)]
                     newfv['SA_bit'].append(faultvalue[idx[0]]['SA_bit'][idx[1]])
@@ -1608,7 +1608,7 @@ class io_data_solver:
         elif isinstance(fd_value[0]['id'],int):
             state='normal'
         elif isinstance(fd_value[0]['id'],list):
-            state='repeative'
+            state='repetitive'
             psidx_cnt=np.array([len(i) for i in psum_idx])
             psidx_cnt=np.cumsum(psidx_cnt)-1
             psum_idx=np.concatenate(psum_idx)
@@ -1682,10 +1682,10 @@ class io_data_solver:
                 layer_psum_idx=np.split(layer_psum_idx,np.tile(psidx_cnt,self.num_base_coor))
         elif state=='normal':
             pass
-        elif state=='repeative':
+        elif state=='repetitive':
             layer_psum_idx=np.split(layer_psum_idx,np.tile(psidx_cnt,self.num_base_coor))
                 
-        # deal with repeative layer fault coors
+        # deal with repetitive layer fault coors
         layer_fault_coor,uni_idx,rep_idx,cnt_idx=np.unique(layer_fault_coor,return_index=True,return_inverse=True,return_counts=True,axis=0)
         self.num_layer_fault_coor=len(layer_fault_coor)
 
@@ -1853,7 +1853,7 @@ def _solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, prin
                 idlist=[info['id'] for info in faultvalue]
                 maxx=max(idlist)
             elif isinstance(faultvalue[0]['id'],list):
-                state='repeative'
+                state='repetitive'
                 idlist=[info['id'] for info in faultvalue]
                 maxx=max([max(idl) for idl in idlist])
         else:
@@ -1917,7 +1917,7 @@ def _solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, prin
                 param=None
                 faultindex=None
                 
-        elif state=='repeative':
+        elif state=='repetitive':
             idx=None
             param=None
             faultindex=None
@@ -1951,7 +1951,7 @@ def _solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, prin
                 newfv=faultvalue[idx].copy()
                 newfv.update({'psum_idx':psidx})
                 newfd[tuple(opindex)]=newfv
-            elif state=='repeative':
+            elif state=='repetitive':
                 try:
                     newfv=newfd[tuple(opindex)]
                     newfv['SA_bit'].append(faultvalue[idx[0]]['SA_bit'][idx[1]])
@@ -2090,7 +2090,7 @@ def _solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, prin
 #                    new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
                             
 #                try:
-#                    if pstate=='repeative':
+#                    if pstate=='repetitive':
 #                        pidxx=pidx[0]
 #                    else:
 #                        pidxx=pidx

@@ -1653,7 +1653,7 @@ class PEarray:
                                              broadcast_dims=map_broaddims,
                                              axis_arange=map_arange)
             
-            mapped_coors,fault_value=self.collapse_repeative_coors(mapped_coors,fault_value)
+            mapped_coors,fault_value=self.collapse_repetitive_coors(mapped_coors,fault_value)
         
         # fixed
         if flow.fixed_info is not None:
@@ -1696,7 +1696,7 @@ class PEarray:
         
         # collapse repeatitive coors for fault contamination cases
         if len(mapped_coors)>0:
-            mapped_coors,fault_value=self.collapse_repeative_coors(mapped_coors,fault_value)
+            mapped_coors,fault_value=self.collapse_repetitive_coors(mapped_coors,fault_value)
         
         if tile.expansion:
             mapped_coors_fd=list(zip(*mapped_coors.T))
@@ -1876,7 +1876,7 @@ class PEarray:
             
             reduced_coors[:,-1]=slices_idx
             
-            reduced_coors,fault_value=self.collapse_repeative_coors(reduced_coors,fault_value)
+            reduced_coors,fault_value=self.collapse_repetitive_coors(reduced_coors,fault_value)
         
         # reverse repeat
         if flow.repeat>0:
@@ -1887,7 +1887,7 @@ class PEarray:
             
             reduced_coors[:,-1]=slices_idx
             
-            reduced_coors,fault_value=self.collapse_repeative_coors(reduced_coors,fault_value)
+            reduced_coors,fault_value=self.collapse_repetitive_coors(reduced_coors,fault_value)
             
         reduced_coors_fd=list(zip(*reduced_coors.T))
         new_fault_dict=dict(zip(reduced_coors_fd,fault_value))
@@ -2662,11 +2662,11 @@ class PEarray:
             index_p=list(zip(*index_p.T))
             self.psum_map_fd=dict(zip(index_p,fault_value_p))
     
-    def collapse_repeative_coors(self, coors, fault_value):
-        """ Collapse repeative coordinates and combine its fault dictionary values.
+    def collapse_repetitive_coors(self, coors, fault_value):
+        """ Collapse repetitive coordinates and combine its fault dictionary values.
             If generate permanent stuck-at fault (fast_gen), collapse and combine onlt fault id.
             The rest of fault information are the same.
-            Else if generate transient fault, the repeative coordinate exist, collapse and conbine id, SA_bit, param.
+            Else if generate transient fault, the repetitive coordinate exist, collapse and conbine id, SA_bit, param.
         
         """
         coors,uni_idx,rep_idx,cnt_idx=np.unique(coors,return_index=True,return_inverse=True,return_counts=True,axis=0)

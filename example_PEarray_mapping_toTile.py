@@ -146,29 +146,29 @@ MXU.align_slice_pack(dataflow_pre_plan=True)
 
 #%% generate PE array fault dictionary
 
-MXU.fault_dict={(6,15,77):{'SA_type':'0','SA_bit':3,'param':'ifmap_in'},
-                (9,3,833):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
-                (7,12,12664):{'SA_type':'flip','SA_bit':0,'param':'psum_out'},
-                (6,6,863):{'SA_type':'flip','SA_bit':5,'param':'psum_out'},
-                (4,4,862):{'SA_type':'0','SA_bit':5,'param':'wght_in'},
-                (15,4,666):{'SA_type':'flip','SA_bit':2,'param':'psum_out'},
-                (13,6,11111):{'SA_type':'flip','SA_bit':6,'param':'psum_in'},
-                (3,13,777):{'SA_type':'1','SA_bit':7,'param':'ifmap_out'},
-                (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'},
-                (0,0,444):{'SA_type':'flip','SA_bit':1,'param':'psum_in'},
-                (15,15,8787):{'SA_type':'1','SA_bit':3,'param':'ifmap_out'},
-                (13,3,8553):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
-                (3,10,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
-                (15,6,5207):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
-
-MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
-PE_fault_dict=MXU.fault_dict
+#MXU.fault_dict={(6,15,77):{'SA_type':'0','SA_bit':3,'param':'ifmap_in'},
+#                (9,3,833):{'SA_type':'flip','SA_bit':5,'param':'wght_in'},
+#                (7,12,12664):{'SA_type':'flip','SA_bit':0,'param':'psum_out'},
+#                (6,6,863):{'SA_type':'flip','SA_bit':5,'param':'psum_out'},
+#                (4,4,862):{'SA_type':'0','SA_bit':5,'param':'wght_in'},
+#                (15,4,666):{'SA_type':'flip','SA_bit':2,'param':'psum_out'},
+#                (13,6,11111):{'SA_type':'flip','SA_bit':6,'param':'psum_in'},
+#                (3,13,777):{'SA_type':'1','SA_bit':7,'param':'ifmap_out'},
+#                (9,4,8766):{'SA_type':'flip','SA_bit':2,'param':'wght_out'},
+#                (0,0,444):{'SA_type':'flip','SA_bit':1,'param':'psum_in'},
+#                (15,15,8787):{'SA_type':'1','SA_bit':3,'param':'ifmap_out'},
+#                (13,3,8553):{'SA_type':'flip','SA_bit':7,'param':'ifmap_in'},# ans (0,15,6,3)
+#                (3,10,2444):{'SA_type':'flip','SA_bit':4,'param':'wght_in'},# ans (2,2,3,10)
+#                (15,6,5207):{'SA_type':'flip','SA_bit':7,'param':'psum_out'}}# ans (0,15,6,6)
+#
+#MXU.fault_dict=MXU.assign_id(MXU.fault_dict)
+#PE_fault_dict=MXU.fault_dict
 
 #MXU.fault_dict=MXU.neighbor_io_fault_dict_coors(MXU.fault_dict)
 #PE_fault_dict_neighbor=MXU.fault_dict
 
-#MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
-#PE_fault_dict=MXU.fault_dict
+MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
+PE_fault_dict=MXU.fault_dict
 
 #MXU.gen_PEarray_transient_fault_dict(n_bit=8, fault_num=20, fault_type='flip')
 #PE_fault_dict=MXU.fault_dict

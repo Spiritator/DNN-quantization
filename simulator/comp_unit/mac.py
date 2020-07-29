@@ -143,13 +143,219 @@ class mac_unit:
         elif fault_type=='1':    
             polarity=tf.math.subtract(1,polarity)
                 
-        if fault_bit==wl-1:
-            polarity=tf.math.negative(polarity)
+        if isinstance(fault_bit,int):
+            if fault_bit==wl-1:
+                polarity=tf.math.negative(polarity)
+        else:
+            signbit=np.equal(fault_bit,wl-1)
+            signbit=np.add(np.multiply(signbit,-2,dtype=np.float32),1)
+            polarity=tf.math.multiply(polarity,signbit)
             
         polarity=tf.cast(polarity,tf.float32)
             
         return polarity
+    
+    def _padding_ifmap_and_idx(self, ifmap, index, ksizes, dilation_rates):
+        """ Preproccess ifmap data and index for padding situation """
+        dilated_ksize_row_edge = (ksizes[0] + (ksizes[0]-1) * (dilation_rates[0] - 1))//2
+        dilated_ksize_col_edge = (ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1))//2
+        index[:,:,1]=np.add(index[:,:,1],dilated_ksize_row_edge)
+        index[:,:,2]=np.add(index[:,:,2],dilated_ksize_col_edge)
+    
+        if ifmap is None:
+            return None, index
+            
+        pad=[[0,0],[dilated_ksize_row_edge,dilated_ksize_row_edge],[dilated_ksize_col_edge,dilated_ksize_col_edge],[0,0]]
+        ifmap=tf.pad(ifmap,pad,'constant',constant_values=0)
+        
+        return ifmap, index
 
+    def mac_math_alter_make(self, psum_alter, polarity, quantizer_output, sim_truncarry=False, ifmap_alloc=None, wght_alloc=None):
+        """ The core funciton of create mac math fault injection alteration Tensor
+            This alteration will be later add onto ofmap tensor
+            
+            psum_alter: The product data by multiply coefficient data and fault bit order. That is:
+                if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+                    psum_alter= tf.multiply(wght_alloc,2**fault_bit)
+                elif fault_param=='wght_in' or fault_param=='wght_out':
+                    psum_alter= tf.multiply(ifmap_alloc,2**fault_bit)
+                
+        """
+        if self.quant_mode=='intrinsic':
+            if sim_truncarry:
+                trivia_alter= tf.floormod(psum_alter, quantizer_output.shift_factor)
+                trivia_conv= tf.floormod(tf.multiply(ifmap_alloc,wght_alloc), quantizer_output.shift_factor)
+                trivia_conv= tf.multiply(trivia_conv, polarity)
+                truncarry= tf.add(trivia_alter, trivia_conv)
+                
+                comparator= tf.multiply(tf.floordiv(tf.add(polarity,1),2), quantizer_output.shift_factor-1)
+                truncarry= tf.sign(tf.subtract(truncarry, comparator))
+            
+            psum_alter=quantizer_output.right_shift_back(psum_alter)
+            psum_alter=quantizer_output.round_through(psum_alter)
+            psum_alter=quantizer_output.capping(psum_alter)
+            if sim_truncarry:
+                psum_alter=tf.add(psum_alter,truncarry)
+            psum_alter=tf.multiply(psum_alter, polarity)
+            
+            # sum all psum_alter
+            psum_alter=tf.reduce_sum(psum_alter, axis=1)
+            psum_alter=quantizer_output.quantize_2half(psum_alter)
+            
+        elif self.quant_mode=='hybrid':
+            psum_alter=tf.multiply(polarity, psum_alter)
+            
+            # sum all psum_alter
+            psum_alter=tf.reduce_sum(psum_alter, axis=1)
+            psum_alter=quantizer_output.right_shift_back(psum_alter)
+            psum_alter=quantizer_output.quantize_2half(psum_alter)
+            
+        return psum_alter
+    
+    def _fault_value_extract_loop(self, fault_value, repetitive=False):
+        """ Extract data from fault dictionary values 
+            The fault value is in np.array(list(fault_dict.values())) format
+            This is only for slow loop generation
+        """
+        psum_idx_list=list()
+        fault_bit=list()
+        param_ifmap=list()
+        param_wght=list()
+        param_ofmap=list()
+        type0=list()
+        type1=list()
+        typef=list()
+        
+        if not repetitive:
+            for i,info in enumerate(fault_value):
+                psum_idx_list.append(info['psum_idx'])
+                fault_bit.append(info['SA_bit'])
+                
+                param=info['param']
+                if param=='ifmap_in' or param=='ifmap_out':
+                    param_ifmap.append(i)
+                elif param=='wght_in' or param=='wght_out':
+                    param_wght.append(i)
+                elif param=='psum_in' or param=='psum_out':
+                    param_ofmap.append(i)
+                    
+                typee=info['SA_type']
+                if typee=='0':
+                    type0.append(i)
+                elif typee=='1':
+                    type1.append(i)
+                elif typee=='flip':
+                    typef.append(i)
+                
+            # (coor idx, num of psidx, psum idx)
+            psum_idx_list=np.array(psum_idx_list)
+            fault_bit=np.array(fault_bit)
+            param_ifmap=np.array(param_ifmap)
+            param_wght=np.array(param_wght)
+            param_ofmap=np.array(param_ofmap)
+            type0=np.array(type0)
+            type1=np.array(type1)
+            typef=np.array(typef)
+            cnt_psidx=None
+        
+        else:
+            cnt_psidx=list()
+            fault_param=list()
+            fault_type=list()
+            for info in fault_value:
+                cnt_psidx.append(len(info['psum_idx']))
+                psum_idx_list.append(info['psum_idx'])
+                fault_bit.append(info['SA_bit'])
+                fault_param.append(info['param'])
+                fault_type.append(info['SA_type'])
+            
+            cnt_psidx=np.cumsum(cnt_psidx)-1
+            # (coor idx, num of fault, num of psidx, psum idx)
+            psum_idx_list=np.array(psum_idx_list)
+            # (coor idx * num of fault, num of psidx, psum idx)
+            psum_idx_list=np.concatenate(psum_idx_list)
+
+            fault_param=np.array(fault_param)
+            fault_type=np.array(fault_type)
+            fault_bit=np.array(fault_bit)
+            fault_param=np.concatenate(fault_param)
+            fault_type=np.concatenate(fault_type)
+            fault_bit=np.concatenate(fault_bit)
+            
+            for i in range(len(fault_param)):
+                param=fault_param[i]
+                if param=='ifmap_in' or param=='ifmap_out':
+                    param_ifmap.append(i)
+                elif param=='wght_in' or param=='wght_out':
+                    param_wght.append(i)
+                elif param=='psum_in' or param=='psum_out':
+                    param_ofmap.append(i)
+                    
+                typee=fault_type[i]
+                if typee=='0':
+                    type0.append(i)
+                elif typee=='1':
+                    type1.append(i)
+                elif typee=='flip':
+                    typef.append(i)
+
+        return psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef
+    
+    def _param_find_fault_type(self, param_idx, SA0idx, SA1idx, flipidx):
+        """ Find the extraction index for SA0, SA1, bit-flip fault in a parameter """
+        searched_SA0=np.intersect1d(param_idx,SA0idx)
+        searched_SA1=np.intersect1d(param_idx,SA1idx)
+        searched_flip=np.intersect1d(param_idx,flipidx)
+        searched_SA0=np.searchsorted(param_idx,searched_SA0)
+        searched_SA1=np.searchsorted(param_idx,searched_SA1)
+        searched_flip=np.searchsorted(param_idx,searched_flip)
+        searched_SA0=np.expand_dims(searched_SA0,-1)
+        searched_SA1=np.expand_dims(searched_SA1,-1)
+        searched_flip=np.expand_dims(searched_flip,-1)
+        
+        return searched_SA0, searched_SA1, searched_flip
+    
+    def _polarity_check_type_grouping(self, data_tensor, fault_bit, data_idx, type0, type1, typef, wlpolar):
+        """ Polarity check with type grouping and return the arranged combined polarity """
+        # type grouping
+        type0_idx, type1_idx, typef_idx=self._param_find_fault_type(data_idx,type0,type1,typef)
+        
+        # allocate type subgroup data & check polarity
+        if len(type0_idx)>0:
+            alloc_type0=tf.gather_nd(data_tensor,type0_idx)
+            faultbit_type0=np.tile(fault_bit[type0_idx],[1,data_tensor.shape.dims[1].value])
+            polarity_type0=self._polarity_check('0', faultbit_type0, alloc_type0, wlpolar)
+            
+        if len(type1_idx)>0:
+            alloc_type1=tf.gather_nd(data_tensor,type1_idx)
+            faultbit_type1=np.tile(fault_bit[type1_idx],[1,data_tensor.shape.dims[1].value])
+            polarity_type1=self._polarity_check('1', faultbit_type1, alloc_type1, wlpolar)
+            
+        if len(typef_idx)>0:
+            alloc_typef=tf.gather_nd(data_tensor,typef_idx)
+            faultbit_typef=np.tile(fault_bit[typef_idx],[1,data_tensor.shape.dims[1].value])
+            polarity_typef=self._polarity_check('flip', faultbit_typef, alloc_typef, wlpolar)
+
+        # construct arranged combined polarrity
+        polarity=tf.Variable(tf.zeros(data_tensor.shape))
+        if len(type0_idx)>0:
+            polarity=tf.scatter_nd_update(polarity,type0_idx,polarity_type0)
+        if len(type1_idx)>0:
+            polarity=tf.scatter_nd_update(polarity,type1_idx,polarity_type1)
+        if len(typef_idx)>0:
+            polarity=tf.scatter_nd_update(polarity,typef_idx,polarity_typef)
+            
+        return polarity
+    
+    def _fault_bit_ext4mult(self, fault_bit, num_psum_idx):
+        """ Extend fault bit for tf.multiply
+            Add a number of psum index axis and make 2's exponential
+        """
+        fault_bit=np.expand_dims(fault_bit,-1)
+        fault_bit=np.tile(fault_bit,[1,num_psum_idx])
+        fault_bit=np.power(2,fault_bit)
+        
+        return fault_bit
 
     def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, 
                                      quantizer=None, 
@@ -209,6 +415,7 @@ class mac_unit:
         fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
         
         if fast_gen:
+            # data allocation
             # (coor idx, num of psidx, psum idx)
             psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
             psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
@@ -222,13 +429,10 @@ class mac_unit:
                 psum_idx_ifmap=psum_idx_list[:,:,[0,7,8,4]]
             
                 if padding=='same':
-                    dilated_ksize_row_edge = (ksizes[0] + (ksizes[0]-1) * (dilation_rates[0] - 1))//2
-                    dilated_ksize_col_edge = (ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1))//2
-                    psum_idx_ifmap[:,:,1]=np.add(psum_idx_ifmap[:,:,1],dilated_ksize_row_edge)
-                    psum_idx_ifmap[:,:,2]=np.add(psum_idx_ifmap[:,:,2],dilated_ksize_col_edge)
-                
-                    pad=[[0,0],[dilated_ksize_row_edge,dilated_ksize_row_edge],[dilated_ksize_col_edge,dilated_ksize_col_edge],[0,0]]
-                    ifmap=tf.pad(ifmap,pad,'constant',constant_values=0)
+                    ifmap, psum_idx_ifmap=self._padding_ifmap_and_idx(ifmap, 
+                                                                      psum_idx_ifmap, 
+                                                                      ksizes, 
+                                                                      dilation_rates)
     
                 ifmap_alloc=tf.gather_nd(ifmap,psum_idx_ifmap)
                 wght_alloc=tf.gather_nd(wght,psum_idx_wght) 
@@ -239,6 +443,7 @@ class mac_unit:
             ofmap_alloc=tf.gather_nd(ofmap,psum_idx_ofmap)
             ofmap_alloc=quantizer_output.left_shift_2int(ofmap_alloc)
 
+            # check polarity
             if fault_param=='ifmap_in' or fault_param=='ifmap_out':
                 FI_param = ifmap_alloc
                 wlpolar = quantizer_input.nb
@@ -253,45 +458,27 @@ class mac_unit:
                     wlpolar = quantizer_input.nb+quantizer_weight.nb
             
             polarity=self._polarity_check(fault_type, fault_bit, FI_param, wlpolar)
-                            
+                        
+            # fault injection
             if fault_param=='ifmap_in' or fault_param=='ifmap_out' or fault_param=='wght_in' or fault_param=='wght_out':
+                # fault injection of ifmap and wght => mac math FI
                 if fault_param=='ifmap_in' or fault_param=='ifmap_out':
                     psum_alter= tf.multiply(wght_alloc,2**fault_bit)
                 elif fault_param=='wght_in' or fault_param=='wght_out':
                     psum_alter= tf.multiply(ifmap_alloc,2**fault_bit)
                 
-                if self.quant_mode=='intrinsic':
-                    if sim_truncarry:
-                        trivia_alter= tf.floormod(psum_alter, quantizer_output.shift_factor)
-                        trivia_conv= tf.floormod(tf.multiply(ifmap_alloc,wght_alloc), quantizer_output.shift_factor)
-                        trivia_conv= tf.multiply(trivia_conv, polarity)
-                        truncarry= tf.add(trivia_alter, trivia_conv)
-                        
-                        comparator= tf.multiply(tf.floordiv(tf.add(polarity,1),2), quantizer_output.shift_factor-1)
-                        truncarry= tf.sign(tf.subtract(truncarry, comparator))
-                    
-                    psum_alter=quantizer_output.right_shift_back(psum_alter)
-                    psum_alter=quantizer_output.round_through(psum_alter)
-                    psum_alter=quantizer_output.capping(psum_alter)
-                    if sim_truncarry:
-                        psum_alter=tf.add(psum_alter,truncarry)
-                    psum_alter=tf.multiply(psum_alter, polarity)
-                    
-                    # sum all psum_alter
-                    psum_alter=tf.reduce_sum(psum_alter, axis=1)
-                    psum_alter=quantizer_output.quantize_2half(psum_alter)
-                    
-                elif self.quant_mode=='hybrid':
-                    psum_alter=tf.multiply(polarity, psum_alter)
-                    
-                    # sum all psum_alter
-                    psum_alter=tf.reduce_sum(psum_alter, axis=1)
-                    psum_alter=quantizer_output.right_shift_back(psum_alter)
-                    psum_alter=quantizer_output.quantize_2half(psum_alter)
+                psum_alter=self.mac_math_alter_make(psum_alter, 
+                                                    polarity, 
+                                                    quantizer_output, 
+                                                    sim_truncarry, 
+                                                    ifmap_alloc, 
+                                                    wght_alloc)
                 
             #TODO
             # there is no way to know the psum of exact time frame
             # fault on psum do it the way in PE RTL test
+            
+            # fault injection of ofmap
             elif fault_param=='psum_in' or fault_param=='psum_out':
                 psum_alter=tf.multiply(polarity,2**fault_bit)
                 
@@ -306,62 +493,175 @@ class mac_unit:
 
                 
         else: # slow loop gen
+            # loop data extraction
             if isinstance(fd_value[0]['id'],int):
-                state='normal'
-                        
-                psum_idx_list=list()
-                fault_param=list()
-                fault_type=list()
-                fault_bit=list()
-                for info in fd_value:
-                    psum_idx_list.append(info['psum_idx'])
-                    fault_param.append(info['param'])
-                    fault_type.append(info['SA_type'])
-                    fault_bit.append(info['SA_bit'])
-                    
-                # (coor idx, num of psidx, psum idx)
-                psum_idx_list=np.array(psum_idx_list)
-                psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
-
-                fault_param=np.array(fault_param)
-                fault_type=np.array(fault_type)
-                fault_bit=np.array(fault_bit)
+                (psum_idx_list,
+                 cnt_psidx,
+                 fault_bit,
+                 param_ifmap,
+                 param_wght,
+                 param_ofmap,
+                 type0,
+                 type1,
+                 typef)=\
+                self._fault_value_extract_loop(fd_value, repetitive=False)
             
             elif isinstance(fd_value[0]['id'],list):
-                state='repeative'
+                (psum_idx_list,
+                 cnt_psidx,
+                 fault_bit,
+                 param_ifmap,
+                 param_wght,
+                 param_ofmap,
+                 type0,
+                 type1,
+                 typef)=\
+                self._fault_value_extract_loop(fd_value, repetitive=True)
                 
-                psum_idx_list=list()
-                cnt_psidx=list()
-                fault_param=list()
-                fault_type=list()
-                fault_bit=list()
-                for info in fd_value:
-                    cnt_psidx.append(len(info['psum_idx']))
-                    psum_idx_list.append(info['psum_idx'])
-                    fault_param.append(info['param'])
-                    fault_type.append(info['SA_type'])
-                    fault_bit.append(info['SA_bit'])
+            # ofmap fault
+            if len(param_ofmap)>0:
+                # data gathering
+                psum_idx_ofmap=psum_idx_list[param_ofmap]
+                idx_ofmap=psum_idx_ofmap[:,:,[0,2,3,1]]
+                faultbit_ofmap=fault_bit[param_ofmap]
                 
-                cnt_psidx=np.cumsum(cnt_psidx)-1
-                # (coor idx, num of fault, num of psidx, psum idx)
-                psum_idx_list=np.array(psum_idx_list)
-                # (coor idx * num of fault, num of psidx, psum idx)
-                psum_idx_list=np.concatenate(psum_idx_list)
-                psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
-
-                fault_param=np.array(fault_param)
-                fault_type=np.array(fault_type)
-                fault_bit=np.array(fault_bit)
-                fault_param=np.concatenate(fault_param)
-                fault_type=np.concatenate(fault_type)
-                fault_bit=np.concatenate(fault_bit)
+                ofmap_alloc=tf.gather_nd(ofmap,idx_ofmap)
+                ofmap_alloc=quantizer_output.left_shift_2int(ofmap_alloc)
                 
+                # check polarity
+                if self.quant_mode=='intrinsic':
+                    wlpolar = quantizer_output.nb
+                elif self.quant_mode=='hybrid':
+                    wlpolar = quantizer_input.nb+quantizer_weight.nb   
                     
-    
+                polarity_ofmap=self._polarity_check_type_grouping(ofmap_alloc,
+                                                                  faultbit_ofmap,
+                                                                  param_ofmap,
+                                                                  type0,type1,typef,
+                                                                  wlpolar)
+                
+            # ifmap fault
+            if len(param_ifmap)>0:
+                # data gathering
+                psum_idx_ifmap=psum_idx_list[param_ifmap]
+                idx_ifmap_ifmap=psum_idx_ifmap[:,:,[0,7,8,4]]
+                idx_ifmap_wght=psum_idx_ifmap[:,:,[5,6,4,1]]
+                faultbit_ifmap=fault_bit[param_ifmap]
+            
+                if padding=='same':
+                    ifmap, idx_ifmap_ifmap=self._padding_ifmap_and_idx(ifmap, 
+                                                                       idx_ifmap_ifmap, 
+                                                                       ksizes, 
+                                                                       dilation_rates)
+                ifmap_alloc_i=tf.gather_nd(ifmap,idx_ifmap_ifmap)
+                ifmap_alloc_i=quantizer_input.left_shift_2int(ifmap_alloc_i)
+                ifmap_alloc_w=tf.gather_nd(wght,idx_ifmap_wght)
+                ifmap_alloc_w=quantizer_input.left_shift_2int(ifmap_alloc_w)
+                
+                # check polarity
+                wlpolar = quantizer_input.nb
+                
+                polarity_ifmap=self._polarity_check_type_grouping(ifmap_alloc_i,
+                                                                  faultbit_ifmap,
+                                                                  param_ifmap,
+                                                                  type0,type1,typef,
+                                                                  wlpolar)
+            
+            # wght fault
+            if len(param_wght)>0:
+                # data gathering
+                psum_idx_wght=psum_idx_list[param_wght]
+                idx_wght_wght=psum_idx_wght[:,:,[5,6,4,1]]
+                idx_wght_ifmap=psum_idx_wght[:,:,[0,7,8,4]]
+                faultbit_wght=fault_bit[param_wght]
+                
+                if padding=='same':
+                    if len(param_ifmap)>0:
+                        _, idx_wght_ifmap=self._padding_ifmap_and_idx(None, 
+                                                                      idx_wght_ifmap, 
+                                                                      ksizes, 
+                                                                      dilation_rates)
+                    else:
+                        ifmap, idx_wght_ifmap=self._padding_ifmap_and_idx(ifmap, 
+                                                                          idx_wght_ifmap, 
+                                                                          ksizes, 
+                                                                          dilation_rates)
+                wght_alloc_w=tf.gather_nd(wght,idx_wght_wght) 
+                wght_alloc_w=quantizer_weight.left_shift_2int(wght_alloc_w)
+                wght_alloc_i=tf.gather_nd(ifmap,idx_wght_ifmap) 
+                wght_alloc_i=quantizer_weight.left_shift_2int(wght_alloc_i)
+
+                # check polarity
+                wlpolar = quantizer_weight.nb
+                
+                polarity_wght=self._polarity_check_type_grouping(wght_alloc_w,
+                                                                 faultbit_wght,
+                                                                 param_wght,
+                                                                 type0,type1,typef,
+                                                                 wlpolar)
+                
+            # fault injection
+            
+            # ofmap fault injection
+            if len(param_ofmap)>0:
+                faultbit_ofmap=self._fault_bit_ext4mult(faultbit_ofmap, polarity_ofmap.shape.dims[1].value)
+                psum_alter_ofmap=tf.multiply(polarity_ofmap, faultbit_ofmap)
+                
+                psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
+                psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
+                psum_alter_ofmap=quantizer_output.quantize_2half(psum_alter_ofmap)
+                
+            # ifmap fault injection
+            if len(param_ifmap)>0:
+                faultbit_ifmap=self._fault_bit_ext4mult(faultbit_ifmap, polarity_ifmap.shape.dims[1].value)
+                psum_alter_ifmap=tf.multiply(ifmap_alloc_w, faultbit_ifmap)
+                
+                psum_alter_ifmap=self.mac_math_alter_make(psum_alter_ifmap, 
+                                                          polarity_ifmap, 
+                                                          quantizer_output, 
+                                                          sim_truncarry, 
+                                                          ifmap_alloc_i, 
+                                                          ifmap_alloc_w)
+                
+            # wght fault injection
+            if len(param_wght)>0:
+                faultbit_wght=self._fault_bit_ext4mult(faultbit_wght, polarity_wght.shape.dims[1].value)
+                psum_alter_wght=tf.multiply(wght_alloc_i, faultbit_wght)
+                
+                psum_alter_wght=self.mac_math_alter_make(psum_alter_wght, 
+                                                         polarity_wght, 
+                                                         quantizer_output, 
+                                                         sim_truncarry, 
+                                                         wght_alloc_i, 
+                                                         wght_alloc_w)
+                
+            
+            # re-construct layer wise psum_alter
+            psum_alter=tf.Variable(tf.zeros(psum_idx_list.shape[0]))
+
+            if len(param_ofmap)>0:
+                param_ofmap=np.expand_dims(param_ofmap,-1)
+                psum_alter=tf.scatter_nd_update(psum_alter, param_ofmap, psum_alter_ofmap)
+            if len(param_ifmap)>0:
+                param_ifmap=np.expand_dims(param_ifmap,-1)
+                psum_alter=tf.scatter_nd_update(psum_alter, param_ifmap, psum_alter_ifmap)
+            if len(param_wght)>0:
+                param_wght=np.expand_dims(param_wght,-1)
+                psum_alter=tf.scatter_nd_update(psum_alter, param_wght, psum_alter_wght)
+
+            if cnt_psidx is not None:
+                psum_alter=tf.split(psum_alter,cnt_psidx)
+                for alteritem in psum_alter:
+                    alteritem=tf.reduce_sum(alteritem)
+                psum_alter=tf.stack(psum_alter)
+                psum_alter=quantizer_output.quantize(psum_alter)
+            
+            # add psum_alter back to ofmap
+            output=tf.add(fdoutput_alloc, psum_alter)
+            output=quantizer_output.quantize(output)
+            output=tf.scatter_nd_update(ofmap,fd_coor,output)
+            
         return output
 
                 
-    #TODO
-    # the generation for mac fault injection
-
         

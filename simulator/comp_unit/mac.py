@@ -269,7 +269,7 @@ class mac_unit:
                 fault_param.append(info['param'])
                 fault_type.append(info['SA_type'])
             
-            cnt_psidx=np.cumsum(cnt_psidx)-1
+            cnt_psidx=np.cumsum(cnt_psidx)[:-1]
             # (coor idx, num of fault, num of psidx, psum idx)
             psum_idx_list=np.array(psum_idx_list)
             # (coor idx * num of fault, num of psidx, psum idx)

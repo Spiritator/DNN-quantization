@@ -395,3 +395,24 @@ model=Model(inputs=input_shape, outputs=x, name='test_model')
 fault_dict_layer=solver.tile2layer(fault_dict_solved, based_tile='ofmap', layer=model.layers[1])
 
 
+#%% test io_data_solver non-well-divided-tiling
+
+## organize fault dict and give partial sum index
+#solver=io_data_solver(ofmap_tile,wght_tile,ifmap_tile)
+#fault_dict_solved=solver.solve_correspond_io(print_detail=True)
+#
+## create test model
+#input_shape=Input(batch_shape=(2,70,70,32))
+#x=QuantizedConv2D(filters=64,
+#                  quantizers=quantizer(8,6),
+#                  kernel_size=(3,3),
+#                  padding='same',
+#                  strides=(1, 1),                              
+#                  activation='relu',
+#                  quant_mode='hybrid')(input_shape)
+#model=Model(inputs=input_shape, outputs=x, name='test_model')
+#
+## transform fault dictionary from tile to layer
+#fault_dict_layer=solver.tile2layer(fault_dict_solved, based_tile='ofmap', layer=model.layers[1])
+
+

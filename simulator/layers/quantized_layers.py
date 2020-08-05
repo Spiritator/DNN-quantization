@@ -43,10 +43,7 @@ class Clip(constraints.Constraint):
 
 
 class QuantizedDense(Dense):
-    ''' Quantized Dense layer
-    References: 
-    "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
-    '''
+    ''' Quantized Dense layer '''
     def __init__(self, units, quantizers, quant_mode='hybrid',
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],last_layer=False, **kwargs):
         super(QuantizedDense, self).__init__(units, **kwargs)
@@ -163,18 +160,17 @@ class QuantizedDense(Dense):
 
 
 class QuantizedConv2D(Conv2D):
-    '''Quantized Convolution2D layer
-    References: 
-    "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
-    '''
+    '''Quantized Convolution2D layer '''
     def __init__(self, filters, quantizers, quant_mode='hybrid',
-                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],last_layer=False,**kwargs):
+                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],
+                 mac_unit=None, last_layer=False, **kwargs):
         super(QuantizedConv2D, self).__init__(filters, **kwargs)
         self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
         self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
+        self.mac_unit=mac_unit
         self.last_layer=last_layer
         
     def build(self, input_shape):
@@ -321,10 +317,7 @@ QuantizedConvolution2D = QuantizedConv2D
 
 
 class QuantizedBatchNormalization(BatchNormalization):
-    ''' Quantized BatchNormalization layer
-    References: 
-    "Pytorch Playground: Base pretrained models and datasets in pytorch." [https://github.com/aaron-xichen/pytorch-playground]
-    '''
+    ''' Quantized BatchNormalization layer '''
     def __init__(self, quantizers, quant_mode='hybrid',
                  ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None, None, None],**kwargs):
         super(QuantizedBatchNormalization, self).__init__(**kwargs)
@@ -614,10 +607,7 @@ class QuantizedBatchNormalization(BatchNormalization):
 
 
 class QuantizedDepthwiseConv2D(DepthwiseConv2D):
-    '''Quantized DepthwiseConv2D layer
-    References: 
-    "QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1" [http://arxiv.org/abs/1602.02830]
-    '''
+    '''Quantized DepthwiseConv2D layer '''
     def __init__(self,
                  kernel_size,
                  quantizers,
@@ -777,7 +767,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
 
 class QuantizedFlatten(Flatten):
     '''
-    Fix the fucking bug of not showing shape of flatten and reshape layer output in keras.
+    Work around bug of not showing shape of flatten and reshape layer output in keras.
     Custom remake a Flatten layer for the reliability analysis and quant_mode operation after flatten layer.
     '''
     def __init__(self, **kwargs):

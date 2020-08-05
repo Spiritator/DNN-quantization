@@ -1520,8 +1520,12 @@ class io_data_solver:
         """ Remove coordinates in fault dictionary that lies outside of current shape."""        
         index_bound=np.floor_divide(index,shape)
         cond_arg=np.max(index_bound,axis=1)<1
-        cond_tmp=np.min(index_bound,axis=1)>=0
-        cond_arg=np.bitwise_and(cond_arg,cond_tmp)        
+        
+        if np.all(cond_arg):
+            if get_cond_idx:
+                return index,cond_arg
+            else:
+                return index
         
         poped_index=index[cond_arg]
         
@@ -1532,7 +1536,9 @@ class io_data_solver:
     
     def _gen_base_coor(self, tile_shape, layer_shape, is_ifmap=None):
         """ Generate layer base coordinates for tile to layer duplication """
-        restore_multiple=np.floor_divide(layer_shape,tile_shape)
+        restore_multiple=np.divide(layer_shape,tile_shape,dtype=np.float32)
+        restore_multiple=np.ceil(restore_multiple)
+        restore_multiple=restore_multiple.astype(np.int32)
         
         if is_ifmap is not None:
             if is_ifmap:
@@ -1544,7 +1550,7 @@ class io_data_solver:
         else:
             reorder_shape=layer_shape
                 
-        base_coor=list(np.ndindex(*np.add(restore_multiple,[1,1,1,1])))            
+        base_coor=list(np.ndindex(*restore_multiple))            
         base_coor=np.multiply(base_coor,np.tile(reorder_shape,[len(base_coor),1]))
            
         if is_ifmap is not None:
@@ -1554,9 +1560,7 @@ class io_data_solver:
             else:
                 restore_multiple=restore_multiple[[3,2,1,0]]
                 base_coor=base_coor[:,[3,2,1,0]]
-                
-        base_coor=self._pop_outlier_idx(base_coor, layer_shape)
-        
+                        
         return base_coor, restore_multiple
     
     def tile2layer(self, fault_dict=None, based_tile='ofmap', layer=None, layer_input_shape=None, layer_weight_shape=None, layer_output_shape=None):
@@ -1603,16 +1607,15 @@ class io_data_solver:
                 psum_idx=np.concatenate(psum_idx)
             else:
                 psidx_cnt=np.array([len(i) for i in psum_idx])
-                psidx_cnt=np.cumsum(psidx_cnt)-1
                 psum_idx=np.concatenate(psum_idx)
         elif isinstance(fd_value[0]['id'],int):
             state='normal'
         elif isinstance(fd_value[0]['id'],list):
             state='repetitive'
             psidx_cnt=np.array([len(i) for i in psum_idx])
-            psidx_cnt=np.cumsum(psidx_cnt)-1
             psum_idx=np.concatenate(psum_idx)
             
+        self.num_fault_coor=len(fd_coor)
         self.num_psum_idx=len(psum_idx)
                 
         # get base coors
@@ -1649,7 +1652,8 @@ class io_data_solver:
         
         # the base partial sum indexes
         base_coor_psum_idx=np.concatenate([base_coor_o[:,[0,3,1,2]],base_coor_w[:,[2,0,1]],base_coor_i[:,[1,2]]],axis=1)
-        
+        self.num_base_coor=len(base_coor_psum_idx)
+
         # based tile layer fault coors
         if based_tile=='ofmap':
             layer_base_coor=base_coor_o
@@ -1664,40 +1668,113 @@ class io_data_solver:
         layer_fault_coor=np.stack(layer_fault_coor,axis=-1)
         layer_fault_coor=np.reshape(layer_fault_coor,[-1,4])
 
-        
+
         # partial sum indexes to layer fault coors
         layer_psum_idx=list()
         for i in range(9):
             layer_psum_idx.append(np.add.outer(base_coor_psum_idx[:,i],psum_idx[:,i]))
         layer_psum_idx=np.stack(layer_psum_idx,axis=-1)
         layer_psum_idx=np.reshape(layer_psum_idx,[-1,9])
+        
+        # remove outlier partial sum index
+        try:
+            if self.ifmap_tile.padding=='same':
+                layer_input_shape_row=layer_input_shape[1] + (self.ifmap_tile.ksizes[1] + (self.ifmap_tile.ksizes[1]-1) * (self.ifmap_tile.dilation_rates[1] - 1))//2
+                layer_input_shape_col=layer_input_shape[2] + (self.ifmap_tile.ksizes[2] + (self.ifmap_tile.ksizes[2]-1) * (self.ifmap_tile.dilation_rates[2] - 1))//2
+            else:
+                layer_input_shape_row=layer_input_shape[1] 
+                layer_input_shape_col=layer_input_shape[2] 
+        except AttributeError:
+            layer_input_shape_row=layer_input_shape[1] 
+            layer_input_shape_col=layer_input_shape[2] 
+            
+        psum_idx_shape=[[layer_output_shape[0],layer_output_shape[3],layer_output_shape[1],layer_output_shape[2],layer_weight_shape[0][2],layer_weight_shape[0][0],layer_weight_shape[0][1],layer_input_shape_row,layer_input_shape_col]]
+        layer_psum_idx,psidx_cond=self._pop_outlier_idx(layer_psum_idx, psum_idx_shape, get_cond_idx=True)
         self.num_layer_psum_idx=len(layer_psum_idx)
         
-        self.num_base_coor=len(base_coor_psum_idx)
+        # split serial layer partial sum index for each for coordinate
+        if np.all(psidx_cond):
+            if state=='fastgen':
+                if isinstance(psidx_cnt,tuple):
+                    layer_psum_idx=np.split(layer_psum_idx,psidx_cnt[0]*self.num_base_coor)
+                else:
+                    psidx_cnt=np.tile(psidx_cnt,self.num_base_coor)
+                    psidx_cnt=np.cumsum(psidx_cnt)[:-1]
+                    layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
+            elif state=='normal':
+                pass
+            elif state=='repetitive':
+                psidx_cnt=np.tile(psidx_cnt,self.num_base_coor)
+                psidx_cnt=np.cumsum(psidx_cnt)[:-1]
+                layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
+        else:
+            psidx_cond=np.bitwise_not(psidx_cond)
+            if state=='fastgen':
+                if isinstance(psidx_cnt,tuple):
+                    psidx_cond=np.reshape(psidx_cond,[psidx_cnt[0]*self.num_base_coor,-1])
+                    psidx_cond=np.sum(psidx_cond,axis=1)
+                    psidx_cnt=np.full_like(psidx_cond,psidx_cnt[1])
+                    psidx_cnt=np.subtract(psidx_cnt,psidx_cond)
+                    psidx_cnt=np.cumsum(psidx_cnt)[:-1]
+                    layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
+                else:
+                    psidx_cnt=np.tile(psidx_cnt,self.num_base_coor)
+                    psidx_cnt_search=np.cumsum(psidx_cnt)-1
+                    psidx_cond=np.argwhere(psidx_cond)
+                    psidx_cond=np.searchsorted(psidx_cnt_search,psidx_cond)
+                    psidx_cond=np.unique(psidx_cond,return_counts=True)
+                    psidx_cnt[psidx_cond[0]]=np.subtract(psidx_cnt[psidx_cond[0]],psidx_cond[1])
+                    psidx_cnt=np.cumsum(psidx_cnt)[:-1]
+                    layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
+                    
+            elif state=='normal':
+                pass
+            elif state=='repetitive':
+                psidx_cnt=np.tile(psidx_cnt,self.num_base_coor)
+                psidx_cnt_search=np.cumsum(psidx_cnt)-1
+                psidx_cond=np.argwhere(psidx_cond)
+                psidx_cond=np.searchsorted(psidx_cnt_search,psidx_cond)
+                psidx_cond=np.unique(psidx_cond,return_counts=True)
+                psidx_cnt[psidx_cond[0]]=np.subtract(psidx_cnt[psidx_cond[0]],psidx_cond[1])
+                psidx_cnt=np.cumsum(psidx_cnt)[:-1]
+                layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
+
+        layer_psum_idx=np.array(layer_psum_idx)
         
-        if state=='fastgen':
-            if isinstance(psidx_cnt,tuple):
-                layer_psum_idx=np.split(layer_psum_idx,psidx_cnt[0]*self.num_base_coor)
-            else:
-                layer_psum_idx=np.split(layer_psum_idx,np.tile(psidx_cnt,self.num_base_coor))
-        elif state=='normal':
-            pass
-        elif state=='repetitive':
-            layer_psum_idx=np.split(layer_psum_idx,np.tile(psidx_cnt,self.num_base_coor))
+        # remove outlier fault coors
+        layer_fault_coor,fc_cond=self._pop_outlier_idx(layer_fault_coor, layer_output_shape, get_cond_idx=True)
+        if not np.all(fc_cond):
+            if state=='fastgen' or state=='repetitive':
+                layer_psum_idx=layer_psum_idx[fc_cond]
+            elif state=='normal':
+                if len(layer_psum_idx)==len(layer_fault_coor):
+                    empty_fc_cond=None
+                else:
+                    empty_fc_cond=np.bitwise_and(fc_cond,psidx_cond)
+                    empty_fc_cond=psidx_cond[empty_fc_cond]
+                    empty_fc_cond=np.bitwise_not(empty_fc_cond)
+                    layer_fault_coor=layer_fault_coor[empty_fc_cond]
                 
         # deal with repetitive layer fault coors
         layer_fault_coor,uni_idx,rep_idx,cnt_idx=np.unique(layer_fault_coor,return_index=True,return_inverse=True,return_counts=True,axis=0)
         self.num_layer_fault_coor=len(layer_fault_coor)
+        
+        if not np.all(fc_cond):
+            if state=='normal':
+                if empty_fc_cond is not None:
+                    empty_fc_cond=np.subtract(np.cumsum(empty_fc_cond),1)
+                    uni_idx=np.searchsorted(empty_fc_cond,uni_idx)
+            fc_cond=np.subtract(np.cumsum(fc_cond),1)
+            uni_idx=np.searchsorted(fc_cond,uni_idx)
 
         # collapse duplicate coors
         if len(uni_idx)==len(rep_idx):
-            new_fd_value=fd_value[np.remainder(uni_idx,self.num_psum_idx)]
+            new_fd_value=fd_value[np.remainder(uni_idx,self.num_fault_coor)]
         else:
             if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
                 sorter=np.argsort(rep_idx)
                 cnt_idx=np.cumsum(cnt_idx)[:-1]
                 
-                layer_psum_idx=np.array(layer_psum_idx)
                 layer_psum_idx=layer_psum_idx[sorter]
                 layer_psum_idx=np.split(layer_psum_idx,cnt_idx)
                 
@@ -1705,7 +1782,7 @@ class io_data_solver:
                 
                 new_fd_value=list()
                 for i,uidx in enumerate(uni_idx):
-                    new_fv=fd_value[np.remainder(uidx,self.num_psum_idx)].copy()
+                    new_fv=fd_value[np.remainder(uidx,self.num_fault_coor)].copy()
                     new_fv['psum_idx']=np.concatenate(layer_psum_idx[i])
                     new_fd_value.append(new_fv)
             else:
@@ -1718,7 +1795,7 @@ class io_data_solver:
                                       
                     new_fd_value=list()
                     for i,uidx in enumerate(uni_idx):
-                        new_fv=fd_value[np.remainder(uidx,self.num_psum_idx)].copy() 
+                        new_fv=fd_value[np.remainder(uidx,self.num_fault_coor)].copy() 
                         new_fv['psum_idx']=layer_psum_idx[i]
                         new_fd_value.append(new_fv)
 
@@ -1730,7 +1807,7 @@ class io_data_solver:
                     param_list_rep=[list() for _ in range(len(uni_idx))]
                     
                     for i,repid in enumerate(rep_idx):
-                        orig_i=np.remainder(i,self.num_psum_idx)
+                        orig_i=np.remainder(i,self.num_fault_coor)
                         
                         psum_idx_rep[repid].append(layer_psum_idx[i])
     
@@ -1770,6 +1847,7 @@ class io_data_solver:
     
     def report_layer_map(self):
         return {'num_base_coor':self.num_base_coor,
+                'num_fault_coor':self.num_fault_coor,
                 'num_psum_idx':self.num_psum_idx,
                 'num_layer_fault_coor':self.num_layer_fault_coor,
                 'num_layer_psum_idx':self.num_layer_psum_idx}

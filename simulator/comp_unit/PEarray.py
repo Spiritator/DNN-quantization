@@ -2918,7 +2918,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
         PEarray.fault_dict=fault_dict
         
     if print_detail:
-        print('    Task (1/6): Decompose Slice Pack ...') 
+        print('    Task (1/6): Decompose Slice Pack ...',end=' ') 
     PEarray.decompose_slice_pack(print_detail=print_detail)
 
     if print_detail:
@@ -2966,29 +2966,30 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
          
     if print_detail:
-        print('\r    Task (5/6): Solve Fault I/O ...') 
+        print('\r    Task (5/6): Solve Fault I/O ...',end=' ') 
     # organize fault dict and give partial sum index
     solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile)
     PE_mac_fault_dict=solver.solve_correspond_io(save2tile,print_detail)
     
     if print_detail:
-        print('\r    Task (6/6): Tile Return to layer ...',end=' ')
+        print('\r    Task (6/6): Tile Return to layer ...\t\t',end=' ')
     # inter tile fault dictionary transform to layer
     if not save2tile:
-        PE_mac_fault_dict=solver.tile2layer(based_tile='ofmap',layer=layer)
+        PE_mac_fault_dict=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=print_detail)
     else:
-        ifmap_fd=solver.tile2layer(based_tile='ifmap',layer=layer)
-        wght_fd=solver.tile2layer(based_tile='wght',layer=layer)
-        ofmap_fd=solver.tile2layer(based_tile='ofmap',layer=layer)
+        ifmap_fd=solver.tile2layer(based_tile='ifmap',layer=layer,print_detail=print_detail)
+        wght_fd=solver.tile2layer(based_tile='wght',layer=layer,print_detail=print_detail)
+        ofmap_fd=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=print_detail)
         PE_mac_fault_dict=(ifmap_fd, wght_fd, None, ofmap_fd)
         
     if print_detail:
-        print('\r    Task (6/6): All Done.\t\t\t')
+        print('\r    Task (6/6): All Done.\t\t\t\t')
         
     if print_detail:
         if not save2tile:
             report_2layer=solver.report_layer_map()
-            print('    mapped layer faults | ofmap %d | total psum index %d '%(report_2layer['num_layer_fault_coor'], report_2layer['num_layer_psum_idx']))
+            print('    mapped layer faults | base coors %d | ofmap %d '%(report_2layer['num_base_coor'], report_2layer['num_layer_fault_coor']))
+            print('                        | total psum index %d '%report_2layer['num_layer_psum_idx'])
         else:
             print('    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fd),len(ofmap_fd),str([len(wght_fd),0])))
 

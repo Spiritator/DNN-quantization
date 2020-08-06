@@ -288,7 +288,15 @@ class QuantizedConv2D(Conv2D):
             outputs = quantizer_output.quantize(outputs)
         
         if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
-            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
+            if self.mac_unit is None:
+                outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
+            else:
+                self.mac_unit.consistency_check(self.quant_mode,self.quantizer)
+                outputs = self.mac_unit.inject_mac_math_fault_tensor(inputs, quantized_kernel, outputs, 
+                                                                     self.ofmap_sa_fault_injection,
+                                                                     ksizes=self.kernel_size, 
+                                                                     padding=self.padding, 
+                                                                     dilation_rates=self.dilation_rate)
 
 
         return outputs

@@ -196,6 +196,11 @@ class quantizer:
             Xq=tf.divide(Xq,self.shift_factor)
             
         return Xq
+    
+    def __eq__(self, that):
+        if not isinstance(that, quantizer):
+            return False
+        return self.nb == that.nb and self.fb == that.fb and self.rounding_method == that.rounding_method and self.overflow_mode == that.overflow_mode
 
 
 def build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient):

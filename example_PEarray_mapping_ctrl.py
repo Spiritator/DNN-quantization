@@ -83,3 +83,37 @@ model=Model(inputs=input_shape, outputs=x, name='test_model')
 # backward mapping
 PE_mac_fault_dict = PE_mapping_backward(model.layers[1], MXU, print_detail=True)
 
+
+#%% PE mapping backward (fault propagation and tile2layer)
+
+## create test model
+#input_shape=Input(batch_shape=(2,56,56,32))
+#x=QuantizedConv2D(filters=64,
+#                  quantizers=quantizer(8,6),
+#                  kernel_size=(3,3),
+#                  padding='same',
+#                  strides=(1, 1),                              
+#                  activation='relu',
+#                  quant_mode='hybrid')(input_shape)
+#model=Model(inputs=input_shape, outputs=x, name='test_model')
+#
+## backward mapping
+#PE_mac_fault_dict = PE_mapping_backward(model.layers[1], MXU, print_detail=True)
+
+#%% PE mapping backward (fault propagation, tile2layer and uneven tile cut)
+
+## create test model
+#input_shape=Input(batch_shape=(2,70,70,32))
+#x=QuantizedConv2D(filters=64,
+#                  quantizers=quantizer(8,6),
+#                  kernel_size=(3,3),
+#                  padding='same',
+#                  strides=(1, 1),                              
+#                  activation='relu',
+#                  quant_mode='hybrid')(input_shape)
+#model=Model(inputs=input_shape, outputs=x, name='test_model')
+#
+## backward mapping
+#PE_mac_fault_dict = PE_mapping_backward(model.layers[1], MXU, print_detail=True)
+
+

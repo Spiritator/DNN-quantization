@@ -16,7 +16,7 @@ class mac_unit:
     """
     The mac unit information holder class. For describe PE I/O interconnection and math of faulty behavior.
     """
-    def __init__(self, quantizers, quant_mode=None, ifmap_io=None, wght_io=None, psum_io=None):
+    def __init__(self, quantizers, quant_mode='hybrid', ifmap_io=None, wght_io=None, psum_io=None, sim_truncarry=False, fast_gen=True):
         """
         # Arguments
             quantizers: Class or String. The quantize library of simulator. Or the file path to MAC unit setup (.json) file.
@@ -58,6 +58,9 @@ class mac_unit:
             self.psum_io=psum_io
         else:
             self._setup(quantizers)
+        
+        self.sim_truncarry=sim_truncarry
+        self.fast_gen=fast_gen
         
     def _setup(self, setup_file):
         """
@@ -358,9 +361,9 @@ class mac_unit:
         return fault_bit
 
     def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, 
-                                     quantizer=None, 
+                                     quantizer=None, quant_mode=None,
                                      ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
-                                     sim_truncarry=False, fast_gen=True):
+                                     sim_truncarry=None, fast_gen=None):
         """ The fault injection mathematical model for used in numpy computing
         
         # Arguments
@@ -372,6 +375,8 @@ class mac_unit:
                 word_width: Variable. The fix-point representation of the parameter word length.
                 fractional_bits: Variable. Number of fractional bits in a fix-point parameter
                 rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
+                'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
             ksize: Tuple. Size 2, the kernel size (row, col).
             padding: String. 'same' or 'valid'. The type of padding algorithm to use.
             dilation_rate: Tuple. Size 2, the dilation rate (row, col).
@@ -409,12 +414,19 @@ class mac_unit:
                 quantizer_input =quantizer
                 quantizer_weight =quantizer
                 quantizer_output =quantizer
+                
+        if quant_mode is not None:
+            self.quant_mode=quant_mode
+        if sim_truncarry is None:
+            sim_truncarry=self.sim_truncarry
+        if fast_gen is not None:
+            self.fast_gen=fast_gen
         
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
         fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
         
-        if fast_gen:
+        if self.fast_gen:
             # data allocation
             # (coor idx, num of psidx, psum idx)
             psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
@@ -662,6 +674,15 @@ class mac_unit:
             output=tf.scatter_nd_update(ofmap,fd_coor,output)
             
         return output
+    
+    def consistency_check(self, quant_mode, quantizer):
+        """ Check the consistency between MAC unit setup and layer quantization setup """
+        if self.quant_mode!=quant_mode:
+            raise ValueError('The quantization mode of Layer and MAC unit must be the same!!\nGot Layer %s, MAC %s'%(self.quant_mode,quant_mode))
+        if type(self.quantizer)!=type(quantizer):
+            raise TypeError('The type of quantizer of Layer and MAC unit should be the same!!\n Class quantizer for one quantize set up, List for [input, weight, output] respectively.')
+        if self.quantizer!=quantizer:
+            raise AttributeError('The attributes of Layer quantizer and MAC unit quantizer are different!!')
 
                 
         

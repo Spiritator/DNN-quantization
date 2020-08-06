@@ -1281,7 +1281,7 @@ class io_data_solver:
             
         if not save2tile:
             if print_detail:
-                print('    GenFD (1/5): Solve Partial Sum Coordinates...',end=' ')     
+                print('\r    GenFD (1/5): Solve Partial Sum Coordinates...',end=' ')     
             # solve psum, use as basis for fault id search
             search_id, shape_cnt=self._get_base_data_id(self.psum_id)
             
@@ -1297,7 +1297,7 @@ class io_data_solver:
             
         else:
             if print_detail:
-                print('    GenFD (1/5): Solve Base Data Coordinates...',end=' ') 
+                print('\r    GenFD (1/5): Solve Base Data Coordinates...',end=' ') 
             
             param=self.psum_vl[0]['param']
             if param=='ifmap_in' or param=='ifmap_out':
@@ -1563,7 +1563,7 @@ class io_data_solver:
                         
         return base_coor, restore_multiple
     
-    def tile2layer(self, fault_dict=None, based_tile='ofmap', layer=None, layer_input_shape=None, layer_weight_shape=None, layer_output_shape=None):
+    def tile2layer(self, fault_dict=None, based_tile='ofmap', layer=None, layer_input_shape=None, layer_weight_shape=None, layer_output_shape=None, print_detail=False):
         """ Restore the fault dictionary from tile to entire layer
             This tile2layer combines all ifmap, weight, ofmap tile.
             Solves tile2layer for both fault dict coordinates and partial sum indexes.
@@ -1576,6 +1576,7 @@ class io_data_solver:
             layer_input_shape: Tuple. The shape of a layer input parameter were divided into tile.
             layer_weight_shape: Tuple. The shape of a layer weight parameter were divided into tile.
             layer_output_shape: Tuple. The shape of a layer output parameter were divided into tile.
+            print_detail: Bool. Print the mapping process.
         
         # Returns
             The fault information Dictionary of a layer parameter (feature maps or weights).
@@ -1595,6 +1596,8 @@ class io_data_solver:
             layer_output_shape=layer.output_shape
             layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
         
+        if print_detail:
+            print('\r    Tile2Layer (1/9): Unpack Partial Sum Indexes...',end=' ')
         # unpack partial sum index
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
@@ -1617,7 +1620,9 @@ class io_data_solver:
             
         self.num_fault_coor=len(fd_coor)
         self.num_psum_idx=len(psum_idx)
-                
+        
+        if print_detail:
+            print('\r    Tile2Layer (2/9): Get Base Coordinates...\t\t',end=' ')
         # get base coors
         base_coor_o, restore_multiple_o=self._gen_base_coor(self.ofmap_tile.tile_shape, layer_output_shape, is_ifmap=True)
         base_coor_w, restore_multiple_w=self._gen_base_coor(self.wght_tile.tile_shape, layer_weight_shape[0], is_ifmap=False)
@@ -1630,6 +1635,8 @@ class io_data_solver:
         if self.ifmap_tile.extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or self.ifmap_tile.extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
             raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
                
+        if print_detail:
+            print('\r    Tile2Layer (3/9): Interleaved Tiles in Layer...\t',end=' ')
         # ofmap form 
         base_coor_o=np.repeat(base_coor_o,restore_multiple_w[2],axis=0) # repeatition for tile level psum
         if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
@@ -1654,6 +1661,8 @@ class io_data_solver:
         base_coor_psum_idx=np.concatenate([base_coor_o[:,[0,3,1,2]],base_coor_w[:,[2,0,1]],base_coor_i[:,[1,2]]],axis=1)
         self.num_base_coor=len(base_coor_psum_idx)
 
+        if print_detail:
+            print('\r    Tile2Layer (4/9): Get Layer Fault Coordinates...\t',end=' ')
         # based tile layer fault coors
         if based_tile=='ofmap':
             layer_base_coor=base_coor_o
@@ -1668,7 +1677,8 @@ class io_data_solver:
         layer_fault_coor=np.stack(layer_fault_coor,axis=-1)
         layer_fault_coor=np.reshape(layer_fault_coor,[-1,4])
 
-
+        if print_detail:
+            print('\r    Tile2Layer (5/9): Get Layer Partial Sum Indexes...\t',end=' ')
         # partial sum indexes to layer fault coors
         layer_psum_idx=list()
         for i in range(9):
@@ -1676,6 +1686,8 @@ class io_data_solver:
         layer_psum_idx=np.stack(layer_psum_idx,axis=-1)
         layer_psum_idx=np.reshape(layer_psum_idx,[-1,9])
         
+        if print_detail:
+            print('\r    Tile2Layer (6/9): Remove Outlier Partial Sum Indexes...',end=' ')
         # remove outlier partial sum index
         try:
             if self.ifmap_tile.padding=='same':
@@ -1741,6 +1753,8 @@ class io_data_solver:
 
         layer_psum_idx=np.array(layer_psum_idx)
         
+        if print_detail:
+            print('\r    Tile2Layer (7/9): Remove Outlier Fault Coordinates...\t',end=' ')
         # remove outlier fault coors
         layer_fault_coor,fc_cond=self._pop_outlier_idx(layer_fault_coor, layer_output_shape, get_cond_idx=True)
         if not np.all(fc_cond):
@@ -1755,6 +1769,8 @@ class io_data_solver:
                     empty_fc_cond=np.bitwise_not(empty_fc_cond)
                     layer_fault_coor=layer_fault_coor[empty_fc_cond]
                 
+        if print_detail:
+            print('\r    Tile2Layer (8/9): Collapse Repetitive Fault Coordinates...\t',end=' ')
         # deal with repetitive layer fault coors
         layer_fault_coor,uni_idx,rep_idx,cnt_idx=np.unique(layer_fault_coor,return_index=True,return_inverse=True,return_counts=True,axis=0)
         self.num_layer_fault_coor=len(layer_fault_coor)
@@ -1840,6 +1856,8 @@ class io_data_solver:
                                 'param':param_list_rep[i]}
                         new_fd_value.append(new_fv)
 
+        if print_detail:
+            print('\r    Tile2Layer (9/9): Make Mapped Fault Dictionary...\t\t\t',end=' ')
         layer_fault_coor_fd=list(zip(*layer_fault_coor.T))
         layer_fault_dict=dict(zip(layer_fault_coor_fd,new_fd_value))
         

@@ -33,9 +33,13 @@ ofmap_config='../pe_mapping_config/ofmap_config.json'
 wght_config='../pe_mapping_config/wght_config.json'
 ifmap_config='../pe_mapping_config/ifmap_config.json'
 
+#%% setup MAC unit
+
+PE=mac_unit('../pe_mapping_config/mac_unit_config.json')
+
 #%% setup PEarray
 
-MXU=PEarray(16,16,ofmap_tile=ofmap_tile,wght_tile=wght_tile,ifmap_tile=ifmap_tile)
+MXU=PEarray(16,16,ofmap_tile=ofmap_tile,wght_tile=wght_tile,ifmap_tile=ifmap_tile,mac_config=PE)
 
 MXU_config='../pe_mapping_config/MXU_config.json'
 
@@ -43,24 +47,20 @@ MXU_config='../pe_mapping_config/MXU_config.json'
 
 PE_mapping_forward(ifmap_tile,wght_tile,ofmap_tile,MXU,ifmap_config,wght_config,ofmap_config,MXU_config,pre_plan=True,print_detail=True)
 
-#%% setup MAC unit
-
-PE=mac_unit('../pe_mapping_config/mac_unit_config.json')
-
 #%% generate PE array fault dictionary
 
 #MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
 
-MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=PE)
+MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=True)
 PE_fault_dict=MXU.fault_dict
 
 # figure out this case
 #fault_info={'SA_type':'flip','SA_bit':0,'param':'wght_in'}
-#MXU.gen_PEarray_permanent_fault_dict((12,0), fault_info, mac_config=PE)
+#MXU.gen_PEarray_permanent_fault_dict((12,0), fault_info, mac_config=True)
 #PE_fault_dict=MXU.fault_dict
 
 #fault_info={'SA_type':'flip','SA_bit':6,'param':'wght_out'}
-#MXU.gen_PEarray_permanent_fault_dict((9,7), fault_info, mac_config=PE)
+#MXU.gen_PEarray_permanent_fault_dict((9,7), fault_info, mac_config=True)
 #PE_fault_dict=MXU.fault_dict
 
 #fault_info={'SA_type':'flip','SA_bit':3,'param':'wght_in'}

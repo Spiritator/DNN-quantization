@@ -195,7 +195,7 @@ class PEarray:
     The 3D PE array dataflow model is for mapping the tile data to computaion unit.
     
     """
-    def __init__(self, n_x, n_y, n_clk=None, ofmap_tile=None, wght_tile=None, ifmap_tile=None):
+    def __init__(self, n_x, n_y, n_clk=None, ofmap_tile=None, wght_tile=None, ifmap_tile=None, mac_config=None):
         """
         # Arguments
             n_x: Integer. Number of PEs in a row.
@@ -217,6 +217,7 @@ class PEarray:
             ofmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Output feature maps tile.
             wght_tile: Class. The tile_PE class for PE array fault tolerance analysis. Weights feature maps tile.
             ifmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
+            mac_config: Class. The class of MAC unit configurations.
 
         """
         self.setup_ready=False
@@ -233,7 +234,7 @@ class PEarray:
         self.used_axes=list()
         self.tmp_clk=None
         self.fast_gen=False
-        self.mac_config=None
+        self.mac_config=mac_config
         
     def setup_dataflow(self, 
                        o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_pack_size=1, o_stall_latency=0, o_dummy_pack_insert=None, o_dummy_pack_n=0,
@@ -2493,7 +2494,7 @@ class PEarray:
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
     
-    def gen_PEarray_SA_fault_dict(self, n_bit, fault_type='flip', param_list=None, mac_config=None):
+    def gen_PEarray_SA_fault_dict(self, n_bit, fault_type='flip', param_list=None, mac_config=False):
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
         
         # Arguments
@@ -2501,7 +2502,10 @@ class PEarray:
             fault_type: String. The type of fault.
             param_list: List of String. The available parameters can have fault on it. 
                 The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
-            mac_config: Class. The class of MAC unit configurations.
+            mac_config: Class or Bool. The class of MAC unit configurations. 
+                If True, using the fault propagation previously store in self.mac_config.
+                Else False, no fault propagation in PE array.
+                Or input is mac_unit class, using the current input as config to do fault propagation.
         
         # Returns
             Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -2519,8 +2523,11 @@ class PEarray:
         fault_param=param_list[np.random.randint(len(param_list))]
         fault_info={'SA_type':fault_type,'SA_bit':fault_bit,'param':fault_param}
         
-        if mac_config is not None:
-            self.mac_config=mac_config
+        if mac_config is not False:
+            if isinstance(mac_config,bool):
+                mac_config=self.mac_config
+            else:
+                self.mac_config=mac_config
             fault_loc=self.propagate_interconnect_fd(fault_loc, fault_param, mac_config)
             n_proped=len(fault_loc)
         else:
@@ -2538,7 +2545,7 @@ class PEarray:
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict, mac_config=mac_config)
         
-    def gen_PEarray_permanent_fault_dict(self, fault_loc, fault_info, mac_config=None):
+    def gen_PEarray_permanent_fault_dict(self, fault_loc, fault_info, mac_config=False):
         """ Generate fault dictionary on PEarray of permanent fault. Given the fault location and fault infomation. 
             Copy the fault to all clock cycles for this PE mapping configuration. 
         
@@ -2547,7 +2554,10 @@ class PEarray:
             fault_info: Dictionary. The fault information dictionay that includes 'SA_type', 'SA_bit', 'param'.
             param_list: List of String. The available parameters can have fault on it. 
                 The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
-            mac_config: Class. The class of MAC unit configurations.
+            mac_config: Class or Bool. The class of MAC unit configurations. 
+                If True, using the fault propagation previously store in self.mac_config.
+                Else False, no fault propagation in PE array.
+                Or input is mac_unit class, using the current input as config to do fault propagation.
         
         # Returns
             Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
@@ -2560,8 +2570,11 @@ class PEarray:
             
         fault_loc=np.array([list(fault_loc)])
         
-        if mac_config is not None:
-            self.mac_config=mac_config
+        if mac_config is not False:
+            if isinstance(mac_config,bool):
+                mac_config=self.mac_config
+            else:
+                self.mac_config=mac_config
             fault_loc=self.propagate_interconnect_fd(fault_loc, fault_info['param'], mac_config)
             n_proped=len(fault_loc)
         else:
@@ -2719,26 +2732,60 @@ class PEarray:
                     fault_value[i]['param']=param_list_rep[i]
             
         return coors, fault_value
+    
+    def mapping_shape_save(self):
+        """ Save mapping shape after forward run to a keep copy. For different mapping backward run.
+            Thus, for the same mapping config different PE fault inference only need to pre=plan forward run once.
+        """
+        self.keep_shape_ifmap_mapping=self.shape_ifmap_mapping.copy()
+        self.keep_shape_ofmap_mapping=self.shape_ofmap_mapping.copy()
+        self.keep_shape_wght_mapping=self.shape_wght_mapping.copy()
+        self.keep_shape_bias_mapping=self.shape_bias_mapping.copy()
+        self.keep_shape_psum_mapping=self.shape_psum_mapping.copy()
+        self.keep_n_clk=self.n_clk
+        self.keep_pack_clk=self.pack_clk
+        
+    def mapping_shape_load(self):
+        """ Load the previously saved mapping shape keep copy. For different mapping backward run.
+            Thus, for the same mapping config different PE fault inference only need to pre=plan forward run once.
+        """
+        self.shape_ifmap_mapping=self.keep_shape_ifmap_mapping.copy()
+        self.shape_ofmap_mapping=self.keep_shape_ofmap_mapping.copy()
+        self.shape_wght_mapping=self.keep_shape_wght_mapping.copy()
+        self.shape_bias_mapping=self.keep_shape_bias_mapping.copy()
+        self.shape_psum_mapping=self.keep_shape_psum_mapping.copy()
+        self.n_clk=self.keep_n_clk
+        self.pack_clk=self.keep_pack_clk
+        
+    def clear_flow(self):
+        """ Clear dataflow for different data mapping"""
+        self.setup_ready=False
+        self.ofmap_flow=None
+        self.wght_flow=None
+        self.ifmap_flow=None
+        self.psum_flow=None
+        self.bias_flow=None
+        
+    def clear_tile(self):
+        """ Clear ifmap, wght, ofmap tile for different tile mapping on the same PE array """
+        self.ifmap_tile=None
+        self.wght_tile=None
+        self.ofmap_tile=None
         
     def clear_fd(self):
         """ Clear fault dictionary of PE dataflow model """
         self.fault_num=None
         self.fault_dict=dict()
         
-    def clear_map_fd(self):
-        """ Clear fault dictionary of tile mapping in PEarray"""
+    def clear_mapping(self):
+        """ Clear fault dictionary of tile mapping in PEarray
+            Clear mapping setup of PE dataflow model
+        """
         self.ifmap_map_fd=dict()
         self.ofmap_map_fd=dict()
         self.wght_map_fd=dict()
         self.bias_map_fd=dict()
         self.psum_map_fd=dict()
-        
-    def clear_map_config(self):
-        """ Clear mapping setup of PE dataflow model """
-        self.setup_ready=False
-        self.ofmap_flow=None
-        self.wght_flow=None
-        self.ifmap_flow=None
         self.shape_ifmap_mapping=None
         self.shape_ofmap_mapping=None
         self.shape_wght_mapping=None
@@ -2880,6 +2927,8 @@ def PE_mapping_forward(ifmap_tile,
     if print_detail:
         print('    Task (7/7): Clock Cycle Alignment ...\t',end='\r') 
     PEarray.align_slice_pack(dataflow_pre_plan=pre_plan)
+    
+    PEarray.mapping_shape_save()
     if print_detail:
         print('    Task (7/7): All Done.\t\t\t')
     
@@ -2916,6 +2965,8 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     
     if fault_dict is not None:
         PEarray.fault_dict=fault_dict
+        
+    PEarray.mapping_shape_load()
         
     if print_detail:
         print('    Task (1/6): Decompose Slice Pack ...',end=' ') 
@@ -2968,7 +3019,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     if print_detail:
         print('\r    Task (5/6): Solve Fault I/O ...',end=' ') 
     # organize fault dict and give partial sum index
-    solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile)
+    solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,fault_num=PEarray.fault_num)
     PE_mac_fault_dict=solver.solve_correspond_io(save2tile,print_detail)
     
     if print_detail:

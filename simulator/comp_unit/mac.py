@@ -359,9 +359,15 @@ class mac_unit:
         fault_bit=np.power(2,fault_bit)
         
         return fault_bit
+    
+    def _layer_coor_order(self, layer_type):
+        """ Give the coordinate access index order based on the layer type """
+        if layer_type not in ['Conv2D', 'Dense', 'DepthwiseConv2D']:
+            raise ValueError('layer type must be one of \'Conv2D\', \'Dense\', \'DepthwiseConv2D\'')
+        #TODO
 
     def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, 
-                                     quantizer=None, quant_mode=None,
+                                     quantizer=None, quant_mode=None, layer_type='Conv2D',
                                      ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
                                      sim_truncarry=None, fast_gen=None):
         """ The fault injection mathematical model for used in numpy computing
@@ -377,6 +383,8 @@ class mac_unit:
                 rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
             quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
                 'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
+            layer_type: String. The type of layer this solver wants to convert partial sum index and mapping into.
+                One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
             ksize: Tuple. Size 2, the kernel size (row, col).
             padding: String. 'same' or 'valid'. The type of padding algorithm to use.
             dilation_rate: Tuple. Size 2, the dilation rate (row, col).
@@ -421,6 +429,8 @@ class mac_unit:
             sim_truncarry=self.sim_truncarry
         if fast_gen is not None:
             self.fast_gen=fast_gen
+            
+        self._layer_coor_order(layer_type)
         
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))

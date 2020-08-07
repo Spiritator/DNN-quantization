@@ -1084,11 +1084,28 @@ class io_data_solver:
     Produces a fault dictionary of the layer ofmap shape which contains fault information.
     As well as fault id and parrtial sum index.
     """
-    def __init__(self, ofmap_tile, wght_tile, ifmap_tile, fault_num=None):
+    def __init__(self, ofmap_tile, wght_tile, ifmap_tile, fault_num=None, layer_type='Conv2D'):
+        """ 
+        # Arguments                            
+            ofmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Output feature maps tile.
+            wght_tile: Class. The tile_PE class for PE array fault tolerance analysis. Weights feature maps tile.
+            ifmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
+            fault_num: Integer. The number of faults in the tiles for solving.
+            layer_type: String. The type of layer this solver wants to convert partial sum index and mapping into.
+                One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
+        
+        """
         self.ofmap_tile=ofmap_tile
         self.wght_tile=wght_tile
         self.ifmap_tile=ifmap_tile
         self.fault_num=fault_num
+        if layer_type not in ['Conv2D', 'Dense', 'DepthwiseConv2D']:
+            raise ValueError('layer type must be one of \'Conv2D\', \'Dense\', \'DepthwiseConv2D\'')
+        self.layer_type=layer_type
+        
+    def _layer_coor_order(self):
+        """ Give the coordinate access index order based on the layer type """
+        #TODO
         
     def _state_setting(self, faultvalue):
         """
@@ -1501,7 +1518,7 @@ class io_data_solver:
         self.wght_id,self.wstate,maxw=self._state_setting(self.wght_vl)
         self.psum_id,self.pstate,maxp=self._state_setting(self.psum_vl)
         
-        if self.fault_num==None:
+        if self.fault_num is None:
             if not save2tile:
                 self.fault_num=max([maxi,maxw,maxp])+1
             else:

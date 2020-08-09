@@ -362,9 +362,22 @@ class mac_unit:
     
     def _layer_coor_order(self, layer_type):
         """ Give the coordinate access index order based on the layer type """
-        if layer_type not in ['Conv2D', 'Dense', 'DepthwiseConv2D']:
+        if layer_type=='Conv2D':
+            order_get_psidx_o=np.array([0,2,3,1])
+            order_get_psidx_w=np.array([5,6,4,1])
+            order_get_psidx_i=np.array([0,7,8,4])
+        elif layer_type=='DepthwiseConv2D':
+            order_get_psidx_o=np.array([0,2,3,1])
+            order_get_psidx_w=np.array([5,6,1,4])
+            order_get_psidx_i=np.array([0,7,8,4])
+        elif layer_type=='Dense':
+            order_get_psidx_o=np.array([0,1])
+            order_get_psidx_w=np.array([2,1])
+            order_get_psidx_i=np.array([0,2])
+        else:
             raise ValueError('layer type must be one of \'Conv2D\', \'Dense\', \'DepthwiseConv2D\'')
-        #TODO
+        
+        return order_get_psidx_o,order_get_psidx_w,order_get_psidx_i
 
     def inject_mac_math_fault_tensor(self, ifmap, wght, ofmap, fault_dict, 
                                      quantizer=None, quant_mode=None, layer_type='Conv2D',
@@ -430,7 +443,7 @@ class mac_unit:
         if fast_gen is not None:
             self.fast_gen=fast_gen
             
-        self._layer_coor_order(layer_type)
+        order_get_psidx_o,order_get_psidx_w,order_get_psidx_i=self._layer_coor_order(layer_type)
         
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
@@ -440,15 +453,15 @@ class mac_unit:
             # data allocation
             # (coor idx, num of psidx, psum idx)
             psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
-            psum_idx_ofmap=psum_idx_list[:,:,[0,2,3,1]]
+            psum_idx_ofmap=psum_idx_list[:,:,order_get_psidx_o]
         
             fault_param=fd_value[0]['param']
             fault_type=fd_value[0]['SA_type']
             fault_bit=fd_value[0]['SA_bit']
             
             if fault_param in ['ifmap_in','ifmap_out','wght_in','wght_out']:    
-                psum_idx_wght=psum_idx_list[:,:,[5,6,4,1]]
-                psum_idx_ifmap=psum_idx_list[:,:,[0,7,8,4]]
+                psum_idx_wght=psum_idx_list[:,:,order_get_psidx_w]
+                psum_idx_ifmap=psum_idx_list[:,:,order_get_psidx_i]
             
                 if padding=='same':
                     ifmap, psum_idx_ifmap=self._padding_ifmap_and_idx(ifmap, 
@@ -544,7 +557,7 @@ class mac_unit:
             if len(param_ofmap)>0:
                 # data gathering
                 psum_idx_ofmap=psum_idx_list[param_ofmap]
-                idx_ofmap=psum_idx_ofmap[:,:,[0,2,3,1]]
+                idx_ofmap=psum_idx_ofmap[:,:,order_get_psidx_o]
                 faultbit_ofmap=fault_bit[param_ofmap]
                 
                 ofmap_alloc=tf.gather_nd(ofmap,idx_ofmap)
@@ -566,8 +579,8 @@ class mac_unit:
             if len(param_ifmap)>0:
                 # data gathering
                 psum_idx_ifmap=psum_idx_list[param_ifmap]
-                idx_ifmap_ifmap=psum_idx_ifmap[:,:,[0,7,8,4]]
-                idx_ifmap_wght=psum_idx_ifmap[:,:,[5,6,4,1]]
+                idx_ifmap_ifmap=psum_idx_ifmap[:,:,order_get_psidx_i]
+                idx_ifmap_wght=psum_idx_ifmap[:,:,order_get_psidx_w]
                 faultbit_ifmap=fault_bit[param_ifmap]
             
                 if padding=='same':
@@ -593,8 +606,8 @@ class mac_unit:
             if len(param_wght)>0:
                 # data gathering
                 psum_idx_wght=psum_idx_list[param_wght]
-                idx_wght_wght=psum_idx_wght[:,:,[5,6,4,1]]
-                idx_wght_ifmap=psum_idx_wght[:,:,[0,7,8,4]]
+                idx_wght_wght=psum_idx_wght[:,:,order_get_psidx_w]
+                idx_wght_ifmap=psum_idx_wght[:,:,order_get_psidx_i]
                 faultbit_wght=fault_bit[param_wght]
                 
                 if padding=='same':

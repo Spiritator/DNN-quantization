@@ -416,3 +416,10 @@ fault_dict_layer=solver.tile2layer(fault_dict_solved, based_tile='ofmap', layer=
 #fault_dict_layer=solver.tile2layer(fault_dict_solved, based_tile='ofmap', layer=model.layers[1])
 
 
+#%% test tile FC PE
+
+from simulator.comp_unit.tile import tile_FC_PE
+
+fc_wght_tile=tile_FC_PE((16,32),is_fmap=False,wl=8)
+fc_ifmap_tile=tile_FC_PE((4,16),is_fmap=True,wl=8)
+fc_ofmap_tile=tile_FC_PE((4,32),is_fmap=True,wl=8)

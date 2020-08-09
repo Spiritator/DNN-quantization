@@ -13,6 +13,12 @@ import tqdm as tqdm
 from simulator.memory.tile import tile,tile_FC
 
 class tile_PE(tile):
+    """ Tile for PE dataflow model mapping.
+        Handles the half of the data transformation which are close to tile part.
+        Includes data expansion/restoration with reshape or image patch extract methods.
+        And tile slicing process which allows user to further cut tile into slices and permute it 
+        for time multiplex computation scheme.
+    """
     def __init__(self, tile_shape, is_fmap, **kwargs):
         """The tile of a DNN feature map or weights
 
@@ -1077,6 +1083,49 @@ class tile_PE(tile):
         self.tilted_slice_shape=None
         self.bias_slice_shape=None
 
+class tile_FC_PE(tile_FC, tile_PE):
+    """ Tile for PE dataflow model mapping. For fully-connected layer.
+    """
+    def __init__(self, tile_shape, is_fmap, **kwargs):
+        """The tile of a DNN feature map or weights
+
+        # Arguments
+            tile_shape: Tuple. The shape of tile.
+            Tm: Integer. The size of tile on the input feature map dimension (weight) or channel dimention (feature map).
+            Tn: Integer. The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
+            is_fmap: Bool. The tile is feature map tile or weight tile.
+    
+        """
+        super(tile_FC_PE, self).__init__(tile_shape, is_fmap, **kwargs)
+        self.tile_shape=tile_shape
+                
+        self.expansion=False
+        self.expand_shape=None
+        self.expand_prior_orig=None
+        self.expand_prior_targ=None
+        self.slice_shape=None
+        self.slicing_dims=None
+        self.slices_permute=None
+        self.slices_cutset=None
+        self.tilting=False
+        self.tilted_slice_shape=None
+        self.fault_dict_rehsaped=dict()
+        self.fault_dict_expand=dict()
+        
+        if is_fmap:
+            self.psum_fault_dict=dict()
+            self.psum_fault_dict_expand=dict()
+        else:
+            self.bias_fault_dict=dict()
+            self.bias_fault_dict_expand=dict()
+            
+    def expand_extract_patches(*args, **kwargs):
+        raise AttributeError('Extract patches method is not usable in FC layer, which has no kernel row/col.')
+    
+    def shrink_return_patches(*args, **kwargs):
+        raise AttributeError('Extract patches method is not usable in FC layer, which has no kernel row/col.')
+
+
 class io_data_solver:
     """
     The PE dataflow mapping fault list data solving class. 
@@ -1099,13 +1148,37 @@ class io_data_solver:
         self.wght_tile=wght_tile
         self.ifmap_tile=ifmap_tile
         self.fault_num=fault_num
-        if layer_type not in ['Conv2D', 'Dense', 'DepthwiseConv2D']:
-            raise ValueError('layer type must be one of \'Conv2D\', \'Dense\', \'DepthwiseConv2D\'')
         self.layer_type=layer_type
+        self._layer_coor_order()
         
     def _layer_coor_order(self):
         """ Give the coordinate access index order based on the layer type """
-        #TODO
+        if self.layer_type=='Conv2D':
+            self.order_assign_psidx_o=np.array([0,3,1,2])
+            self.order_assign_psidx_w=np.array([2,0,1])
+            self.order_assign_psidx_i=np.array([1,2])
+            self.order_restoremult_fmap=np.array([0,3,2,1])
+            self.order_restoremult_wght=np.array([3,2,1,0])
+            self.len_fc=4
+            self.len_psidx=9
+        elif self.layer_type=='DepthwiseConv2D':
+            self.order_assign_psidx_o=np.array([0,3,1,2])
+            self.order_assign_psidx_w=np.array([3,0,1])
+            self.order_assign_psidx_i=np.array([1,2])
+            self.order_restoremult_fmap=np.array([0,3,2,1])
+            self.order_restoremult_wght=np.array([3,2,1,0])
+            self.len_fc=4
+            self.len_psidx=9
+        elif self.layer_type=='Dense':
+            self.order_assign_psidx_o=np.array([0])
+            self.order_assign_psidx_w=np.array([1])
+            self.order_assign_psidx_i=np.array([1])
+            self.order_restoremult_fmap=np.array([0,1])
+            self.order_restoremult_wght=np.array([1,0])
+            self.len_fc=2
+            self.len_psidx=3
+        else:
+            raise ValueError('layer type must be one of \'Conv2D\', \'Dense\', \'DepthwiseConv2D\'')
         
     def _state_setting(self, faultvalue):
         """
@@ -1205,7 +1278,9 @@ class io_data_solver:
         """
         try:
             # psum index (Batch, Output Channel, Ofmap Row, Ofmap Column, Ifmap Channel, Kernel Row, Kernel Column, Ifmap Row, Ifmap Column)
-            psidx=tuple(np.concatenate([opindex[[0,3,1,2]],windex[[2,0,1]],iindex[[1,2]]]))
+            psidx=tuple(np.concatenate([opindex[self.order_assign_psidx_o],
+                                        windex[self.order_assign_psidx_w],
+                                        iindex[self.order_assign_psidx_i]]))
             if state is None:
                 pass
             elif state=='fastgen':
@@ -1382,7 +1457,9 @@ class io_data_solver:
             idlconstruct=np.repeat(np.arange(len(idlrep)),idlrep)
             outpsum_index=based_coors[idlconstruct]
             
-        psum_index=np.concatenate([outpsum_index[:,[0,3,1,2]],wght_index[:,[2,0,1]],ifmap_index[:,[1,2]]],axis=1)
+        psum_index=np.concatenate([outpsum_index[:,self.order_assign_psidx_o],
+                                   wght_index[:,self.order_assign_psidx_w],
+                                   ifmap_index[:,self.order_assign_psidx_i]],axis=1)
         if isinstance(shape_cnt,tuple):
             if len(shape_cnt)>1:
                 psum_index=np.split(psum_index,shape_cnt[0])
@@ -1533,6 +1610,46 @@ class io_data_solver:
         self.fault_dict_solved=fault_dict_solved
         return fault_dict_solved
  
+    def _check_tile_consistency(self, restore_multiple_i, restore_multiple_w, restore_multiple_o, layer=None):
+        """ Check the consistency of between ifmap, wght, ofmap tiles """
+        if self.layer_type=='Conv2D':
+            if restore_multiple_i[0]!=restore_multiple_o[0] or restore_multiple_i[3]!=restore_multiple_w[2] or restore_multiple_w[3]!=restore_multiple_o[3]:
+                raise ValueError('The tile shape is inconsistent! \nInput (batch, row, col, channel)=%s \nWeight (row,col,in-channel,out-channel)=%s \nOutput (batch,row,col,channel)=%s'%(str(self.ifmap_tile.tile_shape),str(self.wght_tile.tile_shape),str(self.ofmap_tile.tile_shape)))
+            # verify row col of ofmap to ifmap tile
+            if self.ifmap_tile.expand_method=='extract_patches':
+                if self.ifmap_tile.extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or self.ifmap_tile.extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
+                    raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+            else:
+                if layer is not None:
+                    extracted_shape=self.ifmap_tile.get_extracted_shape(fmap_shape=self.ifmap_tile.tile_shape,
+                                                                        ksizes=layer.kernel_size,
+                                                                        strides=(1,layer.strides[0],layer.strides[1],1),
+                                                                        dilation_rates=(1,layer.dilation_rate[0],layer.dilation_rate[1],1),
+                                                                        padding=layer.padding)
+                    if extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
+                        raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+
+        elif self.layer_type=='DepthwiseConv2D':
+            if restore_multiple_i[0]!=restore_multiple_o[0] or restore_multiple_i[3]!=restore_multiple_w[2] or restore_multiple_o[3]!=restore_multiple_w[2]:
+                raise ValueError('The tile shape is inconsistent! \nInput (batch, row, col, channel)=%s \nWeight (row,col,in-channel,out-channel)=%s \nOutput (batch,row,col,channel)=%s'%(str(self.ifmap_tile.tile_shape),str(self.wght_tile.tile_shape),str(self.ofmap_tile.tile_shape)))
+            # verify row col of ofmap to ifmap tile
+            if self.ifmap_tile.expand_method=='extract_patches':
+                if self.ifmap_tile.extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or self.ifmap_tile.extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
+                    raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+            else:
+                if layer is not None:
+                    extracted_shape=self.ifmap_tile.get_extracted_shape(fmap_shape=self.ifmap_tile.tile_shape,
+                                                                        ksizes=layer.kernel_size,
+                                                                        strides=(1,layer.strides[0],layer.strides[1],1),
+                                                                        dilation_rates=(1,layer.dilation_rate[0],layer.dilation_rate[1],1),
+                                                                        padding=layer.padding)
+                    if extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
+                        raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+
+        elif self.layer_type=='Dense':
+            if restore_multiple_i[0]!=restore_multiple_o[0] or restore_multiple_i[1]!=restore_multiple_w[0] or restore_multiple_o[1]!=restore_multiple_w[1]:
+                raise ValueError('The tile shape is inconsistent! \nInput (batch, neurons)=%s \nWeight (in-neurons,out-neurons)=%s \nOutput (batch,neurons)=%s'%(str(self.ifmap_tile.tile_shape),str(self.wght_tile.tile_shape),str(self.ofmap_tile.tile_shape)))
+    
     def _pop_outlier_idx(self, index, shape, get_cond_idx=False):
         """ Remove coordinates in fault dictionary that lies outside of current shape."""        
         index_bound=np.floor_divide(index,shape)
@@ -1559,11 +1676,11 @@ class io_data_solver:
         
         if is_ifmap is not None:
             if is_ifmap:
-                restore_multiple=restore_multiple[[0,3,2,1]]
-                reorder_shape=np.array(tile_shape)[[0,3,2,1]]
+                restore_multiple=restore_multiple[self.order_restoremult_fmap]
+                reorder_shape=np.array(tile_shape)[self.order_restoremult_fmap]
             else:
-                restore_multiple=restore_multiple[[3,2,1,0]]
-                reorder_shape=np.array(tile_shape)[[3,2,1,0]]
+                restore_multiple=restore_multiple[self.order_restoremult_wght]
+                reorder_shape=np.array(tile_shape)[self.order_restoremult_wght]
         else:
             reorder_shape=layer_shape
                 
@@ -1572,11 +1689,11 @@ class io_data_solver:
            
         if is_ifmap is not None:
             if is_ifmap:
-                restore_multiple=restore_multiple[[0,3,2,1]]
-                base_coor=base_coor[:,[0,3,2,1]]
+                restore_multiple=restore_multiple[self.order_restoremult_fmap]
+                base_coor=base_coor[:,self.order_restoremult_fmap]
             else:
-                restore_multiple=restore_multiple[[3,2,1,0]]
-                base_coor=base_coor[:,[3,2,1,0]]
+                restore_multiple=restore_multiple[self.order_restoremult_wght]
+                base_coor=base_coor[:,self.order_restoremult_wght]
                         
         return base_coor, restore_multiple
     
@@ -1646,36 +1763,53 @@ class io_data_solver:
         base_coor_i, restore_multiple_i=self._gen_base_coor(self.ifmap_tile.tile_shape, layer_input_shape, is_ifmap=True)
         
         # consistency check
-        if restore_multiple_i[0]!=restore_multiple_o[0] or restore_multiple_i[3]!=restore_multiple_w[2] or restore_multiple_o[3]!=restore_multiple_o[3]:
-            raise ValueError('The tile shape is inconsistent! \nInput (batch, row, col, channel)=%s \nWeight (row,col,in-channel,out-channel)=%s \nOutput (batch,row,col,channel)=%s'%(str(self.ifmap_tile.tile_shape),str(self.wght_tile.tile_shape),str(self.ofmap_tile.tile_shape)))
-        # verify row col of ofmap to ifmap tile
-        if self.ifmap_tile.extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or self.ifmap_tile.extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
-            raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+        self._check_tile_consistency(restore_multiple_i,restore_multiple_w,restore_multiple_o,layer)
                
         if print_detail:
             print('\r    Tile2Layer (3/9): Interleaved Tiles in Layer...\t',end=' ')
         # ofmap form 
-        base_coor_o=np.repeat(base_coor_o,restore_multiple_w[2],axis=0) # repeatition for tile level psum
-        if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
-            base_coor_o=np.repeat(base_coor_o, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
-        # match w->o
-        base_coor_w=np.split(base_coor_w,restore_multiple_w[3]) # split output channel
-        base_coor_w=np.repeat(base_coor_w,restore_multiple_o[1]*restore_multiple_o[2],axis=0) # duplicate for ofmap 2D tiles
-        base_coor_w=np.concatenate(base_coor_w)
-        base_coor_w=np.tile(base_coor_w,[restore_multiple_o[0],1]) # duplicate for batch
-        # match i->o
-        base_coor_i=np.split(base_coor_i,restore_multiple_i[0]) # split batch
-        base_coor_i=np.stack(base_coor_i) # new batch dims
-        base_coor_i=np.split(base_coor_i,restore_multiple_i[3],axis=1) # split input channel
-        base_coor_i=np.stack(base_coor_i) # new input channel psum dims
-        base_coor_i=np.transpose(base_coor_i,[1,2,0,3]) # reorder axes for interleave input channel psum
-        base_coor_i=np.tile(base_coor_i,[1,restore_multiple_o[3],1,1]) # duplicate for ofmap channel tile cut
-        base_coor_i=np.reshape(base_coor_i,[-1,4]) # serialize (batch, ofmap 2D, input channel psum)
-        if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
-            base_coor_i=np.repeat(base_coor_i, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
+        if self.layer_type=='Conv2D':
+            base_coor_o=np.repeat(base_coor_o,restore_multiple_w[2],axis=0) # repeatition for tile level psum
+            if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
+                base_coor_o=np.repeat(base_coor_o, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
+            # match w->o
+            base_coor_w=np.split(base_coor_w,restore_multiple_w[3]) # split output channel
+            base_coor_w=np.repeat(base_coor_w,restore_multiple_o[1]*restore_multiple_o[2],axis=0) # duplicate for ofmap 2D tiles
+            base_coor_w=np.concatenate(base_coor_w)
+            base_coor_w=np.tile(base_coor_w,[restore_multiple_o[0],1]) # duplicate for batch
+            # match i->o
+            base_coor_i=np.split(base_coor_i,restore_multiple_i[0]) # split batch
+            base_coor_i=np.stack(base_coor_i) # new batch dims
+            base_coor_i=np.split(base_coor_i,restore_multiple_i[3],axis=1) # split input channel
+            base_coor_i=np.stack(base_coor_i) # new input channel psum dims
+            base_coor_i=np.transpose(base_coor_i,[1,2,0,3]) # reorder axes for interleave input channel psum
+            base_coor_i=np.tile(base_coor_i,[1,restore_multiple_o[3],1,1]) # duplicate for ofmap channel tile cut
+            base_coor_i=np.reshape(base_coor_i,[-1,4]) # serialize (batch, ofmap 2D, input channel psum)
+            if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
+                base_coor_i=np.repeat(base_coor_i, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
+        
+        elif self.layer_type=='DepthwiseConv2D':
+            if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
+                base_coor_o=np.repeat(base_coor_o, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
+            # match w->o
+            base_coor_w=np.repeat(base_coor_w,restore_multiple_o[1]*restore_multiple_o[2], axis=0) # duplicate for ofmap 2D tiles
+            base_coor_w=np.tile(base_coor_w,[restore_multiple_o[0],1]) # duplicate for batch
+            # match i->o
+            if restore_multiple_w[0]*restore_multiple_w[1]>1: # duplicate if tile split on kernel 2D
+                base_coor_i=np.repeat(base_coor_i, restore_multiple_w[0]*restore_multiple_w[1], axis=0)
+        
+        elif self.layer_type=='Dense':
+            base_coor_o=np.repeat(base_coor_o,restore_multiple_w[0],axis=0) # repeatition for tile level psum
+            # match w->o
+            base_coor_w=np.tile(base_coor_w,[restore_multiple_o[0],1]) # duplicate for batch
+            # match i->o
+            base_coor_i=np.tile(base_coor_i,[restore_multiple_o[1],1]) # duplicate for ofmap channel tile cut
+
         
         # the base partial sum indexes
-        base_coor_psum_idx=np.concatenate([base_coor_o[:,[0,3,1,2]],base_coor_w[:,[2,0,1]],base_coor_i[:,[1,2]]],axis=1)
+        base_coor_psum_idx=np.concatenate([base_coor_o[:,self.order_assign_psidx_o],
+                                           base_coor_w[:,self.order_assign_psidx_w],
+                                           base_coor_i[:,self.order_assign_psidx_i]],axis=1)
         self.num_base_coor=len(base_coor_psum_idx)
 
         if print_detail:
@@ -1689,35 +1823,39 @@ class io_data_solver:
             layer_base_coor=base_coor_i
             
         layer_fault_coor=list()
-        for i in range(4):
+        for i in range(self.len_fc):
             layer_fault_coor.append(np.add.outer(layer_base_coor[:,i],fd_coor[:,i]))
         layer_fault_coor=np.stack(layer_fault_coor,axis=-1)
-        layer_fault_coor=np.reshape(layer_fault_coor,[-1,4])
+        layer_fault_coor=np.reshape(layer_fault_coor,[-1,self.len_fc])
 
         if print_detail:
             print('\r    Tile2Layer (5/9): Get Layer Partial Sum Indexes...\t',end=' ')
         # partial sum indexes to layer fault coors
         layer_psum_idx=list()
-        for i in range(9):
+        for i in range(self.len_psidx):
             layer_psum_idx.append(np.add.outer(base_coor_psum_idx[:,i],psum_idx[:,i]))
         layer_psum_idx=np.stack(layer_psum_idx,axis=-1)
-        layer_psum_idx=np.reshape(layer_psum_idx,[-1,9])
+        layer_psum_idx=np.reshape(layer_psum_idx,[-1,self.len_psidx])
         
         if print_detail:
             print('\r    Tile2Layer (6/9): Remove Outlier Partial Sum Indexes...',end=' ')
         # remove outlier partial sum index
-        try:
-            if self.ifmap_tile.padding=='same':
-                layer_input_shape_row=layer_input_shape[1] + (self.ifmap_tile.ksizes[1] + (self.ifmap_tile.ksizes[1]-1) * (self.ifmap_tile.dilation_rates[1] - 1))//2
-                layer_input_shape_col=layer_input_shape[2] + (self.ifmap_tile.ksizes[2] + (self.ifmap_tile.ksizes[2]-1) * (self.ifmap_tile.dilation_rates[2] - 1))//2
-            else:
+        if self.layer_type!='Dense':
+            try:
+                if self.ifmap_tile.padding=='same':
+                    layer_input_shape_row=layer_input_shape[1] + (self.ifmap_tile.ksizes[1] + (self.ifmap_tile.ksizes[1]-1) * (self.ifmap_tile.dilation_rates[1] - 1))//2
+                    layer_input_shape_col=layer_input_shape[2] + (self.ifmap_tile.ksizes[2] + (self.ifmap_tile.ksizes[2]-1) * (self.ifmap_tile.dilation_rates[2] - 1))//2
+                else:
+                    layer_input_shape_row=layer_input_shape[1] 
+                    layer_input_shape_col=layer_input_shape[2] 
+            except AttributeError:
                 layer_input_shape_row=layer_input_shape[1] 
                 layer_input_shape_col=layer_input_shape[2] 
-        except AttributeError:
-            layer_input_shape_row=layer_input_shape[1] 
-            layer_input_shape_col=layer_input_shape[2] 
+                
+            psum_idx_shape=[[layer_output_shape[0],layer_output_shape[3],layer_output_shape[1],layer_output_shape[2],layer_weight_shape[0][2],layer_weight_shape[0][0],layer_weight_shape[0][1],layer_input_shape_row,layer_input_shape_col]]
+        else:
+            psum_idx_shape=[[layer_output_shape[0],layer_output_shape[1],layer_input_shape[1]]]
             
-        psum_idx_shape=[[layer_output_shape[0],layer_output_shape[3],layer_output_shape[1],layer_output_shape[2],layer_weight_shape[0][2],layer_weight_shape[0][0],layer_weight_shape[0][1],layer_input_shape_row,layer_input_shape_col]]
         layer_psum_idx,psidx_cond=self._pop_outlier_idx(layer_psum_idx, psum_idx_shape, get_cond_idx=True)
         self.num_layer_psum_idx=len(layer_psum_idx)
         
@@ -1923,7 +2061,10 @@ class io_data_solver:
         self.num_layer_psum_idx=0
         self.num_psum_idx=0
 
+
+#=============================
 # this function is depricated   
+#=============================
 def _solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print_detail=False):
     """ Solving the PE array to Tile mapping fault dictionarys.
         Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 

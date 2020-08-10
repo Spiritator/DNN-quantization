@@ -112,6 +112,7 @@ def QuantizedMobileNetV1(input_shape=None,
               ifmap_fault_dict_list=None, 
               ofmap_fault_dict_list=None, 
               weight_fault_dict_list=None,
+              mac_unit=None,
               overflow_mode=False,
               stop_gradient=False,
               **kwargs):
@@ -300,6 +301,7 @@ def QuantizedMobileNetV1(input_shape=None,
                     ifmap_fault_dict_list=ifmap_fault_dict_list[1:5],
                     ofmap_fault_dict_list=ofmap_fault_dict_list[1:5],
                     weight_fault_dict_list=weight_fault_dict_list[1:5],
+                    mac_unit=mac_unit,
                     quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 1')
@@ -309,6 +311,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[5:12],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[5:12],
                               weight_fault_dict_list=weight_fault_dict_list[5:12],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
 
@@ -320,6 +323,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[12:19],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[12:19],
                               weight_fault_dict_list=weight_fault_dict_list[12:19],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 3')
@@ -329,6 +333,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[19:26],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[19:26],
                               weight_fault_dict_list=weight_fault_dict_list[19:26],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
 
@@ -340,6 +345,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[26:33],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[26:33],
                               weight_fault_dict_list=weight_fault_dict_list[26:33],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 5')
@@ -349,6 +355,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[33:40],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[33:40],
                               weight_fault_dict_list=weight_fault_dict_list[33:40],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
 
@@ -360,6 +367,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[40:47],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[40:47],
                               weight_fault_dict_list=weight_fault_dict_list[40:47],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 7')
@@ -369,6 +377,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[47:54],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[47:54],
                               weight_fault_dict_list=weight_fault_dict_list[47:54],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 8')
@@ -378,6 +387,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[54:61],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[54:61],
                               weight_fault_dict_list=weight_fault_dict_list[54:61],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 9')
@@ -387,6 +397,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[61:68],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[61:68],
                               weight_fault_dict_list=weight_fault_dict_list[61:68],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 10')
@@ -396,6 +407,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[68:75],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[68:75],
                               weight_fault_dict_list=weight_fault_dict_list[68:75],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 11')
@@ -405,6 +417,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[75:82],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[75:82],
                               weight_fault_dict_list=weight_fault_dict_list[75:82],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
 
@@ -416,6 +429,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[82:89],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[82:89],
                               weight_fault_dict_list=weight_fault_dict_list[82:89],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 13')
@@ -425,6 +439,7 @@ def QuantizedMobileNetV1(input_shape=None,
                               ifmap_fault_dict_list=ifmap_fault_dict_list[89:96],
                               ofmap_fault_dict_list=ofmap_fault_dict_list[89:96],
                               weight_fault_dict_list=weight_fault_dict_list[89:96],
+                              mac_unit=mac_unit,
                               quant_mode=quant_mode)
     pbar.update()
 
@@ -446,6 +461,7 @@ def QuantizedMobileNetV1(input_shape=None,
                             ifmap_sa_fault_injection=ifmap_fault_dict_list[99],
                             ofmap_sa_fault_injection=ofmap_fault_dict_list[99],
                             weight_sa_fault_injection=weight_fault_dict_list[99],
+                            mac_unit=mac_unit,
                             quant_mode=quant_mode,
                             last_layer=True)(x)
         x = layers.Activation('softmax', name='act_softmax')(x)
@@ -516,7 +532,8 @@ def _conv_block(inputs,
                 quant_mode='hybrid',
                 ifmap_fault_dict_list=None, 
                 ofmap_fault_dict_list=None, 
-                weight_fault_dict_list=None):
+                weight_fault_dict_list=None,
+                mac_unit=None):
     """Adds an initial convolution layer (with batch normalization and relu6).
 
     # Arguments
@@ -586,6 +603,7 @@ def _conv_block(inputs,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
@@ -608,7 +626,8 @@ def _depthwise_conv_block(inputs,
                           quant_mode='hybrid',
                           ifmap_fault_dict_list=None, 
                           ofmap_fault_dict_list=None, 
-                          weight_fault_dict_list=None):
+                          weight_fault_dict_list=None
+                          mac_unit=None):
     """Adds a depthwise convolution block.
 
     A depthwise convolution block consists of a depthwise conv,
@@ -681,6 +700,7 @@ def _depthwise_conv_block(inputs,
                                  ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                                  ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                                  weight_sa_fault_injection=weight_fault_dict_list[1],
+                                 mac_unit=mac_unit,
                                  quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis, 
@@ -701,6 +721,7 @@ def _depthwise_conv_block(inputs,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
                         weight_sa_fault_injection=weight_fault_dict_list[4],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=channel_axis,
@@ -736,6 +757,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
               ifmap_fault_dict_list=None, 
               ofmap_fault_dict_list=None, 
               weight_fault_dict_list=None,
+              mac_unit=None,
               overflow_mode=False,
               stop_gradient=False,
               **kwargs):
@@ -910,6 +932,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                              ifmap_fault_dict_list=ifmap_fault_dict_list[1:4],
                              ofmap_fault_dict_list=ofmap_fault_dict_list[1:4],
                              weight_fault_dict_list=weight_fault_dict_list[1:4],
+                             mac_unit=mac_unit,
                              quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 1')
@@ -918,6 +941,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[4:9],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[4:9],
                                        weight_fault_dict_list=weight_fault_dict_list[4:9],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
 
@@ -928,6 +952,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[9:14],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[9:14],
                                        weight_fault_dict_list=weight_fault_dict_list[9:14],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 3')
@@ -936,6 +961,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[14:19],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[14:19],
                                        weight_fault_dict_list=weight_fault_dict_list[14:19],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
 
@@ -946,6 +972,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[19:24],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[19:24],
                                        weight_fault_dict_list=weight_fault_dict_list[19:24],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 5')
@@ -954,6 +981,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[24:29],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[24:29],
                                        weight_fault_dict_list=weight_fault_dict_list[24:29],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
 
@@ -964,6 +992,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[29:34],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[29:34],
                                        weight_fault_dict_list=weight_fault_dict_list[29:34],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 7')
@@ -972,6 +1001,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[34:39],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[34:39],
                                        weight_fault_dict_list=weight_fault_dict_list[34:39],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 8')
@@ -980,6 +1010,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[39:44],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[39:44],
                                        weight_fault_dict_list=weight_fault_dict_list[39:44],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 9')
@@ -988,6 +1019,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[44:49],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[44:49],
                                        weight_fault_dict_list=weight_fault_dict_list[44:49],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 10')
@@ -996,6 +1028,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[49:54],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[49:54],
                                        weight_fault_dict_list=weight_fault_dict_list[49:54],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 11')
@@ -1004,6 +1037,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[54:59],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[54:59],
                                        weight_fault_dict_list=weight_fault_dict_list[54:59],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
 
@@ -1014,6 +1048,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[59:64],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[59:64],
                                        weight_fault_dict_list=weight_fault_dict_list[59:64],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building depthwise conv block 13')
@@ -1022,6 +1057,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                                        ifmap_fault_dict_list=ifmap_fault_dict_list[64:69],
                                        ofmap_fault_dict_list=ofmap_fault_dict_list[64:69],
                                        weight_fault_dict_list=weight_fault_dict_list[64:69],
+                                       mac_unit=mac_unit,
                                        quant_mode=quant_mode)
     pbar.update()
 
@@ -1043,6 +1079,7 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
                             ifmap_sa_fault_injection=ifmap_fault_dict_list[72],
                             ofmap_sa_fault_injection=ofmap_fault_dict_list[72],
                             weight_sa_fault_injection=weight_fault_dict_list[72],
+                            mac_unit=mac_unit,
                             quant_mode=quant_mode,
                             last_layer=True)(x)
         x = layers.Activation('softmax', name='act_softmax')(x)
@@ -1085,7 +1122,8 @@ def _conv_block_fused_BN(inputs,
                          quant_mode='hybrid',
                          ifmap_fault_dict_list=None, 
                          ofmap_fault_dict_list=None, 
-                         weight_fault_dict_list=None):
+                         weight_fault_dict_list=None
+                         mac_unit=None):
     """Adds an initial convolution layer (with batch normalization and relu6).
 
     # Arguments
@@ -1154,6 +1192,7 @@ def _conv_block_fused_BN(inputs,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     return layers.ReLU(6., name='conv1_relu')(x)
 
@@ -1168,7 +1207,8 @@ def _depthwise_conv_block_fused_BN(inputs,
                                    quant_mode='hybrid',
                                    ifmap_fault_dict_list=None, 
                                    ofmap_fault_dict_list=None, 
-                                   weight_fault_dict_list=None):
+                                   weight_fault_dict_list=None,
+                                   mac_unit=None):
     """Adds a depthwise convolution block.
 
     A depthwise convolution block consists of a depthwise conv,
@@ -1240,6 +1280,7 @@ def _depthwise_conv_block_fused_BN(inputs,
                                  ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                                  ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                                  weight_sa_fault_injection=weight_fault_dict_list[1],
+                                 mac_unit=mac_unit,
                                  quant_mode=quant_mode)(x)
     x = layers.ReLU(6., name='conv_dw_%d_relu' % block_id)(x)
 
@@ -1252,6 +1293,7 @@ def _depthwise_conv_block_fused_BN(inputs,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
                         weight_sa_fault_injection=weight_fault_dict_list[3],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     return layers.ReLU(6., name='conv_pw_%d_relu' % block_id)(x)
 

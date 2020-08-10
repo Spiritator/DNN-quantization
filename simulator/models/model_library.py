@@ -20,7 +20,14 @@ from ..layers.quantized_layers import QuantizedConv2D, QuantizedDense, Quantized
 from ..layers.quantized_ops import quantizer,build_layer_quantizer
 
 
-def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(28,28,1), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False,):
+def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', 
+                     input_shape=(28,28,1), num_classes=10, batch_size=None, 
+                     ifmap_fault_dict_list=None, 
+                     ofmap_fault_dict_list=None, 
+                     weight_fault_dict_list=None, 
+                     mac_unit=None,
+                     quant_mode='hybrid', 
+                     overflow_mode=False, stop_gradient=False,):
     
     print('\nBuilding model : Quantized Lenet 5')
     pbar=tqdm(total=11)
@@ -56,6 +63,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(input_shape)
     pbar.update()
     pbar.set_postfix_str('Building Layer 2')
@@ -71,6 +79,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
                         weight_sa_fault_injection=weight_fault_dict_list[3],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 4')
@@ -89,6 +98,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                        weight_sa_fault_injection=weight_fault_dict_list[6],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 7')
@@ -98,6 +108,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[7],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[7],
                        weight_sa_fault_injection=weight_fault_dict_list[7],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode,
                        last_layer=True)(x)
     pbar.update()
@@ -114,7 +125,14 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest', input_shape=(2
 
     return model
 
-def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False):
+def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', 
+                   input_shape=(32,32,3), num_classes=10, batch_size=None, 
+                   ifmap_fault_dict_list=None, 
+                   ofmap_fault_dict_list=None, 
+                   weight_fault_dict_list=None, 
+                   mac_unit=None,
+                   quant_mode='hybrid', 
+                   overflow_mode=False, stop_gradient=False):
     
     print('\nBuilding model : Quantized 4C2F CNN')
     pbar=tqdm(total=17)
@@ -150,6 +168,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(input_shape)
     pbar.update()
     pbar.set_postfix_str('Building Layer 2')
@@ -161,6 +180,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
                         weight_sa_fault_injection=weight_fault_dict_list[2],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 3')
@@ -180,6 +200,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[5],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
                         weight_sa_fault_injection=weight_fault_dict_list[5],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 6')
@@ -191,6 +212,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                         weight_sa_fault_injection=weight_fault_dict_list[6],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 7')
@@ -211,6 +233,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[10],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[10],
                        weight_sa_fault_injection=weight_fault_dict_list[10],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 11')
@@ -226,6 +249,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
                        weight_sa_fault_injection=weight_fault_dict_list[13],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode,
                        last_layer=True)(x)
     pbar.update()
@@ -242,7 +266,14 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', input_shape=(32,
 
     return model
 
-def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', input_shape=(32,32,3), num_classes=10, batch_size=None, ifmap_fault_dict_list=None, ofmap_fault_dict_list=None, weight_fault_dict_list=None, quant_mode='hybrid', overflow_mode=False, stop_gradient=False):
+def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', 
+                     input_shape=(32,32,3), num_classes=10, batch_size=None, 
+                     ifmap_fault_dict_list=None, 
+                     ofmap_fault_dict_list=None, 
+                     weight_fault_dict_list=None, 
+                     mac_unit=None,
+                     quant_mode='hybrid', 
+                     overflow_mode=False, stop_gradient=False):
     
     print('\nBuilding model : Quantized 4C2FBN CNN')
     pbar=tqdm(total=26)
@@ -288,6 +319,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
                         weight_sa_fault_injection=weight_fault_dict_list[1],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(input_shape)
     pbar.update()
     pbar.set_postfix_str('Building Layer 2')
@@ -310,6 +342,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
                         weight_sa_fault_injection=weight_fault_dict_list[4],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 5')
@@ -341,6 +374,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[9],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[9],
                         weight_sa_fault_injection=weight_fault_dict_list[9],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 10')
@@ -364,6 +398,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[12],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[12],
                         weight_sa_fault_injection=weight_fault_dict_list[12],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 13')
@@ -396,6 +431,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[18],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[18],
                        weight_sa_fault_injection=weight_fault_dict_list[18],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 19')
@@ -420,6 +456,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
                        ifmap_sa_fault_injection=ifmap_fault_dict_list[22],
                        ofmap_sa_fault_injection=ofmap_fault_dict_list[22],
                        weight_sa_fault_injection=weight_fault_dict_list[22],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode,
                        last_layer=True)(x)
     pbar.update()

@@ -58,7 +58,8 @@ def identity_block(input_tensor,
                    quant_mode='hybrid',
                    ifmap_fault_dict_list=None, 
                    ofmap_fault_dict_list=None, 
-                   weight_fault_dict_list=None):
+                   weight_fault_dict_list=None,
+                   mac_unit=None):
     """The identity block is the block that has no conv layer at shortcut.
 
     # Arguments
@@ -95,6 +96,7 @@ def identity_block(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[0],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[0],
                         weight_sa_fault_injection=weight_fault_dict_list[0],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(input_tensor)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
@@ -113,6 +115,7 @@ def identity_block(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
                         weight_sa_fault_injection=weight_fault_dict_list[3],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
@@ -130,6 +133,7 @@ def identity_block(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                         weight_sa_fault_injection=weight_fault_dict_list[6],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
@@ -155,7 +159,8 @@ def conv_block(input_tensor,
                quant_mode='hybrid',
                ifmap_fault_dict_list=None, 
                ofmap_fault_dict_list=None, 
-               weight_fault_dict_list=None):
+               weight_fault_dict_list=None,
+               mac_unit=None):
     """A block that has a conv layer at shortcut.
 
     # Arguments
@@ -198,6 +203,7 @@ def conv_block(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[0],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[0],
                         weight_sa_fault_injection=weight_fault_dict_list[0],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(input_tensor)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
@@ -216,6 +222,7 @@ def conv_block(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
                         weight_sa_fault_injection=weight_fault_dict_list[3],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
@@ -233,6 +240,7 @@ def conv_block(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
                         weight_sa_fault_injection=weight_fault_dict_list[6],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
@@ -250,6 +258,7 @@ def conv_block(input_tensor,
                                ifmap_sa_fault_injection=ifmap_fault_dict_list[7],
                                ofmap_sa_fault_injection=ofmap_fault_dict_list[7],
                                weight_sa_fault_injection=weight_fault_dict_list[7],
+                               mac_unit=mac_unit,
                                quant_mode=quant_mode)(input_tensor)
     shortcut = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                            axis=bn_axis, 
@@ -280,6 +289,7 @@ def QuantizedResNet50(include_top=True,
              ifmap_fault_dict_list=None, 
              ofmap_fault_dict_list=None, 
              weight_fault_dict_list=None,
+             mac_unit=None,
              overflow_mode=False,
              stop_gradient=False):
     """Instantiates the ResNet50 architecture.
@@ -397,6 +407,7 @@ def QuantizedResNet50(include_top=True,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
                         weight_sa_fault_injection=weight_fault_dict_list[2],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = QuantizedBatchNormalization(quantizers=layer_BN_quantizer,
                                     axis=bn_axis, 
@@ -416,6 +427,7 @@ def QuantizedResNet50(include_top=True,
                    ifmap_fault_dict_list=ifmap_fault_dict_list[6:18],
                    ofmap_fault_dict_list=ofmap_fault_dict_list[6:18],
                    weight_fault_dict_list=weight_fault_dict_list[6:18],
+                   mac_unit=mac_unit,
                    quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 2 block b')
@@ -425,6 +437,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[18:28],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[18:28],
                        weight_fault_dict_list=weight_fault_dict_list[18:28],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 2 block c')
@@ -434,6 +447,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[28:38],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[28:38],
                        weight_fault_dict_list=weight_fault_dict_list[28:38],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
 
@@ -444,6 +458,7 @@ def QuantizedResNet50(include_top=True,
                    ifmap_fault_dict_list=ifmap_fault_dict_list[38:50],
                    ofmap_fault_dict_list=ofmap_fault_dict_list[38:50],
                    weight_fault_dict_list=weight_fault_dict_list[38:50],
+                   mac_unit=mac_unit,
                    quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block b')
@@ -453,6 +468,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[50:60],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[50:60],
                        weight_fault_dict_list=weight_fault_dict_list[50:60],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block c')
@@ -462,6 +478,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[60:70],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[60:70],
                        weight_fault_dict_list=weight_fault_dict_list[60:70],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block d')
@@ -471,6 +488,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[70:80],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[70:80],
                        weight_fault_dict_list=weight_fault_dict_list[70:80],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
 
@@ -481,6 +499,7 @@ def QuantizedResNet50(include_top=True,
                    ifmap_fault_dict_list=ifmap_fault_dict_list[80:92],
                    ofmap_fault_dict_list=ofmap_fault_dict_list[80:92],
                    weight_fault_dict_list=weight_fault_dict_list[80:92],
+                   mac_unit=mac_unit,
                    quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 4 block b')
@@ -490,6 +509,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[92:102],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[92:102],
                        weight_fault_dict_list=weight_fault_dict_list[92:102],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 4 block c')
@@ -499,6 +519,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[102:112],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[102:112],
                        weight_fault_dict_list=weight_fault_dict_list[102:112],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 4 block d')
@@ -508,6 +529,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[112:122],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[112:122],
                        weight_fault_dict_list=weight_fault_dict_list[112:122],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 4 block e')
@@ -517,6 +539,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[122:132],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[122:132],
                        weight_fault_dict_list=weight_fault_dict_list[122:132],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 4 block f')
@@ -526,6 +549,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[132:142],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[132:142],
                        weight_fault_dict_list=weight_fault_dict_list[132:142],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
 
@@ -536,6 +560,7 @@ def QuantizedResNet50(include_top=True,
                    ifmap_fault_dict_list=ifmap_fault_dict_list[142:154],
                    ofmap_fault_dict_list=ofmap_fault_dict_list[142:154],
                    weight_fault_dict_list=weight_fault_dict_list[142:154],
+                   mac_unit=mac_unit,
                    quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 5 block b')
@@ -545,6 +570,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[154:164],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[154:164],
                        weight_fault_dict_list=weight_fault_dict_list[154:164],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 5 block c')
@@ -554,6 +580,7 @@ def QuantizedResNet50(include_top=True,
                        ifmap_fault_dict_list=ifmap_fault_dict_list[164:174],
                        ofmap_fault_dict_list=ofmap_fault_dict_list[164:174],
                        weight_fault_dict_list=weight_fault_dict_list[164:174],
+                       mac_unit=mac_unit,
                        quant_mode=quant_mode)
     pbar.update()
 
@@ -566,6 +593,7 @@ def QuantizedResNet50(include_top=True,
                            ifmap_sa_fault_injection=ifmap_fault_dict_list[176],
                            ofmap_sa_fault_injection=ofmap_fault_dict_list[176],
                            weight_sa_fault_injection=weight_fault_dict_list[176],
+                           mac_unit=mac_unit,
                            quant_mode=quant_mode,
                            last_layer=True)(x)
     else:
@@ -627,7 +655,8 @@ def identity_block_fused_BN(input_tensor,
                             quant_mode='hybrid',
                             ifmap_fault_dict_list=None, 
                             ofmap_fault_dict_list=None, 
-                            weight_fault_dict_list=None):
+                            weight_fault_dict_list=None
+                            mac_unit=None):
     """The identity block is the block that has no conv layer at shortcut.
 
     # Arguments
@@ -659,6 +688,7 @@ def identity_block_fused_BN(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[0],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[0],
                         weight_sa_fault_injection=weight_fault_dict_list[0],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(input_tensor)
     x = layers.Activation('relu')(x)
 
@@ -670,6 +700,7 @@ def identity_block_fused_BN(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
                         weight_sa_fault_injection=weight_fault_dict_list[2],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
@@ -680,6 +711,7 @@ def identity_block_fused_BN(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
                         weight_sa_fault_injection=weight_fault_dict_list[4],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
 
     x = layers.add([x, input_tensor])
@@ -697,7 +729,8 @@ def conv_block_fused_BN(input_tensor,
                quant_mode='hybrid',
                ifmap_fault_dict_list=None, 
                ofmap_fault_dict_list=None, 
-               weight_fault_dict_list=None):
+               weight_fault_dict_list=None,
+               mac_unit=None):
     """A block that has a conv layer at shortcut.
 
     # Arguments
@@ -735,6 +768,7 @@ def conv_block_fused_BN(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[0],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[0],
                         weight_sa_fault_injection=weight_fault_dict_list[0],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(input_tensor)
     x = layers.Activation('relu')(x)
 
@@ -746,6 +780,7 @@ def conv_block_fused_BN(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
                         weight_sa_fault_injection=weight_fault_dict_list[2],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
 
@@ -756,6 +791,7 @@ def conv_block_fused_BN(input_tensor,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[4],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[4],
                         weight_sa_fault_injection=weight_fault_dict_list[4],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
 
     shortcut = QuantizedConv2D(filters3, 
@@ -766,6 +802,7 @@ def conv_block_fused_BN(input_tensor,
                                ifmap_sa_fault_injection=ifmap_fault_dict_list[5],
                                ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
                                weight_sa_fault_injection=weight_fault_dict_list[5],
+                               mac_unit=mac_unit,
                                quant_mode=quant_mode)(input_tensor)
 
     x = layers.add([x, shortcut])
@@ -787,6 +824,7 @@ def QuantizedResNet50FusedBN(include_top=True,
              ifmap_fault_dict_list=None, 
              ofmap_fault_dict_list=None, 
              weight_fault_dict_list=None,
+             mac_unit=None,
              overflow_mode=False,
              stop_gradient=False,):
     """Instantiates the ResNet50 architecture.
@@ -889,6 +927,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                         ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
                         ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
                         weight_sa_fault_injection=weight_fault_dict_list[2],
+                        mac_unit=mac_unit,
                         quant_mode=quant_mode)(x)
     x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
@@ -900,6 +939,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                             ifmap_fault_dict_list=ifmap_fault_dict_list[5:13],
                             ofmap_fault_dict_list=ofmap_fault_dict_list[5:13],
                             weight_fault_dict_list=weight_fault_dict_list[5:13],
+                            mac_unit=mac_unit,
                             quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 2 block b')
@@ -908,6 +948,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[13:20],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[13:20],
                                 weight_fault_dict_list=weight_fault_dict_list[13:20],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 2 block c')
@@ -916,6 +957,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[20:27],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[20:27],
                                 weight_fault_dict_list=weight_fault_dict_list[20:27],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
 
@@ -925,6 +967,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                             ifmap_fault_dict_list=ifmap_fault_dict_list[27:35],
                             ofmap_fault_dict_list=ofmap_fault_dict_list[27:35],
                             weight_fault_dict_list=weight_fault_dict_list[27:35],
+                            mac_unit=mac_unit,
                             quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block b')
@@ -933,6 +976,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[35:42],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[35:42],
                                 weight_fault_dict_list=weight_fault_dict_list[35:42],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block c')
@@ -941,6 +985,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[42:49],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[42:49],
                                 weight_fault_dict_list=weight_fault_dict_list[42:49],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block d')
@@ -949,6 +994,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[49:56],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[49:56],
                                 weight_fault_dict_list=weight_fault_dict_list[49:56],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
 
@@ -957,6 +1003,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                             ifmap_fault_dict_list=ifmap_fault_dict_list[56:64],
                             ofmap_fault_dict_list=ofmap_fault_dict_list[56:64],
                             weight_fault_dict_list=weight_fault_dict_list[56:64],
+                            mac_unit=mac_unit,
                             layer_quantizer=layer_quantizer, 
                             quant_mode=quant_mode)
     pbar.update()
@@ -966,6 +1013,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[64:71],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[64:71],
                                 weight_fault_dict_list=weight_fault_dict_list[64:71],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block c')
@@ -974,6 +1022,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[71:78],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[71:78],
                                 weight_fault_dict_list=weight_fault_dict_list[71:78],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block d')
@@ -982,6 +1031,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[78:85],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[78:85],
                                 weight_fault_dict_list=weight_fault_dict_list[78:85],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block e')
@@ -990,6 +1040,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[85:92],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[85:92],
                                 weight_fault_dict_list=weight_fault_dict_list[85:92],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 3 block f')
@@ -998,6 +1049,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[92:99],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[92:99],
                                 weight_fault_dict_list=weight_fault_dict_list[92:99],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
 
@@ -1006,6 +1058,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                             ifmap_fault_dict_list=ifmap_fault_dict_list[99:107],
                             ofmap_fault_dict_list=ofmap_fault_dict_list[99:107],
                             weight_fault_dict_list=weight_fault_dict_list[99:107],
+                            mac_unit=mac_unit,
                             layer_quantizer=layer_quantizer, 
                             quant_mode=quant_mode)
     pbar.update()
@@ -1015,6 +1068,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[107:114],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[107:114],
                                 weight_fault_dict_list=weight_fault_dict_list[107:114],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
     pbar.set_postfix_str('building stage 5 block c')
@@ -1023,6 +1077,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                                 ifmap_fault_dict_list=ifmap_fault_dict_list[114:121],
                                 ofmap_fault_dict_list=ofmap_fault_dict_list[114:121],
                                 weight_fault_dict_list=weight_fault_dict_list[114:121],
+                                mac_unit=mac_unit,
                                 quant_mode=quant_mode)
     pbar.update()
 
@@ -1035,6 +1090,7 @@ def QuantizedResNet50FusedBN(include_top=True,
                            ifmap_sa_fault_injection=ifmap_fault_dict_list[123],
                            ofmap_sa_fault_injection=ofmap_fault_dict_list[123],
                            weight_sa_fault_injection=weight_fault_dict_list[123],
+                           mac_unit=mac_unit,
                            quant_mode=quant_mode,
                            last_layer=True)(x)
     else:

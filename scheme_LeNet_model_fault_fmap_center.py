@@ -4,6 +4,7 @@ Created on Wed Feb 27 16:46:08 2019
 
 @author: Yung-Yu Tsai
 
+evaluate fault injection testing result of LeNet-5
 Using inference scheme to arange analysis and save result. Evaluate the FT difference of center or edge of feature maps.
 """
 import os

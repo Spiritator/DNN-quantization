@@ -4,7 +4,7 @@ Created on Fri Aug 24 11:33:23 2018
 
 @author: Yung-Yu Tsai
 
-evaluate quantized testing result with custom Keras quantize layer 
+evaluate memory fault injection testing result of 4C2F CNN
 """
 
 # setup

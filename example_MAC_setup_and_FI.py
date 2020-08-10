@@ -78,6 +78,7 @@ ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
                                             ofmapT,
                                             fault_dict_solved_layer,
                                             qtz,
+                                            layer_type='Conv2D',
                                             padding='same',
                                             fast_gen=True)
 
@@ -93,6 +94,7 @@ ofmap_alter=K.eval(ofmap_alter)
 #                                            ofmapT,
 #                                            fault_dict_solved_scatter,
 #                                            qtz,
+#                                            layer_type='Conv2D',
 #                                            padding='same',
 #                                            fast_gen=False)
 #

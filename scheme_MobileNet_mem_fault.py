@@ -5,6 +5,7 @@ Created on Tue Sep 25 14:32:50 2018
 @author: Yung-Yu Tsai
 
 An example of using inference scheme to arange analysis and save result.
+evaluate memory fault injection testing result of MobileNetV1
 """
 
 from simulator.inference.scheme import inference_scheme

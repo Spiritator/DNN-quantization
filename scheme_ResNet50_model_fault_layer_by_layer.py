@@ -4,6 +4,7 @@ Created on Tue Sep 25 14:32:50 2018
 
 @author: Yung-Yu Tsai
 
+evaluate fault injection testing result of ResNet50
 Using inference scheme to arange analysis and save result layer by layer.
 """
 import os

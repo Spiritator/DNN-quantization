@@ -463,7 +463,7 @@ class mac_unit:
                 psum_idx_wght=psum_idx_list[:,:,order_get_psidx_w]
                 psum_idx_ifmap=psum_idx_list[:,:,order_get_psidx_i]
             
-                if padding=='same':
+                if padding=='same' and layer_type!='Dense':
                     ifmap, psum_idx_ifmap=self._padding_ifmap_and_idx(ifmap, 
                                                                       psum_idx_ifmap, 
                                                                       ksizes, 
@@ -583,7 +583,7 @@ class mac_unit:
                 idx_ifmap_wght=psum_idx_ifmap[:,:,order_get_psidx_w]
                 faultbit_ifmap=fault_bit[param_ifmap]
             
-                if padding=='same':
+                if padding=='same' and layer_type!='Dense':
                     ifmap, idx_ifmap_ifmap=self._padding_ifmap_and_idx(ifmap, 
                                                                        idx_ifmap_ifmap, 
                                                                        ksizes, 
@@ -610,7 +610,7 @@ class mac_unit:
                 idx_wght_ifmap=psum_idx_wght[:,:,order_get_psidx_i]
                 faultbit_wght=fault_bit[param_wght]
                 
-                if padding=='same':
+                if padding=='same' and layer_type!='Dense':
                     if len(param_ifmap)>0:
                         _, idx_wght_ifmap=self._padding_ifmap_and_idx(None, 
                                                                       idx_wght_ifmap, 

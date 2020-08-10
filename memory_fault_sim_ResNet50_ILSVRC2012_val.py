@@ -4,7 +4,7 @@ Created on Tue Sep 25 14:32:50 2018
 
 @author: Yung-Yu Tsai
 
-evaluate quantized testing result with custom Keras quantize layer 
+evaluate memory fault injection testing result of ResNet50
 """
 
 import keras

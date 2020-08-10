@@ -4,6 +4,7 @@ Created on Tue Sep 25 14:32:50 2018
 
 @author: Yung-Yu Tsai
 
+evaluate fault injection testing result of MobileNetV1
 Using inference scheme to arange analysis and save result. Evaluate the FT difference of center or edge of feature maps.
 """
 import os

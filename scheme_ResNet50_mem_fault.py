@@ -4,7 +4,8 @@ Created on Tue Sep 25 14:32:50 2018
 
 @author: Yung-Yu Tsai
 
-evaluate quantized testing result with custom Keras quantize layer 
+An example of using inference scheme to arange analysis and save result.
+evaluate memory fault injection testing result of ResNet50
 """
 
 from simulator.inference.scheme import inference_scheme

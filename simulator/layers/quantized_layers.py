@@ -45,13 +45,15 @@ class Clip(constraints.Constraint):
 class QuantizedDense(Dense):
     ''' Quantized Dense layer '''
     def __init__(self, units, quantizers, quant_mode='hybrid',
-                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],last_layer=False, **kwargs):
+                 ifmap_sa_fault_injection=None, ofmap_sa_fault_injection=None, weight_sa_fault_injection=[None, None],
+                 mac_unit=None, last_layer=False, **kwargs):
         super(QuantizedDense, self).__init__(units, **kwargs)
         self.quantizer=quantizers
         self.quant_mode = quant_mode
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
         self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
+        self.mac_unit=mac_unit
         self.last_layer=last_layer
         super(QuantizedDense, self).__init__(units, **kwargs)
     
@@ -134,7 +136,14 @@ class QuantizedDense(Dense):
             output = quantizer_output.quantize(output)
             
         if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
-            output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, quantizer_output)
+            if self.mac_unit is None:
+                output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, quantizer_output)
+            else:
+                self.mac_unit.consistency_check(self.quant_mode,self.quantizer)
+                output = self.mac_unit.inject_mac_math_fault_tensor(inputs, quantized_kernel, output, 
+                                                                    self.ofmap_sa_fault_injection,
+                                                                    layer_type='Dense')
+
 
 
 
@@ -294,10 +303,10 @@ class QuantizedConv2D(Conv2D):
                 self.mac_unit.consistency_check(self.quant_mode,self.quantizer)
                 outputs = self.mac_unit.inject_mac_math_fault_tensor(inputs, quantized_kernel, outputs, 
                                                                      self.ofmap_sa_fault_injection,
+                                                                     layer_type='Conv2D',
                                                                      ksizes=self.kernel_size, 
                                                                      padding=self.padding, 
                                                                      dilation_rates=self.dilation_rate)
-
 
         return outputs
         
@@ -623,6 +632,8 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                  ifmap_sa_fault_injection=None, 
                  ofmap_sa_fault_injection=None, 
                  weight_sa_fault_injection=[None, None],
+                 mac_unit=None, 
+                 last_layer=False,
                  **kwargs):
         super(QuantizedDepthwiseConv2D, self).__init__(kernel_size, **kwargs)
         self.quantizer=quantizers
@@ -630,8 +641,8 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         self.weight_sa_fault_injection=weight_sa_fault_injection
         self.ifmap_sa_fault_injection=ifmap_sa_fault_injection
         self.ofmap_sa_fault_injection=ofmap_sa_fault_injection
-
-
+        self.mac_unit=mac_unit
+        self.last_layer=last_layer
 
     def build(self, input_shape):
         if len(input_shape) < 4:
@@ -749,9 +760,17 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         if self.quant_mode in ['extrinsic','hybrid','intrinsic']:
             outputs = quantizer_output.quantize(outputs)
         
-        if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic']:
-            outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
-
+        if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
+            if self.mac_unit is None:
+                outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
+            else:
+                self.mac_unit.consistency_check(self.quant_mode,self.quantizer)
+                outputs = self.mac_unit.inject_mac_math_fault_tensor(inputs, quantized_depthwise_kernel, outputs, 
+                                                                     self.ofmap_sa_fault_injection,
+                                                                     layer_type='DepthwiseConv2D',
+                                                                     ksizes=self.kernel_size, 
+                                                                     padding=self.padding, 
+                                                                     dilation_rates=self.dilation_rate)
 
         return outputs
 

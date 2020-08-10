@@ -4,7 +4,7 @@ Created on Mon Sep 10 17:17:07 2018
 
 @author: Yung-Yu Tsai
 
-evaluate quantized testing result with custom Keras quantize layer 
+evaluate quantized testing result with custom Keras quantize layer of droneNet
 """
 
 # setup

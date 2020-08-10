@@ -4,7 +4,7 @@ Created on Wed Sep  5 15:29:34 2018
 
 @author: Yung-Yu Tsai
 
-evaluate quantized testing result with custom Keras quantize layer 
+evaluate quantized testing result with custom Keras quantize layer of 4C2F CNN 
 """
 
 # setup

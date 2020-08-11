@@ -36,11 +36,7 @@ rounding_method='nearest'
 batch_size=20
 
 # PE array fault simulation parameter
-ofmap_config='../pe_mapping_config/ofmap_config.json'
-wght_config='../pe_mapping_config/wght_config.json'
-ifmap_config='../pe_mapping_config/ifmap_config.json'
-mac_config='../pe_mapping_config/mac_unit_config.json'
-MXU_config='../pe_mapping_config/MXU_config.json'
+mac_config='../pe_mapping_config/lenet/ws/mac_unit_config.json'
 model_wl=model_word_length
 
 memory_column_priority=['Tm','Tc','Tr','Tn']
@@ -67,33 +63,33 @@ ofmap_tile=tile_PE((1,28,28,32),is_fmap=True,wl=8)
 # PE represent computation unit
 PE=mac_unit(mac_config)
 # PE array
-MXU=PEarray(16,16,ofmap_tile=ofmap_tile,wght_tile=wght_tile,ifmap_tile=ifmap_tile,mac_config=PE)
-
-
+MXU=PEarray(16,16,mac_config=PE)
 # assign fault dictionary
-GLB_wght.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
-GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
-GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
+fault_loc,fault_info=MXU.make_single_SA_fault(n_bit=model_wl, fault_type='flip')
 
 # conv1
-ofmap_tile_conv1=tile((1,28,28,8),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-ifmap_tile_conv1=tile((1,28,28,1),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-wght_tile_conv1 =tile((5,5,1,8),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ofmap_tile_conv1=tile_PE((1,28,28,8),is_fmap=True,wl=model_wl)
+ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)
+wght_tile_conv1 =tile_PE((5,5,1,8),is_fmap=False,wl=model_wl)
+ofmap_config_conv1='../pe_mapping_config/lenet/ws/ofmap_config_conv1.json'
+ifmap_config_conv1='../pe_mapping_config/lenet/ws/ifmap_config_conv1.json'
+wght_config_conv1 ='../pe_mapping_config/lenet/ws/wght_config_conv1.json'
+MXU_config='../pe_mapping_config/lenet/ws/MXU_config_conv1.json'
 
 # conv2
-ofmap_tile_conv2=tile((1,14,14,12),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-ifmap_tile_conv2=tile((1,14,14,16),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
-wght_tile_conv2 =tile((5,5,16,12),is_fmap=False,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
+ofmap_tile_conv2=tile_PE((1,14,14,36),is_fmap=True,wl=model_wl)
+ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
+wght_tile_conv2 =tile_PE((5,5,16,36),is_fmap=False,wl=model_wl)
 
 # FC1
-ofmap_tile_fc1=tile_FC((1,3),is_fmap=True,wl=model_wl)
-ifmap_tile_fc1=tile_FC((1,1764),is_fmap=True,wl=model_wl)
-wght_tile_fc1 =tile_FC((1764,3),is_fmap=False,wl=model_wl)
+ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
+ifmap_tile_fc1=tile_FC_PE((1,882),is_fmap=True,wl=model_wl)
+wght_tile_fc1 =tile_FC_PE((882,8),is_fmap=False,wl=model_wl)
 
 # FC2
-ofmap_tile_fc2=tile_FC((1,10),is_fmap=True,wl=model_wl)
-ifmap_tile_fc2=tile_FC((1,128),is_fmap=True,wl=model_wl)
-wght_tile_fc2 =tile_FC((128,10),is_fmap=False,wl=model_wl)
+ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
+ifmap_tile_fc2=tile_FC_PE((1,128),is_fmap=True,wl=model_wl)
+wght_tile_fc2 =tile_FC_PE((128,10),is_fmap=False,wl=model_wl)
 
 # generate fault dictionary
 model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault_dict_list[1]\

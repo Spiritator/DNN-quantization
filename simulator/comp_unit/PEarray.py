@@ -236,6 +236,13 @@ class PEarray:
         self.fast_gen=False
         self.mac_config=mac_config
         
+    def load_tile(self, ifmap_tile, wght_tile, ofmap_tile):
+        """ Load in tile to PEarray """
+        self.clear_tile()
+        self.ifmap_tile=ifmap_tile
+        self.wght_tile=wght_tile
+        self.ofmap_tile=ofmap_tile
+        
     def setup_dataflow(self, 
                        o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_pack_size=1, o_stall_latency=0, o_dummy_pack_insert=None, o_dummy_pack_n=0,
                        w_permute_info=None, w_fixed_info=None, w_broadcast_info=None, w_streaming_info=None, w_repeat=0, w_duplicate=0, w_pack_size=1, w_stall_latency=0, w_dummy_pack_insert=None, w_dummy_pack_n=0,
@@ -2455,6 +2462,30 @@ class PEarray:
             
         return fault_loc
     
+    def make_single_SA_fault(self, n_bit, fault_type='flip', param_list=None):
+        """ Generate on stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
+            Regardless of clock cycles, data setup or fualt propagation.
+        
+        # Arguments
+            n_bit: Integer. Number of word length bits used in PE array.
+            fault_type: String. The type of fault.
+            param_list: List of String. The available parameters can have fault on it. 
+                The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+        
+        # Returns
+            Fault coordinate (Tuple) and Fault dictionary include SA_type, SA_bit, fault parameter.
+        """
+        if param_list==None:
+            param_list=['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']
+            
+        fault_loc=(np.random.randint(self.n_y),np.random.randint(self.n_x))
+        fault_bit=np.random.randint(n_bit)
+        fault_param=param_list[np.random.randint(len(param_list))]
+        fault_info={'SA_type':fault_type,'SA_bit':fault_bit,'param':fault_param}
+        
+        return fault_loc, fault_info
+
+    
     def gen_PEarray_transient_fault_dict(self, n_bit, fault_num, fault_type='flip', param_list=None):
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single cycle transient fault occurs
             multiple times on I/O of PE in a tile processing time.
@@ -2493,6 +2524,8 @@ class PEarray:
 
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
+        
+        return self.fault_dict
     
     def gen_PEarray_SA_fault_dict(self, n_bit, fault_type='flip', param_list=None, mac_config=False):
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
@@ -2545,6 +2578,8 @@ class PEarray:
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict, mac_config=mac_config)
         
+        return self.fault_dict
+        
     def gen_PEarray_permanent_fault_dict(self, fault_loc, fault_info, mac_config=False):
         """ Generate fault dictionary on PEarray of permanent fault. Given the fault location and fault infomation. 
             Copy the fault to all clock cycles for this PE mapping configuration. 
@@ -2591,6 +2626,8 @@ class PEarray:
 
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict, mac_config=mac_config)
+        
+        return self.fault_dict
     
     def get_outlier_cond_args(self,index,mapping_shape):
         index_bound=np.floor_divide(index,mapping_shape)

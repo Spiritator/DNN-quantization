@@ -655,7 +655,7 @@ def identity_block_fused_BN(input_tensor,
                             quant_mode='hybrid',
                             ifmap_fault_dict_list=None, 
                             ofmap_fault_dict_list=None, 
-                            weight_fault_dict_list=None
+                            weight_fault_dict_list=None,
                             mac_unit=None):
     """The identity block is the block that has no conv layer at shortcut.
 

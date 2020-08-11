@@ -51,21 +51,17 @@ PE_mapping_forward(ifmap_tile,wght_tile,ofmap_tile,MXU,ifmap_config,wght_config,
 
 #MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip')
 
-MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=True)
-PE_fault_dict=MXU.fault_dict
+PE_fault_dict=MXU.gen_PEarray_SA_fault_dict(n_bit=8, fault_type='flip', mac_config=True)
 
 # figure out this case
 #fault_info={'SA_type':'flip','SA_bit':0,'param':'wght_in'}
-#MXU.gen_PEarray_permanent_fault_dict((12,0), fault_info, mac_config=True)
-#PE_fault_dict=MXU.fault_dict
+#PE_fault_dict=MXU.gen_PEarray_permanent_fault_dict((12,0), fault_info, mac_config=True)
 
 #fault_info={'SA_type':'flip','SA_bit':6,'param':'wght_out'}
-#MXU.gen_PEarray_permanent_fault_dict((9,7), fault_info, mac_config=True)
-#PE_fault_dict=MXU.fault_dict
+#PE_fault_dict=MXU.gen_PEarray_permanent_fault_dict((9,7), fault_info, mac_config=True)
 
 #fault_info={'SA_type':'flip','SA_bit':3,'param':'wght_in'}
-#MXU.gen_PEarray_permanent_fault_dict((0,0), fault_info, mac_config=None)
-#PE_fault_dict=MXU.fault_dict
+#PE_fault_dict=MXU.gen_PEarray_permanent_fault_dict((0,0), fault_info, mac_config=None)
 
 #%% PE mapping backward
 

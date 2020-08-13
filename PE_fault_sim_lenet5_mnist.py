@@ -19,10 +19,12 @@ from simulator.models.model_library import quantized_lenet5
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 from simulator.metrics.topk_metrics import top2_acc
-from simulator.comp_unit.PEarray import PEarray, PE_mapping_forward, PE_mapping_backward
+
+from simulator.comp_unit.PEarray import PEarray
 from simulator.comp_unit.tile import tile_PE, tile_FC_PE
 from simulator.comp_unit.mac import mac_unit
-from simulator.testing.fault_core import generate_model_modulator
+from simulator.comp_unit.mapping_flow import PE_mapping_forward, PE_mapping_backward, mapping_valid_checker
+
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.inference.evaluate import evaluate_FT
 
@@ -31,21 +33,16 @@ from simulator.inference.evaluate import evaluate_FT
 
 weight_name='../mnist_lenet5_weight.h5'
 model_word_length=8
-model_fractional_bit=4
-rounding_method='nearest'
+model_fractional_bit=3
+rounding_method=['down','nearest','down']
 batch_size=20
 
 # PE array fault simulation parameter
 mac_config='../pe_mapping_config/lenet/ws/mac_unit_config.json'
 model_wl=model_word_length
 
-memory_column_priority=['Tm','Tc','Tr','Tn']
-memory_row_priority=['Tr','Tm','Tc','Tn']
-
-fast_mode=True
-
 #%%
-# fault generation
+# dataflow setup
 
 # model for get configuration
 model=quantized_lenet5(nbits=model_word_length,
@@ -56,14 +53,10 @@ model=quantized_lenet5(nbits=model_word_length,
 
 model_mac_math_fault_dict_list=[None for i in range(8)] 
 
-# Tile mapping
-wght_tile=tile_PE((3,3,16,32),is_fmap=False,wl=8)
-ifmap_tile=tile_PE((1,28,28,16),is_fmap=True,wl=8)
-ofmap_tile=tile_PE((1,28,28,32),is_fmap=True,wl=8)
 # PE represent computation unit
 PE=mac_unit(mac_config)
 # PE array
-MXU=PEarray(16,16,mac_config=PE)
+MXU=PEarray(8,8,mac_config=PE)
 # assign fault dictionary
 fault_loc,fault_info=MXU.make_single_SA_fault(n_bit=model_wl, fault_type='flip')
 
@@ -74,58 +67,84 @@ wght_tile_conv1 =tile_PE((5,5,1,8),is_fmap=False,wl=model_wl)
 ofmap_config_conv1='../pe_mapping_config/lenet/ws/ofmap_config_conv1.json'
 ifmap_config_conv1='../pe_mapping_config/lenet/ws/ifmap_config_conv1.json'
 wght_config_conv1 ='../pe_mapping_config/lenet/ws/wght_config_conv1.json'
-MXU_config='../pe_mapping_config/lenet/ws/MXU_config_conv1.json'
+MXU_config_conv1  ='../pe_mapping_config/lenet/ws/MXU_config_conv1.json'
+
+#check=mapping_valid_checker(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
+#                            ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
+#                            print_detail=True)
+#MXU.clear_all()
 
 # conv2
-ofmap_tile_conv2=tile_PE((1,14,14,36),is_fmap=True,wl=model_wl)
+ofmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
 ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
-wght_tile_conv2 =tile_PE((5,5,16,36),is_fmap=False,wl=model_wl)
+wght_tile_conv2 =tile_PE((5,5,16,16),is_fmap=False,wl=model_wl)
+ofmap_config_conv2='../pe_mapping_config/lenet/ws/ofmap_config_conv2.json'
+ifmap_config_conv2='../pe_mapping_config/lenet/ws/ifmap_config_conv2.json'
+wght_config_conv2 ='../pe_mapping_config/lenet/ws/wght_config_conv2.json'
+MXU_config_conv2  ='../pe_mapping_config/lenet/ws/MXU_config_conv2.json'
 
-# FC1
-ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
-ifmap_tile_fc1=tile_FC_PE((1,882),is_fmap=True,wl=model_wl)
-wght_tile_fc1 =tile_FC_PE((882,8),is_fmap=False,wl=model_wl)
+#check=mapping_valid_checker(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
+#                            ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
+#                            print_detail=True)
+#MXU.clear_all()
 
-# FC2
-ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
-ifmap_tile_fc2=tile_FC_PE((1,128),is_fmap=True,wl=model_wl)
-wght_tile_fc2 =tile_FC_PE((128,10),is_fmap=False,wl=model_wl)
+## FC1
+#ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
+#ifmap_tile_fc1=tile_FC_PE((1,882),is_fmap=True,wl=model_wl)
+#wght_tile_fc1 =tile_FC_PE((882,8),is_fmap=False,wl=model_wl)
+#ofmap_config_fc1='../pe_mapping_config/lenet/ws/ofmap_config_fc1.json'
+#ifmap_config_fc1='../pe_mapping_config/lenet/ws/ifmap_config_fc1.json'
+#wght_config_fc1 ='../pe_mapping_config/lenet/ws/wght_config_fc1.json'
+#MXU_config_fc1  ='../pe_mapping_config/lenet/ws/MXU_config_fc1.json'
 
-# generate fault dictionary
-model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault_dict_list[1]\
-=generate_layer_memory_mapping(model.layers[1],
-                               GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,
-                               fast_mode=fast_mode)
+#check=mapping_valid_checker(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
+#                            ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
+#                            print_detail=True)
+#MXU.clear_all()
 
-model_ifmap_fault_dict_list[3],model_ofmap_fault_dict_list[3],model_weight_fault_dict_list[3]\
-=generate_layer_memory_mapping(model.layers[3],
-                               GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,
-                               fast_mode=fast_mode)
+## FC2
+#ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
+#ifmap_tile_fc2=tile_FC_PE((1,128),is_fmap=True,wl=model_wl)
+#wght_tile_fc2 =tile_FC_PE((128,10),is_fmap=False,wl=model_wl)
+#ofmap_config_fc2='../pe_mapping_config/lenet/ws/ofmap_config_fc2.json'
+#ifmap_config_fc2='../pe_mapping_config/lenet/ws/ifmap_config_fc2.json'
+#wght_config_fc2 ='../pe_mapping_config/lenet/ws/wght_config_fc2.json'
+#MXU_config_fc2  ='../pe_mapping_config/lenet/ws/MXU_config_fc2.json'
 
-model_ifmap_fault_dict_list[6],model_ofmap_fault_dict_list[6],model_weight_fault_dict_list[6]\
-=generate_layer_memory_mapping(model.layers[6],
-                               GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,
-                               fast_mode=fast_mode)
+#check=mapping_valid_checker(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
+#                            ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
+#                            print_detail=True)
+#MXU.clear_all()
 
-model_ifmap_fault_dict_list[7],model_ofmap_fault_dict_list[7],model_weight_fault_dict_list[7]\
-=generate_layer_memory_mapping(model.layers[7],
-                               GLB_ifmap,GLB_wght,GLB_ofmap,
-                               ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,
-                               fast_mode=fast_mode)
 #%%
-# generate modulator
+# generate fault dictionary
+PE_mapping_forward(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
+                   ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
+                   pre_plan=True,print_detail=True)
+MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
+model_mac_math_fault_dict_list[1] = PE_mapping_backward(model.layers[1], MXU, print_detail=True)
+MXU.clear_all()
 
-model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
-=generate_model_modulator(model,
-                          model_word_length,
-                          model_fractional_bit,
-                          model_ifmap_fault_dict_list, 
-                          model_ofmap_fault_dict_list, 
-                          model_weight_fault_dict_list,
-                          fast_gen=True)
+PE_mapping_forward(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
+                   ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
+                   pre_plan=True,print_detail=True)
+MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
+model_mac_math_fault_dict_list[3] = PE_mapping_backward(model.layers[3], MXU, print_detail=True)
+MXU.clear_all()
+
+#PE_mapping_forward(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
+#                   ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
+#                   pre_plan=True,print_detail=True)
+#MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
+#model_mac_math_fault_dict_list[6] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
+#MXU.clear_all()
+#
+#PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
+#                   ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
+#                   pre_plan=True,print_detail=True)
+#MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
+#model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
+#MXU.clear_all()
 
 #%%
 # model setup
@@ -136,9 +155,8 @@ model=quantized_lenet5(nbits=model_word_length,
                        rounding_method=rounding_method,
                        batch_size=batch_size,
                        quant_mode='hybrid',
-                       ifmap_fault_dict_list=model_ifmap_fault_dict_list,
-                       ofmap_fault_dict_list=model_ofmap_fault_dict_list,
-                       weight_fault_dict_list=model_weight_fault_dict_list)
+                       ofmap_fault_dict_list=model_mac_math_fault_dict_list,
+                       mac_unit=mac_config)
 t = time.time()-t
 print('\nModel build time: %f s'%t)
 

@@ -37,8 +37,8 @@ batch_size=25
 #model=quantized_lenet5(nbits=[10,4,10],fbits=[5,2,5],rounding_method='nearest')
 # intrinsic quantization
 #model=quantized_lenet5(nbits=8,fbits=2,rounding_method='nearest',batch_size=batch_size,quant_mode='hybrid',overflow_mode=[True,False,True])
-model=quantized_lenet5(nbits=8,fbits=3,rounding_method='nearest',batch_size=batch_size,quant_mode='intrinsic')
-#model=quantized_lenet5(nbits=8,fbits=3,rounding_method=['down','nearest','down'],batch_size=batch_size,quant_mode='hybrid')
+#model=quantized_lenet5(nbits=8,fbits=3,rounding_method='nearest',batch_size=batch_size,quant_mode='intrinsic')
+model=quantized_lenet5(nbits=8,fbits=3,rounding_method=['down','nearest','down'],batch_size=batch_size,quant_mode='hybrid')
 #model=quantized_lenet5(nbits=8,fbits=[6,6,6],rounding_method=['down','nearest','down'],batch_size=batch_size,quant_mode='intrinsic')
 
 weight_name=convert_original_weight_layer_name(weight_name)

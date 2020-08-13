@@ -12,9 +12,10 @@ from keras.models import Model
 from keras.layers import Input
 from simulator.layers.quantized_layers import QuantizedConv2D, quantizer
 
-from simulator.comp_unit.PEarray import PEarray, PE_mapping_forward, PE_mapping_backward
+from simulator.comp_unit.PEarray import PEarray
 from simulator.comp_unit.tile import tile_PE
 from simulator.comp_unit.mac import mac_unit
+from simulator.comp_unit.mapping_flow import PE_mapping_forward, PE_mapping_backward
 
 # Test example using TPU-like vecter mac
 

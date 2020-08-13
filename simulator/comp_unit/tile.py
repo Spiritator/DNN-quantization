@@ -313,7 +313,7 @@ class tile_PE(tile):
         idx_patches_candidate=np.expand_dims(index[:,1:3],1)
         idx_patches_candidate=np.tile(idx_patches_candidate,[1,ksizes[1]*ksizes[2],1])
         
-        base_kcoor_reduction=list(np.ndindex(ksizes[1:3]))
+        base_kcoor_reduction=list(np.ndindex(tuple(ksizes[1:3])))
         base_kcoor_reduction.reverse()
         base_kcoor_reduction=np.multiply(base_kcoor_reduction,dilation_rates[1:3])
 
@@ -747,13 +747,12 @@ class tile_PE(tile):
         if len(dilation_rates)!=4:
             raise ValueError('dilation rate length must be 4, but got %d'%len(dilation_rates))
             
-        if dataflow_pre_plan:
-            self.ksizes=tuple(ksizes)
-            self.strides=strides
-            self.dilation_rates=dilation_rates
-            self.padding=padding
-            self.edge_fill=edge_fill
-            self.patches_unravel=patches_unravel
+        self.ksizes=tuple(ksizes)
+        self.strides=strides
+        self.dilation_rates=dilation_rates
+        self.padding=padding
+        self.edge_fill=edge_fill
+        self.patches_unravel=patches_unravel
         
         extracted_shape=self.get_extracted_shape(fmap_shape=self.tile_shape,
                                                  ksizes=ksizes,
@@ -998,6 +997,9 @@ class tile_PE(tile):
         self.bias_slice_shape=(bias_slice_width, int(np.ceil(self.Tn/bias_slice_width)))
         
         if not dataflow_pre_plan:
+            if len(self.bias_fault_dict)==0:
+                return dict()
+            
             orig_coors=np.array(list(self.bias_fault_dict.keys()))
             fault_info=list(self.bias_fault_dict.values())
             
@@ -1326,6 +1328,32 @@ class io_data_solver:
             data_idf=data_id[0]
         
         return data_idf,shape_cnt
+    
+    def _unique_searchsort(self, data_idf, search_id):
+        """
+        True data fault id search by another fault id.
+        Find search_id correspond value index in data_idf. Also, pop out outlier and repetitive values.
+        Leave only true correspond value for search result, and mark invalid search_id value to negative.
+        """
+        data_sorter=np.argsort(data_idf)
+        search_sorter=np.argsort(search_id)
+        search_unsorter=np.argsort(search_sorter)
+        search_id=search_id[search_sorter]
+        search_result=np.searchsorted(data_idf,search_id,sorter=data_sorter)
+        # uniquify, find true match
+        search_uni=np.append(np.subtract(search_result[1:],search_result[:-1]),1)
+        search_result=np.where(search_uni>0,search_result,-1)
+        # tag outlier
+        search_result=np.where(search_result<len(data_idf),search_result,-1)
+        
+        data_sorter=np.append(data_sorter,-1)
+        search_result=search_result[search_unsorter]
+        search_result=data_sorter[search_result]
+        
+        search_id=np.where(search_uni>0,search_id,-1)
+        search_id=search_id[search_unsorter]
+        
+        return search_result, search_id
         
     def _get_data_coor_by_id(self, data_id, search_id, data_coors):
         """
@@ -1354,7 +1382,7 @@ class io_data_solver:
             search=np.searchsorted(data_idl_cnt,search)
             found_index=data_coors[search]
             
-        return found_index
+        return found_index, search_id
 
     def fast_gen_new_fd(self, save2tile=False, print_detail=False):
         """

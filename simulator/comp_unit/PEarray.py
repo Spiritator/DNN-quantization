@@ -9,10 +9,7 @@ Processing element array setting for compuation unit fault mapping
 
 import numpy as np
 import copy
-import json
 import tqdm as tqdm
-
-from .tile import io_data_solver
 
 class axis_info:
     """
@@ -1111,6 +1108,9 @@ class PEarray:
         if not dataflow_pre_plan:
             index=np.array(list(fault_dict.keys()))
             fault_value=list(fault_dict.values())
+            
+            if len(index)==0:
+                dataflow_pre_plan=True
         
         if t_clk_dims<0:
             t_clk_dims=len(mapping_shape)+t_clk_dims
@@ -1230,6 +1230,9 @@ class PEarray:
         """ Insert stall and latency to fault dictionary t_clk axis.
         
         """
+        if len(fault_dict)==0:
+            dataflow_pre_plan=True
+            
         if not dataflow_pre_plan:
             index=np.array(list(fault_dict.keys()))
             fault_value=list(fault_dict.values())
@@ -1266,6 +1269,9 @@ class PEarray:
             Dummy pack is for a parameter doesn't exist in certain peroid of computation time.
         
         """
+        if len(fault_dict)==0:
+            dataflow_pre_plan=True
+            
         if not dataflow_pre_plan:
             index=np.array(list(fault_dict.keys()))
             fault_value=list(fault_dict.values())
@@ -1453,8 +1459,15 @@ class PEarray:
                 fault_value=np.array(list(tile.fault_dict.values()))
             
             if parameter=='bias':
-                mapped_coors=np.array(list(tile.bias_fault_dict.keys()))
-                fault_value=np.array(list(tile.bias_fault_dict.values()))
+                if tile.expansion:
+                    mapped_coors=np.array(list(tile.bias_fault_dict_expand.keys()))
+                    fault_value=np.array(list(tile.bias_fault_dict_expand.values()))
+                else:
+                    mapped_coors=np.array(list(tile.bias_fault_dict.keys()))
+                    fault_value=np.array(list(tile.bias_fault_dict.values()))
+                
+            if len(mapped_coors)==0:
+                dataflow_pre_plan=True
                 
             if parameter=='ofmap':
                 PEparam={'param':'psum_out'}
@@ -1776,6 +1789,9 @@ class PEarray:
         if not dataflow_pre_plan:
             duped_coors=np.array(list(fault_dict.keys()))
             fault_value=np.array(list(fault_dict.values()))
+            
+            if len(duped_coors)==0:
+                dataflow_pre_plan=True
         
         # repeat
         if flow.repeat>0:
@@ -2045,6 +2061,8 @@ class PEarray:
             pack_num.append(self.shape_bias_mapping[-1])
         if self.use_psum:
             pack_num.append(self.shape_psum_mapping[-1])
+        #TODO
+        # should this be a ERROR?
         if not pack_num[1:] == pack_num[:-1]:
             print('WARNING: The number of slices of ifmap, ofmap, weight should be the same but got %s'%str(pack_num))
         
@@ -2833,254 +2851,13 @@ class PEarray:
         self.n_clk=None
         self.tmp_clk=None
         self.pack_clk=None
+        
+    def clear_all(self):
+        self.clear_flow
+        self.clear_tile
+        self.clear_fd
+        self.clear_mapping
 
         
-def PE_mapping_forward(ifmap_tile,
-                       wght_tile,
-                       ofmap_tile,
-                       PEarray,
-                       ifmap_expand_config,
-                       wght_expand_config,
-                       ofmap_expand_config,
-                       PEarray_setup_config,
-                       pre_plan=False,
-                       print_detail=False):
-    """ Data mapping high level control
-        Pre-plan the dataflow for backward PE mapping.    
-        Or mapping the tile fault dictionary to PE dataflow model.
-        
-    # Arguments
-        ifmap_tile: Class (tile_PE). The tile class for PE array dataflow mapping of input feature maps.
-        wght_tile: Class (tile_PE). The tile class for PE array dataflow mapping of kernel and bias.
-        ofmap_tile: Class (tile_PE). The tile class for PE array dataflow mapping of output feature maps.
-        PEarray: Class (PEarray). The PE dataflow model class for PE array dataflow mapping.
-        ifmap_expand_config: Dictionary or String. Configuration for input feature maps tile expansion.
-        wght_expand_config: Dictionary or String. Configuration for weight (both kernal and bias) tile expansion.
-        ofmap_expand_config: Dictionary or String. Configuration for output feature maps tile expansion.
-        
-            If data type Dictionary, the dictionary is input augment for tile expansion function that writing in dictionay format.
-            It will be use as **configuration put into expansion function.
-            Else if data type String, the string is the directory to the JSON file which contains the configuration of 
-            tile expansion function written in the format that can be read in as dictionary and **configuration put into expansion function.
-        
-        PEarray_setup_config: Dictionary or String. Configuration for PE array dataflow setup.
-            If data type Dictionary, the dictionary is input augment for PE array dataflow setup function that writing in dictionay format.
-            It will be use as **configuration put into expansion function.
-            Else if data type String, the string is the directory to the JSON file which contains the configuration of 
-            PE array dataflow setup function written in the format that can be read in as dictionary and **configuration put into PE array dataflow setup function.
-        
-        dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
-            Only save the expansion configuration for later PEarray to Tile transform.
-            
-        print_detail: Bool. Print the progress of forward mapping.
-
-    """
-    if print_detail:
-        print('\nPE array dataflow forward mapping ...')
-        print('    Task (1/7): Load Tile Config ...\t',end='\r')
-    # load ifmap config
-    if isinstance(ifmap_expand_config,str):
-        with open(ifmap_expand_config, 'r') as config_file:
-            ifmap_expand_config=json.load(config_file)
-    elif isinstance(ifmap_expand_config,dict):
-        pass
-    else:
-        raise TypeError('ifmap_expand_config must be String or Dictionary.')
-    
-    # load wght config
-    if isinstance(wght_expand_config,str):
-        with open(wght_expand_config, 'r') as config_file:
-            wght_expand_config=json.load(config_file)
-    elif isinstance(wght_expand_config,dict):
-        pass
-    else:
-        raise TypeError('wght_expand_config must be String or Dictionary.')
-    
-    # load ofmap config    
-    if isinstance(ofmap_expand_config,str):
-        with open(ofmap_expand_config, 'r') as config_file:
-            ofmap_expand_config=json.load(config_file)
-    elif isinstance(ofmap_expand_config,dict):
-        pass
-    else:
-        raise TypeError('ofmap_expand_config must be String or Dictionary.')
-        
-    if print_detail:
-        print('    Task (2/7): Load PE Array Config ...\t',end='\r')
-    # load PEarray config
-    if isinstance(PEarray_setup_config,str):
-        with open(PEarray_setup_config, 'r') as config_file:
-            PEarray_setup_config=json.load(config_file)
-    elif isinstance(PEarray_setup_config,dict):
-        pass
-    else:
-        raise TypeError('PEarray_setup_config must be String or Dictionary.')
-    
-    if print_detail:
-        print('    Task (3/7): Tile Expnasion ...\t',end='\r') 
-    # expand ifmap
-    if 'ksizes' not in ifmap_expand_config:
-        ifmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ifmap_expand_config)
-    else:
-        ifmap_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **ifmap_expand_config)
-    # expand wght
-    if 'ksizes' not in wght_expand_config:
-        if 'bias_slice_width' in wght_expand_config:
-            bias_slice_width=wght_expand_config.pop('bias_slice_width')
-            wght_tile.expand_slice_bias(bias_slice_width=bias_slice_width,dataflow_pre_plan=pre_plan)
-        wght_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **wght_expand_config)
-    else:
-        wght_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **wght_expand_config)
-    # expand ofmap
-    if 'ksizes' not in ofmap_expand_config:
-        ofmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
-    else:
-        ofmap_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
-
-    # setup PEarray
-    if print_detail:
-        print('    Task (4/7): Tile Expnasion ...\t',end='\r') 
-    PEarray.setup_dataflow(**PEarray_setup_config)
-
-    # premapping
-    if print_detail:
-        print('    Task (5/7): Tile Pre-mapping ...\t',end='\r') 
-    PEarray.premapping_tile('ofmap', dataflow_pre_plan=pre_plan)
-    PEarray.premapping_tile('wght', dataflow_pre_plan=pre_plan)
-    PEarray.premapping_tile('ifmap', dataflow_pre_plan=pre_plan)
-    PEarray.premapping_tile('bias', dataflow_pre_plan=pre_plan)
-    PEarray.premapping_tile('psum', dataflow_pre_plan=pre_plan)
-        
-    # duplication
-    if print_detail:
-        print('    Task (6/7): Mapping Duplication ...\t',end='\r') 
-    PEarray.duplicate_mapping('ofmap', dataflow_pre_plan=pre_plan)
-    PEarray.duplicate_mapping('wght', dataflow_pre_plan=pre_plan)
-    PEarray.duplicate_mapping('ifmap', dataflow_pre_plan=pre_plan)
-    PEarray.duplicate_mapping('bias', dataflow_pre_plan=pre_plan)
-    PEarray.duplicate_mapping('psum', dataflow_pre_plan=pre_plan)
-        
-    # alignment
-    if print_detail:
-        print('    Task (7/7): Clock Cycle Alignment ...\t',end='\r') 
-    PEarray.align_slice_pack(dataflow_pre_plan=pre_plan)
-    
-    PEarray.mapping_shape_save()
-    if print_detail:
-        print('    Task (7/7): All Done.\t\t\t')
-    
-    if pre_plan:
-        return None
-    else:
-        return PEarray.fault_dict
-    
-def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_detail=False):
-    """ Data mapping high level control
-        Mapping the PE dataflow model fault dictionay to layer.
-        
-    # Arguments
-        layer: Keras.Layer. 
-        PEarray: Class (PEarray). The PE dataflow model class for PE array dataflow mapping.
-        fault_dict: Dictionary. The fault dictionary be assigned to PEarray. 
-            If None assuming that the fault dictionary of PEarray is already set.
-    
-    # Returns
-        The fault information Dictionary List of Layer.
-    """        
-    if print_detail:
-        print('\nPE array dataflow backward mapping ...')
-    else:
-        PEarray.ifmap_tile.print_detail=False
-        PEarray.ofmap_tile.print_detail=False
-        PEarray.wght_tile.print_detail=False
-    
-    layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
-    if len(layer_weight_shape)==0:
-        if print_detail:
-            print('    no weight layer Skipped!')
-        return None
-    
-    if fault_dict is not None:
-        PEarray.fault_dict=fault_dict
-        
-    PEarray.mapping_shape_load()
-        
-    if print_detail:
-        print('    Task (1/6): Decompose Slice Pack ...',end=' ') 
-    PEarray.decompose_slice_pack(print_detail=print_detail)
-
-    if print_detail:
-        print('\r    Task (2/6): Reduce Mapping ...\t\t',end=' ') 
-    PEarray.reduce_mapping('ofmap')
-    PEarray.reduce_mapping('wght')
-    PEarray.reduce_mapping('ifmap')
-    PEarray.reduce_mapping('bias')
-    PEarray.reduce_mapping('psum')
-    
-    if print_detail:
-        print('\r    Task (3/6): Tile Demapping...\t',end=' ') 
-    PEarray.demapping_tile('ofmap')
-    PEarray.demapping_tile('wght')
-    PEarray.demapping_tile('ifmap')
-    PEarray.demapping_tile('bias')
-    PEarray.demapping_tile('psum')
-    
-    if print_detail:
-        print('\r    Task (4/6): Tile Shrinking...',end=' ') 
-    if PEarray.ofmap_tile.expand_method=='reshape':
-        PEarray.ofmap_tile.shrink_reshape_data()
-        PEarray.ofmap_tile.shrink_reshape_data(psum=True)
-    elif PEarray.ofmap_tile.expand_method=='extract_patches':
-        PEarray.ofmap_tile.shrink_return_patches(fast_gen=PEarray.fast_gen)
-        PEarray.ofmap_tile.shrink_return_patches(psum=True, fast_gen=PEarray.fast_gen)
-    else:
-        raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
-        
-    if PEarray.wght_tile.expand_method=='reshape':
-        PEarray.wght_tile.shrink_reshape_data()
-    elif PEarray.wght_tile.expand_method=='extract_patches':
-        PEarray.wght_tile.shrink_return_patches(fast_gen=PEarray.fast_gen)
-    else:
-        raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
-        
-    if PEarray.wght_tile.use_bias:
-        PEarray.wght_tile.shrink_slice_bias()
-    
-    if PEarray.ifmap_tile.expand_method=='extract_patches':
-        PEarray.ifmap_tile.shrink_return_patches(fast_gen=PEarray.fast_gen)
-    elif PEarray.ifmap_tile.expand_method=='reshape':
-        PEarray.ifmap_tile.shrink_reshape_data()
-    else:
-        raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
-         
-    if print_detail:
-        print('\r    Task (5/6): Solve Fault I/O ...',end=' ') 
-    # organize fault dict and give partial sum index
-    solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,fault_num=PEarray.fault_num)
-    PE_mac_fault_dict=solver.solve_correspond_io(save2tile,print_detail)
-    
-    if print_detail:
-        print('\r    Task (6/6): Tile Return to layer ...\t\t',end=' ')
-    # inter tile fault dictionary transform to layer
-    if not save2tile:
-        PE_mac_fault_dict=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=print_detail)
-    else:
-        ifmap_fd=solver.tile2layer(based_tile='ifmap',layer=layer,print_detail=print_detail)
-        wght_fd=solver.tile2layer(based_tile='wght',layer=layer,print_detail=print_detail)
-        ofmap_fd=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=print_detail)
-        PE_mac_fault_dict=(ifmap_fd, wght_fd, None, ofmap_fd)
-        
-    if print_detail:
-        print('\r    Task (6/6): All Done.\t\t\t\t')
-        
-    if print_detail:
-        if not save2tile:
-            report_2layer=solver.report_layer_map()
-            print('    mapped layer faults | base coors %d | ofmap %d '%(report_2layer['num_base_coor'], report_2layer['num_layer_fault_coor']))
-            print('                        | total psum index %d '%report_2layer['num_layer_psum_idx'])
-        else:
-            print('    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fd),len(ofmap_fd),str([len(wght_fd),0])))
-
-    return PE_mac_fault_dict
 
     

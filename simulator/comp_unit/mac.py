@@ -75,10 +75,42 @@ class mac_unit:
         self.wght_io=setups['wght_io']
         self.psum_io=setups['psum_io']
         
-        if isinstance(self.quantizer,dict):
-            self.quantizer=quantizer(**self.quantizer)
-        elif isinstance(self.quantizer,list):
-            self.quantizer=[quantizer(**qinfo) for qinfo in self.quantizer]
+        self.quantizer=self._build_layer_quantizer(**self.quantizer)
+    
+    def _build_layer_quantizer(self,nb,fb,rounding_method,overflow_mode,stop_gradient):
+        """ Layer quantizer builder. For generate different setup for ifmap, weight, ofmap individually. """
+        multi_setting=False
+        
+        if isinstance(nb,list) or isinstance(fb,list) or isinstance(rounding_method,list) or isinstance(overflow_mode,list) or isinstance(stop_gradient,list):
+            multi_setting=True
+            
+        if isinstance(nb,list) and len(nb)==3:
+            nb_qt=nb
+        elif multi_setting:
+            nb_qt=[nb, nb, nb]
+            
+        if isinstance(fb,list) and len(fb)==3:
+            fb_qt=fb
+        elif multi_setting:
+            fb_qt=[fb, fb, fb]
+        
+        if isinstance(rounding_method,list) and len(rounding_method)==3:
+            rm_qt=rounding_method
+        elif multi_setting:
+            rm_qt=[rounding_method, rounding_method, rounding_method]
+            
+        if isinstance(overflow_mode,list) and len(overflow_mode)==3:
+            ovf_qt=overflow_mode
+        elif multi_setting:
+            ovf_qt=[overflow_mode, overflow_mode, overflow_mode]
+            
+        if multi_setting:
+            return [quantizer(nb_qt[0],fb_qt[0],rm_qt[0],ovf_qt[0],stop_gradient),
+                    quantizer(nb_qt[1],fb_qt[1],rm_qt[1],ovf_qt[1],stop_gradient),
+                    quantizer(nb_qt[2],fb_qt[2],rm_qt[2],ovf_qt[2],stop_gradient)]
+        else:
+            return quantizer(nb,fb,rounding_method,overflow_mode,stop_gradient)
+
             
     def get_io(self, param):
         """ get the I/O description by parameter
@@ -151,11 +183,9 @@ class mac_unit:
                 polarity=tf.math.negative(polarity)
         else:
             signbit=np.equal(fault_bit,wl-1)
-            signbit=np.add(np.multiply(signbit,-2,dtype=np.float32),1)
+            signbit=np.add(np.multiply(signbit,-2,dtype=np.int32),1)
             polarity=tf.math.multiply(polarity,signbit)
-            
-        polarity=tf.cast(polarity,tf.float32)
-            
+                        
         return polarity
     
     def _padding_ifmap_and_idx(self, ifmap, index, ksizes, dilation_rates):
@@ -199,7 +229,7 @@ class mac_unit:
             psum_alter=quantizer_output.capping(psum_alter)
             if sim_truncarry:
                 psum_alter=tf.add(psum_alter,truncarry)
-            psum_alter=tf.multiply(psum_alter, polarity)
+            psum_alter=tf.multiply(psum_alter, tf.cast(polarity,tf.float32))
             
             # sum all psum_alter
             psum_alter=tf.reduce_sum(psum_alter, axis=1)

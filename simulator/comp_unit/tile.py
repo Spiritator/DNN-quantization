@@ -1340,17 +1340,23 @@ class io_data_solver:
         search_unsorter=np.argsort(search_sorter)
         search_id=search_id[search_sorter]
         search_result=np.searchsorted(data_idf,search_id,sorter=data_sorter)
-        # uniquify, find true match
+        # uniquify, find true match case
         search_uni=np.append(np.subtract(search_result[1:],search_result[:-1]),1)
-        search_result=np.where(search_uni>0,search_result,-1)
-        # tag outlier
-        search_result=np.where(search_result<len(data_idf),search_result,-1)
-        
+        search_uni=search_uni>0
+        # tag outlie
+        search_bound=search_result<len(data_idf)
+        search_uni=np.bitwise_and(search_uni,search_bound)
+        not_uni=not np.all(search_uni)
+        # set invalid instance to -1
+        if not_uni:
+            search_result=np.where(search_uni,search_result,-1)
+        # restore result
         data_sorter=np.append(data_sorter,-1)
         search_result=search_result[search_unsorter]
         search_result=data_sorter[search_result]
-        
-        search_id=np.where(search_uni>0,search_id,-1)
+        # restore search_id
+        if not_uni:
+            search_id=np.where(search_uni,search_id,-1)
         search_id=search_id[search_unsorter]
         
         return search_result, search_id
@@ -1363,22 +1369,19 @@ class io_data_solver:
             datashape=data_id.shape
             if len(datashape)>1:
                 data_idf=data_id.flatten()
-                sorter=np.argsort(data_idf)
-                search=np.searchsorted(data_idf,search_id,sorter=sorter)
-                search=sorter[search]
+#                sorter=np.argsort(data_idf)
+#                search=np.searchsorted(data_idf,search_id,sorter=sorter)
+#                search=sorter[search]
+                search,search_id=self._unique_searchsort(data_idf,search_id)
                 search=np.floor_divide(search,datashape[1])
                 found_index=data_coors[search]
             else:
-                sorter=np.argsort(data_id)
-                search=np.searchsorted(data_id,search_id,sorter=sorter)
-                search=sorter[search]
+                search,search_id=self._unique_searchsort(data_idf,search_id)
                 found_index=data_coors[search]
         elif isinstance(data_id,tuple):
             data_idl_cnt=data_id[1]
             data_idf=data_id[0]
-            sorter=np.argsort(data_idf)
-            search=np.searchsorted(data_idf,search_id,sorter=sorter)
-            search=sorter[search]
+            search,search_id=self._unique_searchsort(data_idf,search_id)
             search=np.searchsorted(data_idl_cnt,search)
             found_index=data_coors[search]
             
@@ -1408,12 +1411,12 @@ class io_data_solver:
             if print_detail:
                 print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
             # solve ifmap
-            ifmap_index=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
+            ifmap_index,search_id=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
             
             if print_detail:
                 print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
             # solve weight
-            wght_index=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
+            wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
             
         else:
             if print_detail:
@@ -1431,31 +1434,31 @@ class io_data_solver:
                 if print_detail:
                     print('\r    GenFD (2/5): Solve Output Feature Map Coordinates...',end=' ') 
                 # solve ifmap
-                outpsum_index=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
+                outpsum_index,search_id=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
                 if print_detail:
                     print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
                 # solve weight
-                wght_index=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
+                wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
                 
             elif param=='wght_in' or param=='wght_out':
                 if print_detail:
                     print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
                 # solve ifmap
-                ifmap_index=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
+                ifmap_index,search_id=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
                 if print_detail:
                     print('\r    GenFD (3/5): Solve Output Feature Map Coordinates...',end=' ') 
                 # solve weight
-                outpsum_index=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
+                outpsum_index,search_id=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
                 
             elif param=='psum_in' or param=='psum_out':
                 if print_detail:
                     print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
                 # solve ifmap
-                ifmap_index=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
+                ifmap_index,search_id=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
                 if print_detail:
                     print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
                 # solve weight
-                wght_index=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
+                wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
         
         if print_detail:
             print('\r    GenFD (4/5): Build Partial Sum Indexes...\t\t',end=' ')         
@@ -1488,19 +1491,52 @@ class io_data_solver:
         psum_index=np.concatenate([outpsum_index[:,self.order_assign_psidx_o],
                                    wght_index[:,self.order_assign_psidx_w],
                                    ifmap_index[:,self.order_assign_psidx_i]],axis=1)
-        if isinstance(shape_cnt,tuple):
-            if len(shape_cnt)>1:
-                psum_index=np.split(psum_index,shape_cnt[0])
-        elif isinstance(shape_cnt,np.ndarray):
-            psum_index=np.split(psum_index,idlrep)
+        
+        search_cond=search_id>=0
+        if np.all(search_cond): # all search_id found
+            if isinstance(shape_cnt,tuple):
+                if len(shape_cnt)>1:
+                    psum_index=np.split(psum_index,shape_cnt[0])
+            elif isinstance(shape_cnt,np.ndarray):
+                psum_index=np.split(psum_index,np.add(shape_cnt,1)[:-1])
 
-        if print_detail:
-            print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t',end=' ')         
+            if print_detail:
+                print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t',end=' ')         
+    
+            for i,opidx in enumerate(based_coors):
+                newfv=based_vl[i].copy()
+                newfv.update({'psum_idx':psum_index[i]})
+                new_solved_fd[tuple(opidx)]=newfv
+        
+        else: # search_id incomplete
+            psum_index=psum_index[search_cond]
+            search_cond=np.bitwise_not(search_cond)
+            if isinstance(shape_cnt,tuple):
+                if len(shape_cnt)>1:
+                    search_cond=np.reshape(search_cond,[shape_cnt[0],-1])
+                    search_cond=np.sum(search_cond,axis=1)
+                    shape_cnt=np.full_like(search_cond,shape_cnt[1])
+                    shape_cnt=np.subtract(shape_cnt,search_cond)
+                    shape_cnt=np.cumsum(shape_cnt)[:-1]
+                    psum_index=np.split(psum_index,shape_cnt)
+            elif isinstance(shape_cnt,np.ndarray):
+                search_cond=np.argwhere(search_cond)
+                search_cond=np.searchsorted(shape_cnt,search_cond)
+                search_cond=np.unique(search_cond,return_counts=True)
+                
+                idlrep[search_cond[0]]=np.subtract(idlrep[search_cond[0]],search_cond[1])
+                idlrep=np.cumsum(idlrep)[:-1]
+                psum_index=np.split(psum_index,idlrep)
 
-        for i,opidx in enumerate(based_coors):
-            newfv=based_vl[i].copy()
-            newfv.update({'psum_idx':psum_index[i]})
-            new_solved_fd[tuple(opidx)]=newfv
+            if print_detail:
+                print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t',end=' ')         
+    
+            for i,opidx in enumerate(based_coors):
+                if len(psum_index[i])>0:
+                    newfv=based_vl[i].copy()
+                    newfv.update({'psum_idx':psum_index[i]})
+                    new_solved_fd[tuple(opidx)]=newfv
+
             
         if not save2tile:
             return new_solved_fd

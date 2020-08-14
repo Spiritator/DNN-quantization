@@ -146,6 +146,8 @@ MXU.clear_all()
 #model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
 #MXU.clear_all()
 
+K.clear_session()
+
 #%%
 # model setup
 
@@ -156,7 +158,7 @@ model=quantized_lenet5(nbits=model_word_length,
                        batch_size=batch_size,
                        quant_mode='hybrid',
                        ofmap_fault_dict_list=model_mac_math_fault_dict_list,
-                       mac_unit=mac_config)
+                       mac_unit=PE)
 t = time.time()-t
 print('\nModel build time: %f s'%t)
 

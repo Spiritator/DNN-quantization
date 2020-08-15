@@ -554,7 +554,7 @@ class mac_unit:
             # add psum_alter back to ofmap
             output=tf.add(fdoutput_alloc, psum_alter)
             output=quantizer_output.quantize(output)
-            output=tf.scatter_nd_update(ofmap,fd_coor,output)
+            output=tf.tensor_scatter_update(ofmap,fd_coor,output)
 
                 
         else: # slow loop gen
@@ -724,7 +724,7 @@ class mac_unit:
             # add psum_alter back to ofmap
             output=tf.add(fdoutput_alloc, psum_alter)
             output=quantizer_output.quantize(output)
-            output=tf.scatter_nd_update(ofmap,fd_coor,output)
+            output=tf.tensor_scatter_update(ofmap,fd_coor,output)
             
         return output
     

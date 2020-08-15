@@ -1393,10 +1393,6 @@ class io_data_solver:
         Add new fault information to new fault dict
         Numpy generation (fast version)
         """
-        #TODO
-        # WHAT IF the searchsort result are repeatitive, HOW TO filt no index condition
-        
-        
         if self.pstate!='fastgen' or self.wstate!='fastgen' or self.istate!='fastgen':
             raise ValueError('All psum_state, wght_state, ifmap_state are must be \'fast_gen\' to run fast generation method.')        
             

@@ -626,7 +626,7 @@ def _depthwise_conv_block(inputs,
                           quant_mode='hybrid',
                           ifmap_fault_dict_list=None, 
                           ofmap_fault_dict_list=None, 
-                          weight_fault_dict_list=None
+                          weight_fault_dict_list=None,
                           mac_unit=None):
     """Adds a depthwise convolution block.
 
@@ -1122,7 +1122,7 @@ def _conv_block_fused_BN(inputs,
                          quant_mode='hybrid',
                          ifmap_fault_dict_list=None, 
                          ofmap_fault_dict_list=None, 
-                         weight_fault_dict_list=None
+                         weight_fault_dict_list=None,
                          mac_unit=None):
     """Adds an initial convolution layer (with batch normalization and relu6).
 

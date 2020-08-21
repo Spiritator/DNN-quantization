@@ -7,9 +7,9 @@ Created on Thu May 16 13:16:15 2019
 metirc for fault tolerance analysis
 """
 
-from keras import metrics
-import keras.backend as K
 import tensorflow as tf
+from tensorflow.keras import metrics
+from tensorflow.keras import backend as K
 import numpy as np
 
 

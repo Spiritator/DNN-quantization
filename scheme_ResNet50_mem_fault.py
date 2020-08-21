@@ -9,10 +9,10 @@ evaluate memory fault injection testing result of ResNet50
 """
 
 from simulator.inference.scheme import inference_scheme
-from keras.utils import multi_gpu_model,to_categorical
+from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.resnet50 import QuantizedResNet50FusedBN,preprocess_input
 from simulator.metrics.topk_metrics import top5_acc
-from keras.losses import categorical_crossentropy
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.memory.mem_bitmap import bitmap
 from simulator.memory.tile import tile, tile_FC, generate_layer_memory_mapping
 from simulator.testing.fault_core import generate_model_modulator

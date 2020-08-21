@@ -168,7 +168,7 @@ class mac_unit:
         """ Get the polarity of parameter 
             
         """
-        modulator=np.left_shift(1,fault_bit)
+        modulator=np.left_shift(1,fault_bit,dtype=np.int32)
         polarity=tf.bitwise.bitwise_and(FI_param,modulator)
         polarity=tf.math.sign(polarity)
         if fault_type=='flip':
@@ -372,11 +372,11 @@ class mac_unit:
         # construct arranged combined polarrity
         polarity=tf.Variable(tf.zeros(data_tensor.shape))
         if len(type0_idx)>0:
-            polarity=tf.scatter_nd_update(polarity,type0_idx,polarity_type0)
+            polarity=tf.tensor_scatter_nd_update(polarity,type0_idx,polarity_type0)
         if len(type1_idx)>0:
-            polarity=tf.scatter_nd_update(polarity,type1_idx,polarity_type1)
+            polarity=tf.tensor_scatter_nd_update(polarity,type1_idx,polarity_type1)
         if len(typef_idx)>0:
-            polarity=tf.scatter_nd_update(polarity,typef_idx,polarity_typef)
+            polarity=tf.tensor_scatter_nd_update(polarity,typef_idx,polarity_typef)
             
         return polarity
     
@@ -554,7 +554,7 @@ class mac_unit:
             # add psum_alter back to ofmap
             output=tf.add(fdoutput_alloc, psum_alter)
             output=quantizer_output.quantize(output)
-            output=tf.tensor_scatter_update(ofmap,fd_coor,output)
+            output=tf.tensor_scatter_nd_update(ofmap,fd_coor,output)
 
                 
         else: # slow loop gen
@@ -706,13 +706,13 @@ class mac_unit:
 
             if len(param_ofmap)>0:
                 param_ofmap=np.expand_dims(param_ofmap,-1)
-                psum_alter=tf.scatter_nd_update(psum_alter, param_ofmap, psum_alter_ofmap)
+                psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_ofmap, psum_alter_ofmap)
             if len(param_ifmap)>0:
                 param_ifmap=np.expand_dims(param_ifmap,-1)
-                psum_alter=tf.scatter_nd_update(psum_alter, param_ifmap, psum_alter_ifmap)
+                psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_ifmap, psum_alter_ifmap)
             if len(param_wght)>0:
                 param_wght=np.expand_dims(param_wght,-1)
-                psum_alter=tf.scatter_nd_update(psum_alter, param_wght, psum_alter_wght)
+                psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_wght, psum_alter_wght)
 
             if cnt_psidx is not None:
                 psum_alter=tf.split(psum_alter,cnt_psidx)
@@ -724,7 +724,7 @@ class mac_unit:
             # add psum_alter back to ofmap
             output=tf.add(fdoutput_alloc, psum_alter)
             output=quantizer_output.quantize(output)
-            output=tf.tensor_scatter_update(ofmap,fd_coor,output)
+            output=tf.tensor_scatter_nd_update(ofmap,fd_coor,output)
             
         return output
     

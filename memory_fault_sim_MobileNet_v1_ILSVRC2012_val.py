@@ -7,8 +7,7 @@ Created on Tue Sep 25 14:32:50 2018
 evaluate memory fault injection testing result of MobileNetV1
 """
 
-import keras
-from keras.utils import multi_gpu_model,to_categorical
+from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.mobilenet import QuantizedMobileNetV1FusedBN
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix
@@ -405,7 +404,7 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-from keras.losses import categorical_crossentropy
+from tensorflow.keras.losses import categorical_crossentropy
 #prediction = parallel_model.predict_generator(datagen, verbose=1, steps=len(datagen))
 prediction = model.predict_generator(datagen, verbose=1, steps=len(datagen))
 test_result = evaluate_FT('mobilenet',prediction=prediction,test_label=to_categorical(datagen.classes,1000),loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],fuseBN=True,setsize=set_size)

@@ -8,10 +8,10 @@ An example of using inference scheme to arange analysis and save result.
 """
 
 import numpy as np
-import keras
-from keras.datasets import mnist, cifar10
-from keras.preprocessing.image import ImageDataGenerator
-from keras import backend as K
+from tensorflow import keras
+from tensorflow.keras.datasets import mnist, cifar10
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import backend as K
 
 
 def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, batch_size=32, data_augmentation = False, data_dir = None, preprocessing_function=None):

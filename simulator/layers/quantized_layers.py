@@ -11,12 +11,12 @@ all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-Tensorflow
 import numpy as np
 import tensorflow as tf
 
-from keras import backend as K
+from tensorflow.keras import backend as K
 
-from keras.layers import InputSpec, Layer, Dense, Conv2D, BatchNormalization, DepthwiseConv2D, Flatten
-from keras import constraints
-from keras import initializers
-from keras.utils import conv_utils
+from tensorflow.keras.layers import InputSpec, Layer, Dense, Conv2D, BatchNormalization, DepthwiseConv2D, Flatten
+from tensorflow.keras import constraints
+from tensorflow.keras import initializers
+from tensorflow.python.keras.utils import conv_utils
 
 from .quantized_ops import quantizer
 from ..testing.fault_ops import inject_layer_sa_fault_tensor
@@ -201,7 +201,7 @@ class QuantizedConv2D(Conv2D):
                                  constraint=self.kernel_constraint)
 
         if self.use_bias:
-            self.bias = self.add_weight((self.filters,),
+            self.bias = self.add_weight(shape=(self.filters,),
                                      initializer=self.bias_initializer,
                                      name='bias',
                                      regularizer=self.bias_regularizer,
@@ -857,7 +857,7 @@ class QuantizedDistributedConv2D(Conv2D):
                                  constraint=self.kernel_constraint)
 
         if self.use_bias:
-            self.bias = self.add_weight((self.filters,),
+            self.bias = self.add_weight(shape=(self.filters,),
                                      initializer=self.bias_initializer,
                                      name='bias',
                                      regularizer=self.bias_regularizer,

@@ -368,8 +368,8 @@ The demonstration of how the io_data_solver work with tile2layer
 """
 from simulator.comp_unit.tile import io_data_solver
 
-from keras.models import Model
-from keras.layers import Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input
 from simulator.layers.quantized_layers import QuantizedConv2D, quantizer
 
 #%% test io_data_solver

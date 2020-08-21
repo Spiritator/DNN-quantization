@@ -12,7 +12,7 @@ from simulator.inference.scheme import inference_scheme
 from simulator.models.model_library import quantized_lenet5
 from simulator.metrics.topk_metrics import top2_acc
 from simulator.metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50
-from keras.losses import categorical_crossentropy
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.testing.fault_list import generate_model_stuck_fault
 from simulator.testing.fault_core import generate_model_modulator
 

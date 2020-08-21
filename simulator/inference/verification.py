@@ -7,8 +7,7 @@ Created on Wed Feb 20 12:40:43 2019
 View all the intermediate value of a inference result
 """
 
-import keras
-from keras.models import Model
+from tensorflow.keras.models import Model
 import numpy as np
 
 def view_intermediate(model,input_x):

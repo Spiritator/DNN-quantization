@@ -10,15 +10,15 @@ evaluate accuracy of model weight on imagenet validation set
 
 #setup
 
-from keras.preprocessing.image import ImageDataGenerator
-from keras.models import Sequential, Model, load_model
-from keras import backend as K
-from keras import metrics
-from keras.applications.resnet50 import ResNet50
-from keras.applications.mobilenet import MobileNet
-from keras.preprocessing import image
-#from keras.applications.resnet50 import preprocess_input, decode_predictions
-from keras.applications.mobilenet import preprocess_input, decode_predictions
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential, Model, load_model
+from tensorflow.keras import backend as K
+from tensorflow.keras import metrics
+from tensorflow.keras.applications.resnet50 import ResNet50
+from tensorflow.keras.applications.mobilenet import MobileNet
+from tensorflow.keras.preprocessing import image
+#from tensorflow.keras.applications.resnet50 import preprocess_input, decode_predictions
+from tensorflow.keras.applications.mobilenet import preprocess_input, decode_predictions
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import time
 import numpy as np

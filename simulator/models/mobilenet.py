@@ -71,10 +71,10 @@ from keras_applications.imagenet_utils import _obtain_input_shape
 BASE_WEIGHT_PATH = ('https://github.com/fchollet/deep-learning-models/'
                     'releases/download/v0.6/')
 
-import keras.backend as backend
-import keras.layers as layers
-import keras.models as models
-import keras.utils as keras_utils
+import tensorflow.keras.backend as backend
+import tensorflow.keras.layers as layers
+import tensorflow.keras.models as models
+import tensorflow.keras.utils as keras_utils
 
 from tqdm import tqdm
 from ..layers.quantized_layers import QuantizedConv2D, QuantizedDepthwiseConv2D, QuantizedBatchNormalization
@@ -287,10 +287,10 @@ def QuantizedMobileNetV1(input_shape=None,
         old_data_format = None
 
     if input_tensor is None:
-        img_input = layers.Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+        img_input = layers.Input(batch_shape=(batch_size,)+input_shape)
     else:
         if not backend.is_keras_tensor(input_tensor):
-            img_input = layers.Input(tensor=input_tensor, shape=input_shape, batch_shape=(batch_size,)+input_shape)
+            img_input = layers.Input(tensor=input_tensor, batch_shape=(batch_size,)+input_shape)
         else:
             img_input = input_tensor
 
@@ -919,10 +919,10 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
         old_data_format = None
 
     if input_tensor is None:
-        img_input = layers.Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+        img_input = layers.Input(batch_shape=(batch_size,)+input_shape)
     else:
         if not backend.is_keras_tensor(input_tensor):
-            img_input = layers.Input(tensor=input_tensor, shape=input_shape, batch_shape=(batch_size,)+input_shape)
+            img_input = layers.Input(tensor=input_tensor, batch_shape=(batch_size,)+input_shape)
         else:
             img_input = input_tensor
 

@@ -41,10 +41,10 @@ WEIGHTS_PATH_NO_TOP = ('https://github.com/fchollet/deep-learning-models/'
                        'releases/download/v0.2/'
                        'resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5')
 
-import keras.backend as backend
-import keras.layers as layers
-import keras.models as models
-import keras.utils as keras_utils
+import tensorflow.keras.backend as backend
+import tensorflow.keras.layers as layers
+import tensorflow.keras.models as models
+import tensorflow.keras.utils as keras_utils
 
 
 
@@ -384,10 +384,10 @@ def QuantizedResNet50(include_top=True,
                                       weights=weights)
 
     if input_tensor is None:
-        img_input = layers.Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+        img_input = layers.Input(batch_shape=(batch_size,)+input_shape)
     else:
         if not backend.is_keras_tensor(input_tensor):
-            img_input = layers.Input(tensor=input_tensor, shape=input_shape, batch_shape=(batch_size,)+input_shape)
+            img_input = layers.Input(tensor=input_tensor, batch_shape=(batch_size,)+input_shape)
         else:
             img_input = input_tensor
     if backend.image_data_format() == 'channels_last':
@@ -908,10 +908,10 @@ def QuantizedResNet50FusedBN(include_top=True,
                                       weights=weights)
 
     if input_tensor is None:
-        img_input = layers.Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+        img_input = layers.Input(batch_shape=(batch_size,)+input_shape)
     else:
         if not backend.is_keras_tensor(input_tensor):
-            img_input = layers.Input(tensor=input_tensor, shape=input_shape, batch_shape=(batch_size,)+input_shape)
+            img_input = layers.Input(tensor=input_tensor, batch_shape=(batch_size,)+input_shape)
         else:
             img_input = input_tensor
         

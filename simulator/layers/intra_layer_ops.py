@@ -12,7 +12,7 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
 
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 import numpy as np
 

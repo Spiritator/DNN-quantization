@@ -9,9 +9,8 @@ evaluate quantized testing result with custom Keras quantize layer of LeNet-5
 
 # setup
 
-import keras
 import numpy as np
-import keras.backend as K
+import tensorflow.keras.backend as K
 import time
 #from keras.utils import multi_gpu_model
 
@@ -63,7 +62,7 @@ x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_
 t = time.time()
 
 #test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
-from keras.losses import categorical_crossentropy
+from tensorflow.keras.losses import categorical_crossentropy
 prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
 test_result = evaluate_FT('lenet',prediction=prediction,test_label=y_test,loss_function=categorical_crossentropy,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_20])
 

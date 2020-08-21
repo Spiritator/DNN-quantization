@@ -70,17 +70,17 @@ def comp_num_estimate(model,add_topo=None):
                         else:
                             accum_bit+=np.prod(layer.output_shape[1:])*layer_config['nb']
                     
-            estimation_report[layer.name]={'multiplications':mult_num.value,'accumulations':accum_num.value,'total_computations':mult_num.value+accum_num.value}
+            estimation_report[layer.name]={'multiplications':mult_num,'accumulations':accum_num,'total_computations':mult_num+accum_num}
             if 'nb' in layer_config.keys():
-                estimation_report[layer.name]['mult_bits']=mult_bit.value
-                estimation_report[layer.name]['accum_bits']=accum_bit.value
-                estimation_report[layer.name]['total_bits']=mult_bit.value+accum_bit.value
-            total_mult+=mult_num.value
-            total_accum+=accum_num.value
-            total_mac+=mult_num.value+accum_num.value
-            total_mult_bit+=mult_bit.value
-            total_accum_bit+=accum_bit.value
-            total_mac_bit+=mult_bit.value+accum_bit.value
+                estimation_report[layer.name]['mult_bits']=mult_bit
+                estimation_report[layer.name]['accum_bits']=accum_bit
+                estimation_report[layer.name]['total_bits']=mult_bit+accum_bit
+            total_mult+=mult_num
+            total_accum+=accum_num
+            total_mac+=mult_num+accum_num
+            total_mult_bit+=mult_bit
+            total_accum_bit+=accum_bit
+            total_mac_bit+=mult_bit+accum_bit
             
     estimation_report['total_multiplication']=total_mult
     estimation_report['total_accumulation']=total_accum

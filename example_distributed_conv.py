@@ -9,9 +9,8 @@ An example of distributed convolution layer
 
 # setup
 
-import keras
 import numpy as np
-import keras.backend as K
+import tensorflow.keras.backend as K
 import time
 
 from simulator.utils_tool.weight_conversion import convert_original_weight_layer_name
@@ -20,8 +19,8 @@ from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 from simulator.metrics.topk_metrics import top2_acc
 from simulator.approximation.estimate import comp_num_estimate
 
-from keras.models import Model
-from keras.layers import Activation, Input, MaxPooling2D, Add
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Activation, Input, MaxPooling2D, Add
 from simulator.layers.quantized_layers import QuantizedConv2D, QuantizedDense, QuantizedFlatten, QuantizedDistributedConv2D
 from simulator.layers.quantized_ops import quantizer,build_layer_quantizer
 from simulator.models.model_library import quantized_4C2F

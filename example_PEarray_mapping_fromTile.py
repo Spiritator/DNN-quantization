@@ -280,8 +280,7 @@ PE_fault_dict_final=MXU.align_slice_pack()
 
 #%% assign psum and bias mapping configuration
 
-MXU.clear_fd()
-MXU.clear_map_config()
+MXU.clear_all()
 
 MXU.setup_dataflow(p_permute_info={'PE_required_axes_prior':['PE_x','t_clk'],
                                    'tile_mapping_prior':[0,1,2]}, 

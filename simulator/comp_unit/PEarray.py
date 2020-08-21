@@ -2311,7 +2311,7 @@ class PEarray:
         else:
             return None
     
-    def neighbor_io_fault_dict_coors(self, fault_dict, mac_config=None):
+    def neighbor_io_fault_dict_coors(self, fault_dict, mac_config=False):
         """ Find neighbor PE index of PE array dataflow model. For mapping 'ifmap_out', 'wght_out', 'psum_in' faults.
             These fault info 'param' correspond to upstream or downstream PE I/O. 
             By finding the actual tile data of these index, can know the fault location in convolution.
@@ -2341,7 +2341,7 @@ class PEarray:
                 psin.append(i)
                 
         if len(iout)>0:
-            if mac_config is None:
+            if mac_config is False:
                 ifmap_out_dir=self.get_neighboring_axis(self.ifmap_flow)
                 if ifmap_out_dir=='PE_y':
                     ifmap_out_dir=np.tile([[1,0]],[len(iout),1])
@@ -2351,6 +2351,11 @@ class PEarray:
                 if ifmap_out_dir is not None:
                     index[iout,0:2]=np.add(index[iout,0:2],ifmap_out_dir)
             else:
+                if isinstance(mac_config,bool):
+                    mac_config=self.mac_config
+                else:
+                    self.mac_config=mac_config
+
                 if mac_config.ifmap_io['type']=='io_pair':
                     ifmap_out_dir=mac_config.ifmap_io['dimension']
                     if mac_config.ifmap_io['direction']=='forward':
@@ -2370,7 +2375,7 @@ class PEarray:
                     pass
             
         if len(wout)>0:
-            if mac_config is None:
+            if mac_config is False:
                 wght_out_dir=self.get_neighboring_axis(self.wght_flow)
                 if wght_out_dir=='PE_y':
                     wght_out_dir=np.tile([[1,0]],[len(wout),1])
@@ -2380,6 +2385,11 @@ class PEarray:
                 if wght_out_dir is not None:
                     index[wout,0:2]=np.add(index[wout,0:2],wght_out_dir)
             else:
+                if isinstance(mac_config,bool):
+                    mac_config=self.mac_config
+                else:
+                    self.mac_config=mac_config
+                
                 if mac_config.wght_io['type']=='io_pair':
                     wght_out_dir=mac_config.wght_io['dimension']
                     if mac_config.wght_io['direction']=='forward':
@@ -2399,7 +2409,7 @@ class PEarray:
                     pass
             
         if len(psin)>0:
-            if mac_config is None:
+            if mac_config is False:
                 psum_out_dir=self.get_neighboring_axis(self.psum_flow)
                 if psum_out_dir=='PE_y':
                     psum_out_dir=np.tile([[1,0]],[len(psin),1])
@@ -2409,6 +2419,11 @@ class PEarray:
                 if psum_out_dir is not None:
                     index[psin,0:2]=np.subtract(index[psin,0:2],psum_out_dir)
             else:
+                if isinstance(mac_config,bool):
+                    mac_config=self.mac_config
+                else:
+                    self.mac_config=mac_config
+                
                 if mac_config.psum_io['type']=='io_pair':
                     psum_out_dir=mac_config.psum_io['dimension']
                     if mac_config.psum_io['direction']=='forward':

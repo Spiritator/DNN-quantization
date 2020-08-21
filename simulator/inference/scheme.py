@@ -7,9 +7,9 @@ Created on Fri Feb 22 21:41:51 2019
 Plan for multiple inferece setting and write into file
 """
 
-import keras, os, csv
-import keras.backend as K
-from keras.utils import multi_gpu_model,to_categorical
+import os, csv
+import tensorflow.keras.backend as K
+from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from ..utils_tool.weight_conversion import convert_original_weight_layer_name
 from ..utils_tool.dataset_setup import dataset_setup
 from .evaluate import evaluate_FT

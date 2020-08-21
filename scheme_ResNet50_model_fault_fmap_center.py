@@ -10,10 +10,10 @@ Using inference scheme to arange analysis and save result. Evaluate the FT diffe
 import os
 
 from simulator.inference.scheme import inference_scheme
-from keras.utils import multi_gpu_model,to_categorical
+from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.resnet50 import QuantizedResNet50FusedBN, preprocess_input
 from simulator.metrics.topk_metrics import top5_acc
-from keras.losses import categorical_crossentropy
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.testing.fault_list import generate_model_stuck_fault
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.models.model_mods import make_ref_model

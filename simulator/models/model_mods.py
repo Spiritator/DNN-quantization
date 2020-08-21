@@ -7,12 +7,11 @@ Created on Tue Apr  9 11:31:34 2019
 Modify existing models
 """
 
-import keras
-from keras.models import Model
+from tensorflow.keras.models import Model
 import numpy as np
 
 from ..layers.quantized_layers import QuantizedDistributedConv2D
-from keras.layers import Activation, Add
+from tensorflow.keras.layers import Activation, Add
 
 def exchange_distributed_conv(model,target_layer_num,fault_dict_conversion,split_type,splits,ifmap_fault_dict_list=None,ofmap_fault_dict_list=None,wght_fault_dict_list=None):
     """Swap original DNN model layers to distributed convolution for emulate hardware partial sum.

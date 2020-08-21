@@ -11,8 +11,8 @@ all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-
 '''
 
 from __future__ import absolute_import
-import keras.backend as K
 import tensorflow as tf
+import tensorflow.keras.backend as K
 import numpy as np
 
 class quantizer:
@@ -59,7 +59,7 @@ class quantizer:
             rounding_method=self.rounding_method
         
         if rounding_method == 'nearest':
-            rounded = tf.rint(x)
+            rounded = tf.math.rint(x)
         elif rounding_method == 'down':
             rounded = tf.floor(x)
         elif rounding_method == 'stochastic':
@@ -105,7 +105,7 @@ class quantizer:
             ovf_capper=self.ovf_capper
         
         Xq=tf.add(X,ovf_val)
-        Xq=tf.floormod(Xq,ovf_capper)
+        Xq=tf.math.floormod(Xq,ovf_capper)
         Xq=tf.subtract(Xq,ovf_val)
         return Xq
     

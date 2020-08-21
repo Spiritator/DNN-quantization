@@ -10,10 +10,10 @@ Using inference scheme to arange analysis and save result layer by layer.
 import os
 
 from simulator.inference.scheme import inference_scheme
-from keras.utils import multi_gpu_model,to_categorical
+from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.resnet50 import QuantizedResNet50FusedBN, preprocess_input
 from simulator.metrics.topk_metrics import top5_acc
-from keras.losses import categorical_crossentropy
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.testing.fault_list import generate_model_stuck_fault
 from simulator.approximation.estimate import get_model_param_size
 from simulator.inference.scheme import gen_test_round_list

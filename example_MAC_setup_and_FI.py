@@ -38,14 +38,14 @@ fault_loc_prop=PE.propagated_idx_list('ifmap_in', fault_loc_orig, (8,8))
 
 #%% MAC unit math fault injection
 
-from keras.models import Model
-from keras.layers import Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input
 from simulator.layers.quantized_layers import QuantizedConv2D
 
 import tensorflow as tf
 import pickle
 import numpy as np
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 #%% create test model & layer data 
 

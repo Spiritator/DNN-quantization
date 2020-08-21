@@ -7,7 +7,7 @@ Created on Fri Aug 24 15:38:34 2018
 custom topk metrics
 """
 
-from keras import metrics
+from tensorflow.keras import metrics
 
 # Let's train the model using RMSprop
 def top2_acc(y_true,y_pred):

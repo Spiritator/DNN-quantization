@@ -9,9 +9,8 @@ evaluate computation unit fault injection testing result of LeNet-5
 
 # setup
 
-import keras
 import numpy as np
-import keras.backend as K
+import tensorflow.keras.backend as K
 import time
 
 

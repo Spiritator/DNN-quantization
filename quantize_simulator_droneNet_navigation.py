@@ -9,10 +9,9 @@ evaluate quantized testing result with custom Keras quantize layer of droneNet
 
 # setup
 
-import keras
 import numpy as np
-from keras.layers import Input
-import keras.backend as K
+from tensorflow.keras.layers import Input
+import tensorflow.keras.backend as K
 import time
 
 

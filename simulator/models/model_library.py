@@ -7,12 +7,12 @@ all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-Tensorflow
 '''
 import tensorflow as tf
 
-from keras.models import Sequential, Model
-from keras import regularizers
-from keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda, Dropout
-from keras.regularizers import l2
-from keras import metrics
-from keras import backend as K
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras import regularizers
+from tensorflow.keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda, Dropout
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras import metrics
+from tensorflow.keras import backend as K
 import numpy as np
 from tqdm import tqdm
 
@@ -51,7 +51,7 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest',
     pbar.update()
         
     pbar.set_postfix_str('Building Layer 0')
-    input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+    input_shape = Input(batch_shape=(batch_size,)+input_shape)
     pbar.update()
     pbar.set_postfix_str('Building Layer 1')
     x = QuantizedConv2D(filters=16,
@@ -156,7 +156,7 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest',
     pbar.update()
     
     pbar.set_postfix_str('Building Layer 0')
-    input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+    input_shape = Input(batch_shape=(batch_size,)+input_shape)
     pbar.update()
     pbar.set_postfix_str('Building Layer 1')
     x = QuantizedConv2D(filters=32,
@@ -308,7 +308,7 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
     channel_axis = 1 if K.image_data_format() == 'channels_first' else -1
     
     pbar.set_postfix_str('Building Layer 0')
-    input_shape = Input(shape=input_shape, batch_shape=(batch_size,)+input_shape)
+    input_shape = Input(batch_shape=(batch_size,)+input_shape)
     pbar.update()
     pbar.set_postfix_str('Building Layer 1')
     x = QuantizedConv2D(filters=32,

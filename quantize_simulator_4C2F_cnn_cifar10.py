@@ -9,9 +9,8 @@ evaluate quantized testing result with custom Keras quantize layer of 4C2F CNN
 
 # setup
 
-import keras
 import numpy as np
-import keras.backend as K
+import tensorflow.keras.backend as K
 import time
 
 

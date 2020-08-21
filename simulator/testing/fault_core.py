@@ -9,7 +9,7 @@ weight fault injection
 
 import numpy as np
 import tensorflow as tf
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,tensor_return=True):
     """Returns the a tensor or variable with single SA fault injected in each parameter.
@@ -47,13 +47,13 @@ def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,t
     fault_value=quantizer.left_shift_2int(original_value)
     
     if stuck_at=='1':
-        modulator=np.left_shift(1,fault_bit)
+        modulator=np.left_shift(1,fault_bit,dtype=np.int32)
         fault_value=tf.bitwise.bitwise_or(fault_value,modulator)
     elif stuck_at=='0':
-        modulator=-(np.left_shift(1,fault_bit)+1)
+        modulator=-(np.left_shift(1,fault_bit,dtype=np.int32)+1)
         fault_value=tf.bitwise.bitwise_and(fault_value,modulator)
     elif stuck_at=='flip':
-        modulator=np.left_shift(1,fault_bit)
+        modulator=np.left_shift(1,fault_bit,dtype=np.int32)
         fault_value=tf.bitwise.bitwise_xor(fault_value,modulator)
     
     fault_value=quantizer.right_shift_back(fault_value)
@@ -107,13 +107,13 @@ def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer
     for i in range(len(fault_bit)):
         if stuck_at[i]=='1':
             modulator=np.left_shift(1,fault_bit[i])
-            modulator1=np.bitwise_or(modulator1,modulator)
+            modulator1=np.bitwise_or(modulator1,modulator,dtype=np.int32)
         elif stuck_at[i]=='0':
             modulator=-(np.left_shift(1,fault_bit[i])+1)
-            modulator0=np.bitwise_and(modulator0,modulator)
+            modulator0=np.bitwise_and(modulator0,modulator,dtype=np.int32)
         elif stuck_at[i]=='flip':
             modulator=np.left_shift(1,fault_bit[i])
-            modulatorF=np.bitwise_xor(modulatorF,modulator)
+            modulatorF=np.bitwise_xor(modulatorF,modulator,dtype=np.int32)
     
     if modulator0 != -1:
         fault_value=tf.bitwise.bitwise_and(fault_value,modulator0)
@@ -165,20 +165,20 @@ def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck
         for i in range(len(fault_bit)):
             if stuck_at[i]=='1':
                 modulator=np.left_shift(1,fault_bit[i])
-                modulator1=np.bitwise_or(modulator1,modulator)
+                modulator1=np.bitwise_or(modulator1,modulator,dtype=np.int32)
             elif stuck_at[i]=='0':
                 modulator=-(np.left_shift(1,fault_bit[i])+1)
-                modulator0=np.bitwise_and(modulator0,modulator)
+                modulator0=np.bitwise_and(modulator0,modulator,dtype=np.int32)
             elif stuck_at[i]=='flip':
                 modulator=np.left_shift(1,fault_bit[i])
-                modulatorF=np.bitwise_or(modulatorF,modulator)
+                modulatorF=np.bitwise_or(modulatorF,modulator,dtype=np.int32)
     else:
         if stuck_at=='1':
-            modulator1=np.left_shift(1,fault_bit)
+            modulator1=np.left_shift(1,fault_bit,dtype=np.int32)
         elif stuck_at=='0':
-            modulator0=-(np.left_shift(1,fault_bit)+1)
+            modulator0=-(np.left_shift(1,fault_bit,dtype=np.int32)+1)
         elif stuck_at=='flip':
-            modulatorF=np.left_shift(1,fault_bit)
+            modulatorF=np.left_shift(1,fault_bit,dtype=np.int32)
             
     if modulator0==-1:
         modulator0=None

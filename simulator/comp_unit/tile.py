@@ -1678,7 +1678,7 @@ class io_data_solver:
             # verify row col of ofmap to ifmap tile
             if self.ifmap_tile.expand_method=='extract_patches':
                 if self.ifmap_tile.extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or self.ifmap_tile.extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
-                    raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+                    raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=%s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
             else:
                 if layer is not None:
                     extracted_shape=self.ifmap_tile.get_extracted_shape(fmap_shape=self.ifmap_tile.tile_shape,
@@ -1687,7 +1687,7 @@ class io_data_solver:
                                                                         dilation_rates=(1,layer.dilation_rate[0],layer.dilation_rate[1],1),
                                                                         padding=layer.padding)
                     if extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
-                        raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+                        raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=%s'%(str(extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
 
         elif self.layer_type=='DepthwiseConv2D':
             if restore_multiple_i[0]!=restore_multiple_o[0] or restore_multiple_i[3]!=restore_multiple_w[2] or restore_multiple_o[3]!=restore_multiple_w[2]:
@@ -1695,7 +1695,7 @@ class io_data_solver:
             # verify row col of ofmap to ifmap tile
             if self.ifmap_tile.expand_method=='extract_patches':
                 if self.ifmap_tile.extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or self.ifmap_tile.extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
-                    raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+                    raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=%s'%(str(self.ifmap_tile.extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
             else:
                 if layer is not None:
                     extracted_shape=self.ifmap_tile.get_extracted_shape(fmap_shape=self.ifmap_tile.tile_shape,
@@ -1704,7 +1704,7 @@ class io_data_solver:
                                                                         dilation_rates=(1,layer.dilation_rate[0],layer.dilation_rate[1],1),
                                                                         padding=layer.padding)
                     if extracted_shape[1]!=self.ofmap_tile.tile_shape[1] or extracted_shape[2]!=self.ofmap_tile.tile_shape[2]:
-                        raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=$s'%(str(extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
+                        raise ValueError('The row, col shape of ifmap tile and ofmap tile does not match! \n ifmap (row,col)=%s  ofmap (row,col)=%s'%(str(extracted_shape[1:3]),str(self.ofmap_tile.tile_shape[1:3])))
 
         elif self.layer_type=='Dense':
             if restore_multiple_i[0]!=restore_multiple_o[0] or restore_multiple_i[1]!=restore_multiple_w[0] or restore_multiple_o[1]!=restore_multiple_w[1]:

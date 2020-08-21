@@ -7,8 +7,7 @@ Created on Tue Sep 25 14:32:50 2018
 evaluate quantized testing result with custom Keras quantize layer of ResNet50
 """
 
-import keras
-from keras.utils import multi_gpu_model
+from tensorflow.keras.utils import multi_gpu_model
 from simulator.models.resnet50 import QuantizedResNet50, QuantizedResNet50FusedBN, preprocess_input
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix

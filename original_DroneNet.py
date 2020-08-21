@@ -10,13 +10,13 @@ evaluate accuracy of model weight
 
 #setup
 
-from keras.preprocessing.image import ImageDataGenerator
-from keras.models import Sequential, Model, load_model
-from keras.layers import Conv2D, MaxPooling2D
-from keras.layers import Activation, Dropout, Flatten, Dense, Input
-from keras.layers.normalization import BatchNormalization
-from keras import backend as K
-from keras import metrics
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential, Model, load_model
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense, Input
+from tensorflow.keras.layers.normalization import BatchNormalization
+from tensorflow.keras import backend as K
+from tensorflow.keras import metrics
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 import time
 import numpy as np

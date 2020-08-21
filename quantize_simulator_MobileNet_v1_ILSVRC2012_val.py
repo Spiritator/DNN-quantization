@@ -7,8 +7,7 @@ Created on Tue Sep 25 14:32:50 2018
 evaluate quantized testing result with custom Keras quantize layer of MobileNetV1
 """
 
-import keras
-from keras.utils import multi_gpu_model
+from tensorflow.keras.utils import multi_gpu_model
 from simulator.models.mobilenet import QuantizedMobileNetV1,QuantizedMobileNetV1FusedBN
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix

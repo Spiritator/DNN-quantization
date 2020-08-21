@@ -8,15 +8,15 @@ train cifar10 on droneNet V2
 """
 
 from __future__ import print_function
-import keras
-from keras.datasets import cifar10
-from keras.preprocessing.image import ImageDataGenerator
-from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, Activation, Flatten, Input
-from keras.layers import Conv2D, MaxPooling2D
-from keras.layers.normalization import BatchNormalization
-from keras import backend as K
-from keras import metrics
+from tensorflow import keras
+from tensorflow.keras.datasets import cifar10
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Input
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers.normalization import BatchNormalization
+from tensorflow.keras import backend as K
+from tensorflow.keras import metrics
 import os
 
 batch_size = 32

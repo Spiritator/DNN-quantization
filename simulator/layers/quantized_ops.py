@@ -132,7 +132,7 @@ class quantizer:
             clip_through=self.stop_gradient
         if overflow_sim is None:
             overflow_sim=self.overflow_mode
-        #sess = tf.InteractiveSession()
+        
         Xq = tf.multiply(X,self.shift_factor)
         Xq = self.round_through(Xq)
         

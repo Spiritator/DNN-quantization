@@ -9,7 +9,6 @@ weight fault injection
 
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras.backend as K
 
 def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,tensor_return=True):
     """Returns the a tensor or variable with single SA fault injected in each parameter.
@@ -61,7 +60,7 @@ def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,t
     if tensor_return:
         return fault_value
     else:
-        return K.eval(fault_value)
+        return fault_value.numpy()
 
 def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,tensor_return=True):
     """Returns the a tensor or variable with multiple SA fault injected in each parameter.
@@ -127,7 +126,7 @@ def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer
     if tensor_return:
         return fault_value
     else:
-        return K.eval(fault_value)    
+        return fault_value.numpy()    
     
 def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck_at):
     """Returns the fault modulator of SA0, SA1 and invert bit.

@@ -45,7 +45,6 @@ from simulator.layers.quantized_layers import QuantizedConv2D
 import tensorflow as tf
 import pickle
 import numpy as np
-import tensorflow.keras.backend as K
 
 #%% create test model & layer data 
 
@@ -82,7 +81,7 @@ ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
                                             padding='same',
                                             fast_gen=True)
 
-ofmap_alter=K.eval(ofmap_alter)
+ofmap_alter=ofmap_alter.numpy()
 
 #%% test inject mac math fault not fast gen
 
@@ -98,5 +97,5 @@ ofmap_alter=K.eval(ofmap_alter)
 #                                            padding='same',
 #                                            fast_gen=False)
 #
-#ofmap_alt_scatter=K.eval(ofmap_alt_scatter)
+#ofmap_alt_scatter=ofmap_alt_scatter.numpy()
 

@@ -8,7 +8,6 @@ fault injection test
 """
 
 import tensorflow as tf
-import tensorflow.keras.backend as K
 import numpy as np
 from simulator.testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
 from simulator.testing.fault_ops import inject_layer_sa_fault_tensor, inject_layer_sa_fault_nparray
@@ -26,10 +25,10 @@ qtz=quantizer(7,2,rounding_method='zero')
 
 unquant_param=np.reshape((np.arange(1,1001,dtype='float32')-500)/16,(-1,10))
 
-quant_param_nearest=K.eval(qtn.quantize(unquant_param))
-quant_param_down=K.eval(qtd.quantize(unquant_param))
-quant_param_stochastic=K.eval(qts.quantize(unquant_param))
-quant_param_zero=K.eval(qtz.quantize(unquant_param))
+quant_param_nearest=qtn.quantize(unquant_param).numpy()
+quant_param_down=qtd.quantize(unquant_param).numpy()
+quant_param_stochastic=qts.quantize(unquant_param).numpy()
+quant_param_zero=qtz.quantize(unquant_param).numpy()
 
 
 #%%
@@ -45,6 +44,7 @@ qt=quantizer(10,3,rounding_method='nearest')
 
 # a numpy array of 0 ~ 99
 original_weight=np.arange(1,100,dtype='float32')
+original_weight=qt.quantize(original_weight).numpy()
 
 # inject single SA fault to a parameter
 single_fault_weight=generate_single_stuck_at_fault(original_weight,3,'1',qt,tensor_return=False)
@@ -64,8 +64,8 @@ layer_original_weight_neg=tf.Variable(layer_original_array_neg)
 # overflow simulation
 layer_overflow_sim_pos=qt.quantize(tf.subtract(layer_original_weight_pos,0.5),overflow_sim=True)
 layer_overflow_sim_neg=qt.quantize(tf.add(layer_original_weight_neg,0.5),overflow_sim=True)
-layer_overflow_input_pos=K.eval(layer_overflow_sim_pos)
-layer_overflow_input_neg=K.eval(layer_overflow_sim_neg)
+layer_overflow_input_pos=layer_overflow_sim_pos.numpy()
+layer_overflow_input_neg=layer_overflow_sim_neg.numpy()
 
 # example of fault dictionary
 fault_dict={(1,6):\
@@ -89,21 +89,49 @@ fault_dict={(1,6):\
 layer_fault_array_pos=inject_layer_sa_fault_nparray(layer_original_array_pos,fault_dict,qt)
 layer_fault_array_neg=inject_layer_sa_fault_nparray(layer_original_array_neg,fault_dict,qt)
 
-# inject fault to a Tensor
-layer_fault_weight_pos=inject_layer_sa_fault_tensor(layer_original_weight_pos,fault_dict,qt)
-layer_fault_weight_pos=K.eval(layer_fault_weight_pos)
-layer_fault_weight_neg=inject_layer_sa_fault_tensor(layer_original_weight_neg,fault_dict,qt)
-layer_fault_weight_neg=K.eval(layer_fault_weight_neg)
+# inject fault to a Tensor and Variable
+@tf.function
+def fault_inject(faultdict,wghtpos,wghtneg,fmappos,fmapneg,ovf):
+    qtzr=quantizer(10,3,rounding_method='nearest',overflow_mode=ovf)
+    
+    cnst=tf.constant(1.)
+    faultfmappos=tf.add(fmappos,cnst)
+    faultfmapneg=tf.subtract(fmapneg,cnst)
+
+    faultwghtpos=qtzr.quantize(wghtpos)
+    faultwghtneg=qtzr.quantize(wghtneg)
+    faultfmappos=qtzr.quantize(faultfmappos)
+    faultfmapneg=qtzr.quantize(faultfmapneg)
+    
+    faultwghtpos=inject_layer_sa_fault_tensor(faultwghtpos,faultdict,qtzr)
+    faultwghtneg=inject_layer_sa_fault_tensor(faultwghtneg,faultdict,qtzr)
+    faultfmappos=inject_layer_sa_fault_tensor(faultfmappos,faultdict,qtzr)
+    faultfmapneg=inject_layer_sa_fault_tensor(faultfmapneg,faultdict,qtzr)
+
+    return faultwghtpos,faultwghtneg,faultfmappos,faultfmapneg
 
 
+layer_fault_weight_pos,layer_fault_weight_neg,layer_fault_fmap_pos,layer_fault_fmap_neg=\
+    fault_inject(fault_dict, 
+                 layer_original_weight_pos, layer_original_weight_neg, 
+                 layer_original_array_pos, layer_original_array_neg, 
+                 ovf=False)
+    
+layer_fault_weight_pos=layer_fault_weight_pos.numpy()
+layer_fault_weight_neg=layer_fault_weight_neg.numpy()
+layer_fault_fmap_pos=layer_fault_fmap_pos.numpy()
+layer_fault_fmap_neg=layer_fault_fmap_neg.numpy()
+
+#%%
 # inject fault to a Tensor with overflow simulation
-qt_ovf=quantizer(10,3,rounding_method='nearest',overflow_mode=True)
-layer_fault_weight_pos_ovf=inject_layer_sa_fault_tensor(layer_original_weight_pos,fault_dict,qt_ovf)
-layer_fault_weight_pos_ovf=qt_ovf.quantize(layer_fault_weight_pos_ovf)
-layer_fault_weight_pos_ovf=K.eval(layer_fault_weight_pos_ovf)
-layer_fault_weight_neg_ovf=inject_layer_sa_fault_tensor(layer_original_weight_neg,fault_dict,qt_ovf)
-layer_fault_weight_neg_ovf=qt_ovf.quantize(layer_fault_weight_neg_ovf)
-layer_fault_weight_neg_ovf=K.eval(layer_fault_weight_neg_ovf)
+layer_fault_weight_pos_ovf,layer_fault_weight_neg_ovf,layer_fault_fmap_pos_ovf,layer_fault_fmap_neg_ovf=\
+    fault_inject(fault_dict, 
+                 layer_original_weight_pos, layer_original_weight_neg, 
+                 layer_original_array_pos, layer_original_array_neg,
+                 ovf=True)
 
-
+layer_fault_weight_pos_ovf=layer_fault_weight_pos_ovf.numpy()
+layer_fault_weight_neg_ovf=layer_fault_weight_neg_ovf.numpy()
+layer_fault_fmap_pos_ovf=layer_fault_fmap_pos_ovf.numpy()
+layer_fault_fmap_neg_ovf=layer_fault_fmap_neg_ovf.numpy()
             

@@ -92,7 +92,7 @@ def inference_scheme(model_func,
         model=model_func( **modelaug_tmp)
         
         if weight_load:
-            weight_name_convert=convert_original_weight_layer_name(weight_name)
+            weight_name_convert=convert_original_weight_layer_name(weight_name,print_detail=False)
             model.load_weights(weight_name_convert)
         
         if show_summary:

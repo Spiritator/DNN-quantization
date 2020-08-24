@@ -94,15 +94,14 @@ def inject_layer_sa_fault_tensor(data, fault_list, quantizer):
         
     data=quantizer.left_shift_2int(data)
     
-    tensor_modulator0=tf.constant(tensor_modulator0)
-    tensor_modulator1=tf.constant(tensor_modulator1)
-    tensor_modulatorF=tf.constant(tensor_modulatorF)
-    
     if tensor_modulator0 is not None:
+        tensor_modulator0=tf.constant(tensor_modulator0)
         data=tf.bitwise.bitwise_and(data,tensor_modulator0)
     if tensor_modulator1 is not None:
+        tensor_modulator1=tf.constant(tensor_modulator1)
         data=tf.bitwise.bitwise_or(data,tensor_modulator1)
     if tensor_modulatorF is not None:
+        tensor_modulatorF=tf.constant(tensor_modulatorF)
         data=tf.bitwise.bitwise_xor(data,tensor_modulatorF)        
 
     data=quantizer.right_shift_back(data)

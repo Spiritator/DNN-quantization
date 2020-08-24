@@ -36,9 +36,6 @@ quant_param_zero=qtz.quantize(unquant_param).numpy()
 ## Fault Injection ##
 #####################
 
-# TODO
-# overhaul the naming stuff
-
 # declare qunatizer setting
 qt=quantizer(10,3,rounding_method='nearest')
 

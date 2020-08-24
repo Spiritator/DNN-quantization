@@ -39,18 +39,20 @@ def load_attributes_from_hdf5_group(group, name):
     return data
     
 
-def convert_original_weight_layer_name(original_weight_name,quantized_weight_name=None):
+def convert_original_weight_layer_name(original_weight_name,quantized_weight_name=None,print_detail=False):
         
     if quantized_weight_name is None:
         quantized_weight_name=original_weight_name[:-3]+'_quantized.h5'
         if os.path.isfile(quantized_weight_name):
-            print('quantized layer name weight already exist skip conversion and continue...')
+            if print_detail:
+                print('quantized layer name weight already exist skip conversion and continue...')
             return quantized_weight_name
         else:
             q_weight_f = h5py.File(quantized_weight_name,'w')
     else:
         if os.path.isfile(quantized_weight_name):
-            print('quantized layer name weight already exist skip conversion and continue...')
+            if print_detail:
+                print('quantized layer name weight already exist skip conversion and continue...')
             return quantized_weight_name
         else:
             q_weight_f = h5py.File(quantized_weight_name,'w')

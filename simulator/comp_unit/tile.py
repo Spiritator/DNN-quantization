@@ -110,7 +110,7 @@ class tile_PE(tile):
         source_prior=np.argsort(np.array(source_prior))[::-1]
         target_prior=np.argsort(np.array(target_prior))[::-1]
             
-        restore_index=np.zeros((len(target_shape),),dtype=int)
+        restore_index=np.zeros((len(target_shape),),dtype=np.int32)
         for i in range(len(target_shape)):
             restore_index[target_prior[i]]=i
 
@@ -121,7 +121,7 @@ class tile_PE(tile):
             numtag=np.ravel_multi_index(np.array(index)[source_prior],np.array(source_shape)[source_prior])
             
             coor=np.unravel_index(numtag,np.array(target_shape)[target_prior])
-            coor=np.array(coor)[restore_index]
+            coor=np.array(coor,dtype=np.int32)[restore_index]
             
             return tuple(coor)
                         
@@ -132,7 +132,7 @@ class tile_PE(tile):
             numtag=np.ravel_multi_index(index.T[source_prior],np.array(source_shape)[source_prior])
                     
             coor=np.unravel_index(numtag,np.array(target_shape)[target_prior])
-            coor=np.array(coor)[restore_index]
+            coor=np.array(coor,dtype=np.int32)[restore_index]
 
             return coor.T
         
@@ -140,7 +140,7 @@ class tile_PE(tile):
             raise TypeError('index for transformation must be either tuple or 2D numpy array.')
             
     def get_slices_cutset(self, orig_shape, slicing_dims):
-        div_dims=np.array([],dtype=int)
+        div_dims=np.array([],dtype=np.int32)
         for dim in slicing_dims:
             if dim==0:
                 div_dims=np.append(div_dims,1)
@@ -149,7 +149,7 @@ class tile_PE(tile):
                 
         orig_shape=np.array(orig_shape)
         cutset=np.ceil(np.divide(orig_shape,div_dims))
-        cutset=cutset.astype(int)
+        cutset=cutset.astype(np.int32)
         return cutset,div_dims
             
     def slice_permute_idx(self, index, orig_shape, slicing_dims, slices_permute):
@@ -229,7 +229,7 @@ class tile_PE(tile):
         
         slices_permute=np.argsort(np.array(slices_permute))[::-1]
         
-        restore_index=np.zeros((len(slices_permute),),dtype=int)
+        restore_index=np.zeros((len(slices_permute),),dtype=np.int32)
         for i in range(len(slices_permute)):
             restore_index[slices_permute[i]]=i
         
@@ -237,8 +237,8 @@ class tile_PE(tile):
             tclk=index[-1]
             mapping_dims=index[:-1]
             permute_dims=np.unravel_index(tclk,cutset[slices_permute])
-            permute_dims=np.array(permute_dims)[restore_index]
-            assembled_idx=np.zeros(len(orig_shape),dtype=int)
+            permute_dims=np.array(permute_dims,dtype=np.int32)[restore_index]
+            assembled_idx=np.zeros(len(orig_shape),dtype=np.int32)
             assembled_idx[np.squeeze(np.argwhere(np.array(slicing_dims)>0))]=mapping_dims
         else:
             tclk=index[:,-1]
@@ -246,9 +246,9 @@ class tile_PE(tile):
             if len(mapping_dims.shape)==1:
                 mapping_dims=np.expand_dims(mapping_dims,-1)
             permute_dims=np.unravel_index(tclk,cutset[slices_permute])
-            permute_dims=np.array(permute_dims)[restore_index]
+            permute_dims=np.array(permute_dims,dtype=np.int32)[restore_index]
             permute_dims=permute_dims.T
-            assembled_idx=np.zeros([len(index),len(orig_shape)],dtype=int)
+            assembled_idx=np.zeros([len(index),len(orig_shape)],dtype=np.int32)
             assembled_idx[:,np.squeeze(np.argwhere(np.array(slicing_dims)>0))]=mapping_dims
             
         permute_dims=np.multiply(permute_dims,div_dims)
@@ -431,12 +431,12 @@ class tile_PE(tile):
         extracted_psum=index[:,-1]
         
         patches_unravel=np.argsort(np.array(patches_unravel))[::-1]
-        restore_index=np.zeros((3,),dtype=int)
+        restore_index=np.zeros((3,),dtype=np.int32)
         for i in range(3):
             restore_index[patches_unravel[i]]=i
             
         extracted_psum=np.unravel_index(extracted_psum,np.array([ksizes[1],ksizes[2],fmap_shape[3]])[patches_unravel])
-        extracted_psum=np.array(extracted_psum)[restore_index]
+        extracted_psum=np.array(extracted_psum,dtype=np.int32)[restore_index]
         
         idx_patches_candidate=extracted_psum[0:2]
         idx_patches_candidate=np.ravel_multi_index(idx_patches_candidate,ksizes[1:3])
@@ -608,7 +608,7 @@ class tile_PE(tile):
                                                                      self.slice_shape,
                                                                      self.tilt_shift)
             else:
-                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([1,len(self.slice_shape)],dtype=int),
+                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([1,len(self.slice_shape)],dtype=np.int32),
                                                         self.tilt_axis,
                                                         self.tilt_direction,
                                                         self.slice_shape,
@@ -833,7 +833,7 @@ class tile_PE(tile):
                                                                      self.slice_shape,
                                                                      self.tilt_shift)
             else:
-                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([1,len(self.slice_shape)],dtype=int),
+                _,self.tilted_slice_shape=self.tilt_idx(np.zeros([1,len(self.slice_shape)],dtype=np.int32),
                                                         self.tilt_axis,
                                                         self.tilt_direction,
                                                         self.slice_shape,
@@ -1410,7 +1410,7 @@ class io_data_solver:
             ifmap_index,search_id=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
             
             if print_detail:
-                print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
+                print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t\t',end=' ') 
             # solve weight
             wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
             
@@ -1432,7 +1432,7 @@ class io_data_solver:
                 # solve ifmap
                 outpsum_index,search_id=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
                 if print_detail:
-                    print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
+                    print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t\t',end=' ') 
                 # solve weight
                 wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
                 
@@ -1452,12 +1452,12 @@ class io_data_solver:
                 # solve ifmap
                 ifmap_index,search_id=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
                 if print_detail:
-                    print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t',end=' ') 
+                    print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t\t',end=' ') 
                 # solve weight
                 wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
         
         if print_detail:
-            print('\r    GenFD (4/5): Build Partial Sum Indexes...\t\t',end=' ')         
+            print('\r    GenFD (4/5): Build Partial Sum Indexes...\t\t\t',end=' ')         
         
         # build psum_idx
         if not save2tile:
@@ -1497,7 +1497,7 @@ class io_data_solver:
                 psum_index=np.split(psum_index,np.add(shape_cnt,1)[:-1])
 
             if print_detail:
-                print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t',end=' ')         
+                print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t\t',end=' ')         
     
             for i,opidx in enumerate(based_coors):
                 newfv=based_vl[i].copy()
@@ -1525,7 +1525,7 @@ class io_data_solver:
                 psum_index=np.split(psum_index,idlrep)
 
             if print_detail:
-                print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t',end=' ')         
+                print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t\t',end=' ')         
     
             for i,opidx in enumerate(based_coors):
                 if len(psum_index[i])>0:

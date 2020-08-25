@@ -190,6 +190,9 @@ def QuantizedMobileNetV1(input_shape=None,
             
     layer_BN_quantizer=build_layer_quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
     
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
+    
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for _ in range(102)]
     else:
@@ -825,6 +828,8 @@ def QuantizedMobileNetV1FusedBN(input_shape=None,
     pbar=tqdm(total=18)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for _ in range(75)]

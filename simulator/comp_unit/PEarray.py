@@ -623,7 +623,7 @@ class PEarray:
         source_prior=np.argsort(np.array(source_prior))[::-1]
         target_prior=np.argsort(np.array(target_prior))[::-1]
 
-        restore_index=np.zeros((len(target_shape),),dtype=int)
+        restore_index=np.zeros((len(target_shape),),dtype=np.int32)
         for i in range(len(target_shape)):
             restore_index[target_prior[i]]=i
 
@@ -719,7 +719,7 @@ class PEarray:
             axis_arange=np.delete(axis_arange,[window_stream_axis,window_clk_axis])
             axis_arange=np.insert(axis_arange,data_stream_axis,window_stream_axis)
                             
-        caped_index=np.zeros([len(index)*window_shape[window_stream_axis],len(window_shape)],dtype=int)
+        caped_index=np.zeros([len(index)*window_shape[window_stream_axis],len(window_shape)],dtype=np.int32)
         for i,ax in enumerate(axis_arange):
             if i==data_stream_axis:
                 caped_index[:,ax]=np.reshape(base_coor_shift,[1,-1])
@@ -795,7 +795,7 @@ class PEarray:
             
         idx_flowback_clk=np.subtract(idx_flowback_clk,base_coor_shift)
         
-        flowbacked_index=np.zeros([len(index),len(data_shape)],dtype=int)
+        flowbacked_index=np.zeros([len(index),len(data_shape)],dtype=np.int32)
         for i,ax in enumerate(axis_arange):
             if i==data_stream_axis:
                 flowbacked_index[:,i]=np.reshape(idx_flowback_clk,[1,-1])
@@ -867,7 +867,7 @@ class PEarray:
                     if i not in broadcast_dims:
                         axis_arange.append(i)
         
-        broaded_index=np.zeros([len(idx_broadcast),len(target_shape)],dtype=int)
+        broaded_index=np.zeros([len(idx_broadcast),len(target_shape)],dtype=np.int32)
         
         if isinstance(broadcast_dims,int):
             broaded_index[:,broadcast_dims]=idx_leaf
@@ -938,7 +938,7 @@ class PEarray:
                     if ax in axis_arange:
                         raise ValueError('broadcast_dims %d should not be in axis_arange.'%ax)
         
-        narrowed_index=np.zeros([len(index),len(data_shape)],dtype=int)
+        narrowed_index=np.zeros([len(index),len(data_shape)],dtype=np.int32)
                 
         for i,ax in enumerate(axis_arange):
             narrowed_index[:,i]=index[:,ax]
@@ -981,13 +981,13 @@ class PEarray:
         if isinstance(fix_dims,int):
             if indice_fix<0:
                 indice_fix=target_shape[fix_dims]+indice_fix
-            fixidx=np.multiply(np.ones(len(index),dtype=int),indice_fix)
+            fixidx=np.multiply(np.ones(len(index),dtype=np.int32),indice_fix)
         else:
             fixidx=list()
             for i,dims in enumerate(fix_dims):
                 if indice_fix[i]<0:
                     indice_fix[i]=target_shape[dims]+indice_fix[i]
-                fixidx.append(np.multiply(np.ones(len(index),dtype=int),indice_fix[i]))
+                fixidx.append(np.multiply(np.ones(len(index),dtype=np.int32),indice_fix[i]))
                 
         if axis_arange is None:
             if isinstance(fix_dims,int):
@@ -1001,7 +1001,7 @@ class PEarray:
                     if i not in fix_dims:
                         axis_arange.append(i)
 
-        fixed_index=np.zeros([len(index),len(target_shape)],dtype=int)
+        fixed_index=np.zeros([len(index),len(target_shape)],dtype=np.int32)
         
         if isinstance(fix_dims,int):
             fixed_index[:,fix_dims]=fixidx
@@ -1086,7 +1086,7 @@ class PEarray:
         else:
             data_shape_len=len(target_shape)-len(fix_dims)
             
-        unfix_index=np.zeros([len(index),data_shape_len],dtype=int)
+        unfix_index=np.zeros([len(index),data_shape_len],dtype=np.int32)
                 
         for i,ax in enumerate(axis_arange):
             unfix_index[:,i]=index[:,ax]
@@ -1455,7 +1455,7 @@ class PEarray:
                 fault_value=np.array(list(tile.fault_dict_expand.values()))
             else:
                 mapped_coors=np.array(list(tile.fault_dict.keys()))
-                mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=int),axis=1)
+                mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=np.int32),axis=1)
                 fault_value=np.array(list(tile.fault_dict.values()))
             
             if parameter=='bias':

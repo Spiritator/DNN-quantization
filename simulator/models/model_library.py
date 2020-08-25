@@ -33,6 +33,8 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest',
     pbar=tqdm(total=11)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(8)]
@@ -138,6 +140,8 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest',
     pbar=tqdm(total=17)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(14)]
@@ -287,7 +291,9 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
         
     layer_BN_quantizer=build_layer_quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
-
+    
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for i in range(23)]

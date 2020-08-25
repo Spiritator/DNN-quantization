@@ -347,7 +347,10 @@ def QuantizedResNet50(include_top=True,
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)            
             
     layer_BN_quantizer=build_layer_quantizer(BN_nbits,BN_fbits,rounding_method,overflow_mode,stop_gradient)
-    
+
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
+
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for _ in range(177)]
     else:
@@ -874,6 +877,8 @@ def QuantizedResNet50FusedBN(include_top=True,
     pbar=tqdm(total=21)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
     
     if ifmap_fault_dict_list is None:
         ifmap_fault_dict_list=[None for _ in range(124)]

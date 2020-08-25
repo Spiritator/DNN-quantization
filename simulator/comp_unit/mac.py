@@ -169,14 +169,15 @@ class mac_unit:
             
         """
         modulator=np.left_shift(1,fault_bit,dtype=np.int32)
+        modulator=tf.constant(modulator)
         polarity=tf.bitwise.bitwise_and(FI_param,modulator)
         polarity=tf.math.sign(polarity)
         if fault_type=='flip':
-            polarity=tf.math.add(tf.multiply(polarity,-2),1)
+            polarity=tf.math.add(tf.multiply(polarity,tf.constant(-2)),tf.constant(1))
         elif fault_type=='0':    
             polarity=tf.math.negative(polarity)
         elif fault_type=='1':    
-            polarity=tf.math.subtract(1,polarity)
+            polarity=tf.math.subtract(tf.constant(1),polarity)
                 
         if isinstance(fault_bit,int):
             if fault_bit==wl-1:
@@ -184,6 +185,7 @@ class mac_unit:
         else:
             signbit=np.equal(fault_bit,wl-1)
             signbit=np.add(np.multiply(signbit,-2,dtype=np.int32),1)
+            signbit=tf.constant(signbit)
             polarity=tf.math.multiply(polarity,signbit)
                         
         return polarity
@@ -355,20 +357,23 @@ class mac_unit:
         
         # allocate type subgroup data & check polarity
         if len(type0_idx)>0:
-            alloc_type0=tf.gather_nd(data_tensor,type0_idx)
             faultbit_type0=np.tile(fault_bit[type0_idx],[1,data_tensor.shape.dims[1].value])
+            type0_idx=tf.constant(type0_idx)
+            alloc_type0=tf.gather_nd(data_tensor,type0_idx)
             polarity_type0=self._polarity_check('0', faultbit_type0, alloc_type0, wlpolar)
             
         if len(type1_idx)>0:
-            alloc_type1=tf.gather_nd(data_tensor,type1_idx)
             faultbit_type1=np.tile(fault_bit[type1_idx],[1,data_tensor.shape.dims[1].value])
+            type1_idx=tf.constant(type1_idx)
+            alloc_type1=tf.gather_nd(data_tensor,type1_idx)
             polarity_type1=self._polarity_check('1', faultbit_type1, alloc_type1, wlpolar)
             
         if len(typef_idx)>0:
-            alloc_typef=tf.gather_nd(data_tensor,typef_idx)
             faultbit_typef=np.tile(fault_bit[typef_idx],[1,data_tensor.shape.dims[1].value])
+            typef_idx=tf.constant(typef_idx)
+            alloc_typef=tf.gather_nd(data_tensor,typef_idx)
             polarity_typef=self._polarity_check('flip', faultbit_typef, alloc_typef, wlpolar)
-
+#TODO : fix the create a empty polarity Tensor and scatter update to
         # construct arranged combined polarrity
         polarity=tf.Variable(tf.zeros(data_tensor.shape))
         if len(type0_idx)>0:
@@ -477,6 +482,7 @@ class mac_unit:
         
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
+        fd_coor=tf.constant(fd_coor)
         fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
         
         if self.fast_gen:
@@ -484,6 +490,7 @@ class mac_unit:
             # (coor idx, num of psidx, psum idx)
             psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
             psum_idx_ofmap=psum_idx_list[:,:,order_get_psidx_o]
+            psum_idx_ofmap=tf.constant(psum_idx_ofmap)
         
             fault_param=fd_value[0]['param']
             fault_type=fd_value[0]['SA_type']
@@ -499,6 +506,9 @@ class mac_unit:
                                                                       ksizes, 
                                                                       dilation_rates)
     
+                psum_idx_ifmap=tf.constant(psum_idx_ifmap)
+                psum_idx_wght=tf.constant(psum_idx_wght)
+                
                 ifmap_alloc=tf.gather_nd(ifmap,psum_idx_ifmap)
                 wght_alloc=tf.gather_nd(wght,psum_idx_wght) 
                 
@@ -528,9 +538,9 @@ class mac_unit:
             if fault_param=='ifmap_in' or fault_param=='ifmap_out' or fault_param=='wght_in' or fault_param=='wght_out':
                 # fault injection of ifmap and wght => mac math FI
                 if fault_param=='ifmap_in' or fault_param=='ifmap_out':
-                    psum_alter= tf.multiply(wght_alloc,2**fault_bit)
+                    psum_alter= tf.multiply(wght_alloc,tf.constant(2**fault_bit))
                 elif fault_param=='wght_in' or fault_param=='wght_out':
-                    psum_alter= tf.multiply(ifmap_alloc,2**fault_bit)
+                    psum_alter= tf.multiply(ifmap_alloc,tf.constant(2**fault_bit))
                 
                 psum_alter=self.mac_math_alter_make(psum_alter, 
                                                     polarity, 
@@ -545,7 +555,7 @@ class mac_unit:
             
             # fault injection of ofmap
             elif fault_param=='psum_in' or fault_param=='psum_out':
-                psum_alter=tf.multiply(polarity,2**fault_bit)
+                psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
                 
                 psum_alter=tf.reduce_sum(psum_alter, axis=1)
                 psum_alter=quantizer_output.right_shift_back(psum_alter)
@@ -590,6 +600,8 @@ class mac_unit:
                 idx_ofmap=psum_idx_ofmap[:,:,order_get_psidx_o]
                 faultbit_ofmap=fault_bit[param_ofmap]
                 
+                idx_ofmap=tf.constant(idx_ofmap)
+                
                 ofmap_alloc=tf.gather_nd(ofmap,idx_ofmap)
                 ofmap_alloc=quantizer_output.left_shift_2int(ofmap_alloc)
                 
@@ -618,6 +630,10 @@ class mac_unit:
                                                                        idx_ifmap_ifmap, 
                                                                        ksizes, 
                                                                        dilation_rates)
+                
+                idx_ifmap_ifmap=tf.constant(idx_ifmap_ifmap)
+                idx_ifmap_wght=tf.constant(idx_ifmap_wght)
+                
                 ifmap_alloc_i=tf.gather_nd(ifmap,idx_ifmap_ifmap)
                 ifmap_alloc_i=quantizer_input.left_shift_2int(ifmap_alloc_i)
                 ifmap_alloc_w=tf.gather_nd(wght,idx_ifmap_wght)
@@ -651,6 +667,10 @@ class mac_unit:
                                                                           idx_wght_ifmap, 
                                                                           ksizes, 
                                                                           dilation_rates)
+                        
+                idx_wght_wght=tf.constant(idx_wght_wght)
+                idx_wght_ifmap=tf.constant(idx_wght_ifmap)
+                        
                 wght_alloc_w=tf.gather_nd(wght,idx_wght_wght) 
                 wght_alloc_w=quantizer_weight.left_shift_2int(wght_alloc_w)
                 wght_alloc_i=tf.gather_nd(ifmap,idx_wght_ifmap) 
@@ -670,6 +690,7 @@ class mac_unit:
             # ofmap fault injection
             if len(param_ofmap)>0:
                 faultbit_ofmap=self._fault_bit_ext4mult(faultbit_ofmap, polarity_ofmap.shape.dims[1].value)
+                faultbit_ofmap=tf.constant(faultbit_ofmap)
                 psum_alter_ofmap=tf.multiply(polarity_ofmap, faultbit_ofmap)
                 
                 psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
@@ -679,6 +700,7 @@ class mac_unit:
             # ifmap fault injection
             if len(param_ifmap)>0:
                 faultbit_ifmap=self._fault_bit_ext4mult(faultbit_ifmap, polarity_ifmap.shape.dims[1].value)
+                faultbit_ifmap=tf.constant(faultbit_ifmap)
                 psum_alter_ifmap=tf.multiply(ifmap_alloc_w, faultbit_ifmap)
                 
                 psum_alter_ifmap=self.mac_math_alter_make(psum_alter_ifmap, 
@@ -691,6 +713,7 @@ class mac_unit:
             # wght fault injection
             if len(param_wght)>0:
                 faultbit_wght=self._fault_bit_ext4mult(faultbit_wght, polarity_wght.shape.dims[1].value)
+                faultbit_wght=tf.constant(faultbit_wght)
                 psum_alter_wght=tf.multiply(wght_alloc_i, faultbit_wght)
                 
                 psum_alter_wght=self.mac_math_alter_make(psum_alter_wght, 
@@ -700,18 +723,21 @@ class mac_unit:
                                                          wght_alloc_i, 
                                                          wght_alloc_w)
                 
-            
+            # TODO : the create empty alter array to update to
             # re-construct layer wise psum_alter
             psum_alter=tf.Variable(tf.zeros(psum_idx_list.shape[0]))
 
             if len(param_ofmap)>0:
                 param_ofmap=np.expand_dims(param_ofmap,-1)
+                param_ofmap=tf.constant(param_ofmap)
                 psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_ofmap, psum_alter_ofmap)
             if len(param_ifmap)>0:
                 param_ifmap=np.expand_dims(param_ifmap,-1)
+                param_ifmap=tf.constant(param_ifmap)
                 psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_ifmap, psum_alter_ifmap)
             if len(param_wght)>0:
                 param_wght=np.expand_dims(param_wght,-1)
+                param_wght=tf.constant(param_wght)
                 psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_wght, psum_alter_wght)
 
             if cnt_psidx is not None:

@@ -184,6 +184,10 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
         PEarray.fault_dict=fault_dict
         
     PEarray.mapping_shape_load()
+    
+    if len(PEarray.fault_dict)==0:
+        print('Empty fault dict. No fault.')
+        return None
         
     if print_detail:
         print('    Task (1/6): Decompose Slice Pack ...',end=' ') 

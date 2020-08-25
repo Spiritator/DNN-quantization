@@ -48,7 +48,8 @@ import numpy as np
 
 #%% create test model & layer data 
 
-qtz=quantizer(8,6,rounding_method='down')
+qtz_info={'nb':8,'fb':6,'rounding_method':'down'}
+qtz=quantizer(**qtz_info)
 
 input_shape=Input(batch_shape=(4,56,56,32))
 x=QuantizedConv2D(filters=64,
@@ -61,27 +62,51 @@ x=QuantizedConv2D(filters=64,
 model=Model(inputs=input_shape, outputs=x, name='test_model')
 
 ifmap=np.reshape(np.divide(np.arange(-200704,4*56*56*32/2,dtype='float32'),2**6),[4,56,56,32])
-ifmapT=tf.Variable(ifmap)
+# ifmapT=tf.Variable(ifmap)
 weight=np.reshape(np.divide(np.arange(-9216,3*3*32*64/2,dtype='float32'),2**6),[3,3,32,64])
 weightT=tf.Variable(weight)
 ofmap=np.zeros([4,56,56,64],dtype='float32')
-ofmapT=tf.Variable(ofmap)
+# ofmapT=tf.Variable(ofmap)
 
-#%% test inject mac math fault & load fault dictionary
+#%% test inject mac math fault & load fault dictionary | tf2.x
     
 with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as fdfile:
     fault_dict_solved_layer = pickle.load(fdfile)
 
-ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
-                                            weightT,
-                                            ofmapT,
-                                            fault_dict_solved_layer,
-                                            qtz,
-                                            layer_type='Conv2D',
-                                            padding='same',
-                                            fast_gen=True)
+@tf.function
+def layer_mac_math_FI(inputs,weights,outputs,faultdict,qtzr,layer_type,padding='valid',fast_gen=True):
+    output_alter=tf.add(outputs,tf.constant(0.))
+    
+    qtzr=quantizer(**qtzr)
+    output_alter=PE.inject_mac_math_fault_tensor(inputs,
+                                                  weights,
+                                                  output_alter,
+                                                  faultdict,
+                                                  qtzr,
+                                                  layer_type=layer_type,
+                                                  padding=padding,
+                                                  fast_gen=fast_gen)
+    return output_alter
+
+ofmap_alter=layer_mac_math_FI(ifmap, weightT, ofmap, fault_dict_solved_layer, qtz_info, 'Conv2D', padding='same', fast_gen=True)
 
 ofmap_alter=ofmap_alter.numpy()
+
+
+
+# ifmapT=tf.add(ifmap,tf.constant(1.))
+# ofmapT=tf.add(ofmap,tf.constant(1.))
+
+# ofmap_alter=PE.inject_mac_math_fault_tensor(ifmapT,
+#                                             weightT,
+#                                             ofmapT,
+#                                             fault_dict_solved_layer,
+#                                             qtz,
+#                                             layer_type='Conv2D',
+#                                             padding='same',
+#                                             fast_gen=True)
+
+# ofmap_alter=ofmap_alter.numpy()
 
 #%% test inject mac math fault not fast gen
 

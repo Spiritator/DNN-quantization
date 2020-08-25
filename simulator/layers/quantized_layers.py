@@ -139,7 +139,6 @@ class QuantizedDense(Dense):
             if self.mac_unit is None:
                 output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, quantizer_output)
             else:
-                self.mac_unit.consistency_check(self.quant_mode,self.quantizer)
                 output = self.mac_unit.inject_mac_math_fault_tensor(inputs, quantized_kernel, output, 
                                                                     self.ofmap_sa_fault_injection,
                                                                     layer_type='Dense')
@@ -300,7 +299,6 @@ class QuantizedConv2D(Conv2D):
             if self.mac_unit is None:
                 outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
             else:
-                self.mac_unit.consistency_check(self.quant_mode,self.quantizer)
                 outputs = self.mac_unit.inject_mac_math_fault_tensor(inputs, quantized_kernel, outputs, 
                                                                      self.ofmap_sa_fault_injection,
                                                                      layer_type='Conv2D',
@@ -764,7 +762,6 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
             if self.mac_unit is None:
                 outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
             else:
-                self.mac_unit.consistency_check(self.quant_mode,self.quantizer)
                 outputs = self.mac_unit.inject_mac_math_fault_tensor(inputs, quantized_depthwise_kernel, outputs, 
                                                                      self.ofmap_sa_fault_injection,
                                                                      layer_type='DepthwiseConv2D',

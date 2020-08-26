@@ -4,6 +4,9 @@ Created on Thu Jan 31 15:32:01 2019
 refernce: https://github.com/cc-hpc-itwm/TensorQuant
 all the credit refer to TensorQuant, available https://arxiv.org/abs/1710.05758
 
+Intra-layer operation hand craft DNN layer operation for intrinsic quantization.
+Intrinsic means quantize after every operation which refers to truncation between fixed-point multiply and add.
+
 @author: Yung-Yu Tsai
 """
 

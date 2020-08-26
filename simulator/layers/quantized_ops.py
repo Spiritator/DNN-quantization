@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-reference: https://github.com/BertMoons/QuantizedNeuralNetworks-Keras-Tensorflow
-all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-
-    # Reference:
-    - [QuantizedNet: Training Deep Neural Networks with Weights and Activations Constrained to +1 or -1, Courbariaux et al. 2016](http://arxiv.org/abs/1602.02830}
+Quantizer for quantization ops call. Including decimal point shifting, rounding, overflow handling.
 
 @author: Yung-Yu Tsai
 

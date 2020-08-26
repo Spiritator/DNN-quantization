@@ -218,12 +218,12 @@ class mac_unit:
         """
         if self.quant_mode=='intrinsic':
             if sim_truncarry:
-                trivia_alter= tf.floormod(psum_alter, quantizer_output.shift_factor)
-                trivia_conv= tf.floormod(tf.multiply(ifmap_alloc,wght_alloc), quantizer_output.shift_factor)
+                trivia_alter= tf.floormod(psum_alter, tf.constant(quantizer_output.shift_factor))
+                trivia_conv= tf.floormod(tf.multiply(ifmap_alloc,wght_alloc), tf.constant(quantizer_output.shift_factor))
                 trivia_conv= tf.multiply(trivia_conv, polarity)
                 truncarry= tf.add(trivia_alter, trivia_conv)
                 
-                comparator= tf.multiply(tf.floordiv(tf.add(polarity,1),2), quantizer_output.shift_factor-1)
+                comparator= tf.multiply(tf.floordiv(tf.add(polarity,tf.constant(1)),tf.constant(2)), tf.constant(quantizer_output.shift_factor-1))
                 truncarry= tf.sign(tf.subtract(truncarry, comparator))
             
             psum_alter=quantizer_output.right_shift_back(psum_alter)
@@ -354,33 +354,44 @@ class mac_unit:
         """ Polarity check with type grouping and return the arranged combined polarity """
         # type grouping
         type0_idx, type1_idx, typef_idx=self._param_find_fault_type(data_idx,type0,type1,typef)
+        if len(type0_idx)>0:
+            type0FI=True
+        else:
+            type0FI=False
+        if len(type1_idx)>0:
+            type1FI=True
+        else:
+            type1FI=False
+        if len(typef_idx)>0:
+            typefFI=True
+        else:
+            typefFI=False
         
         # allocate type subgroup data & check polarity
-        if len(type0_idx)>0:
+        if type0FI:
             faultbit_type0=np.tile(fault_bit[type0_idx],[1,data_tensor.shape.dims[1].value])
             type0_idx=tf.constant(type0_idx)
             alloc_type0=tf.gather_nd(data_tensor,type0_idx)
             polarity_type0=self._polarity_check('0', faultbit_type0, alloc_type0, wlpolar)
             
-        if len(type1_idx)>0:
+        if type1FI:
             faultbit_type1=np.tile(fault_bit[type1_idx],[1,data_tensor.shape.dims[1].value])
             type1_idx=tf.constant(type1_idx)
             alloc_type1=tf.gather_nd(data_tensor,type1_idx)
             polarity_type1=self._polarity_check('1', faultbit_type1, alloc_type1, wlpolar)
             
-        if len(typef_idx)>0:
+        if typefFI:
             faultbit_typef=np.tile(fault_bit[typef_idx],[1,data_tensor.shape.dims[1].value])
             typef_idx=tf.constant(typef_idx)
             alloc_typef=tf.gather_nd(data_tensor,typef_idx)
             polarity_typef=self._polarity_check('flip', faultbit_typef, alloc_typef, wlpolar)
-#TODO : fix the create a empty polarity Tensor and scatter update to
-        # construct arranged combined polarrity
-        polarity=tf.Variable(tf.zeros(data_tensor.shape))
-        if len(type0_idx)>0:
+
+        polarity=tf.zeros(data_tensor.shape)
+        if type0FI:
             polarity=tf.tensor_scatter_nd_update(polarity,type0_idx,polarity_type0)
-        if len(type1_idx)>0:
+        if type1FI:
             polarity=tf.tensor_scatter_nd_update(polarity,type1_idx,polarity_type1)
-        if len(typef_idx)>0:
+        if typefFI:
             polarity=tf.tensor_scatter_nd_update(polarity,typef_idx,polarity_typef)
             
         return polarity
@@ -418,7 +429,17 @@ class mac_unit:
                                      quantizer=None, quant_mode=None, layer_type='Conv2D',
                                      ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
                                      sim_truncarry=None, fast_gen=None):
-        """ The fault injection mathematical model for used in numpy computing
+        """ The fault injection mathematical model for used in Layer Tensor computing
+            Include both fast generation (fast_gen is True) and scattered generation (fast_gen is False).
+            Fast generation means the all the fault information dict are refer to the same source defect 
+            with the same fault bit, SA type and param.
+            Scattered generation means the faults are from distinct defect sources that need to be split into 
+            different groups and generate respectively. Therefore it's slower.
+            
+            This function is not suitable for tf.function decorator which needs to solve the Tensor Graph.
+            It may take a unnecessary long time to solve and get invalid shape.
+            Recommand using inject_mac_math_fault_uni or inject_mac_math_fault_scatter if you are sure about your
+            fault dictionry defect source is unique or not.
         
         # Arguments
             ifmap: Tensor. Quantized Tensor. Layer input.
@@ -570,28 +591,10 @@ class mac_unit:
         else: # slow loop gen
             # loop data extraction
             if isinstance(fd_value[0]['id'],int):
-                (psum_idx_list,
-                 cnt_psidx,
-                 fault_bit,
-                 param_ifmap,
-                 param_wght,
-                 param_ofmap,
-                 type0,
-                 type1,
-                 typef)=\
-                self._fault_value_extract_loop(fd_value, repetitive=False)
+                psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fd_value, repetitive=False)
             
             elif isinstance(fd_value[0]['id'],list):
-                (psum_idx_list,
-                 cnt_psidx,
-                 fault_bit,
-                 param_ifmap,
-                 param_wght,
-                 param_ofmap,
-                 type0,
-                 type1,
-                 typef)=\
-                self._fault_value_extract_loop(fd_value, repetitive=True)
+                psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fd_value, repetitive=True)
                 
             # ofmap fault
             if len(param_ofmap)>0:
@@ -723,9 +726,7 @@ class mac_unit:
                                                          wght_alloc_i, 
                                                          wght_alloc_w)
                 
-            # TODO : the create empty alter array to update to
-            # re-construct layer wise psum_alter
-            psum_alter=tf.Variable(tf.zeros(psum_idx_list.shape[0]))
+            psum_alter=tf.zeros(psum_idx_list.shape[0])
 
             if len(param_ofmap)>0:
                 param_ofmap=np.expand_dims(param_ofmap,-1)
@@ -753,6 +754,415 @@ class mac_unit:
             output=tf.tensor_scatter_nd_update(ofmap,fd_coor,output)
             
         return output
+    
+    def inject_mac_math_fault_uni(self, ifmap, wght, ofmap, fault_dict, 
+                                         quantizer=None, quant_mode=None, layer_type='Conv2D',
+                                         ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
+                                         sim_truncarry=None):
+        """ The fault injection mathematical model for used in Lyer Tensor computing.
+            This function is only for fast generation.
+            Fast generation means the all the fault information dict are refer to the same source defect 
+            with the same fault bit, SA type and param.
+        
+        # Arguments
+            ifmap: Tensor. Quantized Tensor. Layer input.
+            wght: Tensor. Quantized Tensor. Layer output.
+            ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+            fault_dict: Dictionary or List. The dictionary contain fault list information.
+            quantizer: Class or List. The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
+                word_width: Variable. The fix-point representation of the parameter word length.
+                fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+                rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
+                'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
+            layer_type: String. The type of layer this solver wants to convert partial sum index and mapping into.
+                One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
+            ksize: Tuple. Size 2, the kernel size (row, col).
+            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
+            dilation_rate: Tuple. Size 2, the dilation rate (row, col).
+            sim_truncarry: Bool. simulate the truncation carry during mac math fault injection. 
+                The truncation carry is cause by the carry-out of thrown away fractional bits. 
+                It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
+                How ever this could cause huge time overhead for absolute bit-true model.
+        
+        # Returns
+            Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        
+        # Reminder!!
+            padding: Padding is tie to layer setting. If user treat padding as a seperate layer.
+                For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
+                The tile setting must be padding='valid' which means no padding.
+                Or else there might be fault.
+        """
+        if quantizer is None:
+            if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+                quantizer_input =self.quantizer[0]
+                quantizer_weight =self.quantizer[1]
+                quantizer_output =self.quantizer[2]
+            else:
+                quantizer_input =self.quantizer
+                quantizer_weight =self.quantizer
+                quantizer_output =self.quantizer
+        else:
+            if isinstance(quantizer,list) and len(quantizer)==3:
+                quantizer_input =quantizer[0]
+                quantizer_weight =quantizer[1]
+                quantizer_output =quantizer[2]
+            else:
+                quantizer_input =quantizer
+                quantizer_weight =quantizer
+                quantizer_output =quantizer
+                
+        if quant_mode is not None:
+            self.quant_mode=quant_mode
+        if sim_truncarry is None:
+            sim_truncarry=self.sim_truncarry
+            
+        order_get_psidx_o,order_get_psidx_w,order_get_psidx_i=self._layer_coor_order(layer_type)
+        
+        fd_coor=np.array(list(fault_dict.keys()))
+        fd_value=np.array(list(fault_dict.values()))
+        fd_coor=tf.constant(fd_coor)
+        fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
+        
+        # data allocation
+        # (coor idx, num of psidx, psum idx)
+        psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
+        psum_idx_ofmap=psum_idx_list[:,:,order_get_psidx_o]
+        psum_idx_ofmap=tf.constant(psum_idx_ofmap)
+    
+        fault_param=fd_value[0]['param']
+        fault_type=fd_value[0]['SA_type']
+        fault_bit=fd_value[0]['SA_bit']
+        
+        if fault_param in ['ifmap_in','ifmap_out','wght_in','wght_out']:    
+            psum_idx_wght=psum_idx_list[:,:,order_get_psidx_w]
+            psum_idx_ifmap=psum_idx_list[:,:,order_get_psidx_i]
+        
+            if padding=='same' and layer_type!='Dense':
+                ifmap, psum_idx_ifmap=self._padding_ifmap_and_idx(ifmap, 
+                                                                  psum_idx_ifmap, 
+                                                                  ksizes, 
+                                                                  dilation_rates)
+
+            psum_idx_ifmap=tf.constant(psum_idx_ifmap)
+            psum_idx_wght=tf.constant(psum_idx_wght)
+            
+            ifmap_alloc=tf.gather_nd(ifmap,psum_idx_ifmap)
+            wght_alloc=tf.gather_nd(wght,psum_idx_wght) 
+            
+            ifmap_alloc=quantizer_input.left_shift_2int(ifmap_alloc)
+            wght_alloc=quantizer_weight.left_shift_2int(wght_alloc)
+        
+        ofmap_alloc=tf.gather_nd(ofmap,psum_idx_ofmap)
+        ofmap_alloc=quantizer_output.left_shift_2int(ofmap_alloc)
+
+        # check polarity
+        if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+            FI_param = ifmap_alloc
+            wlpolar = quantizer_input.nb
+        elif fault_param=='wght_in' or fault_param=='wght_out':
+            FI_param = wght_alloc
+            wlpolar = quantizer_weight.nb
+        elif fault_param=='psum_in' or fault_param=='psum_out':
+            FI_param = ofmap_alloc
+            if self.quant_mode=='intrinsic':
+                wlpolar = quantizer_output.nb
+            elif self.quant_mode=='hybrid':
+                wlpolar = quantizer_input.nb+quantizer_weight.nb
+        
+        polarity=self._polarity_check(fault_type, fault_bit, FI_param, wlpolar)
+                    
+        # fault injection
+        if fault_param=='ifmap_in' or fault_param=='ifmap_out' or fault_param=='wght_in' or fault_param=='wght_out':
+            # fault injection of ifmap and wght => mac math FI
+            if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+                psum_alter= tf.multiply(wght_alloc,tf.constant(2**fault_bit))
+            elif fault_param=='wght_in' or fault_param=='wght_out':
+                psum_alter= tf.multiply(ifmap_alloc,tf.constant(2**fault_bit))
+            
+            psum_alter=self.mac_math_alter_make(psum_alter, 
+                                                polarity, 
+                                                quantizer_output, 
+                                                sim_truncarry, 
+                                                ifmap_alloc, 
+                                                wght_alloc)
+            
+        #TODO
+        # there is no way to know the psum of exact time frame
+        # fault on psum do it the way in PE RTL test
+        
+        # fault injection of ofmap
+        elif fault_param=='psum_in' or fault_param=='psum_out':
+            psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
+            
+            psum_alter=tf.reduce_sum(psum_alter, axis=1)
+            psum_alter=quantizer_output.right_shift_back(psum_alter)
+            psum_alter=quantizer_output.quantize_2half(psum_alter)
+
+        # add psum_alter back to ofmap
+        output=tf.add(fdoutput_alloc, psum_alter)
+        output=quantizer_output.quantize(output)
+        output=tf.tensor_scatter_nd_update(ofmap,fd_coor,output)
+            
+        return output
+    
+    def inject_mac_math_fault_scatter(self, ifmap, wght, ofmap, fault_dict, 
+                                      quantizer=None, quant_mode=None, layer_type='Conv2D',
+                                      ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
+                                      sim_truncarry=None):
+        """ The fault injection mathematical model for used in Layer Tensor computing
+            Include both fast generation (fast_gen is True) and scattered generation (fast_gen is False).
+            Scattered generation means the faults are from distinct defect sources that need to be split into 
+            different groups and generate respectively. Therefore it's slower.
+        
+        # Arguments
+            ifmap: Tensor. Quantized Tensor. Layer input.
+            wght: Tensor. Quantized Tensor. Layer output.
+            ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+            fault_dict: Dictionary or List. The dictionary contain fault list information.
+            quantizer: Class or List. The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
+                word_width: Variable. The fix-point representation of the parameter word length.
+                fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+                rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
+                'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
+            layer_type: String. The type of layer this solver wants to convert partial sum index and mapping into.
+                One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
+            ksize: Tuple. Size 2, the kernel size (row, col).
+            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
+            dilation_rate: Tuple. Size 2, the dilation rate (row, col).
+            sim_truncarry: Bool. simulate the truncation carry during mac math fault injection. 
+                The truncation carry is cause by the carry-out of thrown away fractional bits. 
+                It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
+                How ever this could cause huge time overhead for absolute bit-true model.
+            fast_gen: Bool. Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+                The fault dictionay is form by fault data contamination.
+        
+        # Returns
+            Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        
+        # Reminder!!
+            padding: Padding is tie to layer setting. If user treat padding as a seperate layer.
+                For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
+                The tile setting must be padding='valid' which means no padding.
+                Or else there might be fault.
+        """
+        if quantizer is None:
+            if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+                quantizer_input =self.quantizer[0]
+                quantizer_weight =self.quantizer[1]
+                quantizer_output =self.quantizer[2]
+            else:
+                quantizer_input =self.quantizer
+                quantizer_weight =self.quantizer
+                quantizer_output =self.quantizer
+        else:
+            if isinstance(quantizer,list) and len(quantizer)==3:
+                quantizer_input =quantizer[0]
+                quantizer_weight =quantizer[1]
+                quantizer_output =quantizer[2]
+            else:
+                quantizer_input =quantizer
+                quantizer_weight =quantizer
+                quantizer_output =quantizer
+                
+        if quant_mode is not None:
+            self.quant_mode=quant_mode
+        if sim_truncarry is None:
+            sim_truncarry=self.sim_truncarry
+            
+        order_get_psidx_o,order_get_psidx_w,order_get_psidx_i=self._layer_coor_order(layer_type)
+        
+        fd_coor=np.array(list(fault_dict.keys()))
+        fd_value=np.array(list(fault_dict.values()))
+        fd_coor=tf.constant(fd_coor)
+        fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
+        
+        # loop data extraction
+        if isinstance(fd_value[0]['id'],int):
+            (psum_idx_list,
+             cnt_psidx,
+             fault_bit,
+             param_ifmap,
+             param_wght,
+             param_ofmap,
+             type0,
+             type1,
+             typef)=\
+            self._fault_value_extract_loop(fd_value, repetitive=False)
+        
+        elif isinstance(fd_value[0]['id'],list):
+            (psum_idx_list,
+             cnt_psidx,
+             fault_bit,
+             param_ifmap,
+             param_wght,
+             param_ofmap,
+             type0,
+             type1,
+             typef)=\
+            self._fault_value_extract_loop(fd_value, repetitive=True)
+            
+        # ofmap fault
+        if len(param_ofmap)>0:
+            # data gathering
+            psum_idx_ofmap=psum_idx_list[param_ofmap]
+            idx_ofmap=psum_idx_ofmap[:,:,order_get_psidx_o]
+            faultbit_ofmap=fault_bit[param_ofmap]
+            
+            idx_ofmap=tf.constant(idx_ofmap)
+            
+            ofmap_alloc=tf.gather_nd(ofmap,idx_ofmap)
+            ofmap_alloc=quantizer_output.left_shift_2int(ofmap_alloc)
+            
+            # check polarity
+            if self.quant_mode=='intrinsic':
+                wlpolar = quantizer_output.nb
+            elif self.quant_mode=='hybrid':
+                wlpolar = quantizer_input.nb+quantizer_weight.nb   
+                
+            polarity_ofmap=self._polarity_check_type_grouping(ofmap_alloc,
+                                                              faultbit_ofmap,
+                                                              param_ofmap,
+                                                              type0,type1,typef,
+                                                              wlpolar)
+            
+        # ifmap fault
+        if len(param_ifmap)>0:
+            # data gathering
+            psum_idx_ifmap=psum_idx_list[param_ifmap]
+            idx_ifmap_ifmap=psum_idx_ifmap[:,:,order_get_psidx_i]
+            idx_ifmap_wght=psum_idx_ifmap[:,:,order_get_psidx_w]
+            faultbit_ifmap=fault_bit[param_ifmap]
+        
+            if padding=='same' and layer_type!='Dense':
+                ifmap, idx_ifmap_ifmap=self._padding_ifmap_and_idx(ifmap, 
+                                                                   idx_ifmap_ifmap, 
+                                                                   ksizes, 
+                                                                   dilation_rates)
+            
+            idx_ifmap_ifmap=tf.constant(idx_ifmap_ifmap)
+            idx_ifmap_wght=tf.constant(idx_ifmap_wght)
+            
+            ifmap_alloc_i=tf.gather_nd(ifmap,idx_ifmap_ifmap)
+            ifmap_alloc_i=quantizer_input.left_shift_2int(ifmap_alloc_i)
+            ifmap_alloc_w=tf.gather_nd(wght,idx_ifmap_wght)
+            ifmap_alloc_w=quantizer_input.left_shift_2int(ifmap_alloc_w)
+            
+            # check polarity
+            wlpolar = quantizer_input.nb
+            
+            polarity_ifmap=self._polarity_check_type_grouping(ifmap_alloc_i,
+                                                              faultbit_ifmap,
+                                                              param_ifmap,
+                                                              type0,type1,typef,
+                                                              wlpolar)
+        
+        # wght fault
+        if len(param_wght)>0:
+            # data gathering
+            psum_idx_wght=psum_idx_list[param_wght]
+            idx_wght_wght=psum_idx_wght[:,:,order_get_psidx_w]
+            idx_wght_ifmap=psum_idx_wght[:,:,order_get_psidx_i]
+            faultbit_wght=fault_bit[param_wght]
+            
+            if padding=='same' and layer_type!='Dense':
+                if len(param_ifmap)>0:
+                    _, idx_wght_ifmap=self._padding_ifmap_and_idx(None, 
+                                                                  idx_wght_ifmap, 
+                                                                  ksizes, 
+                                                                  dilation_rates)
+                else:
+                    ifmap, idx_wght_ifmap=self._padding_ifmap_and_idx(ifmap, 
+                                                                      idx_wght_ifmap, 
+                                                                      ksizes, 
+                                                                      dilation_rates)
+                    
+            idx_wght_wght=tf.constant(idx_wght_wght)
+            idx_wght_ifmap=tf.constant(idx_wght_ifmap)
+                    
+            wght_alloc_w=tf.gather_nd(wght,idx_wght_wght) 
+            wght_alloc_w=quantizer_weight.left_shift_2int(wght_alloc_w)
+            wght_alloc_i=tf.gather_nd(ifmap,idx_wght_ifmap) 
+            wght_alloc_i=quantizer_weight.left_shift_2int(wght_alloc_i)
+
+            # check polarity
+            wlpolar = quantizer_weight.nb
+            
+            polarity_wght=self._polarity_check_type_grouping(wght_alloc_w,
+                                                             faultbit_wght,
+                                                             param_wght,
+                                                             type0,type1,typef,
+                                                             wlpolar)
+            
+        # fault injection
+        
+        # ofmap fault injection
+        if len(param_ofmap)>0:
+            faultbit_ofmap=self._fault_bit_ext4mult(faultbit_ofmap, polarity_ofmap.shape.dims[1].value)
+            faultbit_ofmap=tf.constant(faultbit_ofmap)
+            psum_alter_ofmap=tf.multiply(polarity_ofmap, faultbit_ofmap)
+            
+            psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
+            psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
+            psum_alter_ofmap=quantizer_output.quantize_2half(psum_alter_ofmap)
+            
+        # ifmap fault injection
+        if len(param_ifmap)>0:
+            faultbit_ifmap=self._fault_bit_ext4mult(faultbit_ifmap, polarity_ifmap.shape.dims[1].value)
+            faultbit_ifmap=tf.constant(faultbit_ifmap)
+            psum_alter_ifmap=tf.multiply(ifmap_alloc_w, faultbit_ifmap)
+            
+            psum_alter_ifmap=self.mac_math_alter_make(psum_alter_ifmap, 
+                                                      polarity_ifmap, 
+                                                      quantizer_output, 
+                                                      sim_truncarry, 
+                                                      ifmap_alloc_i, 
+                                                      ifmap_alloc_w)
+            
+        # wght fault injection
+        if len(param_wght)>0:
+            faultbit_wght=self._fault_bit_ext4mult(faultbit_wght, polarity_wght.shape.dims[1].value)
+            faultbit_wght=tf.constant(faultbit_wght)
+            psum_alter_wght=tf.multiply(wght_alloc_i, faultbit_wght)
+            
+            psum_alter_wght=self.mac_math_alter_make(psum_alter_wght, 
+                                                     polarity_wght, 
+                                                     quantizer_output, 
+                                                     sim_truncarry, 
+                                                     wght_alloc_i, 
+                                                     wght_alloc_w)
+            
+        psum_alter=tf.zeros(psum_idx_list.shape[0])
+
+        if len(param_ofmap)>0:
+            param_ofmap=np.expand_dims(param_ofmap,-1)
+            param_ofmap=tf.constant(param_ofmap)
+            psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_ofmap, psum_alter_ofmap)
+        if len(param_ifmap)>0:
+            param_ifmap=np.expand_dims(param_ifmap,-1)
+            param_ifmap=tf.constant(param_ifmap)
+            psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_ifmap, psum_alter_ifmap)
+        if len(param_wght)>0:
+            param_wght=np.expand_dims(param_wght,-1)
+            param_wght=tf.constant(param_wght)
+            psum_alter=tf.tensor_scatter_nd_update(psum_alter, param_wght, psum_alter_wght)
+
+        if cnt_psidx is not None:
+            psum_alter=tf.split(psum_alter,cnt_psidx)
+            for alteritem in psum_alter:
+                alteritem=tf.reduce_sum(alteritem)
+            psum_alter=tf.stack(psum_alter)
+            psum_alter=quantizer_output.quantize(psum_alter)
+        
+        # add psum_alter back to ofmap
+        output=tf.add(fdoutput_alloc, psum_alter)
+        output=quantizer_output.quantize(output)
+        output=tf.tensor_scatter_nd_update(ofmap,fd_coor,output)
+            
+        return output
+
     
     def consistency_check(self, quant_mode, quantizer):
         """ Check the consistency between MAC unit setup and layer quantization setup """

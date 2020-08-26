@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-reference: https://github.com/BertMoons/QuantizedNeuralNetworks-Keras-Tensorflow
-all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-Tensorflow
+The custom quantized layers of Keras layer module. Support fault injection to input, weight, output of layer.
 
 @author: Yung-Yu Tsai
 

@@ -53,7 +53,7 @@ def PE_mapping_forward(ifmap_tile,
     """
     if print_detail:
         print('PE array dataflow forward mapping ...')
-        print('    Task (1/7): Load Tile Config ...\t',end=' ')
+        print('    Task (1/7): Load Tile Config ...',end=' ')
     # load ifmap config
     if isinstance(ifmap_expand_config,str):
         with open(ifmap_expand_config, 'r') as config_file:
@@ -82,7 +82,7 @@ def PE_mapping_forward(ifmap_tile,
         raise TypeError('ofmap_expand_config must be String or Dictionary.')
         
     if print_detail:
-        print('\r    Task (2/7): Load PE Array Config ...\t',end=' ')
+        print('\r    Task (2/7): Load PE Array Config ...',end=' ')
     # load PEarray config
     if isinstance(PEarray_setup_config,str):
         with open(PEarray_setup_config, 'r') as config_file:
@@ -93,7 +93,7 @@ def PE_mapping_forward(ifmap_tile,
         raise TypeError('PEarray_setup_config must be String or Dictionary.')
     
     if print_detail:
-        print('\r    Task (3/7): Tile Expnasion ...\t',end=' ') 
+        print('\r    Task (3/7): Tile Expnasion ...         ',end=' ') 
     # expand ifmap
     if 'ksizes' not in ifmap_expand_config:
         ifmap_tile.expand_reshape_data(dataflow_pre_plan=pre_plan, **ifmap_expand_config)
@@ -115,7 +115,7 @@ def PE_mapping_forward(ifmap_tile,
 
     # setup PEarray
     if print_detail:
-        print('\r    Task (4/7): Tile Expnasion ...\t',end=' ') 
+        print('\r    Task (4/7): Tile Expnasion ...         ',end=' ') 
     PEarray.ifmap_tile=ifmap_tile
     PEarray.wght_tile=wght_tile
     PEarray.ofmap_tile=ofmap_tile
@@ -123,7 +123,7 @@ def PE_mapping_forward(ifmap_tile,
 
     # premapping
     if print_detail:
-        print('\r    Task (5/7): Tile Pre-mapping ...\t',end=' ') 
+        print('\r    Task (5/7): Tile Pre-mapping ...',end=' ') 
     PEarray.premapping_tile('ofmap', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('wght', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('ifmap', dataflow_pre_plan=pre_plan)
@@ -132,7 +132,7 @@ def PE_mapping_forward(ifmap_tile,
         
     # duplication
     if print_detail:
-        print('\r    Task (6/7): Mapping Duplication ...\t',end=' ') 
+        print('\r    Task (6/7): Mapping Duplication ...',end=' ') 
     PEarray.duplicate_mapping('ofmap', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('wght', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('ifmap', dataflow_pre_plan=pre_plan)
@@ -141,12 +141,12 @@ def PE_mapping_forward(ifmap_tile,
         
     # alignment
     if print_detail:
-        print('\r    Task (7/7): Clock Cycle Alignment ...\t',end=' ') 
+        print('\r    Task (7/7): Clock Cycle Alignment ...',end=' ') 
     PEarray.align_slice_pack(dataflow_pre_plan=pre_plan)
     
     PEarray.mapping_shape_save()
     if print_detail:
-        print('\r    Task (7/7): All Done.\t\t\t')
+        print('\r    Task (7/7): All Done.                 ')
     
     if pre_plan:
         return None
@@ -194,7 +194,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     PEarray.decompose_slice_pack(print_detail=print_detail)
 
     if print_detail:
-        print('\r    Task (2/6): Reduce Mapping ...\t\t',end=' ') 
+        print('\r    Task (2/6): Reduce Mapping ...     ',end=' ') 
     PEarray.reduce_mapping('ofmap')
     PEarray.reduce_mapping('wght')
     PEarray.reduce_mapping('ifmap')
@@ -202,7 +202,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     PEarray.reduce_mapping('psum')
     
     if print_detail:
-        print('\r    Task (3/6): Tile Demapping...\t',end=' ') 
+        print('\r    Task (3/6): Tile Demapping...      ',end=' ') 
     PEarray.demapping_tile('ofmap')
     PEarray.demapping_tile('wght')
     PEarray.demapping_tile('ifmap')
@@ -210,7 +210,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     PEarray.demapping_tile('psum')
     
     if print_detail:
-        print('\r    Task (4/6): Tile Shrinking...',end=' ') 
+        print('\r    Task (4/6): Tile Shrinking... ',end=' ') 
     if PEarray.ofmap_tile.expand_method=='reshape':
         PEarray.ofmap_tile.shrink_reshape_data()
         PEarray.ofmap_tile.shrink_reshape_data(psum=True)
@@ -238,13 +238,13 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
          
     if print_detail:
-        print('\r    Task (5/6): Solve Fault I/O ...',end=' ') 
+        print('\r    Task (5/6): Solve Fault I/O ...                                     ',end=' ') 
     # organize fault dict and give partial sum index
     solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,fault_num=PEarray.fault_num)
     PE_mac_fault_dict=solver.solve_correspond_io(save2tile,print_detail)
     
     if print_detail:
-        print('\r    Task (6/6): Tile Return to layer ...\t\t',end=' ')
+        print('\r    Task (6/6): Tile Return to layer ...                              ',end=' ')
     # inter tile fault dictionary transform to layer
     if not save2tile:
         PE_mac_fault_dict=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=print_detail)
@@ -255,7 +255,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
         PE_mac_fault_dict=(ifmap_fd, wght_fd, None, ofmap_fd)
         
     if print_detail:
-        print('\r    Task (6/6): All Done.\t\t\t\t')
+        print('\r    Task (6/6): All Done.                                              ')
         
     if print_detail:
         if not save2tile:

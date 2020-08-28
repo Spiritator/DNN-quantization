@@ -22,6 +22,7 @@ def inference_scheme(model_func,
                      compile_augment, 
                      dataset_augment, 
                      result_save_file, 
+                     append_save_file=False,
                      weight_load=False, 
                      weight_name=None, 
                      save_runtime=False,
@@ -41,6 +42,7 @@ def inference_scheme(model_func,
         compile_augment: Dictionary. The augments for model compile augment.
         dataset_augment: Dictionary. The augments for dataset setup.
         result_save_file: String. The file and directory to the result csv file.
+        append_save_file: Bool. Append the save file no matter what.
         weight_load: Bool. Need load weight proccess outside model_func or not.
         weight_name: String. The weight file to load. (if weight_load is True)
         save_runtime: Bool. Save runtime in result file or not.
@@ -166,7 +168,7 @@ def inference_scheme(model_func,
             for i in range(len(test_result)):
                 print('Test %s\t:'%model.metrics_names[i], test_result[i])
             
-        if scheme_num == 0:     
+        if (scheme_num == 0 and not append_save_file) or (append_save_file and not os.path.exists(result_save_file)):
             with open(result_save_file, 'w', newline='') as csvfile:
                 fieldnames=list()
                 test_result_dict=dict()

@@ -441,7 +441,8 @@ class mac_unit:
             Recommand using inject_mac_math_fault_uni or inject_mac_math_fault_scatter if you are sure about your
             fault dictionry defect source is unique or not.
         
-        # Arguments
+        Arguments
+        ----------
             ifmap: Tensor. Quantized Tensor. Layer input.
             wght: Tensor. Quantized Tensor. Layer output.
             ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
@@ -1163,6 +1164,56 @@ class mac_unit:
             
         return output
 
+    def inject_mac_noise_fault_tensor(self, ifmap, wght, ofmap, fault_dict, 
+                                     quantizer=None, quant_mode=None, layer_type='Conv2D',
+                                     ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
+                                     sim_truncarry=None, fast_gen=None):
+        """
+        The fault injection mathematical model for used in Layer Tensor computing
+        Include both fast generation (fast_gen is True) and scattered generation (fast_gen is False).
+        Fast generation means the all the fault information dict are refer to the same source defect 
+        with the same fault bit, SA type and param.
+        Scattered generation means the faults are from distinct defect sources that need to be split into 
+        different groups and generate respectively. Therefore it's slower.
+        
+        This function is not suitable for tf.function decorator which needs to solve the Tensor Graph.
+        It may take a unnecessary long time to solve and get invalid shape.
+        Recommand using inject_mac_math_fault_uni or inject_mac_math_fault_scatter if you are sure about your
+        fault dictionry defect source is unique or not.
+        
+
+        Parameters
+        ----------
+        ifmap : TYPE
+            DESCRIPTION.
+        wght : TYPE
+            DESCRIPTION.
+        ofmap : TYPE
+            DESCRIPTION.
+        fault_dict : TYPE
+            DESCRIPTION.
+        quantizer : TYPE, optional
+            DESCRIPTION. The default is None.
+        quant_mode : TYPE, optional
+            DESCRIPTION. The default is None.
+        layer_type : TYPE, optional
+            DESCRIPTION. The default is 'Conv2D'.
+        ksizes : TYPE, optional
+            DESCRIPTION. The default is (3,3).
+        padding : TYPE, optional
+            DESCRIPTION. The default is 'valid'.
+        dilation_rates : TYPE, optional
+            DESCRIPTION. The default is (1,1).
+        sim_truncarry : TYPE, optional
+            DESCRIPTION. The default is None.
+        fast_gen : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
     
     def consistency_check(self, quant_mode, quantizer):
         """ Check the consistency between MAC unit setup and layer quantization setup """

@@ -1410,13 +1410,13 @@ class io_data_solver:
             ifmap_index,search_id=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
             
             if print_detail:
-                print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t\t',end=' ') 
+                print('\r    GenFD (3/5): Solve Weight Coordinates...             ',end=' ') 
             # solve weight
             wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
             
         else:
             if print_detail:
-                print('\r    GenFD (1/5): Solve Base Data Coordinates...',end=' ') 
+                print('\r    GenFD (1/5): Solve Base Data Coordinates...           ',end=' ') 
             
             param=self.psum_vl[0]['param']
             if param=='ifmap_in' or param=='ifmap_out':
@@ -1432,32 +1432,32 @@ class io_data_solver:
                 # solve ifmap
                 outpsum_index,search_id=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
                 if print_detail:
-                    print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t\t',end=' ') 
+                    print('\r    GenFD (3/5): Solve Weight Coordinates...              ',end=' ') 
                 # solve weight
                 wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
                 
             elif param=='wght_in' or param=='wght_out':
                 if print_detail:
-                    print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
+                    print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...  ',end=' ') 
                 # solve ifmap
                 ifmap_index,search_id=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
                 if print_detail:
-                    print('\r    GenFD (3/5): Solve Output Feature Map Coordinates...',end=' ') 
+                    print('\r    GenFD (3/5): Solve Output Feature Map Coordinates... ',end=' ') 
                 # solve weight
                 outpsum_index,search_id=self._get_data_coor_by_id(self.psum_id, search_id, self.psum_coors)
                 
             elif param=='psum_in' or param=='psum_out':
                 if print_detail:
-                    print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...',end=' ') 
+                    print('\r    GenFD (2/5): Solve Input Feature Map Coordinates...  ',end=' ') 
                 # solve ifmap
                 ifmap_index,search_id=self._get_data_coor_by_id(self.ifmap_id, search_id, self.ifmap_coors)
                 if print_detail:
-                    print('\r    GenFD (3/5): Solve Weight Coordinates...\t\t\t',end=' ') 
+                    print('\r    GenFD (3/5): Solve Weight Coordinates...             ',end=' ') 
                 # solve weight
                 wght_index,search_id=self._get_data_coor_by_id(self.wght_id, search_id, self.wght_coors)
         
         if print_detail:
-            print('\r    GenFD (4/5): Build Partial Sum Indexes...\t\t\t',end=' ')         
+            print('\r    GenFD (4/5): Build Partial Sum Indexes...                     ',end=' ')         
         
         # build psum_idx
         if not save2tile:
@@ -1497,7 +1497,7 @@ class io_data_solver:
                 psum_index=np.split(psum_index,np.add(shape_cnt,1)[:-1])
 
             if print_detail:
-                print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t\t',end=' ')         
+                print('\r    GenFD (5/5): Make Solved Fault Dictionary...                ',end=' ')         
     
             for i,opidx in enumerate(based_coors):
                 newfv=based_vl[i].copy()
@@ -1525,7 +1525,7 @@ class io_data_solver:
                 psum_index=np.split(psum_index,idlrep)
 
             if print_detail:
-                print('\r    GenFD (5/5): Make Solved Fault Dictionary...\t\t\t',end=' ')         
+                print('\r    GenFD (5/5): Make Solved Fault Dictionary...                ',end=' ')         
     
             for i,opidx in enumerate(based_coors):
                 if len(psum_index[i])>0:
@@ -1816,7 +1816,7 @@ class io_data_solver:
         self.num_psum_idx=len(psum_idx)
         
         if print_detail:
-            print('\r    Tile2Layer (2/9): Get Base Coordinates...\t\t',end=' ')
+            print('\r    Tile2Layer (2/9): Get Base Coordinates...       ',end=' ')
         # get base coors
         base_coor_o, restore_multiple_o=self._gen_base_coor(self.ofmap_tile.tile_shape, layer_output_shape, is_ifmap=True)
         base_coor_w, restore_multiple_w=self._gen_base_coor(self.wght_tile.tile_shape, layer_weight_shape[0], is_ifmap=False)
@@ -1826,7 +1826,7 @@ class io_data_solver:
         self._check_tile_consistency(restore_multiple_i,restore_multiple_w,restore_multiple_o,layer)
                
         if print_detail:
-            print('\r    Tile2Layer (3/9): Interleaved Tiles in Layer...\t',end=' ')
+            print('\r    Tile2Layer (3/9): Interleaved Tiles in Layer...   ',end=' ')
         # ofmap form 
         if self.layer_type=='Conv2D':
             base_coor_o=np.repeat(base_coor_o,restore_multiple_w[2],axis=0) # repeatition for tile level psum
@@ -1873,7 +1873,7 @@ class io_data_solver:
         self.num_base_coor=len(base_coor_psum_idx)
 
         if print_detail:
-            print('\r    Tile2Layer (4/9): Get Layer Fault Coordinates...\t',end=' ')
+            print('\r    Tile2Layer (4/9): Get Layer Fault Coordinates...             ',end=' ')
         # based tile layer fault coors
         if based_tile=='ofmap':
             layer_base_coor=base_coor_o
@@ -1889,7 +1889,7 @@ class io_data_solver:
         layer_fault_coor=np.reshape(layer_fault_coor,[-1,self.len_fc])
 
         if print_detail:
-            print('\r    Tile2Layer (5/9): Get Layer Partial Sum Indexes...\t',end=' ')
+            print('\r    Tile2Layer (5/9): Get Layer Partial Sum Indexes...      ',end=' ')
         # partial sum indexes to layer fault coors
         layer_psum_idx=list()
         for i in range(self.len_psidx):
@@ -1969,7 +1969,7 @@ class io_data_solver:
         layer_psum_idx=np.array(layer_psum_idx)
         
         if print_detail:
-            print('\r    Tile2Layer (7/9): Remove Outlier Fault Coordinates...\t',end=' ')
+            print('\r    Tile2Layer (7/9): Remove Outlier Fault Coordinates...          ',end=' ')
         # remove outlier fault coors
         layer_fault_coor,fc_cond=self._pop_outlier_idx(layer_fault_coor, layer_output_shape, get_cond_idx=True)
         if not np.all(fc_cond):
@@ -1985,7 +1985,7 @@ class io_data_solver:
                     layer_fault_coor=layer_fault_coor[empty_fc_cond]
                 
         if print_detail:
-            print('\r    Tile2Layer (8/9): Collapse Repetitive Fault Coordinates...\t',end=' ')
+            print('\r    Tile2Layer (8/9): Collapse Repetitive Fault Coordinates... ',end=' ')
         # deal with repetitive layer fault coors
         layer_fault_coor,uni_idx,rep_idx,cnt_idx=np.unique(layer_fault_coor,return_index=True,return_inverse=True,return_counts=True,axis=0)
         self.num_layer_fault_coor=len(layer_fault_coor)
@@ -2072,7 +2072,7 @@ class io_data_solver:
                         new_fd_value.append(new_fv)
 
         if print_detail:
-            print('\r    Tile2Layer (9/9): Make Mapped Fault Dictionary...\t\t\t',end=' ')
+            print('\r    Tile2Layer (9/9): Make Mapped Fault Dictionary...               ',end=' ')
         layer_fault_coor_fd=list(zip(*layer_fault_coor.T))
         layer_fault_dict=dict(zip(layer_fault_coor_fd,new_fd_value))
         

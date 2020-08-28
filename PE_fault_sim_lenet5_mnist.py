@@ -11,8 +11,7 @@ evaluate computation unit fault injection testing result of LeNet-5
 
 import numpy as np
 import tensorflow.keras.backend as K
-import time
-
+import time, os
 
 from simulator.models.model_library import quantized_lenet5
 from simulator.utils_tool.dataset_setup import dataset_setup
@@ -27,8 +26,7 @@ from simulator.comp_unit.mapping_flow import PE_mapping_forward, PE_mapping_back
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.inference.evaluate import evaluate_FT
 
-#%%
-# setting parameter
+#%% setting parameter
 
 weight_name='../mnist_lenet5_weight.h5'
 model_word_length=8
@@ -37,11 +35,14 @@ rounding_method=['down','nearest','down']
 batch_size=20
 
 # PE array fault simulation parameter
-mac_config='../pe_mapping_config/lenet/ws/mac_unit_config.json'
+config_dir='../pe_mapping_config'
+network_dir='lenet'
+dataflow_dir='ws'
+config_dir=os.path.join(config_dir, network_dir, dataflow_dir)
+mac_config=os.path.join(config_dir,'mac_unit_config.json')
 model_wl=model_word_length
 
-#%%
-# dataflow setup
+#%% dataflow setup
 
 # model for get configuration
 model=quantized_lenet5(nbits=model_word_length,
@@ -63,10 +64,10 @@ fault_loc,fault_info=MXU.make_single_SA_fault(n_bit=model_wl, fault_type='flip')
 ofmap_tile_conv1=tile_PE((1,28,28,8),is_fmap=True,wl=model_wl)
 ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)
 wght_tile_conv1 =tile_PE((5,5,1,8),is_fmap=False,wl=model_wl)
-ofmap_config_conv1='../pe_mapping_config/lenet/ws/ofmap_config_conv1.json'
-ifmap_config_conv1='../pe_mapping_config/lenet/ws/ifmap_config_conv1.json'
-wght_config_conv1 ='../pe_mapping_config/lenet/ws/wght_config_conv1.json'
-MXU_config_conv1  ='../pe_mapping_config/lenet/ws/MXU_config_conv1.json'
+ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
+ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
+wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
+MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
 
 #check=mapping_valid_checker(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
 #                            ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
@@ -77,10 +78,10 @@ MXU_config_conv1  ='../pe_mapping_config/lenet/ws/MXU_config_conv1.json'
 ofmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
 ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
 wght_tile_conv2 =tile_PE((5,5,16,16),is_fmap=False,wl=model_wl)
-ofmap_config_conv2='../pe_mapping_config/lenet/ws/ofmap_config_conv2.json'
-ifmap_config_conv2='../pe_mapping_config/lenet/ws/ifmap_config_conv2.json'
-wght_config_conv2 ='../pe_mapping_config/lenet/ws/wght_config_conv2.json'
-MXU_config_conv2  ='../pe_mapping_config/lenet/ws/MXU_config_conv2.json'
+ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
+ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
+wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
+MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
 #check=mapping_valid_checker(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
 #                            ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
@@ -91,10 +92,10 @@ MXU_config_conv2  ='../pe_mapping_config/lenet/ws/MXU_config_conv2.json'
 #ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
 #ifmap_tile_fc1=tile_FC_PE((1,882),is_fmap=True,wl=model_wl)
 #wght_tile_fc1 =tile_FC_PE((882,8),is_fmap=False,wl=model_wl)
-#ofmap_config_fc1='../pe_mapping_config/lenet/ws/ofmap_config_fc1.json'
-#ifmap_config_fc1='../pe_mapping_config/lenet/ws/ifmap_config_fc1.json'
-#wght_config_fc1 ='../pe_mapping_config/lenet/ws/wght_config_fc1.json'
-#MXU_config_fc1  ='../pe_mapping_config/lenet/ws/MXU_config_fc1.json'
+#ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
+#ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
+#wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
+#MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
 
 #check=mapping_valid_checker(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
 #                            ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
@@ -105,18 +106,18 @@ MXU_config_conv2  ='../pe_mapping_config/lenet/ws/MXU_config_conv2.json'
 #ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
 #ifmap_tile_fc2=tile_FC_PE((1,128),is_fmap=True,wl=model_wl)
 #wght_tile_fc2 =tile_FC_PE((128,10),is_fmap=False,wl=model_wl)
-#ofmap_config_fc2='../pe_mapping_config/lenet/ws/ofmap_config_fc2.json'
-#ifmap_config_fc2='../pe_mapping_config/lenet/ws/ifmap_config_fc2.json'
-#wght_config_fc2 ='../pe_mapping_config/lenet/ws/wght_config_fc2.json'
-#MXU_config_fc2  ='../pe_mapping_config/lenet/ws/MXU_config_fc2.json'
+#ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
+#ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
+#wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
+#MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
 
 #check=mapping_valid_checker(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
 #                            ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
 #                            print_detail=True)
 #MXU.clear_all()
 
-#%%
-# generate fault dictionary
+#%% generate fault dictionary
+
 PE_mapping_forward(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
                    ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
                    pre_plan=True,print_detail=True)
@@ -147,8 +148,7 @@ MXU.clear_all()
 
 K.clear_session()
 
-#%%
-# model setup
+#%% model setup
 
 t = time.time()
 model=quantized_lenet5(nbits=model_word_length,
@@ -172,8 +172,7 @@ print('orginal weight loaded')
 
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('mnist')
 
-#%%
-# view test result
+#%% view test result
 
 t = time.time()
 
@@ -187,8 +186,7 @@ print('\nruntime: %f s'%t)
 for key in test_result.keys():
     print('Test %s\t:'%key, test_result[key])
 
-#%%
-# draw confusion matrix
+#%% draw confusion matrix
 
 print('\n')
 #prediction = model.predict(x_test, verbose=1, batch_size=batch_size)

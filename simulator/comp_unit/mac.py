@@ -13,41 +13,55 @@ import json
 from ..layers.quantized_ops import quantizer
 
 class mac_unit:
-    """
-    The mac unit information holder class. For describe PE I/O interconnection and math of faulty behavior.
+    """ The mac unit information holder class. For describe PE I/O interconnection and math of faulty behavior.
+    
+    Arguments
+    ---------
+    quantizers: Class or String. 
+        The quantize library of simulator. Or the file path to MAC unit setup (.json) file.
+        
+        Default ifmap input/output, weight input/output, partial sum input/output are the same configuration.
+        If using setup (.json) file, this will include all the following arguments input.
+        
+        Quantizer Parameters:
+            word_width: Variable. 
+                The fix-point representation of the parameter word length.
+            fractional_bits: Variable. 
+                Number of fractional bits in a fix-point parameter
+            rounding: String. 
+                Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+
+    quant_mode: String. Be either 'intrinsic' or 'hybrid'.
+        | The quantization mode of MAC. 
+        | 'intrinsic' means truncate before accumulation. 
+        | 'hybrid' means accumulate with the word length of multiplier output than truncate.
+    ifmap_io: Dictionary. 
+        Input feature map data I/O description.
+    wght_io: Dictionary. 
+        Weight data I/O description.
+    psum_io: Dictionary. 
+        Partial sum data I/O description. Partial sum fault prapagation is through MAC operation.
+        
+    I/O description: (Dictionary)
+    -----------------------------
+    data_io={'type':'io_pair', 'dimension':'PE_x', 'direction':'forward'}
+        
+    type: The type of I/O. 
+        | 'io_pair' the data flow from a primary input to a primary output which forms a I/O pair. The I/O pair become a systolic stream in PE array at some point.
+        | 'one_way_in' the data is a primary input of MAC unit. No further propagation at any computation process.
+        | 'one_way_out' the data is a primary output of MAC unit. No direct data propagation chain lead to this output.
+    
+    dimension: One of None, 'PE_x', 'PE_y'.
+        The dimension of I/O pair connect in PE array. 
+    
+    direction: the direction of I/O pair deliver data on the given dimension. 
+        | 'forward' data prapagate along the index of PEs. 
+        | 'backward' data prapagate by the reversed order of PE index.
+            
+
     """
     def __init__(self, quantizers, quant_mode='hybrid', ifmap_io=None, wght_io=None, psum_io=None, sim_truncarry=False, fast_gen=True):
-        """
-        # Arguments
-            quantizers: Class or String. The quantize library of simulator. Or the file path to MAC unit setup (.json) file.
-                Default ifmap input/output, weight input/output, partial sum input/output are the same configuration.
-                If using setup (.json) file, this will include all the following arguments input.
-                Quantizer Parameters:
-                    word_width: Variable. The fix-point representation of the parameter word length.
-                    fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-                    rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
-
-            quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
-                'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
-            ifmap_io: Dictionary. Input feature map data I/O description.
-            wght_io: Dictionary. Weight data I/O description.
-            psum_io: Dictionary. Partial sum data I/O description. Partial sum fault prapagation is through MAC operation.
-            
-        # I/O description: (Dictionary)
-            data_io={'type':'io_pair', 'dimension':'PE_x', 'direction':'forward'}
-            
-            type: The type of I/O. 
-                'io_pair' the data flow from a primary input to a primary output which forms a I/O pair. The I/O pair become a systolic stream in PE array at some point.
-                'one_way_in' the data is a primary input of MAC unit. No further propagation at any computation process.
-                'one_way_out' the data is a primary output of MAC unit. No direct data propagation chain lead to this output.
-            
-            dimension: the dimension of I/O pair connect in PE array. One of None, 'PE_x', 'PE_y'.
-            
-            direction: the direction of I/O pair deliver data on the given dimension. 
-                'forward' data prapagate along the index of PEs. 
-                'backward' data prapagate by the reversed order of PE index.
-            
-        """
+        """ Class initialization """
         if not isinstance(quantizers,str):
             self.quantizer=quantizers
             if quant_mode not in ['intrinsic', 'hybrid']:
@@ -115,12 +129,14 @@ class mac_unit:
     def get_io(self, param):
         """ get the I/O description by parameter
         
-        # Arguments
-            param: String. The type of parameter has fault. 
-                One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']. 
-        
-        # Returns
-            description of I/O (Dictionary)
+        Arguments
+        ---------
+        param: String. One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']. 
+            The type of parameter has fault. 
+            
+        Returns
+        -------
+        description of I/O (Dictionary)
         """
         if param in ['ifmap_in', 'ifmap_out']:
             return self.ifmap_io
@@ -132,14 +148,19 @@ class mac_unit:
     def propagated_idx_list(self, param, fault_loc, array_shape):
         """ get the contaminated PE index in array by the fault location and parameter.
         
-        # Arguments
-            param: String. The type of parameter has fault. 
-                One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']. 
-            fault_loc: Ndarray or List. PE dataflow model coordinate represent as the fault location.
-            array_shape: Tuple or List. The shape of PE array.
+        Arguments
+        ---------
+        param: String. 
+            The type of parameter has fault. One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']. 
+        fault_loc: Ndarray or List. 
+            PE dataflow model coordinate represent as the fault location.
+        array_shape: Tuple or List. 
+            The shape of PE array.
         
-        # Returns
-            Converted coordinates. Multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinates. 
+            Multiple coordinate return in 2D ndarray.
         """
         if param in ['psum_in', 'psum_out']:
             return fault_loc
@@ -210,10 +231,10 @@ class mac_unit:
             This alteration will be later add onto ofmap tensor
             
             psum_alter: The product data by multiply coefficient data and fault bit order. That is:
-                if fault_param=='ifmap_in' or fault_param=='ifmap_out':
-                    psum_alter= tf.multiply(wght_alloc,2**fault_bit)
-                elif fault_param=='wght_in' or fault_param=='wght_out':
-                    psum_alter= tf.multiply(ifmap_alloc,2**fault_bit)
+                | if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+                |     psum_alter= tf.multiply(wght_alloc,2**fault_bit)
+                | elif fault_param=='wght_in' or fault_param=='wght_out':
+                |     psum_alter= tf.multiply(ifmap_alloc,2**fault_bit)
                 
         """
         if self.quant_mode=='intrinsic':
@@ -429,7 +450,7 @@ class mac_unit:
                                      quantizer=None, quant_mode=None, layer_type='Conv2D',
                                      ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
                                      sim_truncarry=None, fast_gen=None):
-        """ The fault injection mathematical model for used in Layer Tensor computing
+        """ The fault injection mathematical model for used in Layer Tensor computing.
             Include both fast generation (fast_gen is True) and scattered generation (fast_gen is False).
             Fast generation means the all the fault information dict are refer to the same source defect 
             with the same fault bit, SA type and param.
@@ -442,34 +463,47 @@ class mac_unit:
             fault dictionry defect source is unique or not.
         
         Arguments
-        ----------
-            ifmap: Tensor. Quantized Tensor. Layer input.
-            wght: Tensor. Quantized Tensor. Layer output.
-            ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
-            fault_dict: Dictionary or List. The dictionary contain fault list information.
-            quantizer: Class or List. The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
-                word_width: Variable. The fix-point representation of the parameter word length.
-                fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-                rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
-            quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
-                'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
-            layer_type: String. The type of layer this solver wants to convert partial sum index and mapping into.
-                One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
-            ksize: Tuple. Size 2, the kernel size (row, col).
-            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
-            dilation_rate: Tuple. Size 2, the dilation rate (row, col).
-            sim_truncarry: Bool. simulate the truncation carry during mac math fault injection. 
+            ifmap: Tensor. 
+                Quantized Tensor. Layer input.
+            wght: Tensor. 
+                Quantized Tensor. Layer output.
+            ofmap: Tensor. 
+                The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+            fault_dict: Dictionary or List. 
+                The dictionary contain fault list information.
+            quantizer: Class or List. 
+                | The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
+                | word_width: Variable. The fix-point representation of the parameter word length.
+                | fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+                | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            quant_mode: String. Be either 'intrinsic' or 'hybrid'.
+                | The quantization mode of MAC.
+                | 'intrinsic' means truncate before accumulation. 
+                | 'hybrid' means accumulate with the word length of multiplier output than truncate.
+            layer_type: String. One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
+                The type of layer this solver wants to convert partial sum index and mapping into.
+            ksize: Tuple. Size 2. 
+                The kernel size (row, col).
+            padding: String. 'same' or 'valid'. 
+                The type of padding algorithm to use.
+            dilation_rate: Tuple. Size 2. 
+                The dilation rate (row, col).
+            sim_truncarry: Bool. 
+                Simulate the truncation carry during mac math fault injection. 
                 The truncation carry is cause by the carry-out of thrown away fractional bits. 
                 It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
                 How ever this could cause huge time overhead for absolute bit-true model.
-            fast_gen: Bool. Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+            fast_gen: Bool. 
+                Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
                 The fault dictionay is form by fault data contamination.
         
-        # Returns
-            Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        Returns
+            Tensor. 
+                The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
-        # Reminder!!
-            padding: Padding is tie to layer setting. If user treat padding as a seperate layer.
+        Reminder!!
+            padding: Padding is tie to layer setting. 
+                If user treat padding as a seperate layer.
                 For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
                 The tile setting must be padding='valid' which means no padding.
                 Or else there might be fault.
@@ -765,35 +799,50 @@ class mac_unit:
             Fast generation means the all the fault information dict are refer to the same source defect 
             with the same fault bit, SA type and param.
         
-        # Arguments
-            ifmap: Tensor. Quantized Tensor. Layer input.
-            wght: Tensor. Quantized Tensor. Layer output.
-            ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
-            fault_dict: Dictionary or List. The dictionary contain fault list information.
-            quantizer: Class or List. The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
-                word_width: Variable. The fix-point representation of the parameter word length.
-                fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-                rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
-            quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
-                'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
-            layer_type: String. The type of layer this solver wants to convert partial sum index and mapping into.
-                One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
-            ksize: Tuple. Size 2, the kernel size (row, col).
-            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
-            dilation_rate: Tuple. Size 2, the dilation rate (row, col).
-            sim_truncarry: Bool. simulate the truncation carry during mac math fault injection. 
-                The truncation carry is cause by the carry-out of thrown away fractional bits. 
-                It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
-                How ever this could cause huge time overhead for absolute bit-true model.
+        Arguments
+        ---------
+        ifmap: Tensor. 
+            Quantized Tensor. Layer input.
+        wght: Tensor. 
+            Quantized Tensor. Layer output.
+        ofmap: Tensor. 
+            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+        fault_dict: Dictionary or List. 
+            The dictionary contain fault list information.
+        quantizer: Class or List. 
+            The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
+            word_width: Variable. The fix-point representation of the parameter word length.
+            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+        quant_mode: String. Be either 'intrinsic' or 'hybrid'.
+            The quantization mode of MAC. 
+            'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
+        layer_type: String. One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
+            The type of layer this solver wants to convert partial sum index and mapping into.
+        ksize: Tuple. Size 2.
+            The kernel size (row, col).
+        padding: String. 'same' or 'valid'. 
+            The type of padding algorithm to use.
+        dilation_rate: Tuple. Size 2.
+            The dilation rate (row, col).
+        sim_truncarry: Bool. 
+            simulate the truncation carry during mac math fault injection. 
+            The truncation carry is cause by the carry-out of thrown away fractional bits. 
+            It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
+            How ever this could cause huge time overhead for absolute bit-true model.
         
-        # Returns
-            Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        Returns
+        -------
+        Tensor. 
+            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
-        # Reminder!!
-            padding: Padding is tie to layer setting. If user treat padding as a seperate layer.
-                For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
-                The tile setting must be padding='valid' which means no padding.
-                Or else there might be fault.
+        Reminder!!
+        ----------
+        padding: Padding is tie to layer setting. 
+            If user treat padding as a seperate layer.
+            For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
+            The tile setting must be padding='valid' which means no padding.
+            Or else there might be fault.
         """
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
@@ -917,37 +966,53 @@ class mac_unit:
             Scattered generation means the faults are from distinct defect sources that need to be split into 
             different groups and generate respectively. Therefore it's slower.
         
-        # Arguments
-            ifmap: Tensor. Quantized Tensor. Layer input.
-            wght: Tensor. Quantized Tensor. Layer output.
-            ofmap: Tensor. The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
-            fault_dict: Dictionary or List. The dictionary contain fault list information.
-            quantizer: Class or List. The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
-                word_width: Variable. The fix-point representation of the parameter word length.
-                fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-                rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
-            quant_mode: String. The quantization mode of MAC. Be either 'intrinsic' or 'hybrid'.
-                'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
-            layer_type: String. The type of layer this solver wants to convert partial sum index and mapping into.
-                One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
-            ksize: Tuple. Size 2, the kernel size (row, col).
-            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
-            dilation_rate: Tuple. Size 2, the dilation rate (row, col).
-            sim_truncarry: Bool. simulate the truncation carry during mac math fault injection. 
-                The truncation carry is cause by the carry-out of thrown away fractional bits. 
-                It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
-                How ever this could cause huge time overhead for absolute bit-true model.
-            fast_gen: Bool. Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
-                The fault dictionay is form by fault data contamination.
+        Arguments
+        ---------
+        ifmap: Tensor. 
+            Quantized Tensor. Layer input.
+        wght: Tensor. 
+            Quantized Tensor. Layer output.
+        ofmap: Tensor. 
+            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+        fault_dict: Dictionary or List. 
+            The dictionary contain fault list information.
+        quantizer: Class or List. 
+            The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
+            word_width: Variable. The fix-point representation of the parameter word length.
+            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+        quant_mode: String. Be either 'intrinsic' or 'hybrid'.
+            The quantization mode of MAC. 
+            'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
+        layer_type: String. One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
+            The type of layer this solver wants to convert partial sum index and mapping into.
+        ksize: Tuple. Size 2. 
+            The kernel size (row, col).
+        padding: String. 'same' or 'valid'. 
+            The type of padding algorithm to use.
+        dilation_rate: Tuple. Size 2. 
+            The dilation rate (row, col).
+        sim_truncarry: Bool. 
+            simulate the truncation carry during mac math fault injection. 
+            The truncation carry is cause by the carry-out of thrown away fractional bits. 
+            It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
+            How ever this could cause huge time overhead for absolute bit-true model.
+        fast_gen: Bool. 
+            Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+            The fault dictionay is form by fault data contamination.
         
-        # Returns
-            Tensor. The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        Returns
+        -------
+        Tensor. 
+            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
-        # Reminder!!
-            padding: Padding is tie to layer setting. If user treat padding as a seperate layer.
-                For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
-                The tile setting must be padding='valid' which means no padding.
-                Or else there might be fault.
+        Reminder!!
+        ----------
+        padding: Padding is tie to layer setting. 
+            If user treat padding as a seperate layer.
+            For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
+            The tile setting must be padding='valid' which means no padding.
+            Or else there might be fault.
         """
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
@@ -1164,55 +1229,42 @@ class mac_unit:
             
         return output
 
-    def inject_mac_noise_fault_tensor(self, ifmap, wght, ofmap, fault_dict, 
-                                     quantizer=None, quant_mode=None, layer_type='Conv2D',
-                                     ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
-                                     sim_truncarry=None, fast_gen=None):
-        """
-        The fault injection mathematical model for used in Layer Tensor computing
-        Include both fast generation (fast_gen is True) and scattered generation (fast_gen is False).
-        Fast generation means the all the fault information dict are refer to the same source defect 
-        with the same fault bit, SA type and param.
-        Scattered generation means the faults are from distinct defect sources that need to be split into 
-        different groups and generate respectively. Therefore it's slower.
+    def inject_mac_noise_fault_tensor(self, ofmap, fault_dict, amp_factor=1.0,
+                                     quantizer=None, quant_mode=None,  
+                                     fast_gen=None):
+        """ Fault injection mac output Gaussian noise model.
+            Generate a Gaussian noise mask for layer ofmap. 
+            Using the result of PE dataflow model fault dictionary.
+            Make amplifier array for Gaussian noise mask.
+            Where no fault ofmap pixels were filted to 0, other faulty pixels will be
+            amplified correspond to the SA type, fault bit order and the number of faulty
+            partial sum indexes.
         
-        This function is not suitable for tf.function decorator which needs to solve the Tensor Graph.
-        It may take a unnecessary long time to solve and get invalid shape.
-        Recommand using inject_mac_math_fault_uni or inject_mac_math_fault_scatter if you are sure about your
-        fault dictionry defect source is unique or not.
+        Arguments
+        ---------
+        ofmap: Tensor. 
+            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+        fault_dict: Dictionary or List. 
+            The dictionary contain fault list information.
+        amp_factor: Float. 
+            The adjustment term for Gaussian std var.
+        quantizer: Class or List. 
+            The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
+            word_width: Variable. The fix-point representation of the parameter word length.
+            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+        quant_mode: String. Be either 'intrinsic' or 'hybrid'.
+            The quantization mode of MAC. 
+            'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
+        fast_gen: Bool. 
+            Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+            The fault dictionay is form by fault data contamination.
         
-
-        Parameters
-        ----------
-        ifmap : TYPE
-            DESCRIPTION.
-        wght : TYPE
-            DESCRIPTION.
-        ofmap : TYPE
-            DESCRIPTION.
-        fault_dict : TYPE
-            DESCRIPTION.
-        quantizer : TYPE, optional
-            DESCRIPTION. The default is None.
-        quant_mode : TYPE, optional
-            DESCRIPTION. The default is None.
-        layer_type : TYPE, optional
-            DESCRIPTION. The default is 'Conv2D'.
-        ksizes : TYPE, optional
-            DESCRIPTION. The default is (3,3).
-        padding : TYPE, optional
-            DESCRIPTION. The default is 'valid'.
-        dilation_rates : TYPE, optional
-            DESCRIPTION. The default is (1,1).
-        sim_truncarry : TYPE, optional
-            DESCRIPTION. The default is None.
-        fast_gen : TYPE, optional
-            DESCRIPTION. The default is None.
-
         Returns
         -------
-        None.
-
+        Tensor. 
+            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        
         """
     
     def consistency_check(self, quant_mode, quantizer):

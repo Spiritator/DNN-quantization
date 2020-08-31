@@ -25,30 +25,48 @@ def PE_mapping_forward(ifmap_tile,
         Pre-plan the dataflow for backward PE mapping.    
         Or mapping the tile fault dictionary to PE dataflow model.
         
-    # Arguments
-        ifmap_tile: Class (tile_PE). The tile class for PE array dataflow mapping of input feature maps.
-        wght_tile: Class (tile_PE). The tile class for PE array dataflow mapping of kernel and bias.
-        ofmap_tile: Class (tile_PE). The tile class for PE array dataflow mapping of output feature maps.
-        PEarray: Class (PEarray). The PE dataflow model class for PE array dataflow mapping.
-        ifmap_expand_config: Dictionary or String. Configuration for input feature maps tile expansion.
-        wght_expand_config: Dictionary or String. Configuration for weight (both kernal and bias) tile expansion.
-        ofmap_expand_config: Dictionary or String. Configuration for output feature maps tile expansion.
+    Arguments
+    ---------
+    ifmap_tile: Class (tile_PE). 
+        The tile class for PE array dataflow mapping of input feature maps.
+    wght_tile: Class (tile_PE). 
+        The tile class for PE array dataflow mapping of kernel and bias.
+    ofmap_tile: Class (tile_PE). 
+        The tile class for PE array dataflow mapping of output feature maps.
+    PEarray: Class (PEarray). 
+        The PE dataflow model class for PE array dataflow mapping.
+    ifmap_expand_config: Dictionary or String. 
+        Configuration for input feature maps tile expansion.
+    wght_expand_config: Dictionary or String. 
+        Configuration for weight (both kernal and bias) tile expansion.
+    ofmap_expand_config: Dictionary or String. 
+        Configuration for output feature maps tile expansion.
+    
+        If data type Dictionary, the dictionary is input augment for tile expansion function that writing in dictionay format.
+        It will be use as **configuration put into expansion function.
+        Else if data type String, the string is the directory to the JSON file which contains the configuration of 
+        tile expansion function written in the format that can be read in as dictionary and **configuration put into expansion function.
+    
+    PEarray_setup_config: Dictionary or String. 
+        Configuration for PE array dataflow setup.
         
-            If data type Dictionary, the dictionary is input augment for tile expansion function that writing in dictionay format.
-            It will be use as **configuration put into expansion function.
-            Else if data type String, the string is the directory to the JSON file which contains the configuration of 
-            tile expansion function written in the format that can be read in as dictionary and **configuration put into expansion function.
+        If data type Dictionary, the dictionary is input augment for PE array dataflow setup function that writing in dictionay format.
+        It will be use as **configuration put into expansion function.
+        Else if data type String, the string is the directory to the JSON file which contains the configuration of 
+        PE array dataflow setup function written in the format that can be read in as dictionary and **configuration put into PE array dataflow setup function.
+    
+    dataflow_pre_plan: Bool. 
+        Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+        Only save the expansion configuration for later PEarray to Tile transform.
         
-        PEarray_setup_config: Dictionary or String. Configuration for PE array dataflow setup.
-            If data type Dictionary, the dictionary is input augment for PE array dataflow setup function that writing in dictionay format.
-            It will be use as **configuration put into expansion function.
-            Else if data type String, the string is the directory to the JSON file which contains the configuration of 
-            PE array dataflow setup function written in the format that can be read in as dictionary and **configuration put into PE array dataflow setup function.
+    print_detail: Bool. 
+        Print the progress of forward mapping.
+    
+    Returns
+    -------
+    Fault Dictionary / None
+        None. If dataflow_pre_plan is True.
         
-        dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
-            Only save the expansion configuration for later PEarray to Tile transform.
-            
-        print_detail: Bool. Print the progress of forward mapping.
 
     """
     if print_detail:
@@ -154,18 +172,22 @@ def PE_mapping_forward(ifmap_tile,
         return PEarray.fault_dict
     
     
-def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_detail=False):
+def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_detail=False, return_detail=False):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to layer.
         
-    # Arguments
-        layer: Keras.Layer. 
-        PEarray: Class (PEarray). The PE dataflow model class for PE array dataflow mapping.
-        fault_dict: Dictionary. The fault dictionary be assigned to PEarray. 
-            If None assuming that the fault dictionary of PEarray is already set.
+    Arguments
+    ---------
+    layer: Keras.Layer. 
+    PEarray: Class (PEarray). 
+        The PE dataflow model class for PE array dataflow mapping.
+    fault_dict: Dictionary. 
+        The fault dictionary be assigned to PEarray. 
+        If None assuming that the fault dictionary of PEarray is already set.
     
-    # Returns
-        The fault information Dictionary of Layer.
+    Returns
+    -------
+    The fault information Dictionary of Layer.
     """        
     if print_detail:
         print('\nPE array dataflow backward mapping ...')
@@ -257,7 +279,6 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     if print_detail:
         print('\r    Task (6/6): All Done.                                              ')
         
-    if print_detail:
         if not save2tile:
             report_2layer=solver.report_layer_map()
             print('    mapped layer faults | base coors %d | ofmap %d '%(report_2layer['num_base_coor'], report_2layer['num_layer_fault_coor']))
@@ -265,6 +286,9 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
         else:
             print('    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fd),len(ofmap_fd),str([len(wght_fd),0])))
 
+    if return_detail:
+        return PE_mac_fault_dict, solver.report_layer_map()
+    
     return PE_mac_fault_dict
 
 
@@ -272,13 +296,17 @@ def PE_mapping2tile(PEarray, fault_dict=None, print_detail=False):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to ifmap, weight and ofmap tile.
         
-    # Arguments
-        PEarray: Class (PEarray). The PE dataflow model class for PE array dataflow mapping.
-        fault_dict: Dictionary. The fault dictionary be assigned to PEarray. 
-            If None assuming that the fault dictionary of PEarray is already set.
+    Arguments
+    ---------
+    PEarray: Class (PEarray). 
+        The PE dataflow model class for PE array dataflow mapping.
+    fault_dict: Dictionary. 
+        The fault dictionary be assigned to PEarray. 
+        If None assuming that the fault dictionary of PEarray is already set.
     
-    # Returns
-        The fault information Dictionary List of Layer.
+    Returns
+    -------
+    The fault information Dictionary List of Layer.
     """        
     if print_detail:
         print('\nPE array dataflow backward mapping ...')
@@ -357,30 +385,43 @@ def mapping_valid_checker(ifmap_tile,
         Verify the configuration of tile and PEarray pairs is feasible or not.
         By checking the subset of forward mapping fault coordinate can get the same original fault coordinate in backward mapping.
         
-    # Arguments
-        ifmap_tile: Class (tile_PE). The tile class for PE array dataflow mapping of input feature maps.
-        wght_tile: Class (tile_PE). The tile class for PE array dataflow mapping of kernel and bias.
-        ofmap_tile: Class (tile_PE). The tile class for PE array dataflow mapping of output feature maps.
-        PEarray: Class (PEarray). The PE dataflow model class for PE array dataflow mapping.
-        ifmap_expand_config: Dictionary or String. Configuration for input feature maps tile expansion.
-        wght_expand_config: Dictionary or String. Configuration for weight (both kernal and bias) tile expansion.
-        ofmap_expand_config: Dictionary or String. Configuration for output feature maps tile expansion.
-        
-            If data type Dictionary, the dictionary is input augment for tile expansion function that writing in dictionay format.
-            It will be use as **configuration put into expansion function.
-            Else if data type String, the string is the directory to the JSON file which contains the configuration of 
-            tile expansion function written in the format that can be read in as dictionary and **configuration put into expansion function.
-        
-        PEarray_setup_config: Dictionary or String. Configuration for PE array dataflow setup.
-            If data type Dictionary, the dictionary is input augment for PE array dataflow setup function that writing in dictionay format.
-            It will be use as **configuration put into expansion function.
-            Else if data type String, the string is the directory to the JSON file which contains the configuration of 
-            PE array dataflow setup function written in the format that can be read in as dictionary and **configuration put into PE array dataflow setup function.
-                    
-        print_detail: Bool. Print the progress of ckecking.
+    Arguments
+    ---------
+    ifmap_tile: Class (tile_PE). 
+        The tile class for PE array dataflow mapping of input feature maps.
+    wght_tile: Class (tile_PE). 
+        The tile class for PE array dataflow mapping of kernel and bias.
+    ofmap_tile: Class (tile_PE). 
+        The tile class for PE array dataflow mapping of output feature maps.
+    PEarray: Class (PEarray). The 
+        PE dataflow model class for PE array dataflow mapping.
+    ifmap_expand_config: Dictionary or String. 
+        Configuration for input feature maps tile expansion.
+    wght_expand_config: Dictionary or String. 
+        Configuration for weight (both kernal and bias) tile expansion.
+    ofmap_expand_config: Dictionary or String. 
+        Configuration for output feature maps tile expansion.
     
-    # Returns
-        Bool. The mapping is feasible or not.
+        If data type Dictionary, the dictionary is input augment for tile expansion function that writing in dictionay format.
+        It will be use as **configuration put into expansion function.
+        Else if data type String, the string is the directory to the JSON file which contains the configuration of 
+        tile expansion function written in the format that can be read in as dictionary and **configuration put into expansion function.
+    
+    PEarray_setup_config: Dictionary or String. 
+        Configuration for PE array dataflow setup.
+        
+        If data type Dictionary, the dictionary is input augment for PE array dataflow setup function that writing in dictionay format.
+        It will be use as **configuration put into expansion function.
+        Else if data type String, the string is the directory to the JSON file which contains the configuration of 
+        PE array dataflow setup function written in the format that can be read in as dictionary and **configuration put into PE array dataflow setup function.
+                
+    print_detail: Bool. 
+        Print the progress of ckecking.
+    
+    Returns
+    -------
+    Bool 
+        The mapping is feasible or not.
     """        
     if print_detail:
         print('Dataflow mapping feasblility check...')

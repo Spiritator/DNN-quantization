@@ -33,30 +33,61 @@ def inference_scheme(model_func,
                      show_summary=False, 
                      multi_gpu=False, 
                      gpu_num=2, 
-                     name_tag=None):
+                     name_tag=None,
+                     save_file_add_on=None):
     """Take scheme as input and run different setting of inference automaticly. Write the results into a csv file.
 
-    # Arguments
-        model_func: The callable function which returns a DNN model. (Keras funtional model API recommmanded).
-        model_augment: List of Dictionarys. The augments for DNN model function.
-        compile_augment: Dictionary. The augments for model compile augment.
-        dataset_augment: Dictionary. The augments for dataset setup.
-        result_save_file: String. The file and directory to the result csv file.
-        append_save_file: Bool. Append the save file no matter what.
-        weight_load: Bool. Need load weight proccess outside model_func or not.
-        weight_name: String. The weight file to load. (if weight_load is True)
-        save_runtime: Bool. Save runtime in result file or not.
-        fault_gen: Bool. If True, generate fault dict list inside inference_scheme (slower, consume less memory). 
-                         If False, using the fault dict list from model_augment (faster, consume huge memory).
-        fault_param: Dictionay. The augment for fault generation function.
-        FT_evaluate: Bool. Doing fault tolerance analysis or not.
-        FT_augment: Dictionary. The augments for fault tolerance analysis. (if FT_evaluate is True)
-        multi_gpu: Bool. Using multi GPU inference or not.
-        gpu_num: Integer. The number of GPUs in your system setup. (for multi_gpu = True only)
-        name_tag: String. The messege to show in terminal represent current simulation
+    Arguments
+    ---------
+    model_func: The callable function which returns a DNN model. 
+        (Keras funtional model API recommmanded).
+    model_augment: List of Dictionarys. 
+        The augments for DNN model function.
+    compile_augment: Dictionary. 
+        The augments for model compile augment.
+    dataset_augment: Dictionary. 
+        The augments for dataset setup.
+    result_save_file: String. 
+        The file and directory to the result csv file.
+    append_save_file: Bool. 
+        Append the save file no matter what.
+    weight_load: Bool. 
+        Need load weight proccess outside model_func or not.
+    weight_name: String. 
+        The weight file to load. (if weight_load is True)
+    save_runtime: Bool. 
+        Save runtime in result file or not.
+    fault_gen: Bool. 
+        If True, generate fault dict list inside inference_scheme (slower, consume less memory). 
+        If False, using the fault dict list from model_augment (faster, consume huge memory).
+    fault_param: Dictionay. 
+        The augment for fault generation function.
+    FT_evaluate: Bool. 
+        Doing fault tolerance analysis or not.
+    FT_augment: Dictionary. 
+        The augments for fault tolerance analysis. (if FT_evaluate is True)
+    show_summary: Bool.
+        Show the model compile summary or not.
+    multi_gpu: Bool. 
+        Using multi GPU inference or not.
+    gpu_num: Integer. 
+        The number of GPUs in your system setup. (for multi_gpu = True only)
+    name_tag: String. 
+        The messege to show in terminal represent current simulation
+    save_file_add_on: Dictionary.
+        The add on information wanted to be saved to output result csv file. These add on information
+        may not generate during inference. Therefore, they need to given beforehand. The item data list
+        should be the same as inference rounds.
+        
+        format:
+            | {'item name 1':[item data list], 
+            |  'item name 2':[item data list], 
+            |  ...}
 
-    # Returns
-        ==================
+    Returns
+    -------
+    None
+        Running the inference scheme.
     """
     if not callable(model_func):
         raise TypeError('The model_func augment must be a callable function which returns a Keras DNN model.')
@@ -186,6 +217,10 @@ def inference_scheme(model_func,
                     if save_runtime:
                         fieldnames.append('runtime')
                         test_result_dict['runtime']=t
+                if save_file_add_on is not None:
+                    for key in save_file_add_on.keys():
+                        fieldnames.append(key)
+                        test_result_dict[key]=save_file_add_on[key][scheme_num]
                 writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerow(test_result_dict)
@@ -202,6 +237,9 @@ def inference_scheme(model_func,
                         test_result_dict[model.metrics_names[i]]=test_result[i]
                     if save_runtime:
                         test_result_dict['runtime']=t
+                if save_file_add_on is not None:
+                    for key in save_file_add_on.keys():
+                        test_result_dict[key]=save_file_add_on[key][scheme_num]
                 writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writerow(test_result_dict)
                     
@@ -215,15 +253,22 @@ def inference_scheme(model_func,
 def gen_test_round_list(num_of_bit,upper_bound,lower_bound,left_bound=-3,right_bound=0):
     """Genrate test round list with number decade exponentially
 
-    # Arguments
-        num_of_bit_bit: Integer. The total amount of bits in the unit for fault injection.
-        upper_bound: Integer. The maximum number for test rounds.
-        lower_bound: Integer. The minimun number for test rounds.
-        left_bound: Integer. The number for line y=exp(x) left bound. For generate decade number.
-        right_bound: Integer. The number for line y=exp(x) right bound. For generate decade number.
+    Arguments
+    ---------
+    num_of_bit_bit: Integer. 
+        The total amount of bits in the unit for fault injection.
+    upper_bound: Integer. 
+        The maximum number for test rounds.
+    lower_bound: Integer. 
+        The minimun number for test rounds.
+    left_bound: Integer. 
+        The number for line y=exp(x) left bound. For generate decade number.
+    right_bound: Integer. 
+        The number for line y=exp(x) right bound. For generate decade number.
         
-    # Returns
-        The fault rate list and test round list.
+    Returns
+    -------
+    The fault rate list and test round list.
         (fault rate list is float, test round list is integer)
     """
     fault_rate_list=list()

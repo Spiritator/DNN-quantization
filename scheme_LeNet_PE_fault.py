@@ -8,7 +8,7 @@ An example of using inference scheme to arange analysis and save result.
 evaluate PE array fault injection testing result of LeNet-5
 """
 
-import os
+import os,csv
 import tensorflow.keras.backend as K
 
 from simulator.inference.scheme import inference_scheme
@@ -24,15 +24,15 @@ from simulator.comp_unit.mapping_flow import PE_mapping_forward,PE_mapping_backw
 
 #%% setting parameter
 
-result_save_folder='../test_result/mnist_lenet5_PE_fault'
+result_save_folder=os.path.join('..','test_result','mnist_lenet5_PE_fault')
 dataflow_type='ws'
-weight_name='../mnist_lenet5_weight.h5'
+weight_name=os.path.join('..','mnist_lenet5_weight.h5')
 model_word_length=8
 model_fractional_bit=3
 rounding_method=['down','nearest','down']
 batch_size=20
 # PE array fault simulation parameter
-config_dir='../pe_mapping_config'
+config_dir=os.path.join('..','pe_mapping_config')
 network_dir='lenet'
 dataflow_dir='ws'
 config_dir=os.path.join(config_dir, network_dir, dataflow_dir)
@@ -106,7 +106,8 @@ MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
 def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
     model_mac_math_fault_dict_list=[None for i in range(8)] 
-
+    psidx_cnt=0
+    
     # clear fault dictionary every iteration
     ofmap_tile_conv1.clear()
     ifmap_tile_conv1.clear()
@@ -126,14 +127,16 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
                        ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
                        pre_plan=True,print_detail=True)
     MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    model_mac_math_fault_dict_list[1] = PE_mapping_backward(ref_model.layers[1], MXU, print_detail=True)
+    model_mac_math_fault_dict_list[1], psidx_tmp = PE_mapping_backward(ref_model.layers[1], MXU, print_detail=True, return_detail=True)
+    psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
     PE_mapping_forward(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
                        ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
                        pre_plan=True,print_detail=True)
     MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    model_mac_math_fault_dict_list[3] = PE_mapping_backward(ref_model.layers[3], MXU, print_detail=True)
+    model_mac_math_fault_dict_list[3], psidx_tmp = PE_mapping_backward(ref_model.layers[3], MXU, print_detail=True, return_detail=True)
+    psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
     #PE_mapping_forward(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
@@ -150,7 +153,7 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
     #model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
     #MXU.clear_all()
     
-    return model_mac_math_fault_dict_list
+    return model_mac_math_fault_dict_list, psidx_cnt
 
 #%% test run
 compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
@@ -167,8 +170,15 @@ for round_id in range(test_rounds):
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
     ref_model=call_model()
     # fault generation
-    model_mac_math_fdl=gen_model_PE_fault_dict(ref_model,fault_locs[round_id],fault_infos[round_id],print_detail=True)
+    model_mac_math_fdl, psidx_count=gen_model_PE_fault_dict(ref_model,fault_locs[round_id],fault_infos[round_id],print_detail=True)
     K.clear_session()
+    
+    info_add_on={'PE y':[fault_locs[i][0]],
+                 'PE x':[fault_locs[i][1]],
+                 'param':[fault_infos[i]['param']],
+                 'SA type':[fault_infos[i]['SA_type']],
+                 'SA bit':[fault_infos[i]['SA_bit']],
+                 'num psidx':[psidx_count]}
     
     model_augment.append({'nbits':model_word_length,
                           'fbits':model_fractional_bit,
@@ -190,5 +200,16 @@ for round_id in range(test_rounds):
                      weight_name=weight_name, 
                      save_runtime=True,
                      FT_evaluate=True, 
-                     FT_augment=FT_augment)
+                     FT_augment=FT_augment,
+                     save_file_add_on=info_add_on)
 
+#%% write fault information save file
+
+# info_save_file=os.path.join(result_save_folder,dataflow_type,'info.csv')
+# with open(info_save_file,'w',newline='') as info_file:
+#     writer=csv.writer(info_file,)
+#     writer.writerow(['PE y','PE x','param','SA type','SA bit','num psidx'])
+#     for i in range(test_rounds):
+#         writer.writerow([fault_locs[i][0], fault_locs[i][1], fault_infos[i]['param'], fault_infos[i]['SA_type'], fault_infos[i]['SA_bit'], num_psidx[i]])
+        
+        

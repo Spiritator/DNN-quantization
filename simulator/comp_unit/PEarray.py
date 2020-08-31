@@ -36,9 +36,93 @@ class axis_info:
 
         
 class PEflow:
-    """
-    The PE flow description class. For information gathering and PE dataflow setup.
-    A PEflow represent a data tile (one of ofmap, weight, ifmap)
+    """ The PE flow description class. For information gathering and PE dataflow setup.
+        A PEflow represent a data tile (one of ofmap, weight, ifmap)
+    
+    PE axis flow type
+    -----------------
+    'permute': permute data long axis. 
+    
+    'fixed': data fix in certain index on this axis.
+        
+    'broadcast': data being broadcast to all entries in this axis. 
+    
+    'streaming': data being streamed in in this axis.
+    
+    info must be feed in by dicitionary format
+        ex: info_x = {'PE_required_axes_prior':['t_clk','PE_x'], 'tile_mapping_prior':[2,1,0]}
+    
+    info description
+    ----------------
+    'permute': 
+        PE_required_axes_prior: List of Strings. axis ϵ ['PE_x', 'PE_y', 't_clk']
+            The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
+            These axes are the dimension in PE array dataflow model for tile mapping.
+            The order in List is the priority for data mapping in PE array.
+        tile_mapping_prior: List or Tuple of Integer. 
+            The list for ravel priority of slice_shape dimensions. The list is the dimension index.
+
+    'fixed': 
+        PE_fix_axis: String or List of Strings. axis ϵ ['PE_x', 'PE_y', 't_clk']
+            The dimension of target_shape that are being fix to. 
+        indice: Integer or List of Integer. 
+            The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
+
+    'broadcast': 
+        PE_broadcast_axis: String or List of Strings. axis ϵ ['PE_x', 'PE_y', 't_clk']
+            The dimension of target_shape that are being broadcast to.
+                        
+    'streaming': 
+        PE_stream_axis: String. 'PE_x' or 'PE_y'.
+            The axis index whose dimension is the sweep going on PE.
+        tile_direction: String. 'forward' or 'backward' 
+            The direction of data flow in. Stream starts from the 0 index and increment, or else starts from last index and decrement.
+        PE_direction: String. 'forward' or 'backward' 
+            The direction of window sweeping. 
+
+    
+    Arguments
+    ---------
+    permute_info: Dictionary. 
+        The infomation of permute flow. Must in the format describe above.
+    fixed_info: Dictionary. 
+        The infomation of fixed flow. Must in the format describe above.
+    broadcast_info: Dictionary. 
+        The infomation of broadcast flow. Must in the format describe above.
+    streaming_info: Dictionary. 
+        The infomation of streaming flow. Must in the format describe above.
+    repeat: Integer. 
+        The times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
+    duplicate: Integer. 
+        The times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
+    pack_size: Integer. 
+        The number of slices of pre-mapped tile data in a slice-pack.
+    
+    stall_latency: Integer. 
+        Stall, the clock cycles need to wait till data get ready. 
+        Or latency, the clock cycles need to wait for other data going through PE array. 
+        All clock cycles combined.
+    
+    dummy_pack_insert: String. method ϵ ['pre_all', 'post_all', 'pre_each', 'post_each']
+        The method of dummy pack insert to current slice packs.
+        Dummy pack is to give empty slice pack for certain data when a peroid of time the data is absense in 
+        computation. Bias is an example that won't exist through out accumulation process.
+        
+        example  
+        |  original slice packs A, B, C
+        
+        'pre_all': => ~, ~, A, B, C
+            insert dummpy slice pack prior to all existing tslice packs. 
+        'post_all': => A, B, C, ~, ~
+            insert dummpy slice pack later to all existing slice packs. 
+        'pre_each': => ~, ~, A, ~, ~, B, ~, ~, C
+            insert dummpy slice pack prior to each existing slice packs. 
+        'post_each': =>  A, ~, ~, B, ~, ~, C, ~, ~
+            insert dummpy slice pack later to each existing slice packs. 
+    
+    dummy_pack_n: Integer. 
+        The number of dummy slice packs are going to insert.
+
     """
     def __init__(self, 
                  permute_info=None, 
@@ -51,62 +135,7 @@ class PEflow:
                  stall_latency=0,
                  dummy_pack_insert=None,
                  dummy_pack_n=0):
-        """
-        PE axis flow type
-            'permute': permute data long axis. 
-            'fixed': data fix in certain index on this axis.
-            'broadcast': data being broadcast to all entries in this axis. 
-            'streaming': data being streamed in in this axis.
-        
-        info must be feed in by dicitionary format
-            ex: info_x = {'PE_required_axes_prior':['t_clk','PE_x'],
-                          'tile_mapping_prior':[2,1,0]}
-        
-        info description
-            'permute': 
-                PE_required_axes_prior: List of Strings. The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
-                    These axes are the dimension in PE array dataflow model for tile mapping.
-                    The order in List is the priority for data mapping in PE array.
-                tile_mapping_prior: List or Tuple of Integer. The list for ravel priority of slice_shape dimensions. The list is the dimension index.
-
-            'fixed': 
-                PE_fix_axis: String or List of Strings. The dimension of target_shape that are being fix to. i.e. 'PE_x', 'PE_y', 't_clk'. 
-                indice: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
-
-            'broadcast': 
-                PE_broadcast_axis: String or List of Strings. The dimension of target_shape that are being broadcast to. i.e. 'PE_x', 'PE_y', 't_clk'. 
-                                
-            'streaming': 
-                PE_stream_axis: String. The axis index whose dimension is the sweep going on PE. i.e. 'PE_x' or 'PE_y'.
-                tile_direction: String. 'forward' or 'backward' the direction of data flow in. Stream starts from the 0 index and increment, or else starts from last index and decrement.
-                PE_direction: String. 'forward' or 'backward' the direction of window sweeping. 
-
-        
-        # Arguments
-            permute_info: Dictionary. The infomation of permute flow. Must in the format describe above.
-            fixed_info: Dictionary. The infomation of fixed flow. Must in the format describe above.
-            broadcast_info: Dictionary. The infomation of broadcast flow. Must in the format describe above.
-            streaming_info: Dictionary. The infomation of streaming flow. Must in the format describe above.
-            repeat: Integer. The times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
-            duplicate: Integer. The times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
-            pack_size: Integer. The number of slices of pre-mapped tile data in a slice-pack.
-            
-            stall_latency: Integer. Stall, the clock cycles need to wait till data get ready. 
-                Or latency, the clock cycles need to wait for other data going through PE array. 
-                All clock cycles combined.
-            
-            dummy_pack_insert: String. The method of dummy pack insert to current slice packs.
-                Dummy pack is to give empty slice pack for certain data when a peroid of time the data is absense in 
-                computation. Bias is an example that won't exist through out accumulation process.
-                
-                original slice packs A, B, C
-                'pre_all': insert dummpy slice pack prior to all existing tslice packs. => ~, ~, A, B, C
-                'post_all': insert dummpy slice pack later to all existing slice packs. => A, B, C, ~, ~
-                'pre_each': insert dummpy slice pack prior to each existing slice packs. => ~, ~, A, ~, ~, B, ~, ~, C
-                'post_each': insert dummpy slice pack later to each existing slice packs. =>  A, ~, ~, B, ~, ~, C, ~, ~
-            
-            dummy_pack_n: Integer. The number of dummy slice packs are going to insert.
-        """
+        """ PEflow initializer """
         if permute_info is None:
             self.permute_info=None
         else:
@@ -184,39 +213,47 @@ class PEflow:
 
 
 class PEarray:
-    """
-    The PE array functional model for computation unit fault tolerance analysis.
-    The 2D PE array consist of three basic dimension 'PE_x', 'PE_y' and 't_clk' 
-    which means the row direction, column direction and clock cycles required to 
-    complete a tile computation.
-    The 3D PE array dataflow model is for mapping the tile data to computaion unit.
-    
+    """ The PE array functional model for computation unit fault tolerance analysis.
+        The 2D PE array consist of three basic dimension 'PE_x', 'PE_y' and 't_clk' 
+        which means the row direction, column direction and clock cycles required to 
+        complete a tile computation.
+        The 3D PE array dataflow model is for mapping the tile data to computaion unit.
+        
+        Arguments
+        ---------
+        n_x: Integer. 
+            Number of PEs in a row.
+        n_y: Integer. 
+            Number of PEs in a column.
+        n_clk: Integer. 
+            Number of clock cycles for a tile to process.
+        fault_num: Integer. 
+            Number of faults in array.
+        fault_dict: Dictionary. 
+            The fault information {location : fault type}
+                example: fault_dict = {(PE_x1,PE_y1):{‘param’:‘ifmap_in’,
+                                                      ‘global’:False,
+                                                      ‘SA_type’:’flip’,
+                                                      ‘SA_bit’:3} ,
+                                       (PE_x2,PE_y2):{‘param’:‘psum_out’,
+                                                      ‘global’:True,
+                                                      ‘SA_type’:’0’,
+                                                      ‘SA_bit’:5} ,
+                                       }
+               'param' must be one of [ifmap_in, ifmap_out, wght_in, wght_out, psum_in, psum_out ]
+                                       
+        ofmap_tile: Class. 
+            The tile_PE class for PE array fault tolerance analysis. Output feature maps tile.
+        wght_tile: Class. 
+            The tile_PE class for PE array fault tolerance analysis. Weights feature maps tile.
+        ifmap_tile: Class. 
+            The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
+        mac_config: Class. 
+            The class of MAC unit configurations.
+
     """
     def __init__(self, n_x, n_y, n_clk=None, ofmap_tile=None, wght_tile=None, ifmap_tile=None, mac_config=None):
-        """
-        # Arguments
-            n_x: Integer. Number of PEs in a row.
-            n_y: Integer. Number of PEs in a column.
-            n_clk: Integer. Number of clock cycles for a tile to process.
-            fault_num: Integer. Number of faults in array.
-            fault_dict: Dictionary. The fault information {location : fault type}
-                    example: fault_dict = {(PE_x1,PE_y1):{‘param’:‘ifmap_in’,
-                                                          ‘global’:False,
-                                                          ‘SA_type’:’flip’,
-                                                          ‘SA_bit’:3} ,
-                                           (PE_x2,PE_y2):{‘param’:‘psum_out’,
-                                                          ‘global’:True,
-                                                          ‘SA_type’:’0’,
-                                                          ‘SA_bit’:5} ,
-                                           }
-                   'param' must be one of [ifmap_in, ifmap_out, wght_in, wght_out, psum_in, psum_out ]
-                                           
-            ofmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Output feature maps tile.
-            wght_tile: Class. The tile_PE class for PE array fault tolerance analysis. Weights feature maps tile.
-            ifmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
-            mac_config: Class. The class of MAC unit configurations.
-
-        """
+        """ PEarray initializer """
         self.setup_ready=False
         self.n_x=n_x
         self.n_y=n_y
@@ -247,34 +284,44 @@ class PEarray:
                        p_permute_info=None, p_fixed_info=None, p_broadcast_info=None, p_streaming_info=None, p_repeat=0, p_duplicate=0, p_pack_size=1, p_stall_latency=0, p_dummy_pack_insert=None, p_dummy_pack_n=0,
                        b_permute_info=None, b_fixed_info=None, b_broadcast_info=None, b_streaming_info=None, b_repeat=0, b_duplicate=0, b_pack_size=1, b_stall_latency=0, b_dummy_pack_insert=None, b_dummy_pack_n=0):
         """ Setup dataflow of ofmap, weight, ifmap. Read in PE dataflow arguments for mapping.
-            o_* for output feature map
-            w_* for weight kernel
-            i_* for input feature map
-            p_* for partial sum (the same shape as ofmap tile)
-            b_* for weight bias
+            | o_* for output feature map
+            | w_* for weight kernel
+            | i_* for input feature map
+            | p_* for partial sum (the same shape as ofmap tile)
+            | b_* for weight bias
         
-        # Arguments
-            permute_info: Dictionary. The infomation of permute flow. Must in the format describe above.
-            fixed_info: Dictionary. The infomation of fixed flow. Must in the format describe above.
-            broadcast_info: Dictionary. The infomation of broadcast flow. Must in the format describe above.
-            streaming_info: Dictionary. The infomation of streaming flow. Must in the format describe above.
-            repeat: Integer. The times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
-            duplicate: Integer. The times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
-            stall_latency: Integer. Stall, the clock cycles need to wait till data get ready. 
-                Or latency, the clock cycles need to wait for other data going through PE array. 
-                All clock cycles combined.
+        Arguments
+        ---------
+        permute_info: Dictionary. 
+            The infomation of permute flow. Must in the format describe above.
+        fixed_info: Dictionary. 
+            The infomation of fixed flow. Must in the format describe above.
+        broadcast_info: Dictionary. 
+            The infomation of broadcast flow. Must in the format describe above.
+        streaming_info: Dictionary. 
+            The infomation of streaming flow. Must in the format describe above.
+        repeat: Integer. 
+            The times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
+        duplicate: Integer. 
+            The times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
+        stall_latency: Integer. 
+            Stall, the clock cycles need to wait till data get ready. 
+            Or latency, the clock cycles need to wait for other data going through PE array. 
+            All clock cycles combined.
+        
+        dummy_pack_insert: String. 
+            The method of dummy pack insert to current slice packs.
+            Dummy pack is to give empty slice pack for certain data when a peroid of time the data is absense in 
+            computation. Bias is an example that won't exist through out accumulation process.
             
-            dummy_pack_insert: String. The method of dummy pack insert to current slice packs.
-                Dummy pack is to give empty slice pack for certain data when a peroid of time the data is absense in 
-                computation. Bias is an example that won't exist through out accumulation process.
-                
-                original slice packs A, B, C
-                'pre_all': insert dummpy slice pack prior to all existing tslice packs. => ~, ~, A, B, C
-                'post_all': insert dummpy slice pack later to all existing slice packs. => A, B, C, ~, ~
-                'pre_each': insert dummpy slice pack prior to each existing slice packs. => ~, ~, A, ~, ~, B, ~, ~, C
-                'post_each': insert dummpy slice pack later to each existing slice packs. =>  A, ~, ~, B, ~, ~, C, ~, ~
-            
-            dummy_pack_n: Integer. The number of dummy slice packs are going to insert.
+            original slice packs A, B, C
+                | 'pre_all': insert dummpy slice pack prior to all existing tslice packs. => ~, ~, A, B, C
+                | 'post_all': insert dummpy slice pack later to all existing slice packs. => A, B, C, ~, ~
+                | 'pre_each': insert dummpy slice pack prior to each existing slice packs. => ~, ~, A, ~, ~, B, ~, ~, C
+                | 'post_each': insert dummpy slice pack later to each existing slice packs. =>  A, ~, ~, B, ~, ~, C, ~, ~
+        
+        dummy_pack_n: Integer. 
+            The number of dummy slice packs are going to insert.
 
         """
         self.setup_ready=True
@@ -604,15 +651,22 @@ class PEarray:
     def permute_ravel_idx(self,index, source_shape, source_prior, target_shape, target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
         
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            source_shape: Tuple. The shape of source array before tranformation.
-            source_prior: List or Tuple of Integer. The list for unravel priority of source_shape dimensions. The list is the dimension index.
-            target_shape: Tuple. The shape of target array for tranformation to.
-            target_prior: List or Tuple of Integer. The list for ravel priority of target_shape dimensions. The list is the dimension index.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        source_shape: Tuple. 
+            The shape of source array before tranformation.
+        source_prior: List or Tuple of Integer. 
+            The list for unravel priority of source_shape dimensions. The list is the dimension index.
+        target_shape: Tuple. 
+            The shape of target array for tranformation to.
+        target_prior: List or Tuple of Integer. 
+            The list for ravel priority of target_shape dimensions. The list is the dimension index.
         
-        # Returns
+        Returns
+        -------
             Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """
         if len(source_shape)!=len(source_prior):
@@ -664,22 +718,35 @@ class PEarray:
             window_shape must have 1 more dimension than data_shape, that is let data stream through window.
             The one more dimension is time dimension which represent the capture shot on that clock cycle.
             
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            data_shape: Tuple. The shape of data array being streamed in.
-            data_stream_axis: Integer. The axis index whose dimension is the flow going.
-            data_flow_direction: String. 'forward' or 'backward' the direction of data flow in. 
-                Stream starts from the 0 index and increment, or else starts from last index and decrement.
-            window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
-            window_stream_axis: String. The axis index whose dimention is the sweep going.
-            window_clk_axis: Integer. The axis index where the clock cycle of PE dataflow is.
-            window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
-            axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 0,1,2 to window_shape axis 1,2,0 respectively.
-            get_cond_idx: Bool. Return condition index or not.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        data_shape: Tuple. 
+            The shape of data array being streamed in.
+        data_stream_axis: Integer. 
+            The axis index whose dimension is the flow going.
+        data_flow_direction: String. 'forward' or 'backward' 
+            The direction of data flow in. 
+            Stream starts from the 0 index and increment, or else starts from last index and decrement.
+        window_shape: Tuple. 
+            The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
+        window_stream_axis: String. 
+            The axis index whose dimention is the sweep going.
+        window_clk_axis: Integer. 
+            The axis index where the clock cycle of PE dataflow is.
+        window_flow_direction: String. 'forward' or 'backward' 
+            The direction of window sweeping. 
+        axis_arange: List of Integer. 
+            How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 0,1,2 to window_shape axis 1,2,0 respectively.
+        get_cond_idx: Bool. 
+            Return condition index or not.
             
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """
         if isinstance(index,tuple):
             index=np.reshape(np.array(index),[1,-1])
@@ -745,21 +812,33 @@ class PEarray:
             window_shape must have 1 more dimension than data_shape, that is let data stream through window.
             The one more stream through dimension will be collapse to the time dimension.
             
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            data_shape: Tuple. The shape of data array being streamed in.
-            data_stream_axis: Integer. The axis index whose dimension is the flow going.
-            data_flow_direction: String. 'forward' or 'backward' the direction of data flow in. 
-                Stream starts from the 0 index and increment, or else starts from last index and decrement.
-            window_shape: Tuple. The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
-            window_stream_axis: String. The axis index whose dimention is the sweep going.
-            window_clk_axis: Integer. The axis index where the clock cycle of PE dataflow is.
-            window_flow_direction: String. 'forward' or 'backward' the direction of window sweeping. 
-            axis_arange: List of Integer. How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 0,1,2 to window_shape axis 1,2,0 respectively.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        data_shape: Tuple. 
+            The shape of data array being streamed in.
+        data_stream_axis: Integer. 
+            The axis index whose dimension is the flow going.
+        data_flow_direction: String. 'forward' or 'backward' 
+            The direction of data flow in. 
+            Stream starts from the 0 index and increment, or else starts from last index and decrement.
+        window_shape: Tuple. 
+            The shape of window sweep on data. The last dimention is the time dimension that stacks captures.
+        window_stream_axis: String. 
+            The axis index whose dimention is the sweep going.
+        window_clk_axis: Integer. 
+            The axis index where the clock cycle of PE dataflow is.
+        window_flow_direction: String. 'forward' or 'backward' 
+            The direction of window sweeping. 
+        axis_arange: List of Integer. 
+            How the data_shape axis aranged in window_shape i.e. [1,2,0] put data_shape axis 0,1,2 to window_shape axis 1,2,0 respectively.
             
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """
         if isinstance(index,tuple):
             index=np.reshape(np.array(index),[1,-1])
@@ -809,17 +888,25 @@ class PEarray:
         """ Broadcast certain indexes of an array to all element in a given dimension. 
             The dimension of data_shape should be smaller than target_shape, there need to be space for broadcast.
         
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            data_shape: Tuple. The shape of data array being broadcasted.
-            target_shape: Tuple. The shape of data array broadcast to.
-            broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that are being broadcast to.
-            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
-            get_cond_idx: Bool. Return condition index or not.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        data_shape: Tuple. 
+            The shape of data array being broadcasted.
+        target_shape: Tuple. 
+            The shape of data array broadcast to.
+        broadcast_dims: Integer or List of Integer. 
+            The dimension indexes of target_shape that are being broadcast to.
+        axis_arange: List of Integer. 
+            How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
+        get_cond_idx: Bool. 
+            Return condition index or not.
             
         # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
             
         """
         if not len(data_shape)<len(target_shape):
@@ -888,16 +975,24 @@ class PEarray:
         """ Retract the broadcast of a dimesion, return mapping to its original state and remove the broadcast dimension. 
             The dimension of data_shape should be smaller than target_shape, the extra dimension on target_shape will be removed by narrowcast.
         
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            data_shape: Tuple. The shape of data array being narrowcast to.
-            target_shape: Tuple. The shape of data array being narrowcasted.
-            broadcast_dims: Integer or List of Integer. The dimension indexes of target_shape that were broadcasted to.
-            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        data_shape: Tuple. 
+            The shape of data array being narrowcast to.
+        target_shape: Tuple. 
+            The shape of data array being narrowcasted.
+        broadcast_dims: Integer or List of Integer. 
+            The dimension indexes of target_shape that were broadcasted to.
+        axis_arange: List of Integer. 
+            How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
             
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
             
         """
         if not len(data_shape)<len(target_shape):
@@ -949,16 +1044,24 @@ class PEarray:
         """ Make certain dimension of data index fix on certain axis.
             In this condition the data only exist on specific index of this dimension.
         
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            indice_fix: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
-            fix_dims: Integer or List of Integer. The dimension indexes of target_shape that are being fix to.
-            target_shape: Tuple. The shape of data array fix to.
-            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        indice_fix: Integer or List of Integer. 
+            The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
+        fix_dims: Integer or List of Integer. 
+            The dimension indexes of target_shape that are being fix to.
+        target_shape: Tuple. 
+            The shape of data array fix to.
+        axis_arange: List of Integer. 
+            How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
             
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
 
         """
         if isinstance(fix_dims,int):
@@ -1018,16 +1121,24 @@ class PEarray:
         """ Retract the fixed dimension of data, return mapping to its original state and remove the fixed dimension. 
             The dimension of fix_dims in target_shape will be removed.
         
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            indice_fix: Integer or List of Integer. The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
-            fix_dims: Integer or List of Integer. The dimension indexes of target_shape that were fixed to.
-            target_shape: Tuple. The shape of data array were fixed to.
-            axis_arange: List of Integer. How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        indice_fix: Integer or List of Integer. 
+            The indice of the targeted dimension that represent the location of fix data. If multiple dimensions are fixed indice_fix must align with fix_dims.
+        fix_dims: Integer or List of Integer. 
+            The dimension indexes of target_shape that were fixed to.
+        target_shape: Tuple. 
+            The shape of data array were fixed to.
+        axis_arange: List of Integer. 
+            How the data_shape axis aranged in target_shape i.e. [1,2,0] put data_shape axis 0,1,2 to target_shape axis 1,2,0 respectively.
             
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
 
         """
         if index.shape[1]!=len(target_shape):
@@ -1099,10 +1210,10 @@ class PEarray:
     def serialize_slices(self, fault_dict, mapping_shape, slice_n_clk=None, pack_size=1, t_clk_dims=-2, slice_dims=-1, dataflow_pre_plan=False):
         """ Serialize slice dimension into t_clk dimension. Converge the slice order on PE dataflow model.
             
-            if pack_size >1:
-                keep slice dimension
-            else:
-                flatten slice dimension into t_clk dimension
+            | if pack_size >1:
+            |     keep slice dimension
+            | else:
+            |     flatten slice dimension into t_clk dimension
         
         """
         if not dataflow_pre_plan:
@@ -1158,10 +1269,10 @@ class PEarray:
     def deserialize_slices(self, fault_dict, mapping_shape, slice_n_clk=None, pack_size=1, t_clk_dims=None, slice_dims=None):
         """ Deserialize t_clk dimension into slice dimension. Split t_clk axis for multiple slices of tile.
                     
-            if pack_size >1:
-                partially split the t_clk dimension into existing slice dimension
-            else:
-                split t_clk dimension into new slice dimension
+            | if pack_size >1:
+            |     partially split the t_clk dimension into existing slice dimension
+            | else:
+            |     split t_clk dimension into new slice dimension
 
         """
         index=np.array(list(fault_dict.keys()))
@@ -1405,16 +1516,23 @@ class PEarray:
             Each axis on PE array are assign with dataflow mode (one of 'permute', 'fixed', 'broadcast', 'streaming').
             The pre-mapping phase will tackle axes in following order. 'permute' -> 'fixed' -> 'broadcast' -> 'streaming'
         
-        # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
-            tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
-            flow: Class. The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
+        Arguments
+        ---------
+        parameter: String. 
+            The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
+        tile: Class. 
+            The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
+        flow: Class. 
+            The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
+            
+        dataflow_pre_plan: Bool. 
+            Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+            Only save the expansion configuration for later PEarray to Tile transform.
                 
-            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
-                Only save the expansion configuration for later PEarray to Tile transform.
-                
-        # Returns
-            Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Converted fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if not self.setup_ready:
             raise AttributeError('The dataflow setup is not ready!')
@@ -1586,13 +1704,19 @@ class PEarray:
             Demapping is to mapping the slices on PE array model to reshaped Tile by reverse the pre-mapping process.
             The demapping phase will tackle axes in following order. 'streaming' -> 'broadcast' -> 'fixed' -> 'permute' 
         
-        # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
-            tile: Class. The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
-            flow: Class. The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
+        Arguments
+        ---------
+        parameter: String. 
+            The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
+        tile: Class. 
+            The tile_PE class for PE array fault tolerance analysis. The tile about to be mapped.
+        flow: Class. 
+            The PEflow class for tile mapping on PE array. The flow describe how the tile are mapped.
                 
-        # Returns
-            Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Converted fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if not self.setup_ready:
             raise AttributeError('The dataflow setup is not ready!')
@@ -1751,14 +1875,19 @@ class PEarray:
             Repeat means the times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
             Duplicate means the times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
             
-        # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
+        Arguments
+        ---------
+        parameter: String. 
+            The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
             
-            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
-                Only save the expansion configuration for later PEarray to Tile transform.
+        dataflow_pre_plan: Bool. 
+            Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+            Only save the expansion configuration for later PEarray to Tile transform.
 
-        # Returns
-            Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Converted fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if not self.setup_ready:
             raise AttributeError('The dataflow setup is not ready!')
@@ -1853,11 +1982,15 @@ class PEarray:
             Repeat means the times for pre-mapped tile repeat element wise on t_clk axis. For mapping clock cycle.
             Duplicate means the times for pre-mapped tile duplicate entirely on t_clk axis. For mapping clock cycle.
             
-        # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
+        Arguments
+        ---------
+        parameter: String. 
+            The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
             
-        # Returns
-            Converted fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Converted fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if not self.setup_ready:
             raise AttributeError('The dataflow setup is not ready!')
@@ -1939,14 +2072,19 @@ class PEarray:
             All the fault dictionary are in the correct location within slice. Forming slice pack to slign the timing of each slices to complete tile computation.
             Insert stall and latency for actual PE dataflow for each slice pack. Finally, combines all mapped tile fault dictionary onto PE dataflow model.
                             
-        # Arguments
-            parameter: String. The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
+        Arguments
+        ---------
+        parameter: String. 
+            The parameter being mapped to, must be 'ofmap', 'wght', 'ifmap', 'bias' or 'psum'.
             
-            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
-                Only save the expansion configuration for later PEarray to Tile transform.
+        dataflow_pre_plan: Bool. 
+            Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+            Only save the expansion configuration for later PEarray to Tile transform.
 
-        # Returns
-            Converted and combined fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Converted and combined fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if not self.setup_ready:
             raise AttributeError('The dataflow setup is not ready!')
@@ -2097,11 +2235,15 @@ class PEarray:
             Remove stall and latency for actual PE dataflow for each slice pack. 
             Decompose ifmap, weight and ofmap(psum) at once to get partial sum index for tile fault dictionary which can be further analyzed.
         
-        # Arguments
-            print_detail: Bool. Print the progress of decompose slice pack.
+        Arguments
+        ---------
+        print_detail: Bool. 
+            Print the progress of decompose slice pack.
         
-        # Returns
-            Converted and decomposed mapping fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Converted and decomposed mapping fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if not self.setup_ready:
             raise AttributeError('The dataflow setup is not ready!')
@@ -2316,12 +2458,17 @@ class PEarray:
             These fault info 'param' correspond to upstream or downstream PE I/O. 
             By finding the actual tile data of these index, can know the fault location in convolution.
         
-        # Arguments
-            fault_dict: Dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
-            mac_config: Class. The class of MAC unit configurations.
+        Arguments
+        ---------
+        fault_dict: Dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        mac_config: Class. 
+            The class of MAC unit configurations.
         
-        # Returns
-            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if not self.setup_ready:
             raise AttributeError('Dataflow set up not ready! Can\'t find neighbor PE index.')
@@ -2462,16 +2609,21 @@ class PEarray:
     def propagate_interconnect_fd(self, fault_loc, fault_param, mac_config):
         """ Data contamination by propagate the faulty data through the interconnection between PEs
         
-        # Arguments
-            fault_loc: Ndarray or Tuple. PE dataflow model coordinate represent as the fault location.
-            fault_param: String or List of Strings. The type of parameter has fault. 
-                One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
-                If fault_param is string, all fault location has the same fault parameter type.
-                Else if fault_param is list, the length must be the same as fault_loc for match each location respectively.
-            mac_config: Class. The class of MAC unit configurations.
+        Arguments
+        ---------
+        fault_loc: Ndarray or Tuple. 
+            PE dataflow model coordinate represent as the fault location.
+        fault_param: String or List of Strings. One of ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+            The type of parameter has fault. 
+            If fault_param is string, all fault location has the same fault parameter type.
+            Else if fault_param is list, the length must be the same as fault_loc for match each location respectively.
+        mac_config: Class. 
+            The class of MAC unit configurations.
         
-        # Returns
-            Converted coordinates. Multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinates. 
+            Multiple coordinate return in 2D ndarray.
         """
         if isinstance(fault_loc,tuple) or (isinstance(fault_loc,np.ndarray) and len(fault_loc.shape)==1):
             fault_loc=np.expand_dims(fault_loc,0)
@@ -2499,14 +2651,19 @@ class PEarray:
         """ Generate on stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
             Regardless of clock cycles, data setup or fualt propagation.
         
-        # Arguments
-            n_bit: Integer. Number of word length bits used in PE array.
-            fault_type: String. The type of fault.
-            param_list: List of String. The available parameters can have fault on it. 
-                The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+        Arguments
+        ---------
+        n_bit: Integer. 
+            Number of word length bits used in PE array.
+        fault_type: String. 
+            The type of fault.
+        param_list: List of String. 
+            The available parameters can have fault on it. 
+            The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
         
-        # Returns
-            Fault coordinate (Tuple) and Fault dictionary include SA_type, SA_bit, fault parameter.
+        Returns
+        -------
+        Fault coordinate (Tuple) and Fault dictionary include SA_type, SA_bit, fault parameter.
         """
         if param_list==None:
             param_list=['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out']
@@ -2523,16 +2680,22 @@ class PEarray:
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single cycle transient fault occurs
             multiple times on I/O of PE in a tile processing time.
         
-        # Arguments
-            n_bit: Integer. Number of word length bits used in PE array.
-            fault_num: Integer. The number of transient faults happened in a tile processing time.
-            fault_type: String. The type of fault.
-            param_list: List of String. The available parameters can have fault on it. 
-                The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+        Arguments
+        ---------
+        n_bit: Integer. 
+            Number of word length bits used in PE array.
+        fault_num: Integer. 
+            The number of transient faults happened in a tile processing time.
+        fault_type: String. 
+            The type of fault.
+        param_list: List of String. 
+            The available parameters can have fault on it. 
+            The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
 
-        
-        # Returns
-            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Fault dictionary. Keys 
+            are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if self.n_clk is None:
             raise ValueError('n_clk not set, dataflow pre-plan not ready.')
@@ -2563,18 +2726,25 @@ class PEarray:
     def gen_PEarray_SA_fault_dict(self, n_bit, fault_type='flip', param_list=None, mac_config=False):
         """ Generate stuck-at fault dictionary on PEarray. The fault assumption is single SA fault in one I/O of PE.
         
-        # Arguments
-            n_bit: Integer. Number of word length bits used in PE array.
-            fault_type: String. The type of fault.
-            param_list: List of String. The available parameters can have fault on it. 
-                The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
-            mac_config: Class or Bool. The class of MAC unit configurations. 
-                If True, using the fault propagation previously store in self.mac_config.
-                Else False, no fault propagation in PE array.
-                Or input is mac_unit class, using the current input as config to do fault propagation.
-        
-        # Returns
-            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Arguments
+        ---------
+        n_bit: Integer. 
+            Number of word length bits used in PE array.
+        fault_type: String. 
+            The type of fault.
+        param_list: List of String. 
+            The available parameters can have fault on it. 
+            The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+        mac_config: Class or Bool. 
+            The class of MAC unit configurations. 
+            If True, using the fault propagation previously store in self.mac_config.
+            Else False, no fault propagation in PE array.
+            Or input is mac_unit class, using the current input as config to do fault propagation.
+    
+        Returns
+        -------
+        Fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if self.n_clk is None:
             raise ValueError('n_clk not set, dataflow pre-plan not ready.')
@@ -2617,18 +2787,25 @@ class PEarray:
         """ Generate fault dictionary on PEarray of permanent fault. Given the fault location and fault infomation. 
             Copy the fault to all clock cycles for this PE mapping configuration. 
         
-        # Arguments
-            fault_loc: Tuple or List. The location coordinate of fault.
-            fault_info: Dictionary. The fault information dictionay that includes 'SA_type', 'SA_bit', 'param'.
-            param_list: List of String. The available parameters can have fault on it. 
-                The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
-            mac_config: Class or Bool. The class of MAC unit configurations. 
-                If True, using the fault propagation previously store in self.mac_config.
-                Else False, no fault propagation in PE array.
-                Or input is mac_unit class, using the current input as config to do fault propagation.
+        Arguments
+        ---------
+        fault_loc: Tuple or List. 
+            The location coordinate of fault.
+        fault_info: Dictionary. 
+            The fault information dictionay that includes 'SA_type', 'SA_bit', 'param'.
+        param_list: List of String. 
+            The available parameters can have fault on it. 
+            The default is ['ifmap_in', 'ifmap_out', 'wght_in', 'wght_out', 'psum_in', 'psum_out'].
+        mac_config: Class or Bool. 
+            The class of MAC unit configurations. 
+            If True, using the fault propagation previously store in self.mac_config.
+            Else False, no fault propagation in PE array.
+            Or input is mac_unit class, using the current input as config to do fault propagation.
         
-        # Returns
-            Fault dictionary. Keys are PE dataflow model coordinates. Items are fault info dictionarys.
+        Returns
+        -------
+        Fault dictionary. 
+            Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
         if self.n_clk is None:
             raise ValueError('n_clk not set, dataflow pre-plan not ready.')

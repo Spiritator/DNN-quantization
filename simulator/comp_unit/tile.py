@@ -18,19 +18,25 @@ class tile_PE(tile):
         Includes data expansion/restoration with reshape or image patch extract methods.
         And tile slicing process which allows user to further cut tile into slices and permute it 
         for time multiplex computation scheme.
+        
+    Arguments
+    ---------
+    tile_shape: Tuple. 
+        The shape of tile.
+    Tm: Integer. 
+        The size of tile on the input feature map dimension (weight) or channel dimention (feature map).
+    Tn: Integer. 
+        The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
+    Tr: Integer. 
+        The size of tile on the kernel row dimension or feature map row dimention.
+    Tc: Integer. 
+        The size of tile on the kernel column dimension or feature map column dimention.
+    is_fmap: Bool. 
+        The tile is feature map tile or weight tile.
+
     """
     def __init__(self, tile_shape, is_fmap, **kwargs):
-        """The tile of a DNN feature map or weights
-
-        # Arguments
-            tile_shape: Tuple. The shape of tile.
-            Tm: Integer. The size of tile on the input feature map dimension (weight) or channel dimention (feature map).
-            Tn: Integer. The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
-            Tr: Integer. The size of tile on the kernel row dimension or feature map row dimention.
-            Tc: Integer. The size of tile on the kernel column dimension or feature map column dimention.
-            is_fmap: Bool. The tile is feature map tile or weight tile.
-    
-        """
+        """The tile of a DNN feature map or weights """
         super(tile_PE, self).__init__(tile_shape, is_fmap, **kwargs)
         self.tile_shape=tile_shape
                 
@@ -59,16 +65,24 @@ class tile_PE(tile):
     def conv_output_length(self, input_length, filter_size, padding, stride, dilation=1, edge_fill=False):
         """Determines output length of a convolution given input length.
     
-        # Arguments
-            input_length: integer.
-            filter_size: integer.
-            padding: one of `"same"`, `"valid"`, `"full"`.
-            stride: integer.
-            dilation: dilation rate, integer.
-            edge_fill: Bool. Fill the edge(right, down) kernel exceed part with zero and count as ofmap pixel.
+        Arguments
+        ---------
+        input_length: integer.
+            
+        filter_size: integer.
+        
+        padding: one of `"same"`, `"valid"`, `"full"`.
+        
+        stride: integer.
+        
+        dilation: dilation rate, integer.
+        
+        edge_fill: Bool. 
+            Fill the edge(right, down) kernel exceed part with zero and count as ofmap pixel.
 
-        # Returns
-            The output length (integer).
+        Returns
+        -------
+        The output length (integer).
         """
         if input_length is None:
             return None
@@ -91,16 +105,24 @@ class tile_PE(tile):
     def reshape_ravel_idx(self,index,source_shape,source_prior,target_shape,target_prior):
         """ Convert index to differet shapes for tile data expansion. Unravel index to a numtag than ravel to another index.
         
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            source_shape: Tuple. The shape of source array before tranformation.
-            source_prior: List or Tuple of Integer. The list for unravel priority of source_shape dimensions. The list is the dimension index.
-            target_shape: Tuple. The shape of target array for tranformation to.
-            target_prior: List or Tuple of Integer. The list for ravel priority of target_shape dimensions. The list is the dimension index.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        source_shape: Tuple. 
+            The shape of source array before tranformation.
+        source_prior: List or Tuple of Integer. 
+            The list for unravel priority of source_shape dimensions. The list is the dimension index.
+        target_shape: Tuple. 
+            The shape of target array for tranformation to.
+        target_prior: List or Tuple of Integer. 
+            The list for ravel priority of target_shape dimensions. The list is the dimension index.
         
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """
         if len(source_shape)!=len(source_prior):
             raise ValueError('The length of source_shape must equals to source_prior, but got %d and %d.'%(len(source_shape),len(source_prior)))
@@ -155,21 +177,28 @@ class tile_PE(tile):
     def slice_permute_idx(self, index, orig_shape, slicing_dims, slices_permute):
         """ Index transformation for slice array and permute it into new axis. For slice within tile of PE mapping flow.
         
-        # Arguments
-        index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
 
-        orig_shape: Tuple. The shape of orignal array were going to be sliced.
+        orig_shape: Tuple. 
+            The shape of orignal array were going to be sliced.
         
-        slicing_dims: Tuple. Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
-                expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
-                0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
+        slicing_dims: Tuple. 
+            Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
+            expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
+            0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
                 
-        slices_permute: List or Tuple of Integer.. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
-                the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+        slices_permute: List or Tuple of Integer.
+            Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
+            the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
                 
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """        
         if isinstance(index,tuple):
             index=np.array(index)
@@ -202,21 +231,28 @@ class tile_PE(tile):
     def assemble_slice_idx(self, index, orig_shape, slicing_dims, slices_permute):
         """ Index transformation for assemble sliced array and remove the slice axis. For reverse slice within tile of PE mapping flow.
         
-        # Arguments
-        index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
 
-        orig_shape: Tuple. The shape of orignal array were going to be sliced.
+        orig_shape: Tuple. 
+            The shape of orignal array were going to be sliced.
         
-        slicing_dims: Tuple. Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
-                expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
-                0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
+        slicing_dims: Tuple. 
+            Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
+            expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. 
+            The 0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
                 
-        slices_permute: List or Tuple of Integer.. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
-                the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+        slices_permute: List or Tuple of Integer. 
+            Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
+            the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
                 
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """        
         if isinstance(index,tuple):
             index=np.array(index)
@@ -282,23 +318,34 @@ class tile_PE(tile):
             This was used for convert 4D ifmap tile to ofmap column and row with all the partial product input fmap.
             [batch, row, column, # of kernel 2D * # of ifmap channel]
             
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            fmap_shape: Tuple. The shape of orignal fmap were going to be extracted.
-            ksize: List of Integer. Length >= 4. The size of the sliding window for each dimension of images. [1, row, col, 1]
-            strides: List of Integer. Length >= 4. How far the centers of two consecutive patches are in the images. [1, stride_rows, stride_cols, 1]
-            dilation_rates: List of Integer. Length >= 4. Must be: [1, rate_rows, rate_cols, 1]. This is the input stride, 
-                specifying how far two consecutive patch samples are in the input.
-            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
-            edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
-                the exceeded area with zero and count as an ofmap pixel or not.
-            patches_unravel: List of Integer. The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
-                [row, col, channel] are the needed data to accumulate output a pixel.
-            get_cond_idx: Bool. Return condition index or not.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        fmap_shape: Tuple. 
+            The shape of orignal fmap were going to be extracted.
+        ksize: List of Integer. Length >= 4. 
+            The size of the sliding window for each dimension of images. [1, row, col, 1]
+        strides: List of Integer. Length >= 4. 
+            How far the centers of two consecutive patches are in the images. [1, stride_rows, stride_cols, 1]
+        dilation_rates: List of Integer. Length >= 4. Must be: [1, rate_rows, rate_cols, 1]. 
+            This is the input stride, 
+            specifying how far two consecutive patch samples are in the input.
+        padding: String. 'same' or 'valid'. 
+            The type of padding algorithm to use.
+        edge_fill: Bool. 
+            When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
+            the exceeded area with zero and count as an ofmap pixel or not.
+        patches_unravel: List of Integer. 
+            The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
+            [row, col, channel] are the needed data to accumulate output a pixel.
+        get_cond_idx: Bool. 
+            Return condition index or not.
         
         # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """
         if isinstance(index,tuple):
             index=np.reshape(np.array(index),[1,-1])
@@ -398,23 +445,34 @@ class tile_PE(tile):
             This was used for convert ofmap column and row with all the partial product input fmap to 4D ifmap tile.
             [batch, row, column, # of kernel 2D * # of ifmap channel] -> [batch, row, column, in channel]
             
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            fmap_shape: Tuple. The shape of orignal fmap were going to be extracted.
-            ksize: List of Integer. Length >= 4. The size of the sliding window for each dimension of images. [1, row, col, 1]
-            strides: List of Integer. Length >= 4. How far the centers of two consecutive patches are in the images. [1, stride_rows, stride_cols, 1]
-            dilation_rates: List of Integer. Length >= 4. Must be: [1, rate_rows, rate_cols, 1]. This is the input stride, 
-                specifying how far two consecutive patch samples are in the input.
-            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
-            edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
-                the exceeded area with zero and count as an ofmap pixel or not.
-            patches_unravel: List of Integer. The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
-                [row, col, channel] are the needed data to accumulate output a pixel.
-            get_cond_idx: Bool. Return condition index or not.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        fmap_shape: Tuple. 
+            The shape of orignal fmap were going to be extracted.
+        ksize: List of Integer. Length >= 4. 
+            The size of the sliding window for each dimension of images. [1, row, col, 1]
+        strides: List of Integer. Length >= 4. 
+            How far the centers of two consecutive patches are in the images. [1, stride_rows, stride_cols, 1]
+        dilation_rates: List of Integer. Length >= 4. Must be: [1, rate_rows, rate_cols, 1]. 
+            This is the input stride, specifying how far two consecutive patch samples are in the input.
+        padding: String. 'same' or 'valid'. 
+            The type of padding algorithm to use.
+        edge_fill: Bool. 
+            When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
+            the exceeded area with zero and count as an ofmap pixel or not.
+        patches_unravel: List of Integer. 
+            The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
+            [row, col, channel] are the needed data to accumulate output a pixel.
+        get_cond_idx: Bool. 
+            Return condition index or not.
         
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.
         """
         if isinstance(index,tuple):
             index=np.reshape(np.array(index),[1,-1])
@@ -464,17 +522,26 @@ class tile_PE(tile):
     def tilt_idx(self, index, axis, direction, shape, shift=1):
         """ Make index tilted for systolic array input
         
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            shape: Tuple of Integer. The shape of data which the index represents. Needed argument for negative shift.
-            axis: Integer. The axis wanted to be tilted.
-            direction: Integer. The axis of direaction that are tilted to.
-            shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        shape: Tuple of Integer. 
+            The shape of data which the index represents. Needed argument for negative shift.
+        axis: Integer. 
+            The axis wanted to be tilted.
+        direction: Integer. 
+            The axis of direaction that are tilted to.
+        shift: Integer. 
+            The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
         
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.        
-            Shape of tilted index array. Tuple.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.        
+        Shape of tilted index array. 
+            Tuple.
         """
         new_index=np.copy(index)
         if shift<0:
@@ -490,17 +557,26 @@ class tile_PE(tile):
     def untilt_idx(self, index, axis, direction, shape, shift=1):
         """ Undo tilting operation for systolic array input index 
         
-        # Arguments
-            index: Tuple or 2D ndarray. The index(coordinate) of source_shape which will be transform to target_shape index.
-                2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
-            shape: Tuple of Integer. The shape of data which the index represents. Needed argument for negative shift.
-            axis: Integer. The axis wanted to be untilted.
-            direction: Integer. The axis of direction that were tilted to.
-            shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
+        Arguments
+        ---------
+        index: Tuple or 2D ndarray. 
+            The index(coordinate) of source_shape which will be transform to target_shape index.
+            2D ndarray (a,b) where a for list of coordinates, b for coordinate dimensions i.e. (16,4) there are 16 coordinates with 4 dimensions.
+        shape: Tuple of Integer. 
+            The shape of data which the index represents. Needed argument for negative shift.
+        axis: Integer. 
+            The axis wanted to be untilted.
+        direction: Integer. 
+            The axis of direction that were tilted to.
+        shift: Integer. 
+            The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
         
-        # Returns
-            Converted coordinate. Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.        
-            Shape of untilted index array. Tuple.
+        Returns
+        -------
+        Converted coordinate. 
+            Single coordinate return in Tuple, multiple coordinate return in 2D ndarray.        
+        Shape of untilted index array. 
+            Tuple.
         """
         new_index=np.copy(index)
         if shift<0:
@@ -520,31 +596,43 @@ class tile_PE(tile):
             The data may be cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
             Method 'reshape' means change data shape without any duplication in array.
         
-        # Arguments              
-            orig_prior: List or Tuple of Integer or String. The list for unravel priority of tile dimensions. 
-                The integer list is the dimension index. The string list is consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        Arguments              
+        ---------
+        orig_prior: List or Tuple of Integer or String. 
+            The list for unravel priority of tile dimensions. 
+            The integer list is the dimension index. The string list is consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+            
+        expect_shape: Tuple. 
+            The expected shape to be expand into.
+        
+        reshape_prior: List or Tuple of Integer. 
+            The list for ravel priority of expect_shape dimensions. The list is the dimension index. 
+        
+        slicing_dims: Tuple. 
+            Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
+            expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
+            0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
+            
+        slices_permute: Tuple. 
+            Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
+            the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+        
+        tilting: Bool. 
+            Tilt the index or not. For PE systolic array input.
+        tilt_axis: Integer. 
+            The axis wanted to be tilted.
+        tilt_direction: Integer. 
+            The axis of direaction that are tilted to.
+        tilt_shift: Integer. 
+            The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
+        
+        dataflow_pre_plan: Bool. 
+            Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+            Only save the expansion configuration for later PEarray to Tile transform.
                 
-            expect_shape: Tuple. The expected shape to be expand into.
-            
-            reshape_prior: List or Tuple of Integer. The list for ravel priority of expect_shape dimensions. The list is the dimension index. 
-            
-            slicing_dims: Tuple. Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
-                expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
-                0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
-                
-            slices_permute: Tuple. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
-                the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
-            
-            tilting: Bool. Tilt the index or not. For PE systolic array input.
-            tilt_axis: Integer. The axis wanted to be tilted.
-            tilt_direction: Integer. The axis of direaction that are tilted to.
-            tilt_shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
-            
-            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
-                Only save the expansion configuration for later PEarray to Tile transform.
-                
-        # Returns
-            Converted fault dictionary.
+        Returns
+        -------
+        Converted fault dictionary.
 
         """
         self.expansion=True
@@ -628,11 +716,14 @@ class tile_PE(tile):
             Re-assemble the cut tile slices.
             Method 'reshape' means change data shape without any reduction in array.
         
-        # Arguments              
-            psum: Bool. Indicate the transformation is for partial sum or not.
+        Arguments              
+        ---------
+        psum: Bool. 
+            Indicate the transformation is for partial sum or not.
                 
-        # Returns
-            Converted fault dictionary.
+        Returns
+        -------
+        Converted fault dictionary.
 
         """
         if not psum:
@@ -693,48 +784,66 @@ class tile_PE(tile):
             This method contains data duplication.
             reference: https://www.tensorflow.org/api_docs/python/tf/image/extract_patches
         
-        # Arguments     
-            ksize: List of Integer. Length >= 4. The size of the sliding window for each dimension of images. [1, row, col, 1]
-            
-            strides: List of Integer. Length >= 4. How far the centers of two consecutive patches are in the images. [1, stride_rows, stride_cols, 1]
-            
-            dilation_rates: List of Integer. Length >= 4. Must be: [1, rate_rows, rate_cols, 1]. This is the input stride, 
-                specifying how far two consecutive patch samples are in the input.
-                
-            padding: String. 'same' or 'valid'. The type of padding algorithm to use.
-            
-            edge_fill: Bool. When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
-                the exceeded area with zero and count as an ofmap pixel or not.
-                
-            patches_unravel: List of Integer. The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
-                [row, col, channel] are the needed data to accumulate output a pixel.
-         
-            reshape_patches: Bool. Reshape the result of extract patches or not.
-            
-            patches_prior: List or Tuple of Integer or String. The list for unravel priority of patches dimensions. 
-                The integer list is the dimension index. The string list is consist of 'Tm', 'Tn', 'Tr', 'Tc'.
-                
-            expect_shape: Tuple. The expected shape to be expand into.
-            
-            reshape_prior: List or Tuple of Integer. The list for ravel priority of expect_shape dimensions. The list is the dimension index. 
-            
-            slicing_dims: Tuple. Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
-                expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
-                0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
-                
-            slices_permute: Tuple. Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
-                the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
-                
-            tilting: Bool. Tilt the index or not. For PE systolic array input.
-            tilt_axis: Integer. The axis wanted to be tilted.
-            tilt_direction: Integer. The axis of direaction that are tilted to.
-            tilt_shift: Integer. The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
+        Arguments     
+        ---------
+        ksize: List of Integer. Length >= 4. 
+            The size of the sliding window for each dimension of images. [1, row, col, 1]
         
-            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
-                Only save the expansion configuration for later PEarray to Tile transform.
+        strides: List of Integer. Length >= 4. 
+            How far the centers of two consecutive patches are in the images. [1, stride_rows, stride_cols, 1]
+        
+        dilation_rates: List of Integer. Length >= 4. Must be: [1, rate_rows, rate_cols, 1]. 
+            This is the input stride, specifying how far two consecutive patch samples are in the input.
+            
+        padding: String. 'same' or 'valid'. 
+            The type of padding algorithm to use.
+        
+        edge_fill: Bool. 
+            When the kernel window partially exceed the edge(right, bottom) of feature map, whether to fill 
+            the exceeded area with zero and count as an ofmap pixel or not.
+            
+        patches_unravel: List of Integer. 
+            The order of [row, col, channel] unravel into 1 dimmension default [0,1,2]. 
+            [row, col, channel] are the needed data to accumulate output a pixel.
+     
+        reshape_patches: Bool. 
+            Reshape the result of extract patches or not.
+        
+        patches_prior: List or Tuple of Integer or String. 
+            The list for unravel priority of patches dimensions. 
+            The integer list is the dimension index. The string list is consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+            
+        expect_shape: Tuple. 
+            The expected shape to be expand into.
+        
+        reshape_prior: List or Tuple of Integer. 
+            The list for ravel priority of expect_shape dimensions. The list is the dimension index. 
+        
+        slicing_dims: Tuple. 
+            Indicates the dimension of slices in the expect_shape. A tuple must be the same size as 
+            expect_shape, tuple (0,0,3,3) means the expect_shape dimension 2,3 are part of slice dimensions. The 
+            0,1 dimension parts are for time multiplexed permute so the dimension size is 0.
+            
+        slices_permute: Tuple. 
+            Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
+            the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+            
+        tilting: Bool. 
+            Tilt the index or not. For PE systolic array input.
+        tilt_axis: Integer. 
+            The axis wanted to be tilted.
+        tilt_direction: Integer. 
+            The axis of direaction that are tilted to.
+        tilt_shift: Integer. 
+            The amount of shifting for tilted representation. Positive number for tilt forward, negative for tilted backward.
+    
+        dataflow_pre_plan: Bool. 
+            Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+            Only save the expansion configuration for later PEarray to Tile transform.
 
-        # Returns
-            Converted fault dictionary.
+        Returns
+        -------
+        Converted fault dictionary.
         """
         self.expansion=True
         self.expand_method='extract_patches'
@@ -856,11 +965,14 @@ class tile_PE(tile):
             This method contains data reduction.
             reference: https://www.tensorflow.org/api_docs/python/tf/image/extract_patches
         
-        # Arguments              
-            psum: Bool. Indicate the transformation is for partial sum or not.
+        Arguments              
+        ---------
+        psum: Bool. 
+            Indicate the transformation is for partial sum or not.
 
-        # Returns
-            Converted fault dictionary.
+        Returns
+        -------
+        Converted fault dictionary.
         """  
         if not psum:
             permuted_coors=np.array(list(self.fault_dict_expand.keys()))
@@ -979,14 +1091,18 @@ class tile_PE(tile):
         """ Data expansion before put into PE array. 
             The data are being cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
         
-        # Arguments                            
-            bias_slice_width: Integer. The expected slice width to be expand into. 
+        Arguments                            
+        ---------
+        bias_slice_width: Integer. 
+            The expected slice width to be expand into. 
             
-            dataflow_pre_plan: Bool. Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
-                Only save the expansion configuration for later PEarray to Tile transform.
+        dataflow_pre_plan: Bool. 
+            Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
+            Only save the expansion configuration for later PEarray to Tile transform.
                             
-        # Returns
-            Converted fault dictionary.
+        Returns
+        -------
+        Converted fault dictionary.
 
         """
         if self.is_fmap:
@@ -1018,10 +1134,12 @@ class tile_PE(tile):
         """ Data shrink for PE array to Tile mapping.
             The data are being cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
         
-        # Arguments                            
+        Arguments                            
+        ---------
                             
-        # Returns
-            Converted fault dictionary.
+        Returns
+        -------
+        Converted fault dictionary.
 
         """
         if self.is_fmap:
@@ -1087,17 +1205,21 @@ class tile_PE(tile):
 
 class tile_FC_PE(tile_FC, tile_PE):
     """ Tile for PE dataflow model mapping. For fully-connected layer.
+        
+    Arguments
+    ---------
+    tile_shape: Tuple. 
+        The shape of tile.
+    Tm: Integer. 
+        The size of tile on the input feature map dimension (weight) or channel dimention (feature map).
+    Tn: Integer. 
+        The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
+    is_fmap: Bool. 
+        The tile is feature map tile or weight tile.
+
     """
     def __init__(self, tile_shape, is_fmap, **kwargs):
-        """The tile of a DNN feature map or weights
-
-        # Arguments
-            tile_shape: Tuple. The shape of tile.
-            Tm: Integer. The size of tile on the input feature map dimension (weight) or channel dimention (feature map).
-            Tn: Integer. The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
-            is_fmap: Bool. The tile is feature map tile or weight tile.
-    
-        """
+        """ The tile of a DNN feature map or weights """
         super(tile_FC_PE, self).__init__(tile_shape, is_fmap, **kwargs)
         self.tile_shape=tile_shape
                 
@@ -1134,18 +1256,23 @@ class io_data_solver:
     For solveing the PE fault to each corresponding data on ifmap, weight, ofmap.
     Produces a fault dictionary of the layer ofmap shape which contains fault information.
     As well as fault id and parrtial sum index.
+    
+    Arguments                            
+    ---------
+    ofmap_tile: Class. 
+        The tile_PE class for PE array fault tolerance analysis. Output feature maps tile.
+    wght_tile: Class. 
+        The tile_PE class for PE array fault tolerance analysis. Weights feature maps tile.
+    ifmap_tile: Class. 
+        The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
+    fault_num: Integer. 
+        The number of faults in the tiles for solving.
+    layer_type: String. One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
+        The type of layer this solver wants to convert partial sum index and mapping into.
+        
     """
     def __init__(self, ofmap_tile, wght_tile, ifmap_tile, fault_num=None, layer_type='Conv2D'):
-        """ 
-        # Arguments                            
-            ofmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Output feature maps tile.
-            wght_tile: Class. The tile_PE class for PE array fault tolerance analysis. Weights feature maps tile.
-            ifmap_tile: Class. The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
-            fault_num: Integer. The number of faults in the tiles for solving.
-            layer_type: String. The type of layer this solver wants to convert partial sum index and mapping into.
-                One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
-        
-        """
+        """ Initializer for I/O data solver """
         self.ofmap_tile=ofmap_tile
         self.wght_tile=wght_tile
         self.ifmap_tile=ifmap_tile
@@ -1619,12 +1746,16 @@ class io_data_solver:
             Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
             and find the relation between them. Give fault info (psum index).
         
-        # Arguments                   
-            save2tile: Bool. If true, save the solving result fault dict to repective tile.
-                Else false, return the fault dictionary of the layer ofmap shape which contains solved information.
-            print_detail: Bool. Print the solving process.
-        # Returns
-            Solved fault dictionary.
+        Arguments                   
+        ---------
+        save2tile: Bool. 
+            If true, save the solving result fault dict to repective tile.
+            Else false, return the fault dictionary of the layer ofmap shape which contains solved information.
+        print_detail: Bool. 
+            Print the solving process.
+        Returns
+        -------
+        Solved fault dictionary.
 
         """
         if save2tile:
@@ -1763,17 +1894,26 @@ class io_data_solver:
             Solves tile2layer for both fault dict coordinates and partial sum indexes.
             By consider the duplication cause by tiling cut in input channel or kernel 2D.
 
-        # Arguments
-            fault_dict: Dictionary. The fault dictionary be duplicate expnand to layer. Contains fault information with partial sum indexes.
-            based_tile: String. The tile which the coordinates of fault dictionary indicate to. Must be one of 'ofmap','wght','ifmap'.
-            layer: Class. Keras Layer class, for extract the layer input, weight, output shapes
-            layer_input_shape: Tuple. The shape of a layer input parameter were divided into tile.
-            layer_weight_shape: Tuple. The shape of a layer weight parameter were divided into tile.
-            layer_output_shape: Tuple. The shape of a layer output parameter were divided into tile.
-            print_detail: Bool. Print the mapping process.
+        Arguments
+        ---------
+        fault_dict: Dictionary. 
+            The fault dictionary be duplicate expnand to layer. Contains fault information with partial sum indexes.
+        based_tile: String. 
+            The tile which the coordinates of fault dictionary indicate to. Must be one of 'ofmap','wght','ifmap'.
+        layer: Class. 
+            Keras Layer class, for extract the layer input, weight, output shapes
+        layer_input_shape: Tuple. 
+            The shape of a layer input parameter were divided into tile.
+        layer_weight_shape: Tuple. 
+            The shape of a layer weight parameter were divided into tile.
+        layer_output_shape: Tuple. 
+            The shape of a layer output parameter were divided into tile.
+        print_detail: Bool. 
+            Print the mapping process.
         
-        # Returns
-            The fault information Dictionary of a layer parameter (feature maps or weights).
+        Returns
+        -------
+        The fault information Dictionary of a layer parameter (feature maps or weights).
         """
         # the combined inter tile tile2layer
         if based_tile not in ['ofmap','wght','ifmap']:

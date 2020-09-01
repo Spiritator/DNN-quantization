@@ -15,6 +15,47 @@ from tensorflow.keras import backend as K
 
 
 def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, batch_size=32, data_augmentation = False, data_dir = None, preprocessing_function=None):
+    """
+    Dataset Setup Wrapper
+        Dataset prepare automation for Mnist, Cifar10 or Keras ImageDataGenerator.
+
+    Parameters
+    ----------
+    dataset : String. One of 'Mnsit', 'Cifar10', 'ImageDataGenerator'.
+        The data set to be prepared.
+    img_rows : Integer. optional
+        Number of image rows. The default is 224.
+    img_cols : Integer. optional
+        Number of image columns. The default is 224.
+    num_classes : Integer. optional
+        Number of dataset classes. The default is 10.
+    batch_size : Integer. optional
+        Batch size. The default is 32.
+    data_augmentation : Bool. optional
+        Using data augmentation or not. The default is False.
+    data_dir : String. optional
+        The directory of Keras ImageDataGenerator target. The default is None.
+    preprocessing_function : Callable function, optional
+        The fucntion for input image preprocessing. The default is None.
+
+    Returns
+    -------
+    x_train : Ndarray
+        The training data images array.
+    x_test : Ndarray
+        The validation data images array.
+    y_train : Ndarray
+        The training data label.
+    y_test : Ndarray
+        The validation data label.
+    class_indices : List or Ndarray
+        The name of each class respect to their index.
+    datagen : ImageDataGenerator.flow_from_directory
+        The ImageDataGenerator generated dataset class for batch data accessing.
+    input_shape : Tuple
+        The shape of dataset image for DNN input.
+
+    """
     if (dataset == "cifar10"):
 
         print('Setup CIFAR-10 dataset...')

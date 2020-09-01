@@ -21,7 +21,42 @@ def _preprocess_float_fault_rate_text(fl_fr_text):
     
     return flfrnew
 
-def make_FT_report_csv(stat_dir,report_filename,write_csv=True):
+def make_FT_report(stat_dir,report_csv_filename=None):
+    """
+    Organize multiple scheme run result csv files into one report
+
+    Parameters
+    ----------
+    stat_dir : String
+        The directory contains multile result files. 
+        Each of them stores multiple fault generation runs under one fault condition configuration.
+        The condition is describe by filename.
+    report_csv_filename : String. Don't need to contain '.csv' file extension in this argument.
+        The filename for report csv file. The default is None.
+        If type is String, write the combined analysis result into csv report file. 
+        If None, don't write file, just return data statistic dictionary.
+
+    Returns
+    -------
+    stat_data : Dictionary
+        | Data structure
+        | { experiment_variable_1 : { metric1 : { statistic1 : value,
+        |                                         statistic2 : value,
+        |                                         ... },
+        |                             metric2 : { statistic1 : value,
+        |                                         statistic2 : value,
+        |                                         ... },
+        |                             ...},
+        |   experiment_variable_2 : { metric1 : { statistic1 : value,
+        |                                         statistic2 : value,
+        |                                         ... },
+        |                             metric2 : { statistic1 : value,
+        |                                         statistic2 : value,
+        |                                         ... },
+        |                             ...},
+        |   ...}
+
+    """
     stat_file_list=os.listdir(stat_dir)
     stat_files=dict()
     for fname in stat_file_list:
@@ -29,7 +64,8 @@ def make_FT_report_csv(stat_dir,report_filename,write_csv=True):
             stat,f_ext=os.path.splitext(fname)
             stat=_preprocess_float_fault_rate_text(stat)
             stat_files[float(stat)]=fname
-        
+        #TODO
+        # not just float number as variable
         
     stat_data=dict()
     for key in sorted(stat_files.keys()):
@@ -59,11 +95,11 @@ def make_FT_report_csv(stat_dir,report_filename,write_csv=True):
             analyzed_metrics['var_down']=np.clip(analyzed_metrics['avg']-analyzed_metrics['std_dev'],analyzed_metrics['min'],np.inf)
             stat_data[key][keyy]=analyzed_metrics
             
-    if write_csv:
+    if isinstance(report_csv_filename,str):
         repo_dir=os.path.split(stat_dir)
         repo_dir=repo_dir[0]
         
-        with open(os.path.join(repo_dir,report_filename+'.csv'), 'w', newline='') as repo_csvfile:
+        with open(os.path.join(repo_dir,report_csv_filename+'.csv'), 'w', newline='') as repo_csvfile:
             for key in stat_data.keys():
                 report_fieldnames=[key]+metrics
                 writer=csv.DictWriter(repo_csvfile, fieldnames=report_fieldnames)
@@ -79,6 +115,43 @@ def make_FT_report_csv(stat_dir,report_filename,write_csv=True):
     return stat_data
 
 def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_size=None,save_plot_format='png'):
+    """
+    Make the fault tolerance report into line chart with statistic result
+
+    Parameters
+    ----------
+    stat_dir : String, optional
+        The directory contain multiple scheme run result csv files, which are made into one report. The default is None.
+    report_filename : String, optional
+        The directory to organized report csv file. The default is None.
+    font_size : Integer, optional
+        Font size of figure. The default is None.
+    legend_size : Integer, optional
+        Size of plot legend. The default is None.
+    save_plot_format : String, optional. one of 'png', 'jpg', 'eps'
+        The image format of plot saving. The default is 'png'.
+
+    Returns
+    -------
+    stat_data : Dictionary
+        | Data structure
+        | { experiment_variable_1 : { metric1 : { statistic1 : value,
+        |                                         statistic2 : value,
+        |                                         ... },
+        |                             metric2 : { statistic1 : value,
+        |                                         statistic2 : value,
+        |                                         ... },
+        |                             ...},
+        |   experiment_variable_2 : { metric1 : { statistic1 : value,
+        |                                         statistic2 : value,
+        |                                         ... },
+        |                             metric2 : { statistic1 : value,
+        |                                         statistic2 : value,
+        |                                         ... },
+        |                             ...},
+        |   ...}
+
+    """
     if stat_dir is None and report_filename is None:
         raise ValueError('Both augment stat_dir and report_filename are None! Choose one of them as data to draw analysis plot.')
         
@@ -107,7 +180,7 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_si
             stat_data[stat_tmp]=sub_stat
             
     if report_filename is None:
-        stat_data=make_FT_report_csv(stat_dir,None,write_csv=False)
+        stat_data=make_FT_report(stat_dir)
         
         
     x=list(stat_data.keys())
@@ -168,12 +241,61 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_si
     return stat_data
 
 def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label_list,font_size=None,legend_size=None,save_plot_format='png'):
-    '''
-        plot_color_list: List of Dictionarys. 
-                         Dictionary in format {'max':'color_of_max_line','min':'color_of_min_line','avg':'color_of_avg_line','var':'color_of_var_line'}. 
-                         The dictionary values are string of the matplotlib.pyplot color scheme.
-    
-    '''
+    """
+    Make multiple fault tolerance report into one line chart with statistic result.
+    Each metric plot a figure contains multiple report sources.
+
+    Parameters
+    ----------
+    stat_data_list : List of Dictionaries
+        List of stat_data Dictionaries that are being plotted. The list order will be followed by later parameters.
+        
+        stat_data : Dictionary
+            | Data structure
+            | { experiment_variable_1 : { metric1 : { statistic1 : value,
+            |                                         statistic2 : value,
+            |                                         ... },
+            |                             metric2 : { statistic1 : value,
+            |                                         statistic2 : value,
+            |                                         ... },
+            |                             ...},
+            |   experiment_variable_2 : { metric1 : { statistic1 : value,
+            |                                         statistic2 : value,
+            |                                         ... },
+            |                             metric2 : { statistic1 : value,
+            |                                         statistic2 : value,
+            |                                         ... },
+            |                             ...},
+            |   ...}
+        
+    plot_save_dir : String
+        The directory where plots are going to save.
+    plot_color_list : List of Dictionaries
+        The colors of plot lines. The List order must follow the stat_data_list. Each Dictionary should be in format:
+            
+            | plot_color: Dictionary format 
+            | {'max':'color_of_max_line',
+            |  'min':'color_of_min_line',
+            |  'avg':'color_of_avg_line',
+            |  'var':'color_of_var_line'}. 
+            The dictionary values are string of the matplotlib.pyplot color scheme.
+
+            
+    label_list : List of String
+        The line label. The List order must follow the stat_data_list.
+    font_size : Integer, optional
+        Font size of figure. The default is None.
+    legend_size : Integer, optional
+        Size of plot legend. The default is None.
+    save_plot_format : String, optional. one of 'png', 'jpg', 'eps'
+        The image format of plot saving. The default is 'png'.
+
+    Returns
+    -------
+    None
+        Plot multiple report sources fault tolerance report
+
+    """
     if not isinstance(stat_data_list,list):
         raise TypeError('augment stat_data_list should be type list consist of dictionary of stat_data of a FT analysis.')
     if not isinstance(plot_color_list,list):
@@ -238,7 +360,7 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         else:
             plt.savefig(pic_path,dpi=250)
     
-def heatmap(data, row_labels, col_labels, ax=None,
+def _heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", 
             aspect_ratio=0.4, xtick_rot=0, label_redu=None, grid_width=3, **kwargs):
     """
@@ -306,7 +428,7 @@ def heatmap(data, row_labels, col_labels, ax=None,
     return im, cbar
 
 
-def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
+def _annotate_heatmap(im, data=None, valfmt="{x:.2f}",
                      textcolors=["black", "white"],
                      threshold=None, **textkw):
     """
@@ -366,12 +488,66 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
     return texts
 
-def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, fr_list,var_list, 
+def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels, 
                        xlabel, ylabel,
                        aspect_ratio=0.3, valfmt="{x:.3f}", annotate=True, 
                        xtick_rot=0, label_redu=None, grid_width=3,
                        save_plot_format='png'):
-    
+    """
+    Plot fault tolerance report in 2D heatmap. For the data report contain 2 experiment variables.
+    Each experiment variable represent in a dimension of plot.
+    The value of fault tolerance metrics are showing in block color.
+
+    Parameters
+    ----------
+    stat_data_dict : Dictionary
+        The dictionary contain a stat_data in each item. The key and value pair is the x axis of plot.
+        The another experiment variable in each stat_data is the y axis of plot.
+        The format of Dictionary is:
+            | { fault_tolerance_metric_1 : { metric_statistics_1 : [[2D_array_data]],
+            |                                metric_statistics_1 : [[2D_array_data]],
+            |                                ...},
+            |   fault_tolerance_metric_2 : { metric_statistics_1 : [[2D_array_data]],
+            |                                metric_statistics_1 : [[2D_array_data]],
+            |                                ...},
+            |   ...}
+            
+    plot_save_dir : String
+        The directory where plots are going to save.
+    row_labels : List or Ndarray
+        The labels for the rows of plot.
+    col_labels : List or Ndarray
+        The labels for the columns of plot.
+    xlabel : String
+        The name of x axis.
+    ylabel : String
+        The name of y axis
+    aspect_ratio : Float, optional
+        The aspect ratio of heatmap. The default is 0.3.
+    valfmt : Dictionary, optional
+        The format of the annotations inside the heatmap.  This should either
+        use the string format method, e.g. "$ {x:.2f}", or be a
+        `matplotlib.ticker.Formatter`. The default is "{x:.3f}".
+    annotate : Bool, optional
+        Show the annotaion in heatmap or not. For heatmap with huge amount of blocks, 
+        annotate may set to False for prevent chaotic layout of plot. 
+        Let the metric value only represent by color. The default is True.
+    xtick_rot : Float, optional
+        Rotate the xtick label text, for preventing text overlap. The default is 0.
+    label_redu : Integer, optional
+        Reduce the precence of xtick and ytick labels, for preventing chaotic plot layout and text overlap.
+        The label_redu value the interval of each label precence. The default is None.
+    grid_width : Float, optional
+        The width of heatmap block, for adjust the visual presentation. The default is 3.
+    save_plot_format : String, optional. one of 'png', 'jpg', 'eps'
+        The image format of plot saving. The default is 'png'.
+
+    Returns
+    -------
+    None
+        Plot multiple report sources fault tolerance report
+
+    """
     if not os.path.isdir(plot_save_dir+'/plot'):
         os.mkdir(plot_save_dir+'/plot')
     
@@ -392,13 +568,13 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, fr_list,var_list,
             else:
                 colorbar='RdYlGn_r'
                 
-            im, cbar = heatmap(FT_arr, fr_list, var_list, ax=ax,
-                               cmap=colorbar, cbarlabel=mtrc, 
-                               aspect_ratio=aspect_ratio, xtick_rot=xtick_rot, 
-                               label_redu=label_redu, grid_width=grid_width)
+            im, cbar = _heatmap(FT_arr, row_labels, col_labels, ax=ax,
+                                cmap=colorbar, cbarlabel=mtrc, 
+                                aspect_ratio=aspect_ratio, xtick_rot=xtick_rot, 
+                                label_redu=label_redu, grid_width=grid_width)
             
             if annotate:
-                texts = annotate_heatmap(im, valfmt=valfmt)
+                texts = _annotate_heatmap(im, valfmt=valfmt)
             
             plt.title(mtrc+'  '+mtrcstat)
             plt.ylabel(ylabel)
@@ -421,10 +597,10 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, fr_list,var_list,
     
 def dict_format_lfms_to_ms2Dlf(stat_data_dict):
     """ 
-        Convert FT data dictionay from format: 
-            data_dict[layer][fault_rate][FT_metric][metric_statistics]
-        to format:
-            data_dict[FT_metric][metric_statistics][fault_rate_x_layer__2D_array]
+    Convert FT data dictionay from format: 
+        data_dict[layer][fault_rate][FT_metric][metric_statistics]
+    to format:
+        data_dict[FT_metric][metric_statistics][ 2D_array[ fault_rate : layer ] ]
     """
     var_dir_list=list(stat_data_dict.keys())
     # data transformation

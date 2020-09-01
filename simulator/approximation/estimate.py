@@ -11,8 +11,10 @@ import numpy as np
 
 def comp_num_estimate(model,add_topo=None):
     '''
-    Inputs
+    Arguments
+    --------
     model: quantized keras model for number of computation estimation
+    
     add_topo: adder topology setting default=None (worst case)
     '''
     estimation_report=dict()
@@ -93,7 +95,8 @@ def comp_num_estimate(model,add_topo=None):
             
 def get_model_param_size(model,batch_size):
     '''
-    Inputs
+    Arguments
+    ---------
     model: quantized keras model for number of input, output and weight of each layer
     '''
     param_size_report=dict()

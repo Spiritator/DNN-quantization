@@ -20,12 +20,14 @@ def load_attributes_from_hdf5_group(group, name):
     of HDF5 file which is not able to store
     data larger than HDF5_OBJECT_HEADER_LIMIT bytes.
 
-    # Arguments
-        group: A pointer to a HDF5 group.
-        name: A name of the attributes to load.
+    Arguments
+    ---------
+    group: A pointer to a HDF5 group.
+    name: A name of the attributes to load.
 
-    # Returns
-        data: Attributes data.
+    Returns
+    -------
+    data: Attributes data.
     """
     if name in group.attrs:
         data = [n.decode('utf8') for n in group.attrs[name]]

@@ -13,12 +13,17 @@ import numpy as np
 def view_intermediate(model,input_x):
     """View all the intermediate output of a DNN model
 
-    # Arguments
-        model: Keras Model. The model wanted to test.
-        input_x: nparray. The preprocessed numpy array as the test input for DNN.
+    Arguments
+    ---------
+    model: Keras Model. 
+        The model wanted to test.
+    input_x: Ndarray. 
+        The preprocessed numpy array as the test input for DNN.
 
-    # Returns
-        A list of numpy array of the intermediate output.
+    Returns
+    -------
+    List of Ndarray 
+        The intermediate output.
     """
     layer_info=model.layers
     num_layers=len(layer_info)

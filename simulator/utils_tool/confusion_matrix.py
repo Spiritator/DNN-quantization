@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import confusion_matrix
 
-def plot_confusion_matrix(cm, classes,
+def _plot_confusion_matrix(cm, classes,
                           normalize=False,
                           title='Confusion matrix',
                           cmap=plt.cm.Blues,
@@ -74,11 +74,39 @@ def plot_confusion_matrix(cm, classes,
     plt.xlabel('Predicted label')
 
 def show_confusion_matrix(y_test,y_pred,class_names,title,figsize=None,normalize=False,big_matrix=False,dpi=None):
+    """
+    Show confusion matrix of DNN inference result
+
+    Parameters
+    ----------
+    y_test : Ndarray
+        The label of test dataset.
+    y_pred : Ndarray
+        The DNN prediction of test dataset.
+    class_names : List of String
+        The name of each dataset class.
+    title : String
+        The confusion matrix figure title.
+    figsize : Tuple of Integer, optional. (width, height)
+        The size for confusion matrix figure, the unit is inch. The default is None.
+    normalize : Bool, optional
+        Scale the matrix value to between 0 and 1 instead of showing number count. The default is False.
+    big_matrix : Bool, optional
+        If True, don't show the class names which prevents chaotic layout of figure. The default is False.
+    dpi : Integer, optional
+        Definition per inch, the image quality. The default is None.
+
+    Returns
+    -------
+    None
+        Show the confusion matrix in terminal.
+
+    """
     # Compute confusion matrix
     cnf_matrix = confusion_matrix(y_test, y_pred)
     np.set_printoptions(precision=2)
     
     plt.figure(figsize=figsize,dpi=dpi)
-    plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=normalize,title=title,big_matrix=big_matrix)
+    _plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=normalize,title=title,big_matrix=big_matrix)
     
     plt.show()

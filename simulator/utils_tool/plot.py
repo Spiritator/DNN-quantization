@@ -87,6 +87,8 @@ def make_FT_report(stat_dir,report_csv_filename=None):
         for keyy in stat_data[key].keys():
             analyzed_metrics=dict()
             metric_arr=stat_data[key][keyy]
+            #TODO
+            # prevent invalid data type to analysis
             analyzed_metrics['avg']=np.mean(metric_arr)
             analyzed_metrics['std_dev']=np.std(metric_arr)
             analyzed_metrics['max']=np.max(metric_arr)

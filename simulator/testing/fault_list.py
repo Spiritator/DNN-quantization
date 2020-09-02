@@ -16,17 +16,26 @@ from .fault_core import generate_stuck_at_fault_modulator_fast
 def coordinate_gen_fmap(data_shape,batch_size,distribution='uniform',poisson_lam=None, mean=None, std=None, concentration=None):
     """Generate the coordinate of a feature map base on its shape and with specific distibution type.
 
-    # Arguments
-        data_shape: Tuple. The shape of feature map.
-        batch_size: Integer. The batch size of fault tolerance evaluation process.
-        distribution: String. The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
-        poisson_lam: Tuple. The lambda of poisson distribution.
-        mean: Tuple or Float. The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        std: Tuple or Float. The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        concentration: Float. A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
+    Arguments
+    ---------
+    data_shape: Tuple. 
+        The shape of feature map.
+    batch_size: Integer. 
+        The batch size of fault tolerance evaluation process.
+    distribution: String. 
+        The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
+    poisson_lam: Tuple. 
+        The lambda of poisson distribution.
+    mean: Tuple or Float. 
+        The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    std: Tuple or Float. 
+        The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    concentration: Float. 
+        A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
 
-    # Returns
-        The coordinate Tuple.
+    Returns
+    -------
+    The coordinate Tuple.
     """
     coordinate=list()
     
@@ -95,18 +104,28 @@ def coordinate_gen_fmap_fast(data_shape,batch_size,fault_num,distribution='unifo
     """Generate the coordinate of a feature map base on its shape and with specific distibution type.
        Faster generation version not multiple fault in a parameter.
 
-    # Arguments
-        data_shape: Tuple. The shape of feature map.
-        batch_size: Integer. The batch size of fault tolerance evaluation process.
-        fault_num: Integer. The number of faults in fmap.
-        distribution: String. The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
-        poisson_lam: Tuple. The lambda of poisson distribution.
-        mean: Tuple or Float. The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        std: Tuple or Float. The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        concentration: Float. A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
+    Arguments
+    ---------
+    data_shape: Tuple. 
+        The shape of feature map.
+    batch_size: Integer. 
+        The batch size of fault tolerance evaluation process.
+    fault_num: Integer. 
+        The number of faults in fmap.
+    distribution: String. 
+        The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
+    poisson_lam: Tuple. 
+        The lambda of poisson distribution.
+    mean: Tuple or Float. 
+        The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    std: Tuple or Float. 
+        The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    concentration: Float. 
+        A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
 
-    # Returns
-        The coordinate Tuple.
+    Returns
+    -------
+    The coordinate Tuple.
     """
     coordinate=list()
     
@@ -172,16 +191,24 @@ def coordinate_gen_fmap_fast(data_shape,batch_size,fault_num,distribution='unifo
 def coordinate_gen_wght(data_shape,distribution='uniform',poisson_lam=None, mean=None, std=None, concentration=None):
     """Generate the coordinate of a weights base on its shape and with specific distibution type.
 
-    # Arguments
-        data_shape: Tuple. The shape of weights.
-        distribution: String. The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
-        poisson_lam: Tuple. The lambda of poisson distribution.
-        mean: Tuple or Float. The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        std: Tuple or Float. The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        concentration: Float. A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
+    Arguments
+    ---------
+    data_shape: Tuple. 
+        The shape of weights.
+    distribution: String. 
+        The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
+    poisson_lam: Tuple. 
+        The lambda of poisson distribution.
+    mean: Tuple or Float. 
+        The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    std: Tuple or Float. 
+        The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    concentration: Float. 
+        A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
 
-    # Returns
-        The coordinate Tuple.
+    Returns
+    -------
+    The coordinate Tuple.
     """
 
     coordinate=list()
@@ -244,20 +271,29 @@ def coordinate_gen_wght(data_shape,distribution='uniform',poisson_lam=None, mean
     return coordinate
 
 def coordinate_gen_wght_fast(data_shape,fault_num,distribution='uniform' ,poisson_lam=None, mean=None, std=None, concentration=None):
-    """Generate the coordinate of a weights base on its shape and with specific distibution type.
-       Faster generation version not multiple fault in a parameter.
+    """ Generate the coordinate of a weights base on its shape and with specific distibution type.
+        Faster generation version not multiple fault in a parameter.
        
-    # Arguments
-        data_shape: Tuple. The shape of weights.
-        fault_num: Integer. The number of faults in weight.
-        distribution: String. The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
-        poisson_lam: Tuple. The lambda of poisson distribution.
-        mean: Tuple or Float. The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        std: Tuple or Float. The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        concentration: Float. A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
+    Arguments
+    ---------
+    data_shape: Tuple. 
+        The shape of weights.
+    fault_num: Integer. 
+        The number of faults in weight.
+    distribution: String. 
+        The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
+    poisson_lam: Tuple. 
+        The lambda of poisson distribution.
+    mean: Tuple or Float. 
+        The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    std: Tuple or Float. 
+        The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    concentration: Float. 
+        A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
 
-    # Returns
-        The coordinate Tuple.
+    Returns
+    -------
+    The coordinate Tuple.
     """
 
     coordinate=list()
@@ -319,17 +355,24 @@ def coordinate_gen_wght_fast(data_shape,fault_num,distribution='uniform' ,poisso
 
 
 def fault_bit_loc_gen(model_word_length,distribution='uniform',poisson_lam=None, mean=None, std=None):
-    """Generate the location of a fault bit in a parameter base on its word length and with specific distibution type.
+    """ Generate the location of a fault bit in a parameter base on its word length and with specific distibution type.
 
-    # Arguments
-        model_word_length: Integer. The word length of model parameters.
-        distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        poisson_lam: Integer. The lambda of poisson distribution.
-        mean: Float. The mean value for normal or center distribution in bit location. 
-        std: Float. The standard deviation value for normal or center distribution in bit location.
+    Arguments
+    ---------
+    model_word_length: Integer. 
+        The word length of model parameters.
+    distribution: String. 
+        The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+    poisson_lam: Integer. 
+        The lambda of poisson distribution.
+    mean: Float. 
+        The mean value for normal or center distribution in bit location. 
+    std: Float. 
+        The standard deviation value for normal or center distribution in bit location.
 
-    # Returns
-        The location index (Integer).
+    Returns
+    -------
+    The location index (Integer).
     """
 
     if distribution=='uniform':
@@ -353,19 +396,27 @@ def fault_bit_loc_gen(model_word_length,distribution='uniform',poisson_lam=None,
     return fault_bit
 
 def fault_bit_loc_gen_fast(model_word_length,fault_num,distribution='uniform',poisson_lam=None, mean=None, std=None):
-    """Generate the location of a fault bit in a parameter base on its word length and with specific distibution type.
-       Faster generation version not multiple fault in a parameter.
+    """ Generate the location of a fault bit in a parameter base on its word length and with specific distibution type.
+        Faster generation version not multiple fault in a parameter.
 
-    # Arguments
-        model_word_length: Integer. The word length of model parameters.
-        fault_num: Integer. The number of faults in parameter.
-        distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        poisson_lam: Integer. The lambda of poisson distribution.
-        mean: Float. The mean value for normal or center distribution in bit location. 
-        std: Float. The standard deviation value for normal or center distribution in bit location.
+    Arguments
+    ---------
+    model_word_length: Integer. 
+        The word length of model parameters.
+    fault_num: Integer. 
+        The number of faults in parameter.
+    distribution: String. 
+        The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+    poisson_lam: Integer. 
+        The lambda of poisson distribution.
+    mean: Float. 
+        The mean value for normal or center distribution in bit location. 
+    std: Float. 
+        The standard deviation value for normal or center distribution in bit location.
 
-    # Returns
-        The location index (Integer).
+    Returns
+    -------
+    The location index (Integer).
     """
 
     if distribution=='uniform':
@@ -387,6 +438,24 @@ def fault_bit_loc_gen_fast(model_word_length,fault_num,distribution='uniform',po
     return fault_bit
 
 def fault_num_gen_fmap(data_shape,fault_rate,batch_size,model_word_length):
+    """ Get number of fault in feature map by bit error rate
+
+    Parameters
+    ----------
+    data_shape : Tuple of Integer
+        The shape of feature map.
+    fault_rate : Float
+        Bit error rate.
+    batch_size : Integer
+        Batch size.
+    model_word_length : Integer
+        Word length of feature map parameter.
+
+    Returns
+    -------
+    fault_num : Integer
+        Number of fault in given data.
+    """
     if isinstance(data_shape,list):
         fault_num=[int(np.prod(shapes[1:]) * batch_size * model_word_length * fault_rate) for shapes in data_shape]
     else:
@@ -394,10 +463,48 @@ def fault_num_gen_fmap(data_shape,fault_rate,batch_size,model_word_length):
     return fault_num
 
 def fault_num_gen_wght(data_shape,fault_rate,model_word_length):
+    """ Get number of fault in weights by bit error rate
+
+    Parameters
+    ----------
+    data_shape : Tuple of Integer
+        The shape of weights.
+    fault_rate : Float
+        Bit error rate.
+    model_word_length : Integer
+        Word length of weights parameter.
+
+    Returns
+    -------
+    fault_num : Integer
+        Number of fault in given data.
+    """
     fault_num=[int(np.prod(shapes) * model_word_length * fault_rate) for shapes in data_shape]
     return fault_num 
 
 def get_model_total_bits(model,batch_size,model_word_length):
+    """ Get the total number of bits in the whole DNN model.
+        For determin the minimum bit error rate that can generate faults.
+
+    Parameters
+    ----------
+    model : tensorflow.keras.model
+        The DNN model wanted to get total number of bits.
+    batch_size : Integer
+        Batch size.
+    model_word_length : Integer
+        Word length of weights parameter.
+
+    Returns
+    -------
+    total_ifmap_bits : Integer
+        The total number of bits in model input feature maps.
+    total_ofmap_bits : Integer
+        The total number of bits in model output feature maps.
+    total_weight_bits : List of Integer
+        The total number of bits in model weights.
+
+    """
     model_depth=len(model.layers)
     total_ifmap_bits=0
     total_ofmap_bits=0
@@ -435,6 +542,34 @@ def get_model_total_bits(model,batch_size,model_word_length):
     return total_ifmap_bits,total_ofmap_bits,total_weight_bits
 
 def fault_num_gen_model(model,fault_rate,batch_size,model_word_length):
+    """ Get the fault number of each layer input/weight/output respectiely by the given bit error rate.
+
+    Parameters
+    ----------
+    model : tensorflow.keras.model
+        The DNN model wanted to generate faults and get total number of bits.
+    fault_rate : Float
+        Bit error rate.
+    batch_size : Integer
+        Batch size.
+    model_word_length : Integer
+        Word length of weights parameter.
+
+    Returns
+    -------
+    ifmap_fault_num_list : List of Integers
+        Number of fault in given layer input feature maps. The order is the layer order in keras model.
+    ofmap_fault_num_list : List of Integers
+        Number of fault in given layer output feature maps. The order is the layer order in keras model.
+    weight_fault_num_list : List of Integers
+        Number of fault in given layer weights. The order is the layer order in keras model.
+    total_ifmap_bits : Integer
+        The total number of bits in model input feature maps.
+    total_ofmap_bits : Integer
+        The total number of bits in model output feature maps.
+    total_weight_bits : List of Integer
+        The total number of bits in model weights.
+    """
     model_depth=len(model.layers)
     ifmap_param_bits=[0 for _ in range(model_depth)]
     wght_param_bits=[[0,0] for _ in range(model_depth)]
@@ -558,27 +693,46 @@ def gen_fault_dict_list_fmap(data_shape,
                              **kwargs):
     """Generate the fault dictionary list of a feature map base on its shape and with specific distibution type.
 
-    # Arguments
-        data_shape: Tuple. The shape of feature map.
-        fault_rate: Float. The probability of fault occurance in feature map.
-        batch_size: Integer. The batch size of fault tolerance evaluation process.
-        model_word_length: Integer. The word length of model parameters.
-        fault_num: Integer. The number of faults in fmap.
-        fast_gen: Bool. Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
-        return_modulator: Bool. Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
-        coor_distribution: String. The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
-        coor_pois_lam: Tuple. The lambda of poisson distribution of feature map coordinate.
-        coor_mean: Tuple or Float. The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        coor_std: Tuple or Float. The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        concentration: Float. A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
-        bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        bit_loc_pois_lam: Integer. The lambda of poisson distribution.
-        bit_loc_mean: Float. The mean value for normal or center distribution in bit location. 
-        bit_loc_std: Float. The standard deviation value for normal or center distribution in bit location.
-        fault_type: String. The type of fault.
+    Arguments
+    ---------
+    data_shape: Tuple. 
+        The shape of feature map.
+    fault_rate: Float. 
+        The probability of fault occurance in feature map.
+    batch_size: Integer. 
+        The batch size of fault tolerance evaluation process.
+    model_word_length: Integer. 
+        The word length of model parameters.
+    fault_num: Integer. 
+        The number of faults in fmap.
+    fast_gen: Bool. 
+        Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
+    return_modulator: Bool. 
+        Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
+    coor_distribution: String. 
+        The distribution type of coordinate in feature map. Must be one of 'uniform', 'poisson', 'normal'.
+    coor_pois_lam: Tuple. 
+        The lambda of poisson distribution of feature map coordinate.
+    coor_mean: Tuple or Float. 
+        The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    coor_std: Tuple or Float. 
+        The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    concentration: Float. 
+        A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
+    bit_loc_distribution: String. 
+        The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+    bit_loc_pois_lam: Integer. 
+        The lambda of poisson distribution.
+    bit_loc_mean: Float. 
+        The mean value for normal or center distribution in bit location. 
+    bit_loc_std: Float. 
+        The standard deviation value for normal or center distribution in bit location.
+    fault_type: String. 
+        The type of fault.
 
-    # Returns
-        The fault information Dictionary. The number of fault generated Integer.
+    Returns
+    -------
+    The fault information Dictionary. The number of fault generated (Integer).
     """
 
     fault_count=0
@@ -762,27 +916,46 @@ def gen_fault_dict_list_wght(data_shape,
                              **kwargs):
     """Generate the fault dictionary list of a feature map base on its shape and with specific distibution type.
 
-    # Arguments
-        data_shape: Tuple. The shape of weights.
-        fault_rate: Float. The probability of fault occurance in weights.
-        batch_size: Integer. The batch size of fault tolerance evaluation process.
-        model_word_length: Integer. The word length of model parameters.
-        fault_num: List of integer. The number of faults in [kernel,bias] respectively.
-        fast_gen: Bool. Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
-        return_modulator: Bool. Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
-        coor_distribution: String. The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
-        coor_pois_lam: Tuple. The lambda of poisson distribution of weights coordinate.
-        coor_mean: Tuple or Float. The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        coor_std: Tuple or Float. The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
-        concentration: Float. A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
-        bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        bit_loc_pois_lam: Integer. The lambda of poisson distribution.
-        bit_loc_mean: Float. The mean value for normal or center distribution in bit location. 
-        bit_loc_std: Float. The standard deviation value for normal or center distribution in bit location.
-        fault_type: String. The type of fault.
+    Arguments
+    ---------
+    data_shape: Tuple. 
+        The shape of weights.
+    fault_rate: Float. 
+        The probability of fault occurance in weights.
+    batch_size: Integer. 
+        The batch size of fault tolerance evaluation process.
+    model_word_length: Integer. 
+        The word length of model parameters.
+    fault_num: List of integer. 
+        The number of faults in [kernel,bias] respectively.
+    fast_gen: Bool. 
+        Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
+    return_modulator: Bool. 
+        Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
+    coor_distribution: String. 
+        The distribution type of coordinate in weights. Must be one of 'uniform', 'poisson', 'normal'.
+    coor_pois_lam: Tuple. 
+        The lambda of poisson distribution of weights coordinate.
+    coor_mean: Tuple or Float. 
+        The mean value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    coor_std: Tuple or Float. 
+        The standard deviation value for normal or center distribution in coordinate. Tuple for normal distribution. Float for concentration of center distribution.
+    concentration: Float. 
+        A float number between 1 and 0. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
+    bit_loc_distribution: String. 
+        The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+    bit_loc_pois_lam: Integer. 
+        The lambda of poisson distribution.
+    bit_loc_mean: Float. 
+        The mean value for normal or center distribution in bit location. 
+    bit_loc_std: Float. 
+        The standard deviation value for normal or center distribution in bit location.
+    fault_type: String. 
+        The type of fault.
 
-    # Returns
-        The fault information Dictionary. The number of fault generated Integer.
+    Returns
+    -------
+    The fault information Dictionary. The number of fault generated Integer.
     """
 
     fault_count=0        
@@ -889,28 +1062,48 @@ def generate_layer_stuck_fault(layer,
                                **kwargs):
     """Generate the fault dictionary list of a layer base on its shape and with specific distibution type.
 
-    # Arguments
-        layer: Keras.Layer. 
-        fault_rate: Float. The probability of fault occurance in a layer.
-        batch_size: Integer. The batch size of fault tolerance evaluation process.
-        model_word_length: Integer. The word length of model parameters.
-        fault_num: List of integer. The number of faults in [input,weight,output] respectively.
-        fast_gen: Bool. Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
-        return_modulator: Bool. Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
-        coor_distribution: String. The distribution type of coordinate in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        coor_pois_lam: List of Tuple. The lambda of poisson distribution of parameters coordinate.
-        coor_mean: List of (Tuple or Float). The mean value for normal or center distribution in coordinate. Double List of Tuple for normal distribution. List of Float for concentration of center distribution.
-        coor_std: List of (Tuple or Float). The standard deviation value for normal or center distribution in coordinate. Double List of Tuple for normal distribution. List of Float for concentration of center distribution.
-        concentration: List of Float. A list of float number between 1 and 0 [input, weight, output]. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
-        bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        bit_loc_pois_lam: Integer. The lambda of poisson distribution.
-        bit_loc_mean: List of Float. The mean value for normal or center distribution in bit location. 
-        bit_loc_std: List of Float. The standard deviation value for normal or center distribution in bit location.
-        fault_type: String. The type of fault.
-        print_detail: Bool. Print generation detail or not.
+    Arguments
+    ---------
+    layer: Keras.Layer. 
+        The layer are being generate fault to.
+    fault_rate: Float. 
+        The probability of fault occurance in a layer.
+    batch_size: Integer. 
+        The batch size of fault tolerance evaluation process.
+    model_word_length: Integer. 
+        The word length of model parameters.
+    fault_num: List of integer. 
+        The number of faults in [input,weight,output] respectively.
+    fast_gen: Bool. 
+        Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
+    return_modulator: Bool. 
+        Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
+    coor_distribution: String. 
+        The distribution type of coordinate in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+    coor_pois_lam: List of Tuple. 
+        The lambda of poisson distribution of parameters coordinate.
+    coor_mean: List of (Tuple or Float). 
+        The mean value for normal or center distribution in coordinate. Double List of Tuple for normal distribution. List of Float for concentration of center distribution.
+    coor_std: List of (Tuple or Float). 
+        The standard deviation value for normal or center distribution in coordinate. Double List of Tuple for normal distribution. List of Float for concentration of center distribution.
+    concentration: List of Float. 
+        A list of float number between 1 and 0 [input, weight, output]. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
+    bit_loc_distribution: String. 
+        The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+    bit_loc_pois_lam: Integer. 
+        The lambda of poisson distribution.
+    bit_loc_mean: List of Float. 
+        The mean value for normal or center distribution in bit location. 
+    bit_loc_std: List of Float. 
+        The standard deviation value for normal or center distribution in bit location.
+    fault_type: String. 
+        The type of fault.
+    print_detail: Bool. 
+        Print generation detail or not.
 
-    # Returns
-        The fault information Dictionary. The number of fault generated Integer.
+    Returns
+    -------
+    The fault information Dictionary. The number of fault generated Integer.
     """
 
     if coor_pois_lam is None:
@@ -1050,30 +1243,52 @@ def generate_model_stuck_fault(model,
                                **kwargs):
     """Generate the fault dictionary list of a model base on its shape and with specific distibution type.
 
-    # Arguments
-        model: Keras.Model. 
-        fault_rate: Float. The probability of fault occurance in a layer.
-        batch_size: Integer. The batch size of fault tolerance evaluation process.
-        model_word_length: Integer. The word length of model parameters.
-        layer_wise: Bool. If true, generate fault lists on each layer individually.
-        param_filter: List of Bools. The indicator for generate fault on ifmap, weight, ofmap individually. [input,weight,output]
-        fast_gen: Bool. Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
-        return_modulator: Bool. Return fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
-        coor_distribution: String. The distribution type of coordinate in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        coor_pois_lam: Double List of Tuple. The lambda of poisson distribution of parameters coordinate.
-        coor_mean: Double List of (Tuple or Float). The mean value for normal or center distribution in coordinate. Double List of Tuple for normal distribution. Double List of Float for concentration of center distribution.
-        coor_std: Double List of (Tuple or Float). The standard deviation value for normal or center distribution in coordinate. Double List of Tuple for normal distribution. Double List of Float for concentration of center distribution.
-        concentration: Double List of Float. A list of float number between 1 and 0 [layer[input, weight, output]]. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
-        bit_loc_distribution: String. The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
-        bit_loc_pois_lam: Integer. The lambda of poisson distribution.
-        bit_loc_mean: Double List of Float. The mean value for normal or center distribution in bit location. 
-        bit_loc_std: Double List of Float. The standard deviation value for normal or center distribution in bit location.
-        fault_type: String. The type of fault.
-        print_detail: Bool. Print generation detail or not.
-        layer_gen_list: List of Integer. The list of indexes for specific layer wanted to generate fault
+    Arguments
+    ---------
+    model: Keras.Model. 
+        The model are being generate fault to.
+    fault_rate: Float. 
+        The probability of fault occurance in a layer.
+    batch_size: Integer. 
+        The batch size of fault tolerance evaluation process.
+    model_word_length: Integer. 
+        The word length of model parameters.
+    layer_wise: Bool. 
+        If true, generate fault lists on each layer individually.
+    param_filter: List of Bools. 
+        The indicator for generate fault on ifmap, weight, ofmap individually. [input,weight,output]
+    fast_gen: Bool. 
+        Use fast generation or not. Fast generation doesn't have multiple fault in single parameter, thus the fault_num maybe inaccurate.
+    return_modulator: Bool. Return 
+        fault modulator or not. Return fault modulator in fault list generation phase. Further improve generation time. Only available when the fast_gen is True.
+    coor_distribution: String. 
+        The distribution type of coordinate in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+    coor_pois_lam: Double List of Tuple. 
+        The lambda of poisson distribution of parameters coordinate.
+    coor_mean: Double List of (Tuple or Float). 
+        The mean value for normal or center distribution in coordinate. Double List of Tuple for normal distribution. Double List of Float for concentration of center distribution.
+    coor_std: Double List of (Tuple or Float). 
+        The standard deviation value for normal or center distribution in coordinate. Double List of Tuple for normal distribution. Double List of Float for concentration of center distribution.
+    concentration: Double List of Float. 
+        A list of float number between 1 and 0 [layer[input, weight, output]]. 1 means set the lambda of 2D feature map to center of image, 0 means set to corner of the feature map. (can only be use in conv 2D layer)
+    bit_loc_distribution: String. 
+        The distribution type of locaton in parameters. Must be one of 'uniform', 'poisson', 'normal'.
+    bit_loc_pois_lam: Integer. 
+        The lambda of poisson distribution.
+    bit_loc_mean: Double List of Float. 
+        The mean value for normal or center distribution in bit location. 
+    bit_loc_std: Double List of Float. 
+        The standard deviation value for normal or center distribution in bit location.
+    fault_type: String. 
+        The type of fault.
+    print_detail: Bool. 
+        Print generation detail or not.
+    layer_gen_list: List of Integer. 
+        The list of indexes for specific layer wanted to generate fault
 
-    # Returns
-        The fault information Dictionary List.
+    Returns
+    -------
+    The fault information Dictionary List.
     """
 
     model_depth=len(model.layers)

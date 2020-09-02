@@ -10,21 +10,24 @@ Memory bitmap setting for memory fault mapping
 import numpy as np
     
 class bitmap:
-    """
-    The bitmap of a buffer for memory fault tolerance analysis.
+    """ The bitmap of a buffer for memory fault tolerance analysis.
     
+    Arguments
+    ---------
+    row: Integer. 
+        Number of rows in memory.
+    col: Integer. 
+        Number of columns in memory.
+    wl: Integer. 
+        The word length of memory
+    fault_num: Integer. 
+        Number of faults in memory.
+    fault_dict: Dictionary. 
+        The fault information {location : fault type}
     """
 
     def __init__(self, row, col, wl=None):
-        """
-        # Arguments
-            row: Integer. Number of rows in memory.
-            col: Integer. Number of columns in memory.
-            wl: Integer. The word length of memory
-            fault_num: Integer. Number of faults in memory.
-            fault_dict: Dictionary. The fault information {location : fault type}
-    
-        """
+        """ Memory bitmap initializer """
         self.row=row
         self.col=col
         self.wl=wl
@@ -32,21 +35,28 @@ class bitmap:
         self.fault_dict=dict()
 
     def fault_num_gen_mem(self, fault_rate):
-        """
-        Genenerate the number of fault
+        """ Genenerate the number of fault by fault rate
+        
+        Arguments
+        ---------
+        fault_rate: Float
+            Bit error rate
         """
         self.fault_num=int(self.row * self.col * fault_rate)
     
-        
     def addr_gen_mem(self,distribution='uniform',poisson_lam=None):
-        """Genenerate the fault location in a memory
+        """ Genenerate the fault location in a memory
 
-        # Arguments
-            distribution: String. The distribution type of locaton in memory. Must be one of 'uniform', 'poisson', 'normal'.
-            poisson_lam: Integer. The lambda of poisson distribution.
+        Arguments
+        ---------
+        distribution: String. 
+            The distribution type of locaton in memory. Must be one of 'uniform', 'poisson', 'normal'.
+        poisson_lam: Integer. 
+            The lambda of poisson distribution.
     
-        # Returns
-            The location index Tuple(Integer).
+        Returns
+        -------
+        The location index Tuple(Integer).
         """
         if distribution=='uniform':
             row_tmp=np.random.randint(self.row)
@@ -70,23 +80,28 @@ class bitmap:
                 raise ValueError('Poisson distribution Lambda must within feature map shape. Feature map shape %s but got lambda input %s'%(str((self.row,self.col)),str(poisson_lam)))
     
         elif distribution=='normal':
+            #TODO   
+            # make the normal distribution generation
             pass 
-            '''TO BE DONE'''   
         else:
             raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
         
         return (row_tmp,col_tmp)
     
     def addr_gen_mem_fast(self,fault_num,distribution='uniform',poisson_lam=None):
-        """Genenerate the fault location in a memory
-           Faster generation may have repetitive fault addr.
+        """ Genenerate the fault location in a memory
+            Faster generation may have repetitive fault addr.
 
-        # Arguments
-            distribution: String. The distribution type of locaton in memory. Must be one of 'uniform', 'poisson', 'normal'.
-            poisson_lam: Integer. The lambda of poisson distribution.
+        Arguments
+        ---------
+        distribution: String. 
+            The distribution type of locaton in memory. Must be one of 'uniform', 'poisson', 'normal'.
+        poisson_lam: Integer. 
+            The lambda of poisson distribution.
     
-        # Returns
-            The location index Tuple(Integer).
+        Returns
+        -------
+        The location index Tuple(Integer).
         """
         if distribution=='uniform':
             row_tmp=np.random.randint(self.row,size=fault_num)
@@ -108,24 +123,31 @@ class bitmap:
                 raise ValueError('Poisson distribution Lambda must within feature map shape. Feature map shape %s but got lambda input %s'%(str((self.row,self.col)),str(poisson_lam)))
     
         elif distribution=='normal':
+            #TODO   
+            # make the normal distribution generation
             pass 
-            '''TO BE DONE'''   
         else:
             raise NameError('Invalid type of random generation distribution. Please choose between uniform, poisson, normal.')
         
         return zip(row_tmp,col_tmp)
 
     def gen_bitmap_SA_fault_dict(self,fault_rate,fast_gen=False,addr_distribution='uniform',addr_pois_lam=None,fault_type='flip',**kwargs):
-        """Generate the fault dictionary of memory base on its shape and with specific distibution type.
+        """ Generate the fault dictionary of memory base on its shape and with specific distibution type.
 
-        # Arguments
-            fault_rate: Float. The probability of fault occurance in memory.
-            addr_distribution: String. The distribution type of address in memory. Must be one of 'uniform', 'poisson', 'normal'.
-            addr_pois_lam: Integer. The lambda of poisson distribution of memory address.
-            fault_type: String. The type of fault.
+        Arguments
+        ---------
+        fault_rate: Float. 
+            The probability of fault occurance in memory.
+        addr_distribution: String. 
+            The distribution type of address in memory. Must be one of 'uniform', 'poisson', 'normal'.
+        addr_pois_lam: Integer. 
+            The lambda of poisson distribution of memory address.
+        fault_type: String. 
+            The type of fault.
     
-        # Returns
-            The fault information Dictionary. The number of fault generated Integer.
+        Returns
+        -------
+        The fault information Dictionary. The number of fault generated Integer.
         """
         fault_count=0        
         fault_dict=dict()
@@ -149,15 +171,19 @@ class bitmap:
         return fault_dict,self.fault_num
     
     def get_numtag(self,addr):
-        """Get the bitmap and tile conversion index numtag.
+        """ Get the bitmap and tile conversion index numtag.
 
-        # Arguments
-            addr: Tuple. The address of memory bit oriented representation. Length 2 i.e. 2D representation of memory. (row,col)
-            addr: Ndarray. N number of (row,col) addrs in ndarray of shape (N,2) in dtype integer.
+        Arguments
+        ---------
+        addr: Tuple. 
+            The address of memory bit oriented representation. Length 2 i.e. 2D representation of memory. (row,col)
+        addr: Ndarray. 
+            N number of (row,col) addrs in ndarray of shape (N,2) in dtype integer.
     
-        # Returns
-            The numtag (Integer)
-            Numtag array (Ndarray)
+        Returns
+        -------
+            | The numtag (Integer)
+            | Numtag array (Ndarray)
         """
         if isinstance(addr,tuple):
             if len(addr)!=2:
@@ -172,13 +198,17 @@ class bitmap:
     def numtag2addr(self,numtag):
         """Convert the numtag to its corresponding address.
 
-        # Arguments
-            numtag: Integer. The bitmap and tile conversion index numtag.
-            numtag: Ndarray. The bitmap and tile conversion index numtag array 1D.
+        Arguments
+        ---------
+        numtag: Integer. 
+            The bitmap and tile conversion index numtag.
+        numtag: Ndarray. 
+            The bitmap and tile conversion index numtag array 1D.
     
-        # Returns
-            The memory address (Tuple)
-            Memory address array (Ndarray) shape (N,2)
+        Returns
+        -------
+            | The memory address (Tuple)
+            | Memory address array (Ndarray) shape (N,2)
         """
         if isinstance(numtag,int):                
             return (numtag//self.col, numtag % self.col)

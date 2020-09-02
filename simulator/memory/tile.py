@@ -10,21 +10,32 @@ DNN tiling for memory fault mapping
 import numpy as np
 
 class tile:
-    def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
-        """The tile of a DNN feature map or weights
+    """The tile of a DNN feature map or weights
 
-        # Arguments
-            tile_shape: Tuple. The shape of tile.
-            Tm: Integer. The size of tile on the input feature map dimension (weight) or channel dimention (feature map).
-            Tn: Integer. The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
-            Tr: Integer. The size of tile on the kernel row dimension or feature map row dimention.
-            Tc: Integer. The size of tile on the kernel column dimension or feature map column dimention.
-            is_fmap: Bool. The tile is feature map tile or weight tile.
-            wl: Integer. The word length of DNN model parameter.
-            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
-            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
-    
-        """
+    Arguments
+    ---------
+    tile_shape: Tuple. 
+        The shape of tile.
+    Tm: Integer. 
+        The size of tile on the input feature map dimension (weight) or channel dimention (feature map).
+    Tn: Integer. 
+        The size of tile on the output feature map dimension (weight) or batch dimention (feature map).
+    Tr: Integer. 
+        The size of tile on the kernel row dimension or feature map row dimention.
+    Tc: Integer. 
+        The size of tile on the kernel column dimension or feature map column dimention.
+    is_fmap: Bool. 
+        The tile is feature map tile or weight tile.
+    wl: Integer. 
+        The word length of DNN model parameter.
+    row_prior: List of Strings. 
+        The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+    col_prior: List of Strings.     
+        The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+
+    """
+    def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
+        """ Tile initializer """
         if not isinstance(is_fmap,bool):
             raise TypeError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
         if len(tile_shape) != 4:
@@ -56,6 +67,7 @@ class tile:
         self.print_detail=True
         
     def check_prior(self):
+        """ Check the given priorty argument is valid """
         if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=self.shape_len or len(self.col_prior)!=self.shape_len:
             raise ValueError('The augment row_prior and col_prior must be in list dtype and have length %d but got length %d and %d'%(self.shape_len,len(self.row_prior),len(self.col_prior)))
                 
@@ -66,6 +78,19 @@ class tile:
                 raise ValueError('The augment col_prior must be in list %s'%(str(self.prior_element)))
     
     def priorexchange(self,prior):
+        """ Transfer String priority axis to its corresponding size and axis index.
+        
+        Parameters
+        ----------
+        prior : String. One of 'Tm', 'Tn', 'Tr', 'Tc'.
+
+        Returns
+        -------
+        Integer
+            Size of prior.
+        Integer
+            Index of prior in shape.
+        """
         if prior not in self.prior_element:
             raise ValueError('The augment row_prior must be in list %s'%(str(self.prior_element)))
             
@@ -84,6 +109,21 @@ class tile:
             return self.Tc,axis_idex[3]
         
     def get_tile_dims_prior(self,prior_list):
+        """ Get the shape and its dimension order by the given prior list.
+            Use for rehape data index.
+
+        Parameters
+        ----------
+        prior_list : List of String
+            The wanted new prior order.
+
+        Returns
+        -------
+        Tuple of Intger
+            The new shape.
+        dims_reorder : List of Integer
+            The dimesion order to original shape.
+        """
         if self.is_fmap:
             axis_idex=[3,0,1,2]
         else:
@@ -108,6 +148,24 @@ class tile:
         return tuple(dims_prior),dims_reorder
         
     def coor_tile_recursive_call(self,coor,prior_list,prior_index,increase=False):
+        """ The moving call for moving coordinate a step on tile shape.
+        
+        Parameters
+        ----------
+        coor : Tuple of integer
+            The coordinate on tile.
+        prior_list : List of String
+            The permutation of tile data shape.
+        prior_index : List of Integer
+            The prior reorder index.
+        increase : Bool, optional
+            Moving step is forward to the index or backward. The default is False.
+
+        Returns
+        -------
+        coor : Tuple of integer
+            The moved coordinate on tile.
+        """
         T_size,T_index=self.priorexchange(prior_list[prior_index])
         if increase:
             if coor[T_index] < T_size-1:
@@ -131,6 +189,29 @@ class tile:
         return coor
         
     def coor_tile_move(self,coor,bit,n_move,increase=False,row_mode=False):
+        """ Moving coordinates on tile by given steps.
+
+        Parameters
+        ----------
+        coor : Tuple of integer
+            The coordinate on tile.
+        bit : Integer
+            The position (bit index) in a parameter.
+        n_move : Integer
+            The steps of movement.
+        increase : Bool, optional
+            Moving step is forward to the index or backward. The default is False.
+        row_mode : Bool, optional
+            The moving tile shape priory is base on row priority or not. The default is False.
+
+        Returns
+        -------
+        Tuple of Integers
+            The moved coordinate on tile.
+        Integer
+            The moved position (bit index) in a parameter.
+
+        """
         if row_mode:
             prior_list=self.row_prior
         else:
@@ -157,6 +238,20 @@ class tile:
         return tuple(coor_tmp),self.wl-bit_coor_tmp-1
     
     def check_tile_overflow(self,bitmap,addr=None):
+        """ Check wether the address is out of the range of bitmap or not.
+
+        Parameters
+        ----------
+        bitmap : Class
+            The bitmap class for memory fault tolerance analysis.
+        addr : Tuple or Ndarray. , optional
+            The address of memory bitmap.
+
+        Returns
+        -------
+        bool
+            Is the address in range.
+        """
         if addr is None:
             bitmap_size=bitmap.row*bitmap.col
         else:
@@ -175,6 +270,18 @@ class tile:
             return False
         
     def check_within_bias_range(self,bitmap,addr=None):
+        """ Check wether the address is out of the range of bitmap or not. Including the bias data.
+
+        bitmap : Class
+            The bitmap class for memory fault tolerance analysis.
+        addr : Tuple or Ndarray. , optional
+            The address of memory bitmap.
+
+        Returns
+        -------
+        bool
+            Is the address in range.
+        """
         if addr is None:
             bitmap_size=bitmap.row*bitmap.col
         else:
@@ -197,6 +304,14 @@ class tile:
             return False
     
     def build_slice_head(self,bitmap):
+        """ Create the list of coodinate which are the first entry to the bitmap rows.
+            For check the actual row index if there is difference cause by the row and column perspective change.
+
+        Parameters
+        ----------
+        bitmap : Class
+            The bitmap class for memory fault tolerance analysis.
+        """
         slice_head_list=np.multiply(np.arange(bitmap.row),bitmap.col)
         if self.tile_size is None:
             self.tile_size=self.Tm*self.Tn*self.Tr*self.Tc*self.wl
@@ -215,17 +330,20 @@ class tile:
     def get_numtag(self,coor,bit,row_mode=False):
         """Get the bitmap and tile conversion index numtag.
 
-        # Arguments
-            coor: Tuple or 2D ndarray. The tile coordinate wanted to be converted to memory address.
-            bit: Integer or List of Integer or 1D Ndarray. The bit location in a parameer.
-            row_mode: True or False. Using column or row priority to generate numtag.
+        Arguments
+        ---------
+        coor: Tuple or 2D ndarray. 
+            The tile coordinate wanted to be converted to memory address.
+        bit: Integer or List of Integer or 1D Ndarray. 
+            The bit location in a parameer.
+        row_mode: True or False. 
+            Using column or row priority to generate numtag.
     
-        # Returns
-            The numtag (Integer)
-            Numtag array (Ndarray)
-        """
-        
-                   
+        Returns
+        -------
+            | The numtag (Integer)
+            | Numtag array (Ndarray)
+        """                   
         if row_mode:
             prior_list=self.row_prior
         else:
@@ -253,12 +371,14 @@ class tile:
     def numtag2coor(self,numtag,row_mode=False):
         """Convert the numtag to its corresponding coordinate.
 
-        # Arguments
-            numtag: Integer or 1D ndarray. The bitmap and tile conversion index numtag.
+        Arguments
+        ---------
+        numtag: Integer or 1D ndarray. 
+            The bitmap and tile conversion index numtag.
     
-        # Returns
-            The tile coordinate (Tuple), bit location (Integer)
-            The array of tile coordinates (2D Ndarray), array of bit locations (1D Ndarray)
+        Returns
+            | The tile coordinate (Tuple), bit location (Integer)
+            | The array of tile coordinates (2D Ndarray), array of bit locations (1D Ndarray)
         """
         if row_mode:
             prior_list=self.row_prior
@@ -290,14 +410,18 @@ class tile:
     def tile2bitmap(self,coor,bit,bitmap):
         """Convert the tile coordinate to its corresponding address on memory bitmap.
 
-        # Arguments
-            coor: Tuple or 2D ndarray. The tile coordinate wanted to be converted to memory address.
-            bit: Integer or List of Integer or 1D Ndarray. The bit location in a parameer.
-            bitmap: Class. The bitmap class for memory fault tolerance analysis.
+        Arguments
+        ---------
+        coor: Tuple or 2D ndarray. 
+            The tile coordinate wanted to be converted to memory address.
+        bit: Integer or List of Integer or 1D Ndarray. 
+            The bit location in a parameer.
+        bitmap: Class. 
+            The bitmap class for memory fault tolerance analysis.
     
-        # Returns
-            The memory address (Tuple) in the bitmap.
-            The array of memory addresses (2D Ndarray)
+        Returns
+            | The memory address (Tuple) in the bitmap.
+            | The array of memory addresses (2D Ndarray)
         """
 
         numtag=self.get_numtag(coor,bit)
@@ -319,13 +443,17 @@ class tile:
     def bitmap2tile(self,addr,bitmap):
         """Convert the address on memory bitmap to its corresponding tile coordinate.
 
-        # Arguments
-            addr: Tuple or Ndarray. The address of memory wanted to be converted to tile coordinate.
-            bitmap: Class. The bitmap class for memory fault tolerance analysis.
+        Arguments
+        ---------
+        addr: Tuple or Ndarray. 
+            The address of memory wanted to be converted to tile coordinate.
+        bitmap: Class. 
+            The bitmap class for memory fault tolerance analysis.
     
-        # Returns
-            The tile coordinate (Tuple). The corresponding bit in parameter (Integer).
-            The array of tile coordinates (2D Ndarray), array of bit locations (1D Ndarray)
+        Returns
+        -------
+            | The tile coordinate (Tuple). The corresponding bit in parameter (Integer).
+            | The array of tile coordinates (2D Ndarray), array of bit locations (1D Ndarray)
         """
         if isinstance(addr,tuple):
             if len(addr)!=2:
@@ -391,14 +519,20 @@ class tile:
     def fault_dict_bitmap2tile(self,bitmap,use_bias=None,row_prior=None,col_prior=None,fast_mode=False):
         """Mapping the fault on the memory bitmap to tile coordinate
 
-        # Arguments
-            bitmap: Class. The bitmap class for memory fault tolerance analysis.
-            use_bias: Use bias in weight tile or not.
-            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
-            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        Arguments
+        ---------
+        bitmap: Class. 
+            The bitmap class for memory fault tolerance analysis.
+        use_bias: Bool.
+            Use bias in weight tile or not.
+        row_prior: List of Strings. 
+            The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        col_prior: List of Strings. 
+            The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
         
-        # Returns
-            The fault information Dictionary of tile.
+        Returns
+        -------
+        The fault information Dictionary of tile.
         """
         if self.wl!=bitmap.wl and bitmap.wl is not None:
             raise ValueError('Word length of tile (%d) must be the same as bitmap (%d).'%(self.wl,bitmap.wl))
@@ -495,13 +629,18 @@ class tile:
     def fault_dict_tile2bitmap(self,bitmap,use_bias=None,row_prior=None,col_prior=None):
         """Mapping the fault on the tile coordinate to memory bitmap 
 
-        # Arguments
-            bitmap: Class. The bitmap class for memory fault tolerance analysis.
-            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
-            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        Arguments
+        ---------
+        bitmap: Class. 
+            The bitmap class for memory fault tolerance analysis.
+        row_prior: List of Strings. 
+            The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        col_prior: List of Strings. 
+            The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
         
-        # Returns
-            The fault information Dictionary of bitmap.
+        Returns
+        -------
+        The fault information Dictionary of bitmap.
         """
         if self.wl!=bitmap.wl and bitmap.wl is not None:
             raise ValueError('Word length of tile (%d) must be the same as bitmap (%d).'%(self.wl,bitmap.wl))
@@ -586,12 +725,16 @@ class tile:
     def fault_dict_tile2layer(self,layer_shape,use_bias=None):
         """Restore the fault dictionary from tile to entire layer
 
-        # Arguments
-            layer_shape: Tuple. The shape of a layer parameter were divided into tile.
-            use_bias: Use bias in weight tile or not.
+        Arguments
+        ---------
+        layer_shape: Tuple. 
+            The shape of a layer parameter were divided into tile.
+        use_bias: Bool.
+            Use bias in weight tile or not.
         
-        # Returns
-            The fault information Dictionary of a layer parameter (feature maps or weights).
+        Returns
+        -------
+        The fault information Dictionary of a layer parameter (feature maps or weights).
         """
         if self.is_fmap and use_bias:
             raise ValueError('Feature map tile with use_bias option True. Only weight tile can mapping with bias.')
@@ -671,15 +814,22 @@ class tile:
     def gen_layer_fault_dict(self,layer_shape,bitmap,use_bias=None,col_prior=None,row_prior=None,fast_mode=False):
         """Generate the fault dictionary of a layer from bitmap fault dictionary
 
-        # Arguments
-            layer_shape: Tuple. The shape of a layer parameter were divided into tile.
-            bitmap: Class. The bitmap class for memory fault tolerance analysis.
-            use_bias: Use bias in weight tile or not.
-            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
-            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        Arguments
+        ---------
+        layer_shape: Tuple. 
+            The shape of a layer parameter were divided into tile.
+        bitmap: Class. 
+            The bitmap class for memory fault tolerance analysis.
+        use_bias: Bool.
+            Use bias in weight tile or not.
+        row_prior: List of Strings. 
+            The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
+        col_prior: List of Strings. 
+            The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn', 'Tr', 'Tc'.
         
-        # Returns
-            The fault information Dictionary of a layer parameter (feature maps or weights).
+        Returns
+        -------
+        The fault information Dictionary of a layer parameter (feature maps or weights).
         """
 
         if col_prior is not None:
@@ -712,19 +862,26 @@ class tile:
     
         
 class tile_FC(tile):
-    def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
-        """The tile of a DNN feature map or weights
+    """The tile of a DNN feature map or weights
 
-        # Arguments
-            tile_shape: Tuple. The shape of tile.
-            Tm: Integer. The size of tile on the input neurons (weight) or channel dimention (feature map).
-            Tn: Integer. The size of tile on the output neurons (weight) or batch dimention (feature map).
-            is_fmap: Bool. The tile is feature map tile or weight tile.
-            wl: Integer. The word length of DNN model parameter.
-            row_prior: List of Strings. The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn'.
-            col_prior: List of Strings. The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn'.
-    
-        """
+    Arguments
+    tile_shape: Tuple. 
+        The shape of tile.
+    Tm: Integer. 
+        The size of tile on the input neurons (weight) or channel dimention (feature map).
+    Tn: Integer. 
+        The size of tile on the output neurons (weight) or batch dimention (feature map).
+    is_fmap: Bool. 
+        The tile is feature map tile or weight tile.
+    wl: Integer. 
+        The word length of DNN model parameter.
+    row_prior: List of Strings. 
+        The priority of memory mapping in the memory row dimension. Consist of 'Tm', 'Tn'.
+    col_prior: List of Strings. 
+        The priority of memory mapping in the memory column dimension. Consist of 'Tm', 'Tn'.
+    """
+    def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
+        """ tile_FC initializer """
         if not isinstance(is_fmap,bool):
             raise TypeError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
         if len(tile_shape) != 2:
@@ -758,6 +915,19 @@ class tile_FC(tile):
         self.print_detail=True
                         
     def priorexchange(self,prior):
+        """ Transfer String priority axis to its corresponding size and axis index.
+        
+        Parameters
+        ----------
+        prior : String. One of 'Tm', 'Tn'.
+
+        Returns
+        -------
+        Integer
+            Size of prior.
+        Integer
+            Index of prior in shape.
+        """
         if prior not in self.prior_element:
             raise ValueError('The augment row_prior must be in list %s'%(str(self.prior_element)))
             
@@ -772,6 +942,21 @@ class tile_FC(tile):
             return self.Tn,axis_idex[1]
     
     def get_tile_dims_prior(self,prior_list):
+        """ Get the shape and its dimension order by the given prior list.
+            Use for rehape data index.
+
+        Parameters
+        ----------
+        prior_list : List of String
+            The wanted new prior order.
+
+        Returns
+        -------
+        Tuple of Intger
+            The new shape.
+        dims_reorder : List of Integer
+            The dimesion order to original shape.
+        """
         if self.is_fmap:
             axis_idex=[1,0]
         else:
@@ -790,6 +975,20 @@ class tile_FC(tile):
         return tuple(dims_prior),dims_reorder
         
     def check_tile_overflow(self,bitmap,addr=None):
+        """ Check wether the address is out of the range of bitmap or not.
+
+        Parameters
+        ----------
+        bitmap : Class
+            The bitmap class for memory fault tolerance analysis.
+        addr : Tuple or Ndarray. , optional
+            The address of memory bitmap.
+
+        Returns
+        -------
+        bool
+            Is the address in range.
+        """
         if addr is None:
             bitmap_size=bitmap.row*bitmap.col
         else:
@@ -805,6 +1004,18 @@ class tile_FC(tile):
             return False
         
     def check_within_bias_range(self,bitmap,addr=None):
+        """ Check wether the address is out of the range of bitmap or not. Including the bias data.
+
+        bitmap : Class
+            The bitmap class for memory fault tolerance analysis.
+        addr : Tuple or Ndarray. , optional
+            The address of memory bitmap.
+
+        Returns
+        -------
+        bool
+            Is the address in range.
+        """
         if addr is None:
             bitmap_size=bitmap.row*bitmap.col
         else:
@@ -829,12 +1040,16 @@ class tile_FC(tile):
     def fault_dict_tile2layer(self,layer_shape,use_bias=None):
         """Restore the fault dictionary from tile to entire layer
 
-        # Arguments
-            layer_shape: Tuple. The shape of a layer parameter were divided into tile.
-            use_bias: Use bias in weight tile or not.
+        Arguments
+        ---------
+        layer_shape: Tuple. 
+            The shape of a layer parameter were divided into tile.
+        use_bias: Bool.
+            Use bias in weight tile or not.
         
-        # Returns
-            The fault information Dictionary of a layer parameter (feature maps or weights).
+        Returns
+        -------
+        The fault information Dictionary of a layer parameter (feature maps or weights).
         """
         if self.is_fmap and use_bias:
             raise ValueError('Feature map tile with use_bias option True. Only weight tile can mapping with bias.')
@@ -916,18 +1131,28 @@ class tile_FC(tile):
 def generate_layer_memory_mapping(layer,ifmap_buffer,wght_buffer,ofmap_buffer,ifmap_tile,wght_tile,ofmap_tile,print_detail=True,fast_mode=False,**kwargs):
     """Generate the fault dictionary list of a layer base on its memory mapping and buffer fault information.
 
-    # Arguments
-        layer: Keras.Layer. 
-        ifmap_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of input feature maps.
-        ofmap_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of output feature maps.
-        wght_buffer: Class (bitmap). The bitmap class for memory fault tolerance analysis of weights.
-        ifmap_tile: Class (tile or tile_FC). The tile or tile_FC class for memory fault tolerance analysis of input feature maps.
-        ofmap_tile: Class (tile or tile_FC). The tile or tile_FC class for memory fault tolerance analysis of output feature maps.
-        wght_tile: Class (tile or tile_FC). The tile or tile_FC class for memory fault tolerance analysis of weight feature maps.
-        print_detail: Bool. Print generation detail or not.
+    Arguments
+    ---------
+    layer: Keras.Layer. 
+        The layer are being generate memory mapping.
+    ifmap_buffer: Class (bitmap). 
+        The bitmap class for memory fault tolerance analysis of input feature maps.
+    ofmap_buffer: Class (bitmap). 
+        The bitmap class for memory fault tolerance analysis of output feature maps.
+    wght_buffer: Class (bitmap). 
+        The bitmap class for memory fault tolerance analysis of weights.
+    ifmap_tile: Class (tile or tile_FC). 
+        The tile or tile_FC class for memory fault tolerance analysis of input feature maps.
+    ofmap_tile: Class (tile or tile_FC). 
+        The tile or tile_FC class for memory fault tolerance analysis of output feature maps.
+    wght_tile: Class (tile or tile_FC). 
+        The tile or tile_FC class for memory fault tolerance analysis of weight feature maps.
+    print_detail: Bool. 
+        Print generation detail or not.
 
-    # Returns
-        The fault information Dictionary List.
+    Returns
+    -------
+    The fault information Dictionary List.
     """
     
     if print_detail:

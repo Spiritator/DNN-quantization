@@ -30,6 +30,7 @@ weight_name=os.path.join('..','mnist_lenet5_weight.h5')
 model_word_length=8
 model_fractional_bit=3
 rounding_method=['down','nearest','down']
+quant_mode='hybrid'
 batch_size=20
 # PE array fault simulation parameter
 config_dir=os.path.join('..','pe_mapping_config')
@@ -163,7 +164,6 @@ dataset_augment={'dataset':'mnist'}
 FT_augment={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
     
 
-model_augment=list()
 for round_id in range(test_rounds):
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
     print('|=|        Test Round %d/%d'%(round_id,test_rounds))
@@ -180,13 +180,13 @@ for round_id in range(test_rounds):
                  'SA bit':[fault_infos[i]['SA_bit']],
                  'num psidx':[psidx_count]}
     
-    model_augment.append({'nbits':model_word_length,
-                          'fbits':model_fractional_bit,
-                          'rounding_method':'nearest',
-                          'batch_size':batch_size,
-                          'quant_mode':'hybrid',
-                          'ofmap_fault_dict_list':model_mac_math_fdl,
-                          'mac_unit':PE})
+    model_augment=[{'nbits':model_word_length,
+                    'fbits':model_fractional_bit,
+                    'rounding_method':rounding_method,
+                    'batch_size':batch_size,
+                    'quant_mode':quant_mode,
+                    'ofmap_fault_dict_list':model_mac_math_fdl,
+                    'mac_unit':PE}]
     
     # inference test
     result_save_file=os.path.join(result_save_folder,dataflow_type,'metric.csv')

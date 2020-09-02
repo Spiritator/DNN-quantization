@@ -13,20 +13,28 @@ import tensorflow as tf
 def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,tensor_return=True):
     """Returns the a tensor or variable with single SA fault injected in each parameter.
 
-    # Arguments
-        original_value: Tensor or Variable. The variable to be injected fault.
-        quantizer: Class. The quantizer class contain following quantize operation infromation.
-            word_width: Variable. The fix-point representation of the parameter word length.
-            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
-        fault_bit: Variable. The index of the SA fault bit on a fix-point parameter
-        stuck_at: String. The SA type of the faulty bit, input augment must be one of '1' , '0' or 'flip'.
-        tensor_return: Condition. Return augment in Tensor dtype or nparray.
+    Arguments
+    ---------
+    original_value: Tensor or Float. 
+        The variable to be injected fault.
+    quantizer: Class. 
+        | The quantizer class contain following quantize operation infromation.
+        | word_width: Integer. The fix-point representation of the parameter word length.
+        | fractional_bits: Integer. Number of fractional bits in a fix-point parameter.
+        | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
+    fault_bit: Integer. 0 <= fault_bit < word length
+        The index of the SA fault bit on a fix-point parameter.
+    stuck_at: String. One of '1' , '0' or 'flip'.
+        The SA type of the faulty bit, input argument must be one of '1' , '0' or 'flip'.
+    tensor_return: Bool. 
+        Return augment in Tensor or Ndarray.
 
-    # Returns
-        A faulty Tensor or Numpy Array with single SA fault of each parameter.
+    Returns
+    -------
+    A faulty Tensor or Numpy Array with single SA fault of each parameter.
 
-    # Examples
+    Examples
+    --------
     ```python
     
         original_weight=np.arange(1,100,dtype='float32')
@@ -65,20 +73,27 @@ def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,t
 def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,tensor_return=True):
     """Returns the a tensor or variable with multiple SA fault injected in each parameter.
 
-    # Arguments
-        original_value: Tensor or Variable. The variable to be injected fault.
-        quantizer: Class. The quantizer class contain following quantize operation infromation.
-            word_width: Variable. The fix-point representation of the parameter word length.
-            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
-        fault_bit: List of Variable. The index of the SA fault bit on a fix-point parameter
-        stuck_at: List of String. The SA type of the faulty bit, augment must be one of '1' , '0' or 'flip'.
-        tensor_return: Condition. Return augment in Tensor dtype or nparray.
+    Arguments
+    ---------
+    original_value: Tensor or Float. The variable to be injected fault.
+    quantizer: Class. 
+        | The quantizer class contain following quantize operation infromation.
+        | word_width: Integer. The fix-point representation of the parameter word length.
+        | fractional_bits: Integer. Number of fractional bits in a fix-point parameter.
+        | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
+    fault_bit: List of Integers. 
+        The index of the SA fault bit on a fix-point parameter.
+    stuck_at: List of String. 
+        The SA type of the faulty bit, augment must be one of '1' , '0' or 'flip'.
+    tensor_return: Bool. 
+        Return augment in Tensor dtype or nparray.
 
-    # Returns
-        A faulty Tensor or Numpy Array with multiple SA fault of each parameter.
+    Returns
+    -------
+    A faulty Tensor or Numpy Array with multiple SA fault of each parameter.
 
-    # Examples
+    Examples
+    --------
     ```python
     
         original_weight=np.arange(1,100,dtype='float32')
@@ -129,15 +144,23 @@ def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer
         return fault_value.numpy()    
     
 def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck_at):
-    """Returns the fault modulator of SA0, SA1 and invert bit.
+    """ Returns the fault modulator of SA0, SA1 and invert bit.
+        For loop based generation. One fault location at an iteration. Can have multiple faults on one parameter.
 
-    # Arguments
-        word_width: Variable. The fix-point representation of the parameter word length.
-        fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-        fault_bit: List of Variable. The index of the SA fault bit on a fix-point parameter
-        stuck_at: List of String. The SA type of the faulty bit, input augment must be one of '1' , '0' or 'flip'.
+    Arguments
+    ---------
+    word_width: Integer. 
+        The fix-point representation of the parameter word length.
+    fractional_bits: Integer. 
+        Number of fractional bits in a fix-point parameter.
+    fault_bit: List of Integer. 
+        The index of the SA fault bit on a fix-point parameter.
+    stuck_at: List of String. '1' , '0' or 'flip'
+        The SA type of the faulty bit, input augment must be one of '1' , '0' or 'flip'.
 
-    # Returns
+    Returns
+    -------
+    Tuple of Ndarrays. (modulator0, modulator1, modulatorF)
         The fault modulator of SA0, SA1 and invert bit respectively.
     """
     if isinstance(fault_bit,list):
@@ -189,6 +212,33 @@ def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck
     return modulator0, modulator1, modulatorF
 
 def generate_stuck_at_fault_modulator_fast(shape,coor,fault_type,fault_bit):
+    """ Generates the fault modulator of SA0, SA1 and invert bit.
+        Numpy array based generation. Create layer input, weight or output modulator at once. 
+        Assume that only one fault on a parameter at once. 
+        The fault type of this generation must be unified and specified.
+        Therefore, this method is faster.
+
+    Parameters
+    ----------
+    shape : Tuple of Integer
+        The data shape of return modulator, the shape of data fault inject to.
+    coor : List of Tuples of Integer or Ndarray
+        | The coordinate of the fault location in data. Format:
+        | List of Tuple : [(0,2,2,6),(3,5,4,2),...]
+        | Ndarray : [[0,2,2,6],
+        |            [3,5,4,2],
+        |            ...]
+    fault_type : String. One of '1' , '0' or 'flip'.
+        The SA type of the faulty bit, input argument must be one of '1' , '0' or 'flip'.
+    fault_bit : List or Ndarray. Each element 0 <= fault_bit < word length
+        The index of the SA fault bit on a fix-point parameter.
+
+    Returns
+    -------
+    tensor_modulator : Ndarray
+        The modulator for parameter with given shape.
+
+    """
     if len(coor) == 0:
         return None
     
@@ -213,6 +263,29 @@ def generate_stuck_at_fault_modulator_fast(shape,coor,fault_type,fault_bit):
     return tensor_modulator
 
 def generate_tensor_modulator(shape,nb,fb,fault_dict,fast_gen=False): 
+    """ Generate modulator for a Tensor.
+        The Tensor could be input, weight or output of a layer.
+        Specify the generation method is numpy array based (fast gen) or for loop based.
+
+    Parameters
+    ----------
+    shape :Tuple of Integer
+        The data shape of data fault inject to.
+    nb : Integer. 
+        The fix-point representation of the parameter word length.
+    fb : Integer. 
+        Number of fractional bits in a fix-point parameter.
+    fault_dict : Dictionary.
+        The keys is fault location, value is fault information dictionary.
+    fast_gen : Bool, optional
+        Use numpy array based generation (fast gen) or not. The default is False.
+
+    Returns
+    -------
+    List of Ndarray. [tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+        The tensor modulator for SA0, SA1, bit-flip respectively.
+
+    """
     if len(fault_dict)==0:
         return [None,None,None]
     
@@ -261,6 +334,37 @@ def generate_tensor_modulator(shape,nb,fb,fault_dict,fast_gen=False):
     return [tensor_modulator0,tensor_modulator1,tensor_modulatorF]
 
 def generate_layer_modulator(layer,word_length,fractional_bit,ifmap_fault_dict,ofmap_fault_dict,wght_fault_dict,fast_gen=False):
+    """ Generate modulator for a DNN layer.
+        Layer must be the TensorFlow/Keras layer with weights and MAC operation.
+        Specify the generation method is numpy array based (fast gen) or for loop based.
+
+    Parameters
+    ----------
+    layer : tensorflow.keras.layer class
+        The layer for generate modulator. Get the layer shape info.
+    word_length : Integer
+        The word length of layer data. Assume that all input, weight and output of layer have the same word length.
+    fractional_bit : Integer
+        The number of fractional bit of layer data. Assume that all input, weight and output of layer have the same fractional bits.
+    ifmap_fault_dict : Dictionary
+        Fault dctionary for input feature maps.
+    ofmap_fault_dict : Dictionay
+        Fault dctionary for output feature maps.
+    wght_fault_dict : List of Dictionary. [kernal_fault_dict, bias_fault_dict]
+        Fault dctionary for output feature maps.
+    fast_gen : Bool, optional
+        Use numpy array based generation (fast gen) or not. The default is False.
+
+    Returns
+    -------
+    ifmap_modulator : List of Ndarray. [tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+        The tensor modulator for SA0, SA1, bit-flip respectively on input feature maps.
+    ofmap_modulator : List of Ndarray. [tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+        The tensor modulator for SA0, SA1, bit-flip respectively on output feature maps.
+    wght_modulator : List of Ndarray. [tensor_modulator0,tensor_modulator1,tensor_modulatorF]
+        The tensor modulator for SA0, SA1, bit-flip respectively on weights.
+
+    """
     layer_input_shape=layer.input_shape
     layer_output_shape=layer.output_shape
     layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
@@ -287,6 +391,46 @@ def generate_layer_modulator(layer,word_length,fractional_bit,ifmap_fault_dict,o
     return ifmap_modulator,ofmap_modulator,wght_modulator
 
 def generate_model_modulator(model,word_length,fractional_bit,ifmap_fault_dict_list,ofmap_fault_dict_list,wght_fault_dict_list,fast_gen=False):
+    """ Generate modulator for a DNN model.
+        Layer must be the TensorFlow/Keras model with convolution layers.
+        Specify the generation method is numpy array based (fast gen) or for loop based.
+
+    Parameters
+    ----------
+    model : tensorflow.keras.model
+        The model for generate modulator. Get the layer shape info in model.
+    word_length : Integer
+        The word length of layer data. Assume that all input, weight and output of model have the same word length.
+    fractional_bit : Integer
+        The number of fractional bit of layer data. Assume that all input, weight and output of model have the same fractional bits.
+    ifmap_fault_dict_list : List of Dictionary
+        Fault dictionary list for input feature maps.    
+        The list are the same order as the Keras model layer list. Each Dictionary in List is for its corresponding layer.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
+    ofmap_fault_dict_list : List of Dictionary
+        Fault dctionary for output feature maps.
+        The list are the same order as the Keras model layer list. Each Dictionary in List is for its corresponding layer.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
+    wght_fault_dict_list : List of Dictionary
+        Fault dctionary for output feature maps.
+        The list are the same order as the Keras model layer list. Each Dictionary in List is for its corresponding layer.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
+    fast_gen : Bool, optional
+        Use numpy array based generation (fast gen) or not. The default is False.
+
+    Returns
+    -------
+    model_ifmap_fault_modulator_list : List of List of Ndarray
+        The modulator for DNN model input feature maps.
+        The outer List is layer list order, the inner list is the [modulator SA0, modulator SA1, modulator bit-flip].
+    model_ofmap_fault_modulator_list : List of List of Ndarray
+        The modulator for DNN model output feature maps.
+        The outer List is layer list order, the inner list is the [modulator SA0, modulator SA1, modulator bit-flip].
+    model_wght_fault_modulator_list : List of List of List of Ndarray
+        The modulator for DNN model weights.
+        The outer List is layer list order, the middle list is [kernel, bias], the inner list is the [modulator SA0, modulator SA1, modulator bit-flip].
+
+    """
     model_depth=len(model.layers)
     model_ifmap_fault_modulator_list=[None for _ in range(model_depth)]
     model_ofmap_fault_modulator_list=[None for _ in range(model_depth)]

@@ -200,6 +200,14 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     if len(layer_weight_shape)==0:
         if print_detail:
             print('    no weight layer Skipped!')
+        if return_detail:
+            empty_info={'num_base_coor':0,
+                        'num_fault_coor':0,
+                        'num_psum_idx':0,
+                        'num_layer_fault_coor':0,
+                        'num_layer_psum_idx':0}
+            
+            return None, empty_info
         return None
     
     if fault_dict is not None:
@@ -209,6 +217,14 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     
     if len(PEarray.fault_dict)==0:
         print('Empty fault dict. No fault.')
+        if return_detail:
+            empty_info={'num_base_coor':0,
+                        'num_fault_coor':0,
+                        'num_psum_idx':0,
+                        'num_layer_fault_coor':0,
+                        'num_layer_psum_idx':0}
+            
+            return None, empty_info
         return None
         
     if print_detail:

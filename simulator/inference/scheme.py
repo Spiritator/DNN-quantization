@@ -226,19 +226,25 @@ def inference_scheme(model_func,
                 writer.writerow(test_result_dict)
         else:
             with open(result_save_file, 'a', newline='') as csvfile:
+                fieldnames=list()
                 test_result_dict=dict()
                 if FT_evaluate:
                     for key in test_result.keys():
+                        fieldnames.append(key)
                         test_result_dict[key]=test_result[key]
                     if save_runtime:
+                        fieldnames.append('runtime')
                         test_result_dict['runtime']=t
                 else:
                     for i in range(len(test_result)):
+                        fieldnames.append(model.metrics_names[i])
                         test_result_dict[model.metrics_names[i]]=test_result[i]
                     if save_runtime:
+                        fieldnames.append('runtime')
                         test_result_dict['runtime']=t
                 if save_file_add_on is not None:
                     for key in save_file_add_on.keys():
+                        fieldnames.append(key)
                         test_result_dict[key]=save_file_add_on[key][scheme_num]
                 writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writerow(test_result_dict)

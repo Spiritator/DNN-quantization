@@ -65,12 +65,18 @@ def _preprocess_padding(padding):
 
 
 def QuantizedDenseCore(inputs, kernel, Q_info):
-    ''' Reimplementation of the Dense layer.
-    Args: 
-        inputs:  [batch_size, neurons] 
-        kernel: [input_neurons, output_neurons]
-    '''    
-        
+    """ Intrinsic quantization of the Dense layer.
+    
+    Arguments
+    ---------
+    | inputs:  [batch_size, input_neurons] 
+    | kernel: [input_neurons, output_neurons]
+    
+    Returns
+    -------
+    outputs: [batch_size, output_neurons]
+    
+    """   
     batch_size = inputs.shape.dims[0].value  
     input_size = inputs.shape.dims[1].value
     output_size = kernel.get_shape().dims[1].value
@@ -189,11 +195,17 @@ def QuantizedDenseCore(inputs, kernel, Q_info):
 ##########################
 # parallel_iterations and swap_memory in tf.while_loops can be adjusted
 def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_info):
-    ''' Reimplementation of the 2D convolution layer.
-    Args: 
-        inputs:  [batch_size, image_height, image_width, input_channels] 
-        kernel: [kernel_height, kernel_width, input_channels, output_channels]
-    '''
+    """ Intrinsic quantization of of the 2D convolution layer.
+    Arguments
+    ---------
+    | inputs:  [batch_size, image_height, image_width, input_channels] 
+    | kernel: [kernel_height, kernel_width, input_channels, output_channels]
+    
+    Returns
+    -------
+    output: [batch_size, image_height, image_width, output_channels]
+    
+    """
 
     inputs, tf_data_format = _preprocess_conv2d_input(inputs, data_format)
     if tf_data_format not in ("NHWC", None):
@@ -407,6 +419,22 @@ def QuantizedBatchNormalizationCore(inputs,
                                     variance_epsilon,
                                     Q_info,
                                     name=None):
+    """ Intrinsic quantization of BatchNormalization layer.
+
+    Parameters
+    ----------
+    | inputs : Tensor.
+    | mean : tf.Variable
+    | variance : tf.Variable
+    | beta : tf.Variable
+    | gamma : tf.Variable
+    | variance_epsilon : Float
+
+    Returns
+    -------
+    output : Tensor
+
+    """
     with ops.name_scope(name, "batchnorm", [inputs, mean, variance, gamma, beta]):
         coef = Q_info.quantize( math_ops.sqrt(variance + variance_epsilon))
         coef = Q_info.quantize( math_ops.reciprocal(coef))
@@ -426,11 +454,18 @@ def QuantizedBatchNormalizationCore(inputs,
 ###########################################
 # parallel_iterations and swap_memory in tf.while_loops can be adjusted
 def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_info):
-    ''' Reimplementation of the 2D depthwise convolution layer.
-    Args: 
-        inputs:  [batch_size, image_height, image_width, input_channels] 
-        kernel: [kernel_height, kernel_width, input_channels, output_channels]
-    '''
+    """ Intrinsic quantization of the 2D depthwise convolution layer.
+    
+    Arguments
+    ---------
+    | inputs:  [batch_size, image_height, image_width, input_channels] 
+    | kernel: [kernel_height, kernel_width, input_channels, output_channels]
+    
+    Returns
+    -------
+    outputs: [batch_size, image_height, image_width, output_channels]
+    
+    """
 
     inputs, tf_data_format = _preprocess_conv2d_input(inputs, data_format)
     if tf_data_format not in ("NHWC", None):
@@ -577,44 +612,54 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     
 def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='valid',
            data_format=None, dilation_rate=(1, 1)):
-    """Distributed 2D convolution.
+    """ Distributed 2D convolution.
 
-    # Arguments
-        x: Tensor or variable.
-        kernel: kernel tensor.
+    Arguments
+    ---------
+    x: Tensor or variable.
+    
+    kernel: kernel tensor.
+    
+    split_type: String or List of String. 
+        | Choose from 'channel', 'k_height' (kernel_height), 'k_width' (kernel_width), 'k_seq' (kernel_sequential).
+        | 'k_seq' can't coexist with 'k_height' or 'k_width'.
+    
+    splits: 
+        For one single split the splits augment will be an Integer or List of Integer. 
+        The augment for setting splits on channel axis.
+        Either a 0-D integer `Tensor` indicating the number of splits 
+        along split_dim or a 1-D integer `Tensor` containing the sizes of 
+        each output tensor along split_dim. If a scalar then it must evenly
+        divide `value.shape[axis]`; otherwise the sum of sizes along the 
+        split dimension must match that of the `value`.
         
-        split_type: String or List of String. Choose from 'channel', 'k_height' (kernel_height), 'k_width' (kernel_width), 'k_seq' (kernel_sequential).
-            'k_seq' can't coexist with 'k_height' or 'k_width'.
+        For splits on multiple splits typesthe splits augment will be List of (Integer or List of Integer).
+        List length is the number of split types permute according to the split_type list order.
         
-        splits: 
-            For one single split the splits augment will be an Integer or List of Integer. 
-            The augment for setting splits on channel axis.
-            Either a 0-D integer `Tensor` indicating the number of splits 
-            along split_dim or a 1-D integer `Tensor` containing the sizes of 
-            each output tensor along split_dim. If a scalar then it must evenly
-            divide `value.shape[axis]`; otherwise the sum of sizes along the 
-            split dimension must match that of the `value`.
-            
-            For splits on multiple splits typesthe splits augment will be List of (Integer or List of Integer).
-            List length is the number of split types permute according to the split_type list order.
-            
-            For split on multiple layers the splits augment will be List of (List of (Integer or List of Integer)).
-            List length of first level is the number of target layers.
-            List length of second level is the number of split types permute according to the split_type list order.
+        For split on multiple layers the splits augment will be List of (List of (Integer or List of Integer)).
+        List length of first level is the number of target layers.
+        List length of second level is the number of split types permute according to the split_type list order.
 
-        strides: strides tuple.
-        padding: string, `"same"` or `"valid"`.
-        data_format: string, `"channels_last"` or `"channels_first"`.
-            Whether to use Theano or TensorFlow/CNTK data format
-            for inputs/kernels/outputs.
-        dilation_rate: tuple of 2 integers.
+    strides: strides tuple.
+    
+    padding: string, `"same"` or `"valid"`.
+    
+    data_format: string, `"channels_last"` or `"channels_first"`.
+        Whether to use Theano or TensorFlow/CNTK data format
+        for inputs/kernels/outputs.
+        
+    dilation_rate: tuple of 2 integers.
 
-    # Returns
-        A tensor, result of 2D convolution.
+    Returns
+    -------
+    output: Tensor
+        Result of 2D convolution.
 
-    # Info
-        Split type hierachy. [channel, k_height, k_width, k_seq]
-        Output Tensor list will permute as the flatten coordinate as the priority sequence above.
+    Info
+    ----
+    | Split type hierachy. [channel, k_height, k_width, k_seq]
+    | Output Tensor list will permute as the flatten coordinate as the priority sequence above.
+    
     """
     if data_format is None:
         data_format = K.image_data_format()
@@ -813,44 +858,52 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
     return output
 
 def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilation_rate, padding, data_format, Q_info):
-    """2D convolution.
+    """ Distributed 2D convolution with intrinsic quantization
 
-    # Arguments
-        x: Tensor or variable.
-        kernel: kernel tensor.
+    Arguments
+    ---------
+    x: Tensor or variable.
+    
+    kernel: kernel tensor.
+    
+    split_type: String or List of String. Choose from 'channel', 'k_height' (kernel_height), 'k_width' (kernel_width), 'k_seq' (kernel_sequential).
+        'k_seq' can't coexist with 'k_height' or 'k_width'.
+    
+    splits: 
+        For one single split the splits augment will be an Integer or List of Integer. 
+        The augment for setting splits on channel axis.
+        Either a 0-D integer `Tensor` indicating the number of splits 
+        along split_dim or a 1-D integer `Tensor` containing the sizes of 
+        each output tensor along split_dim. If a scalar then it must evenly
+        divide `value.shape[axis]`; otherwise the sum of sizes along the 
+        split dimension must match that of the `value`.
         
-        split_type: String or List of String. Choose from 'channel', 'k_height' (kernel_height), 'k_width' (kernel_width), 'k_seq' (kernel_sequential).
-            'k_seq' can't coexist with 'k_height' or 'k_width'.
+        For splits on multiple splits typesthe splits augment will be List of (Integer or List of Integer).
+        List length is the number of split types permute according to the split_type list order.
         
-        splits: 
-            For one single split the splits augment will be an Integer or List of Integer. 
-            The augment for setting splits on channel axis.
-            Either a 0-D integer `Tensor` indicating the number of splits 
-            along split_dim or a 1-D integer `Tensor` containing the sizes of 
-            each output tensor along split_dim. If a scalar then it must evenly
-            divide `value.shape[axis]`; otherwise the sum of sizes along the 
-            split dimension must match that of the `value`.
-            
-            For splits on multiple splits typesthe splits augment will be List of (Integer or List of Integer).
-            List length is the number of split types permute according to the split_type list order.
-            
-            For split on multiple layers the splits augment will be List of (List of (Integer or List of Integer)).
-            List length of first level is the number of target layers.
-            List length of second level is the number of split types permute according to the split_type list order.
+        For split on multiple layers the splits augment will be List of (List of (Integer or List of Integer)).
+        List length of first level is the number of target layers.
+        List length of second level is the number of split types permute according to the split_type list order.
 
-        strides: strides tuple.
-        padding: string, `"same"` or `"valid"`.
-        data_format: string, `"channels_last"` or `"channels_first"`.
-            Whether to use Theano or TensorFlow/CNTK data format
-            for inputs/kernels/outputs.
-        dilation_rate: tuple of 2 integers.
+    strides: strides tuple.
+    
+    padding: string, `"same"` or `"valid"`.
+    
+    data_format: string, `"channels_last"` or `"channels_first"`.
+        Whether to use Theano or TensorFlow/CNTK data format
+        for inputs/kernels/outputs.
+        
+    dilation_rate: tuple of 2 integers.
 
-    # Returns
-        A tensor, result of 2D convolution.
+    Returns
+    -------
+    output: List of Tensor
+        Result of 2D convolution.
 
-    # Raises
-        ValueError: If `data_format` is neither
-            `"channels_last"` nor `"channels_first"`.
+    Raises
+    ------
+    ValueError: If `data_format` is neither `"channels_last"` nor `"channels_first"`.
+    
     """
     if data_format is None:
         data_format = K.image_data_format()

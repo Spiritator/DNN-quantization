@@ -173,11 +173,11 @@ for round_id in range(test_rounds):
     model_mac_math_fdl, psidx_count=gen_model_PE_fault_dict(ref_model,fault_locs[round_id],fault_infos[round_id],print_detail=True)
     K.clear_session()
     
-    info_add_on={'PE y':[fault_locs[i][0]],
-                 'PE x':[fault_locs[i][1]],
-                 'param':[fault_infos[i]['param']],
-                 'SA type':[fault_infos[i]['SA_type']],
-                 'SA bit':[fault_infos[i]['SA_bit']],
+    info_add_on={'PE y':[fault_locs[round_id][0]],
+                 'PE x':[fault_locs[round_id][1]],
+                 'param':[fault_infos[round_id]['param']],
+                 'SA type':[fault_infos[round_id]['SA_type']],
+                 'SA bit':[fault_infos[round_id]['SA_bit']],
                  'num psidx':[psidx_count]}
     
     model_augment=[{'nbits':model_word_length,

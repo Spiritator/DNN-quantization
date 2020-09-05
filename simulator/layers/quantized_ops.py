@@ -13,19 +13,26 @@ import tensorflow.keras.backend as K
 import numpy as np
 
 class quantizer:
-    def __init__(self,nb,fb,rounding_method='nearest',overflow_mode=False,stop_gradient=False):
-        """ Setup fixed-point quantization parameter
+    """ Setup fixed-point quantization parameter
 
-        # Arguments
-            nb: Integer. The word-length of this fixed-point number.
-            fb: Integer. The number fractional bits in this fixed-point number.
-            rounding_method: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'. 
-            overflow_mode: Bool. The method of handle overflow and underflow simulation.
-                If True, the overflow and underflow value will wrap-around like in fixed-point number in RTL description.
-                Else False, the overflow and underflow value will saturate at the max and min number this fixed-point number can represent.
-            stop_gradient: Bool. Whether to let the gradient pass through the quantization function or not.
-        
-        """
+    Arguments
+    ---------
+    nb: Integer. 
+        The word-length of this fixed-point number.
+    fb: Integer. 
+        The number fractional bits in this fixed-point number.
+    rounding_method: String. One of 'nearest' , 'down', \'zero\', 'stochastic'.
+        Rounding method of quantization.
+    overflow_mode: Bool. 
+        | The method of handle overflow and underflow simulation.
+        | If True, the overflow and underflow value will wrap-around like in fixed-point number in RTL description.
+        | Else False, the overflow and underflow value will saturate at the max and min number this fixed-point number can represent.
+    stop_gradient: Bool. 
+        Whether to let the gradient pass through the quantization function or not.
+
+    """
+    def __init__(self,nb,fb,rounding_method='nearest',overflow_mode=False,stop_gradient=False):
+        """ Quantizer initilizer """
         if not isinstance(nb,int) or not isinstance(fb,int):
             raise ValueError('The word width and fractional bits augment must be integer type!')
         if nb<=fb-1:

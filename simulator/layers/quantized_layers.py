@@ -132,10 +132,8 @@ class QuantizedDense(Dense):
         # output mac fault injection
         if self.mac_unit is not None:
             if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
-                #TODO 
-                # work on the caller
-                output = self.mac_unit.inject_mac_fault_caller(inputs, quantized_kernel, output, 
-                                                               self.ofmap_sa_fault_injection,
+                output = self.mac_unit.inject_mac_fault_caller(output, self.ofmap_sa_fault_injection, 
+                                                               ifmap=inputs, wght=quantized_kernel, 
                                                                layer_type='Dense')
         # activation function
         if self.activation is not None:
@@ -149,8 +147,6 @@ class QuantizedDense(Dense):
                 output = inject_layer_sa_fault_tensor(output, self.ofmap_sa_fault_injection, quantizer_output)
 
         return output
-#TODO
-# work on the caller
 
         
     def get_config(self):
@@ -296,14 +292,12 @@ class QuantizedConv2D(Conv2D):
         # output mac fault injection
         if self.mac_unit is not None:
             if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
-                #TODO 
-                # work on the caller
-                outputs = self.mac_unit.inject_mac_fault_caller(inputs, quantized_kernel, outputs, 
-                                                                     self.ofmap_sa_fault_injection,
-                                                                     layer_type='Conv2D',
-                                                                     ksizes=self.kernel_size, 
-                                                                     padding=self.padding, 
-                                                                     dilation_rates=self.dilation_rate)
+                outputs = self.mac_unit.inject_mac_fault_caller(outputs, self.ofmap_sa_fault_injection, 
+                                                                ifmap=inputs, wght=quantized_kernel,      
+                                                                layer_type='Conv2D',
+                                                                ksizes=self.kernel_size, 
+                                                                padding=self.padding, 
+                                                                dilation_rates=self.dilation_rate)
         # activation function
         if self.activation is not None:
             outputs = self.activation(outputs)
@@ -316,8 +310,7 @@ class QuantizedConv2D(Conv2D):
                 outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
 
         return outputs
-#TODO
-# work on the caller
+
 
     def get_config(self):
         if isinstance(self.quantizer,list):
@@ -769,14 +762,12 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         # output mac fault injection
         if self.mac_unit is not None:
             if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
-                #TODO 
-                # work on the caller
-                outputs = self.mac_unit.inject_mac_fault_caller(inputs, quantized_depthwise_kernel, outputs, 
-                                                                     self.ofmap_sa_fault_injection,
-                                                                     layer_type='DepthwiseConv2D',
-                                                                     ksizes=self.kernel_size, 
-                                                                     padding=self.padding, 
-                                                                     dilation_rates=self.dilation_rate)
+                outputs = self.mac_unit.inject_mac_fault_caller(outputs, self.ofmap_sa_fault_injection, 
+                                                                ifmap=inputs, wght=quantized_depthwise_kernel, 
+                                                                layer_type='DepthwiseConv2D',
+                                                                ksizes=self.kernel_size, 
+                                                                padding=self.padding, 
+                                                                dilation_rates=self.dilation_rate)
         # activation function
         if self.activation is not None:
             outputs = self.activation(outputs)
@@ -789,8 +780,8 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                 outputs = inject_layer_sa_fault_tensor(outputs, self.ofmap_sa_fault_injection, quantizer_output)
 
         return outputs
-#TODO
-# work on the caller
+
+
     def get_config(self):
         if isinstance(self.quantizer,list):
             nb=[quant.nb for quant in self.quantizer]

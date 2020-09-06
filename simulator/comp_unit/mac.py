@@ -76,6 +76,8 @@ class mac_unit:
         self.noise_inject=noise_inject
         self.sim_truncarry=sim_truncarry
         self.fast_gen=fast_gen
+        self.amp_factor_fmap=1.0
+        self.amp_factor_wght=1.0
         
     def _setup(self, setup_file):
         """
@@ -795,9 +797,9 @@ class mac_unit:
         return output
     
     def inject_mac_math_fault_uni(self, ifmap, wght, ofmap, fault_dict, 
-                                         quantizer=None, quant_mode=None, layer_type='Conv2D',
-                                         ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
-                                         sim_truncarry=None):
+                                  quantizer=None, quant_mode=None, layer_type='Conv2D',
+                                  ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
+                                  sim_truncarry=None):
         """ The fault injection mathematical model for used in Lyer Tensor computing.
             This function is only for fast generation.
             Fast generation means the all the fault information dict are refer to the same source defect 
@@ -1233,11 +1235,10 @@ class mac_unit:
             
         return output
 
-# TODO
-# clear unwanted arguments
-    def inject_mac_noise_fault_tensor(self, ofmap, fault_dict, kernal_shape, amp_factor=1.0,
-                                     quantizer=None, quant_mode=None, layer_type='Conv2D',
-                                     fast_gen=None):
+    def inject_mac_noise_fault_tensor(self, ofmap, fault_dict, 
+                                      amp_factor_fmap=1.0, amp_factor_wght=1.0,
+                                      quantizer=None, 
+                                      fast_gen=None):
         """ Fault injection mac output Gaussian noise model.
             Generate a Gaussian noise mask for layer ofmap. 
             Using the result of PE dataflow model fault dictionary.
@@ -1245,6 +1246,11 @@ class mac_unit:
             Where no fault ofmap pixels were filted to 0, other faulty pixels will be
             amplified correspond to the SA type, fault bit order and the number of faulty
             partial sum indexes.
+            
+            Fast generation means the all the fault information dict are refer to the same source defect 
+            with the same fault bit, SA type and param.
+            Scattered generation means the faults are from distinct defect sources that need to be split into 
+            different groups and generate respectively. Therefore it's slower.
         
         Arguments
         ---------
@@ -1252,18 +1258,15 @@ class mac_unit:
             The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
-        kernel_shape: Tuple of Integers.
-            The shape of kernel for get the number of partial sum needed to accumulate a ofmap pixel.
-        amp_factor: Float. 
-            The adjustment term for Gaussian std var.
+        amp_factor_fmap: Float. 
+            The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
+        amp_factor_wght: Float. 
+            The adjustment term for Gaussian standard deviation of the weight value noise simulation.
         quantizer: Class or List. 
             The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
             rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
-        quant_mode: String. Be either 'intrinsic' or 'hybrid'.
-            The quantization mode of MAC. 
-            'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
         fast_gen: Bool. 
             Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
             The fault dictionay is form by fault data contamination.
@@ -1284,53 +1287,53 @@ class mac_unit:
                 quantizer_output =quantizer[2]
             else:
                 quantizer_output =quantizer
-                
-        if quant_mode is not None:
-            self.quant_mode=quant_mode
+                            
+        if amp_factor_fmap==1.0:
+            amp_factor_fmap=self.amp_factor_fmap
+        if amp_factor_wght==1.0:
+            amp_factor_wght=self.amp_factor_wght
             
-        #order_get_psidx_o,order_get_psidx_w,order_get_psidx_i=self._layer_coor_order(layer_type)
-        
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
-        #fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
 
         if self.fast_gen:
             # data allocation
-            # (coor idx, num of psidx, psum idx)
             psum_idx_cnt=np.array([len(info['psum_idx']) for info in fd_value])
             
             fault_param=fd_value[0]['param']
             fault_type=fd_value[0]['SA_type']
             fault_bit=fd_value[0]['SA_bit']
             
+            fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb))
+            
             # check polarity
             if fault_type!='flip':
                 psum_idx_cnt=np.divide(psum_idx_cnt,2)
                 
             # amplify for multiple psum index (faults)
-            stddev_amp=np.sqrt(psum_idx_cnt)
+            stddev_amp=np.sqrt(psum_idx_cnt,dtype=np.float32)
             
             # fault injection
-            if fault_param=='ifmap_in' or fault_param=='ifmap_out' or fault_param=='wght_in' or fault_param=='wght_out':
-                # fault injection of ifmap and wght => mac math FI
-                if fault_param=='ifmap_in' or fault_param=='ifmap_out':
-                    stddev_amp=np.multiply(stddev_amp,2**fault_bit)
-                    # give the weight's value amplifier
-                elif fault_param=='wght_in' or fault_param=='wght_out':
-                    # give the feature map's value amplifier
-                    
-                    # relu
-                    stddev_amp=np.clip(stddev_amp, 0, np.inf)
-                    stddev_amp=np.multiply(stddev_amp,2**fault_bit)
+            if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+                # give the weight's value amplifier
+                stddev_amp=np.multiply(stddev_amp,amp_factor_wght)
+                stddev_amp=np.multiply(stddev_amp,fault_order)
+                
+            elif fault_param=='wght_in' or fault_param=='wght_out':
+                # give the feature map's value amplifier
+                stddev_amp=np.multiply(stddev_amp,amp_factor_fmap)
+                # relu
+                stddev_amp=np.clip(stddev_amp, 0, np.inf)
+                stddev_amp=np.multiply(stddev_amp,fault_order)
                 
                            
             # fault injection of ofmap
             elif fault_param=='psum_in' or fault_param=='psum_out':
-                 stddev_amp=np.multiply(stddev_amp,2**fault_bit)
+                 stddev_amp=np.multiply(stddev_amp,fault_order)
     
             # add psum_alter back to ofmap
-            stddev_amp_ofmap=np.zeros(ofmap.shape)
-            np.add.at(stddev_amp_ofmap,fd_coor,stddev_amp)
+            stddev_amp_ofmap=np.zeros(ofmap.shape,dtype=np.float32)
+            np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
             
             stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
             gaussian_noise_mask=tf.random.normal(ofmap.shape)
@@ -1505,25 +1508,199 @@ class mac_unit:
             # output=tf.tensor_scatter_nd_update(ofmap,fd_coor,output)
                         
         return output
+    
+    def inject_mac_noise_fault_uni(self, ofmap, fault_dict, 
+                                   amp_factor_fmap=1.0, amp_factor_wght=1.0,
+                                   quantizer=None):
+        """ Fault injection mac output Gaussian noise model.
+            Generate a Gaussian noise mask for layer ofmap. 
+            Using the result of PE dataflow model fault dictionary.
+            Make amplifier array for Gaussian noise mask.
+            Where no fault ofmap pixels were filted to 0, other faulty pixels will be
+            amplified correspond to the SA type, fault bit order and the number of faulty
+            partial sum indexes.
+            
+            Fast generation means the all the fault information dict are refer to the same source defect 
+            with the same fault bit, SA type and param.
+        
+        Arguments
+        ---------
+        ofmap: Tensor. 
+            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+        fault_dict: Dictionary or List. 
+            The dictionary contain fault list information.
+        amp_factor_fmap: Float. 
+            The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
+        amp_factor_wght: Float. 
+            The adjustment term for Gaussian standard deviation of the weight value noise simulation.
+        quantizer: Class or List. 
+            The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
+            word_width: Variable. The fix-point representation of the parameter word length.
+            fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+        
+        Returns
+        -------
+        Tensor. 
+            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        
+        """
+        if quantizer is None:
+            if isinstance(self.quantizer,list) and len(self.quantizer)==3:
+                quantizer_output =self.quantizer[2]
+            else:
+                quantizer_output =self.quantizer
+        else:
+            if isinstance(quantizer,list) and len(quantizer)==3:
+                quantizer_output =quantizer[2]
+            else:
+                quantizer_output =quantizer
+                            
+        if amp_factor_fmap==1.0:
+            amp_factor_fmap=self.amp_factor_fmap
+        if amp_factor_wght==1.0:
+            amp_factor_wght=self.amp_factor_wght
+            
+        fd_coor=np.array(list(fault_dict.keys()))
+        fd_value=np.array(list(fault_dict.values()))
+
+        # data allocation
+        psum_idx_cnt=np.array([len(info['psum_idx']) for info in fd_value])
+        
+        fault_param=fd_value[0]['param']
+        fault_type=fd_value[0]['SA_type']
+        fault_bit=fd_value[0]['SA_bit']
+        
+        fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb))
+        
+        # check polarity
+        if fault_type!='flip':
+            psum_idx_cnt=np.divide(psum_idx_cnt,2)
+            
+        # amplify for multiple psum index (faults)
+        stddev_amp=np.sqrt(psum_idx_cnt,dtype=np.float32)
+        
+        # fault injection
+        if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+            # give the weight's value amplifier
+            stddev_amp=np.multiply(stddev_amp,amp_factor_wght)
+            stddev_amp=np.multiply(stddev_amp,fault_order)
+            
+        elif fault_param=='wght_in' or fault_param=='wght_out':
+            # give the feature map's value amplifier
+            stddev_amp=np.multiply(stddev_amp,amp_factor_fmap)
+            # relu
+            stddev_amp=np.clip(stddev_amp, 0, np.inf)
+            stddev_amp=np.multiply(stddev_amp,fault_order)
+            
+                       
+        # fault injection of ofmap
+        elif fault_param=='psum_in' or fault_param=='psum_out':
+             stddev_amp=np.multiply(stddev_amp,fault_order)
+
+        # add psum_alter back to ofmap
+        stddev_amp_ofmap=np.zeros(ofmap.shape,dtype=np.float32)
+        np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
+        
+        stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+        gaussian_noise_mask=tf.random.normal(ofmap.shape)
+        gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+        output=tf.add(ofmap, gaussian_noise_mask)
+        output=quantizer_output.quantize(output)
+        
+        return output
 
     def inject_mac_fault_caller(self, ofmap, fault_dict, ifmap=None, wght=None, 
                                 noise_inject=None, sim_truncarry=None, fast_gen=None,
                                 quantizer=None, quant_mode=None, layer_type='Conv2D',
                                 ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
+                                amp_factor_fmap=1.0, amp_factor_wght=1.0,
                                 **kwargs):
-        """
+        """ The function caller for decide which fault injection method will be used.
         
-
         Parameters
         ----------
-        **kwargs : TYPE
-            DESCRIPTION.
+        ofmap: Tensor. 
+            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+        fault_dict: Dictionary or List. 
+            The dictionary contain fault list information.
+        ifmap: Tensor. optional
+            Quantized Tensor. Layer input.
+        wght: Tensor. optional
+            Quantized Tensor. Layer output.
+        noise_inject : Bool, optional
+            Use the Gaussian noise fault injection method or not. 
+            Noise mean using Gaussion distribution model to simulate the input and weight for mac fault. 
+            The default is None.
+        sim_truncarry: Bool. optional
+            Simulate the truncation carry during mac math fault injection. 
+            The truncation carry is cause by the carry-out of thrown away fractional bits. 
+            It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
+            How ever this could cause huge time overhead for absolute bit-true model.
+        fast_gen: Bool. optional
+            Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+            The fault dictionay is form by fault data contamination.
+        quantizer: Class or List. 
+            | The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
+            | word_width: Variable. The fix-point representation of the parameter word length.
+            | fractional_bits: Variable. Number of fractional bits in a fix-point parameter
+            | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+        quant_mode: String. Be either 'intrinsic' or 'hybrid'.
+            | The quantization mode of MAC.
+            | 'intrinsic' means truncate before accumulation. 
+            | 'hybrid' means accumulate with the word length of multiplier output than truncate.
+        layer_type: String. One of 'Conv2D', 'Dense', 'DepthwiseConv2D'.
+            The type of layer this solver wants to convert partial sum index and mapping into.
+        ksize: Tuple. Size 2. 
+            The kernel size (row, col).
+        padding: String. 'same' or 'valid'. 
+            The type of padding algorithm to use.
+        dilation_rate: Tuple. Size 2. 
+            The dilation rate (row, col).
+        amp_factor_fmap: Float. 
+            The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
+        amp_factor_wght: Float. 
+            The adjustment term for Gaussian standard deviation of the weight value noise simulation.
+        **kwargs : Other additional arguments
+            If needed.
 
         Returns
         -------
-        None.
-
+        Tensor. 
+            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+            
+        Reminder!!
+        ----------
+        padding: Padding is tie to layer setting. 
+            If user treat padding as a seperate layer.
+            For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
+            The tile setting must be padding='valid' which means no padding.
+            Or else there might be fault.
         """
+        if noise_inject is None:
+            noise_inject=self.noise_inject
+        if fast_gen is None:
+            fast_gen=self.fast_gen
+        
+        if noise_inject:
+            output=self.inject_mac_noise_fault_tensor(ofmap, fault_dict, 
+                                                      amp_factor_fmap=amp_factor_fmap,
+                                                      amp_factor_wght=amp_factor_wght,
+                                                      quantizer=quantizer,
+                                                      fast_gen=fast_gen)
+        else:
+            if fast_gen:
+                output=self.inject_mac_math_fault_uni(ifmap, wght, ofmap, fault_dict,
+                                                      quantizer=quantizer, quant_mode=quant_mode, layer_type=layer_type,
+                                                      ksizes=ksizes, padding=padding, dilation_rates=dilation_rates,
+                                                      sim_truncarry=sim_truncarry)
+            else:
+                output=self.inject_mac_math_fault_scatter(ifmap, wght, ofmap, fault_dict,
+                                                          quantizer=quantizer, quant_mode=quant_mode, layer_type=layer_type,
+                                                          ksizes=ksizes, padding=padding, dilation_rates=dilation_rates,
+                                                          sim_truncarry=sim_truncarry)
+        
+        return output
     
     def consistency_check(self, quant_mode, quantizer):
         """ Check the consistency between MAC unit setup and layer quantization setup """

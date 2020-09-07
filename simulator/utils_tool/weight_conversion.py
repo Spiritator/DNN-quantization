@@ -444,4 +444,17 @@ def fuse_BN_weight_beta(original_weight_name,layer_names=None,fused_weight_name=
     
     return fused_weight_name
 
+def check_weight_distribution(weight_name):
+    """
+    
 
+    Parameters
+    ----------
+    weight_name : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """

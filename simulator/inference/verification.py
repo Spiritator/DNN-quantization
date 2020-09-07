@@ -52,22 +52,23 @@ def view_intermediate(model,input_x):
         return [output[0] for output in intermediate_output]
                              
         
-#    if batch_inference:
-#        output_list=[input_x]
-#    else:
-#        output_list=[input_x[0]]
-#    
-#    for n_layer in range(1,num_layers):
-#        print('evaluating layer %d/%d'%(n_layer+1,num_layers))
-#        
-#        intermediate_model=Model(inputs=model.input,outputs=model.layers[n_layer].output)
-#    
-#        intermediate_output=intermediate_model.predict(input_x)
-#        
-#        if batch_inference:
-#            output_list.append(intermediate_output)
-#        else:
-#            output_list.append(intermediate_output[0])
-            
-#    return output_list
+def view_fmap_distribution(model,input_x,batch_size=None, datagen=None):
+    """ View feature map distribution 
+
+    Parameters
+    ----------
+    model : TYPE
+        DESCRIPTION.
+    input_x : TYPE
+        DESCRIPTION.
+    batch_size : TYPE, optional
+        DESCRIPTION. The default is None.
+    datagen : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    None.
+
+    """
     

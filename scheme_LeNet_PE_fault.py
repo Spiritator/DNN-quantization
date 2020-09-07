@@ -24,6 +24,8 @@ from simulator.comp_unit.mapping_flow import PE_mapping_forward,PE_mapping_backw
 
 #%% setting parameter
 
+noise_inject=False
+
 result_save_folder=os.path.join('..','test_result','mnist_lenet5_PE_fault')
 dataflow_type='ws'
 weight_name=os.path.join('..','mnist_lenet5_weight.h5')
@@ -52,7 +54,7 @@ def call_model():
                             quant_mode=None)
 
 # PE represent computation unit
-PE=mac_unit(mac_config)
+PE=mac_unit(mac_config, noise_inject=noise_inject)
 # PE array
 MXU=PEarray(8,8,mac_config=PE)
 # assign fault dictionary

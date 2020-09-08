@@ -28,6 +28,8 @@ from simulator.inference.evaluate import evaluate_FT
 
 #%% setting parameter
 
+noise_inject=True
+
 weight_name='../mnist_lenet5_weight.h5'
 model_word_length=8
 model_fractional_bit=3
@@ -54,7 +56,7 @@ model=quantized_lenet5(nbits=model_word_length,
 model_mac_math_fault_dict_list=[None for i in range(8)] 
 
 # PE represent computation unit
-PE=mac_unit(mac_config)
+PE=mac_unit(mac_config, noise_inject=noise_inject)
 # PE array
 MXU=PEarray(8,8,mac_config=PE)
 # assign fault dictionary

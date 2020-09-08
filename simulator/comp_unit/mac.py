@@ -262,7 +262,7 @@ class mac_unit:
             
             # sum all psum_alter
             psum_alter=tf.reduce_sum(psum_alter, axis=1)
-            psum_alter=quantizer_output.quantize_2half(psum_alter)
+            psum_alter=quantizer_output.right_shift_back(psum_alter)
             
         elif self.quant_mode=='hybrid':
             psum_alter=tf.multiply(polarity, psum_alter)
@@ -270,7 +270,7 @@ class mac_unit:
             # sum all psum_alter
             psum_alter=tf.reduce_sum(psum_alter, axis=1)
             psum_alter=quantizer_output.right_shift_back(psum_alter)
-            psum_alter=quantizer_output.quantize_2half(psum_alter)
+            psum_alter=quantizer_output.right_shift_back(psum_alter)
             
         return psum_alter
     
@@ -624,7 +624,7 @@ class mac_unit:
                 
                 psum_alter=tf.reduce_sum(psum_alter, axis=1)
                 psum_alter=quantizer_output.right_shift_back(psum_alter)
-                psum_alter=quantizer_output.quantize_2half(psum_alter)
+                psum_alter=quantizer_output.right_shift_back(psum_alter)
 
             # add psum_alter back to ofmap
             output=tf.add(fdoutput_alloc, psum_alter)
@@ -741,7 +741,7 @@ class mac_unit:
                 
                 psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
                 psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
-                psum_alter_ofmap=quantizer_output.quantize_2half(psum_alter_ofmap)
+                psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
                 
             # ifmap fault injection
             if len(param_ifmap)>0:
@@ -955,7 +955,7 @@ class mac_unit:
             
             psum_alter=tf.reduce_sum(psum_alter, axis=1)
             psum_alter=quantizer_output.right_shift_back(psum_alter)
-            psum_alter=quantizer_output.quantize_2half(psum_alter)
+            psum_alter=quantizer_output.right_shift_back(psum_alter)
 
         # add psum_alter back to ofmap
         output=tf.add(fdoutput_alloc, psum_alter)
@@ -1178,7 +1178,7 @@ class mac_unit:
             
             psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
             psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
-            psum_alter_ofmap=quantizer_output.quantize_2half(psum_alter_ofmap)
+            psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
             
         # ifmap fault injection
         if len(param_ifmap)>0:
@@ -1316,9 +1316,9 @@ class mac_unit:
                     typef.append(i)
         
         if len(type0)>0:
-            np.multiply.at(psum_idx_amp, type0, 1/np.sqrt(2))
+            np.multiply.at(psum_idx_amp, type0, np.divide(1,np.sqrt(2),dtype=np.float32))
         if len(type1)>0:
-            np.multiply.at(psum_idx_amp, type1, 1/np.sqrt(2))
+            np.multiply.at(psum_idx_amp, type1, np.divide(1,np.sqrt(2),dtype=np.float32))
 
         return psum_idx_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap
 
@@ -1392,7 +1392,7 @@ class mac_unit:
             fault_bit=fd_value[0]['SA_bit']
             
             # the scaling for fault bit order
-            fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb))
+            fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb),dtype=np.float32)
             
             # check polarity
             if fault_type!='flip':
@@ -1410,8 +1410,10 @@ class mac_unit:
             elif fault_param=='wght_in' or fault_param=='wght_out':
                 # give the feature map's value amplifier
                 stddev_amp=np.multiply(stddev_amp,amp_factor_fmap)
+                #TODO
+                # dafaq is relu effect
                 # relu
-                stddev_amp=np.clip(stddev_amp, 0, np.inf)
+                #wght_amp=np.clip(wght_amp, 0, np.inf)
                 stddev_amp=np.multiply(stddev_amp,fault_order)
                 
                            
@@ -1437,7 +1439,7 @@ class mac_unit:
                 stddev_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=True)
                 
             # the scaling for fault bit order
-            fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb))
+            fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb),dtype=np.float32)
 
             # fault injection
 
@@ -1455,18 +1457,18 @@ class mac_unit:
             if len(param_wght)>0:
                 # give the feature map's value amplifier
                 wght_amp=np.multiply(fault_order,amp_factor_fmap)
+                #TODO
+                # dafaq is relu effect
                 # relu
-                wght_amp=np.clip(wght_amp, 0, np.inf)
-                np.multiply.at(stddev_amp, param_wght, fault_order)
+                #wght_amp=np.clip(wght_amp, 0, np.inf)
+                np.multiply.at(stddev_amp, param_wght, wght_amp)
                 
             if cnt_psidx is not None:
                 stddev_amp=np.split(stddev_amp,cnt_psidx)
                 for stddevpixel in stddev_amp:
                     nsum=len(stddevpixel)
-                    stddevpixel=np.sqrt(np.sum(np.power(stddevpixel,2)))
+                    stddevpixel=np.sqrt(np.sum(np.power(stddevpixel,2,dtype=np.float32)),dtype=np.float32)
                     stddevpixel=np.multiply(stddevpixel,nsum)
-                    #TODO
-                    # efficient cnt mult
                 stddev_amp=np.array(stddev_amp)
             
             # add psum_alter back to ofmap
@@ -1542,7 +1544,7 @@ class mac_unit:
         fault_type=fd_value[0]['SA_type']
         fault_bit=fd_value[0]['SA_bit']
         
-        fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb))
+        fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb),dtype=np.float32)
         
         # check polarity
         if fault_type!='flip':
@@ -1560,8 +1562,10 @@ class mac_unit:
         elif fault_param=='wght_in' or fault_param=='wght_out':
             # give the feature map's value amplifier
             stddev_amp=np.multiply(stddev_amp,amp_factor_fmap)
+            #TODO
+            # dafaq is relu effect
             # relu
-            stddev_amp=np.clip(stddev_amp, 0, np.inf)
+            #wght_amp=np.clip(wght_amp, 0, np.inf)
             stddev_amp=np.multiply(stddev_amp,fault_order)
             
                        
@@ -1645,7 +1649,7 @@ class mac_unit:
             stddev_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=True)
             
         # the scaling for fault bit order
-        fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb))
+        fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb),dtype=np.float32)
 
         # fault injection
 
@@ -1663,18 +1667,18 @@ class mac_unit:
         if len(param_wght)>0:
             # give the feature map's value amplifier
             wght_amp=np.multiply(fault_order,amp_factor_fmap)
+            #TODO
+            # dafaq is relu effect
             # relu
-            wght_amp=np.clip(wght_amp, 0, np.inf)
-            np.multiply.at(stddev_amp, param_wght, fault_order)
+            #wght_amp=np.clip(wght_amp, 0, np.inf)
+            np.multiply.at(stddev_amp, param_wght, wght_amp)
             
         if cnt_psidx is not None:
             stddev_amp=np.split(stddev_amp,cnt_psidx)
             for stddevpixel in stddev_amp:
                 nsum=len(stddevpixel)
-                stddevpixel=np.sqrt(np.sum(np.power(stddevpixel,2)))
+                stddevpixel=np.sqrt(np.sum(np.power(stddevpixel,2,dtype=np.float32)),dtype=np.float32)
                 stddevpixel=np.multiply(stddevpixel,nsum)
-                #TODO
-                # efficient cnt mult
             stddev_amp=np.array(stddev_amp)
         
         # add psum_alter back to ofmap

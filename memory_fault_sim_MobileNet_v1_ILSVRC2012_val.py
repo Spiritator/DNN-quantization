@@ -15,7 +15,7 @@ from simulator.metrics.topk_metrics import top5_acc
 import time
 from simulator.memory.mem_bitmap import bitmap
 from simulator.memory.tile import tile, tile_FC, generate_layer_memory_mapping
-from simulator.testing.fault_core import generate_model_modulator
+from simulator.fault.fault_core import generate_model_modulator
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.inference.evaluate import evaluate_FT
 

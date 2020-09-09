@@ -25,6 +25,7 @@ from simulator.comp_unit.mapping_flow import PE_mapping_forward,PE_mapping_backw
 #%% setting parameter
 
 noise_inject=False
+report_filename='metric'
 
 result_save_folder=os.path.join('..','test_result','mnist_lenet5_PE_fault')
 dataflow_type='ws'
@@ -191,7 +192,7 @@ for round_id in range(test_rounds):
                     'mac_unit':PE}]
     
     # inference test
-    result_save_file=os.path.join(result_save_folder,dataflow_type,'metric.csv')
+    result_save_file=os.path.join(result_save_folder, dataflow_type, report_filename+'.csv')
     inference_scheme(quantized_lenet5, 
                      model_augment, 
                      compile_augment, 

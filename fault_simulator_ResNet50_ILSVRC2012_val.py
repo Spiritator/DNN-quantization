@@ -12,8 +12,8 @@ from simulator.models.resnet50 import QuantizedResNet50FusedBN,preprocess_input
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.metrics.topk_metrics import top5_acc
 import time
-from simulator.testing.fault_list import generate_model_stuck_fault
-from simulator.testing.fault_core import generate_model_modulator
+from simulator.fault.fault_list import generate_model_stuck_fault
+from simulator.fault.fault_core import generate_model_modulator
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.inference.evaluate import evaluate_FT
 

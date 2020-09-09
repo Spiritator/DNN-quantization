@@ -57,7 +57,7 @@ weightT=tf.Variable(weight)
 ofmap=np.zeros([4,56,56,64],dtype='float32')
 
 # load fault dictionary 
-with open('../pe_mapping_config/fault_dict_solved_layer_ifmapin.pickle', 'rb') as fdfile:
+with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as fdfile:
     fault_dict_solved_layer = pickle.load(fdfile)
 
 
@@ -174,8 +174,8 @@ PE=mac_unit(quantizers=quantizer(nb=8,
                      'direction':'forward'},
             noise_inject=True,
             fast_gen=True,
-            amp_factor_fmap=1.0,
-            amp_factor_wght=1.0
+            amp_factor_fmap=0.28,
+            amp_factor_wght=0.28
             )
 
 ifmap=np.divide(np.random.randint(-32,31,[4,56,56,32]),2**6,dtype='float32')

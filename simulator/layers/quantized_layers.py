@@ -18,7 +18,7 @@ from tensorflow.keras import initializers
 from tensorflow.python.keras.utils import conv_utils
 
 from .quantized_ops import quantizer
-from ..testing.fault_ops import inject_layer_sa_fault_tensor
+from ..fault.fault_ops import inject_layer_sa_fault_tensor
 from .intra_layer_ops import QuantizedDenseCore, QuantizedConv2DCore, QuantizedBatchNormalizationCore, QuantizedDepthwiseConv2DCore, DistributedConv2D, QuantizedDistributedConv2DCore
 
 

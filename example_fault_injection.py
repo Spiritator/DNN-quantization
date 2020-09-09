@@ -9,8 +9,8 @@ fault injection test
 
 import tensorflow as tf
 import numpy as np
-from simulator.testing.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
-from simulator.testing.fault_ops import inject_layer_sa_fault_tensor, inject_layer_sa_fault_nparray
+from simulator.fault.fault_core import generate_single_stuck_at_fault, generate_multiple_stuck_at_fault
+from simulator.fault.fault_ops import inject_layer_sa_fault_tensor, inject_layer_sa_fault_nparray
 from simulator.layers.quantized_ops import quantizer
 #%%
 ####################
@@ -119,8 +119,8 @@ layer_fault_weight_neg=layer_fault_weight_neg.numpy()
 layer_fault_fmap_pos=layer_fault_fmap_pos.numpy()
 layer_fault_fmap_neg=layer_fault_fmap_neg.numpy()
 
-#%%
-# inject fault to a Tensor with overflow simulation
+#%% inject fault to a Tensor with overflow simulation
+
 layer_fault_weight_pos_ovf,layer_fault_weight_neg_ovf,layer_fault_fmap_pos_ovf,layer_fault_fmap_neg_ovf=\
     fault_inject(fault_dict, 
                  layer_original_weight_pos, layer_original_weight_neg, 

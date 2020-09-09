@@ -20,10 +20,10 @@ from simulator.utils_tool.confusion_matrix import show_confusion_matrix
 from simulator.metrics.topk_metrics import top2_acc
 from simulator.memory.mem_bitmap import bitmap
 from simulator.memory.tile import tile, tile_FC, generate_layer_memory_mapping
-from simulator.testing.fault_core import generate_model_modulator
+from simulator.fault.fault_core import generate_model_modulator
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.inference.evaluate import evaluate_FT
-#from simulator.testing.fault_list import generate_model_stuck_fault
+#from simulator.fault.fault_list import generate_model_stuck_fault
 
 #%%
 # setting parameter

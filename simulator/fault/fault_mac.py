@@ -26,7 +26,7 @@ class mac_fault_injector:
             =======================================================TODO
         
     """
-    def __init__(self, mac_unit, fault_dict):
+    def __init__(self, mac_unit, fault_dict=None):
         """ mac fault injector initializer """
         self.fault_dict=fault_dict
         
@@ -517,8 +517,9 @@ class mac_fault_injector:
             self.quant_mode=quant_mode
         if sim_truncarry is None:
             sim_truncarry=self.sim_truncarry
-                    
-        fd_coor=tf.constant(fault_dict['fd_coor'])
+               
+        fd_coor=fault_dict['fd_coor']
+        fd_coor=tf.constant(fd_coor)
         fdoutput_alloc=tf.gather_nd(ofmap,fd_coor)
         
         # data allocation
@@ -793,13 +794,136 @@ class mac_fault_injector:
         output=tf.tensor_scatter_nd_update(ofmap,fd_coor,output)
             
         return output
+    
+    def inject_mac_noise_fault_tensor(self, ofmap, fault_dict, fast_gen=None):
+        """ Fault injection mac output Gaussian noise model.
+            Generate a Gaussian noise mask for layer ofmap. 
+            Using the result of PE dataflow model fault dictionary.
+            Make amplifier array for Gaussian noise mask.
+            Where no fault ofmap pixels were filted to 0, other faulty pixels will be
+            amplified correspond to the SA type, fault bit order and the number of faulty
+            partial sum indexes.
+            
+            Fast generation means the all the fault information dict are refer to the same source defect 
+            with the same fault bit, SA type and param.
+            Scattered generation means the faults are from distinct defect sources that need to be split into 
+            different groups and generate respectively. Therefore it's slower.
+            
+            This function is for inject the preprocessed fault data in Keras Layer/Model call.
+            Seperate the CPU and GPU processing. The preprocess function under mac_fault_injector class are for GPU process.
         
-    def inject_mac_fault_caller(self, ofmap, fault_dict, ifmap=None, wght=None, 
-                                noise_inject=None, sim_truncarry=None, fast_gen=None,
-                                quantizer=None, quant_mode=None, layer_type='Conv2D',
-                                ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
-                                amp_factor_fmap=1.0, amp_factor_wght=1.0,
-                                **kwargs):
+        Arguments
+        ---------
+        ofmap: Tensor. 
+            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+        fault_dict: Dictionary or List. 
+            The dictionary contain fault list information.
+        fast_gen: Bool. 
+            Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+            The fault dictionay is form by fault data contamination.
+        
+        Returns
+        -------
+        Tensor. 
+            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        
+        """                            
+        if self.fast_gen:
+            # data allocation
+            stddev_amp_ofmap=fault_dict['stddev_amp_ofmap']
+            stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+            gaussian_noise_mask=tf.random.normal(ofmap.shape)
+            gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+            output=tf.add(ofmap, gaussian_noise_mask)
+
+        else: # slow loop gen
+            stddev_amp_ofmap=fault_dict['stddev_amp_ofmap']
+            stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+            gaussian_noise_mask=tf.random.normal(ofmap.shape)
+            gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+            output=tf.add(ofmap, gaussian_noise_mask)
+                        
+        return output
+    
+    def inject_mac_noise_fault_uni(self, ofmap, fault_dict):
+        """ Fault injection mac output Gaussian noise model.
+            Generate a Gaussian noise mask for layer ofmap. 
+            Using the result of PE dataflow model fault dictionary.
+            Make amplifier array for Gaussian noise mask.
+            Where no fault ofmap pixels were filted to 0, other faulty pixels will be
+            amplified correspond to the SA type, fault bit order and the number of faulty
+            partial sum indexes.
+            
+            Fast generation means the all the fault information dict are refer to the same source defect 
+            with the same fault bit, SA type and param.
+            
+            This function is for inject the preprocessed fault data in Keras Layer/Model call.
+            Seperate the CPU and GPU processing. The preprocess function under mac_fault_injector class are for GPU process.
+        
+        Arguments
+        ---------
+        ofmap: Tensor. 
+            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+        fault_dict: Dictionary or List. 
+            The dictionary contain fault list information.
+        
+        Returns
+        -------
+        Tensor. 
+            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        
+        """
+        stddev_amp_ofmap=fault_dict['stddev_amp_ofmap']
+        stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+        gaussian_noise_mask=tf.random.normal(ofmap.shape)
+        gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+        output=tf.add(ofmap, gaussian_noise_mask)
+        
+        return output
+        
+    def inject_mac_noise_fault_scatter(self, ofmap, fault_dict):
+        """ Fault injection mac output Gaussian noise model.
+            Generate a Gaussian noise mask for layer ofmap. 
+            Using the result of PE dataflow model fault dictionary.
+            Make amplifier array for Gaussian noise mask.
+            Where no fault ofmap pixels were filted to 0, other faulty pixels will be
+            amplified correspond to the SA type, fault bit order and the number of faulty
+            partial sum indexes.
+            
+            Fast generation means the all the fault information dict are refer to the same source defect 
+            with the same fault bit, SA type and param.
+            Scattered generation means the faults are from distinct defect sources that need to be split into 
+            different groups and generate respectively. Therefore it's slower.
+        
+            This function is for inject the preprocessed fault data in Keras Layer/Model call.
+            Seperate the CPU and GPU processing. The preprocess function under mac_fault_injector class are for GPU process.
+        
+        Arguments
+        ---------
+        ofmap: Tensor. 
+            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
+        fault_dict: Dictionary or List. 
+            The dictionary contain fault list information.
+        
+        Returns
+        -------
+        Tensor. 
+            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        
+        """
+        stddev_amp_ofmap=fault_dict['stddev_amp_ofmap']
+        stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+        gaussian_noise_mask=tf.random.normal(ofmap.shape)
+        gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+        output=tf.add(ofmap, gaussian_noise_mask)
+        
+        return output
+        
+    def __call__(self, ofmap, fault_dict=None, ifmap=None, wght=None, 
+                 noise_inject=None, sim_truncarry=None, fast_gen=None,
+                 quantizer=None, quant_mode=None, layer_type='Conv2D',
+                 ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
+                 **kwargs):
         """ The function caller for decide which fault injection method will be used.
         
         Parameters
@@ -841,10 +965,6 @@ class mac_fault_injector:
             The type of padding algorithm to use.
         dilation_rate: Tuple. Size 2. 
             The dilation rate (row, col).
-        amp_factor_fmap: Float. 
-            The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
-        amp_factor_wght: Float. 
-            The adjustment term for Gaussian standard deviation of the weight value noise simulation.
         **kwargs : Other additional arguments
             If needed.
 
@@ -861,6 +981,8 @@ class mac_fault_injector:
             The tile setting must be padding='valid' which means no padding.
             Or else there might be fault.
         """
+        if fault_dict==None:
+            fault_dict=self.fault_dict
         if noise_inject is None:
             noise_inject=self.noise_inject
         if fast_gen is None:
@@ -868,27 +990,22 @@ class mac_fault_injector:
         
         if noise_inject:
             if fast_gen:
-                output=self.inject_mac_noise_fault_uni(ofmap, fault_dict,
-                                                       amp_factor_fmap=amp_factor_fmap,
-                                                       amp_factor_wght=amp_factor_wght,
-                                                       quantizer=quantizer)
+                output=self.inject_mac_noise_fault_uni(ofmap, fault_dict, **kwargs)
             else:
-                output=self.inject_mac_math_fault_scatter(ofmap, fault_dict,
-                                                          amp_factor_fmap=amp_factor_fmap,
-                                                          amp_factor_wght=amp_factor_wght,
-                                                          quantizer=quantizer)
+                output=self.inject_mac_math_fault_scatter(ofmap, fault_dict, **kwargs)
         else:
             if fast_gen:
                 output=self.inject_mac_math_fault_uni(ifmap, wght, ofmap, fault_dict,
                                                       quantizer=quantizer, quant_mode=quant_mode, layer_type=layer_type,
                                                       ksizes=ksizes, padding=padding, dilation_rates=dilation_rates,
-                                                      sim_truncarry=sim_truncarry)
+                                                      sim_truncarry=sim_truncarry,
+                                                      **kwargs)
             else:
                 output=self.inject_mac_math_fault_scatter(ifmap, wght, ofmap, fault_dict,
                                                           quantizer=quantizer, quant_mode=quant_mode, layer_type=layer_type,
                                                           ksizes=ksizes, padding=padding, dilation_rates=dilation_rates,
-                                                          sim_truncarry=sim_truncarry)
+                                                          sim_truncarry=sim_truncarry,
+                                                          **kwargs)
         
         return output
-
         

@@ -427,8 +427,8 @@ class mac_unit:
     
         Returns
         -------
-        Tensor. 
-            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        preprocess_data: Dictionary. 
+            The Dictionary contains the configuration and data for Tensor operation part.
         
         Reminder!!
         ----------
@@ -581,7 +581,7 @@ class mac_unit:
                 faultbit_wght=fault_bit[param_wght]
                 
                 if padding=='same' and layer_type!='Dense':
-                    idx_wght_ifmap=self._padding_ifmap_and_idx(idx_wght_ifmap, ksizes, dilation_rates)
+                    idx_wght_ifmap=self._padding_idx(idx_wght_ifmap, ksizes, dilation_rates)
                         
                 preprocess_data['idx_wght_wght']=idx_wght_wght
                 preprocess_data['idx_wght_ifmap']=idx_wght_ifmap
@@ -667,8 +667,8 @@ class mac_unit:
         
         Returns
         -------
-        Tensor. 
-            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        preprocess_data: Dictionary. 
+            The Dictionary contains the configuration and data for Tensor operation part.
         
         Reminder!!
         ----------
@@ -795,8 +795,8 @@ class mac_unit:
         
         Returns
         -------
-        Tensor. 
-            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        preprocess_data: Dictionary. 
+            The Dictionary contains the configuration and data for Tensor operation part.
         
         Reminder!!
         ----------
@@ -904,7 +904,7 @@ class mac_unit:
             faultbit_wght=fault_bit[param_wght]
             
             if padding=='same' and layer_type!='Dense':
-                idx_wght_ifmap=self._padding_ifmap_and_idx(idx_wght_ifmap, ksizes, dilation_rates)
+                idx_wght_ifmap=self._padding_idx(idx_wght_ifmap, ksizes, dilation_rates)
                     
             preprocess_data['idx_wght_wght']=idx_wght_wght
             preprocess_data['idx_wght_ifmap']=idx_wght_ifmap
@@ -934,6 +934,7 @@ class mac_unit:
         # wght fault injection
         if FI_wght:
             faultbit_wght=self._fault_bit_ext4mult(faultbit_wght, idx_wght_wght.shape[1])
+            preprocess_data['faultbit_wght']=faultbit_wght
 
         if FI_ofmap:
             param_ofmap=np.expand_dims(param_ofmap,-1)
@@ -1038,7 +1039,7 @@ class mac_unit:
 
         return psum_idx_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap
 
-    def preprocess_mac_noise_fault_tensor(self, ofmap, fault_dict, 
+    def preprocess_mac_noise_fault_tensor(self, fault_dict, ofmap_shape, 
                                           amp_factor_fmap=1.0, amp_factor_wght=1.0,
                                           quantizer=None, 
                                           fast_gen=None):
@@ -1060,10 +1061,10 @@ class mac_unit:
         
         Arguments
         ---------
-        ofmap: Tensor. 
-            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
+        ofmap_shape: Tuple. 
+            The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1079,8 +1080,8 @@ class mac_unit:
         
         Returns
         -------
-        Tensor. 
-            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        preprocess_data: Dictionary. 
+            The Dictionary contains the configuration and data for Tensor operation part.
         
         """
         if quantizer is None:
@@ -1098,6 +1099,8 @@ class mac_unit:
             amp_factor_fmap=self.amp_factor_fmap
         if amp_factor_wght==1.0:
             amp_factor_wght=self.amp_factor_wght
+            
+        preprocess_data=dict()
             
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
@@ -1141,13 +1144,10 @@ class mac_unit:
                  stddev_amp=np.multiply(stddev_amp,fault_order)
     
             # add psum_alter back to ofmap
-            stddev_amp_ofmap=np.zeros(ofmap.shape,dtype=np.float32)
+            stddev_amp_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
             np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
             
-            stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
-            gaussian_noise_mask=tf.random.normal(ofmap.shape)
-            gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
-            output=tf.add(ofmap, gaussian_noise_mask)
+            preprocess_data['stddev_amp_ofmap']=stddev_amp_ofmap
 
         else: # slow loop gen
             # loop data extraction
@@ -1191,17 +1191,14 @@ class mac_unit:
                 stddev_amp=np.array(stddev_amp)
             
             # add psum_alter back to ofmap
-            stddev_amp_ofmap=np.zeros(ofmap.shape,dtype=np.float32)
+            stddev_amp_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
             np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
             
-            stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
-            gaussian_noise_mask=tf.random.normal(ofmap.shape)
-            gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
-            output=tf.add(ofmap, gaussian_noise_mask)
+            preprocess_data['stddev_amp_ofmap']=stddev_amp_ofmap
                         
-        return output
+        return preprocess_data
     
-    def preprocess_mac_noise_fault_uni(self, ofmap, fault_dict, 
+    def preprocess_mac_noise_fault_uni(self, fault_dict, ofmap_shape, 
                                        amp_factor_fmap=1.0, amp_factor_wght=1.0,
                                        quantizer=None):
         """ Fault injection mac output Gaussian noise model.
@@ -1220,10 +1217,10 @@ class mac_unit:
         
         Arguments
         ---------
-        ofmap: Tensor. 
-            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
+        ofmap_shape: Tuple. 
+            The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1236,8 +1233,8 @@ class mac_unit:
         
         Returns
         -------
-        Tensor. 
-            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        preprocess_data: Dictionary. 
+            The Dictionary contains the configuration and data for Tensor operation part.
         
         """
         if quantizer is None:
@@ -1255,6 +1252,8 @@ class mac_unit:
             amp_factor_fmap=self.amp_factor_fmap
         if amp_factor_wght==1.0:
             amp_factor_wght=self.amp_factor_wght
+            
+        preprocess_data=dict()
             
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
@@ -1296,17 +1295,14 @@ class mac_unit:
              stddev_amp=np.multiply(stddev_amp,fault_order)
 
         # add psum_alter back to ofmap
-        stddev_amp_ofmap=np.zeros(ofmap.shape,dtype=np.float32)
+        stddev_amp_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
         np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
         
-        stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
-        gaussian_noise_mask=tf.random.normal(ofmap.shape)
-        gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
-        output=tf.add(ofmap, gaussian_noise_mask)
+        preprocess_data['stddev_amp_ofmap']=stddev_amp_ofmap
         
-        return output
+        return preprocess_data
     
-    def preprocess_mac_noise_fault_scatter(self, ofmap, fault_dict, 
+    def preprocess_mac_noise_fault_scatter(self, fault_dict, ofmap_shape, 
                                            amp_factor_fmap=1.0, amp_factor_wght=1.0,
                                            quantizer=None):
         """ Fault injection mac output Gaussian noise model.
@@ -1327,10 +1323,10 @@ class mac_unit:
         
         Arguments
         ---------
-        ofmap: Tensor. 
-            The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
+        ofmap_shape: Tuple. 
+            The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1343,8 +1339,8 @@ class mac_unit:
         
         Returns
         -------
-        Tensor. 
-            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        preprocess_data: Dictionary. 
+            The Dictionary contains the configuration and data for Tensor operation part.
         
         """
         if quantizer is None:
@@ -1362,6 +1358,8 @@ class mac_unit:
             amp_factor_fmap=self.amp_factor_fmap
         if amp_factor_wght==1.0:
             amp_factor_wght=self.amp_factor_wght
+            
+        preprocess_data=dict()
             
         fd_coor=np.array(list(fault_dict.keys()))
         fd_value=np.array(list(fault_dict.values()))
@@ -1407,17 +1405,15 @@ class mac_unit:
             stddev_amp=np.array(stddev_amp)
         
         # add psum_alter back to ofmap
-        stddev_amp_ofmap=np.zeros(ofmap.shape,dtype=np.float32)
+        stddev_amp_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
         np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
         
-        stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
-        gaussian_noise_mask=tf.random.normal(ofmap.shape)
-        gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
-        output=tf.add(ofmap, gaussian_noise_mask)
+        preprocess_data['stddev_amp_ofmap']=stddev_amp_ofmap
                         
-        return output
+        return preprocess_data
 
-    def preprocess_mac_fault_caller(self, fault_dict,                                    noise_inject=None, sim_truncarry=None, fast_gen=None,
+    def preprocess_mac_fault_caller(self, fault_dict, ofmap_shape=None,
+                                    noise_inject=None, sim_truncarry=None, fast_gen=None,
                                     quantizer=None, quant_mode=None, layer_type='Conv2D',
                                     ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
                                     amp_factor_fmap=1.0, amp_factor_wght=1.0,
@@ -1431,6 +1427,8 @@ class mac_unit:
         ----------
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
+        ofmap_shape: Tuple. 
+            The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
         noise_inject : Bool, optional
             Use the Gaussian noise fault injection method or not. 
             Noise mean using Gaussion distribution model to simulate the input and weight for mac fault. 
@@ -1469,8 +1467,8 @@ class mac_unit:
 
         Returns
         -------
-        Tensor. 
-            The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
+        preprocess_data: Dictionary. 
+            The Dictionary contains the configuration and data for Tensor operation part.
             
         Reminder!!
         ----------
@@ -1486,29 +1484,32 @@ class mac_unit:
             fast_gen=self.fast_gen
         
         if noise_inject:
+            if ofmap_shape is None:
+                raise ValueError('Ofmap shape is mandatory argument in noise inject mode.')
+                
             if fast_gen:
-                output=self.preprocess_mac_noise_fault_uni(ofmap, fault_dict,
-                                                           amp_factor_fmap=amp_factor_fmap,
-                                                           amp_factor_wght=amp_factor_wght,
-                                                           quantizer=quantizer)
+                preprocess_data=self.preprocess_mac_noise_fault_uni(fault_dict, ofmap_shape, 
+                                                                    amp_factor_fmap=amp_factor_fmap,
+                                                                    amp_factor_wght=amp_factor_wght,
+                                                                    quantizer=quantizer)
             else:
-                output=self.preprocess_mac_math_fault_scatter(ofmap, fault_dict,
-                                                              amp_factor_fmap=amp_factor_fmap,
-                                                              amp_factor_wght=amp_factor_wght,
-                                                              quantizer=quantizer)
+                preprocess_data=self.preprocess_mac_math_fault_scatter(fault_dict, ofmap_shape, 
+                                                                       amp_factor_fmap=amp_factor_fmap,
+                                                                       amp_factor_wght=amp_factor_wght,
+                                                                       quantizer=quantizer)
         else:
             if fast_gen:
-                output=self.preprocess_mac_math_fault_uni(ifmap, wght, ofmap, fault_dict,
-                                                          quantizer=quantizer, quant_mode=quant_mode, layer_type=layer_type,
-                                                          ksizes=ksizes, padding=padding, dilation_rates=dilation_rates,
-                                                          sim_truncarry=sim_truncarry)
+                preprocess_data=self.preprocess_mac_math_fault_uni(fault_dict,
+                                                                   quantizer=quantizer, quant_mode=quant_mode, layer_type=layer_type,
+                                                                   ksizes=ksizes, padding=padding, dilation_rates=dilation_rates,
+                                                                   sim_truncarry=sim_truncarry)
             else:
-                output=self.preprocess_mac_math_fault_scatter(ifmap, wght, ofmap, fault_dict,
-                                                              quantizer=quantizer, quant_mode=quant_mode, layer_type=layer_type,
-                                                              ksizes=ksizes, padding=padding, dilation_rates=dilation_rates,
-                                                              sim_truncarry=sim_truncarry)
+                preprocess_data=self.preprocess_mac_math_fault_scatter(fault_dict,
+                                                                       quantizer=quantizer, quant_mode=quant_mode, layer_type=layer_type,
+                                                                       ksizes=ksizes, padding=padding, dilation_rates=dilation_rates,
+                                                                       sim_truncarry=sim_truncarry)
         
-        return output
+        return preprocess_data
     
     def consistency_check(self, quant_mode, quantizer):
         """ Check the consistency between MAC unit setup and layer quantization setup """
@@ -1519,5 +1520,93 @@ class mac_unit:
         if self.quantizer!=quantizer:
             raise AttributeError('The attributes of Layer quantizer and MAC unit quantizer are different!!')
 
-                
+   
+def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict, **kwargs):
+    """ Layer wise handle mac fault injection preprocess part before model/layer call
+        Seperate the CPU and GPU processing. The preprocess function under mac_unit class are for CPU process.
+
+    Parameters
+    ----------
+    layer : tensorflow.keras.Layer
+        The model for generate modulator. Get the layer shape info in model.
+    mac_unit_ : Class mac_unit.
+        The mac unit information holder class. For describe PE I/O interconnection and math of faulty behavior.
+    layer_mac_fault_dict : Dictionary
+        Fault dctionary for output feature maps.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
+
+    Returns
+    -------
+    preprocess_data: Dictionary.
+        The Dictionary contains the configuration and data for Tensor operation part.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
+
+    """
+    if layer_mac_fault_dict is None:
+        preprocess_data=None
+    else:
+        layer_name=layer.name
+        layer_name=layer_name.lower()
+        
+        if 'dense' in layer_name:
+            preprocess_data=mac_unit_.preprocess_mac_fault_caller(layer_mac_fault_dict, 
+                                                                  ofmap_shape=layer.output_shape,
+                                                                  layer_type='Dense',
+                                                                  **kwargs)
+        elif 'conv' in layer_name and 'depth' not in layer_name:
+            preprocess_data=mac_unit_.preprocess_mac_fault_caller(layer_mac_fault_dict, 
+                                                                  ofmap_shape=layer.output_shape,
+                                                                  layer_type='Conv2D',
+                                                                  ksizes=layer.kernel_size, 
+                                                                  padding=layer.padding, 
+                                                                  dilation_rates=layer.dilation_rate, 
+                                                                  **kwargs)
+        elif 'conv' in layer_name and 'depth' in layer_name:
+            preprocess_data=mac_unit_.preprocess_mac_fault_caller(layer_mac_fault_dict, 
+                                                                  ofmap_shape=layer.output_shape,
+                                                                  layer_type='DepthwiseConv2D',
+                                                                  ksizes=layer.kernel_size, 
+                                                                  padding=layer.padding, 
+                                                                  dilation_rates=layer.dilation_rate, 
+                                                                  **kwargs)
+        else:
+            raise TypeError('Layer is neigher Dense, Conv2D or DepthwiseConv2D. Layer mac fault dict should be None.')
+            
+    return preprocess_data
+
+def preprocess_model_mac_fault(model, mac_unit_, model_mac_fault_dict_list, **kwargs):
+    """ Model wise handle mac fault injection preprocess part before model/layer call
+        Seperate the CPU and GPU processing. The preprocess function under mac_unit class are for CPU process.
+
+    Parameters
+    ----------
+    model : tensorflow.keras.Model
+        The model for generate modulator. Get the layer shape info in model.
+    mac_unit_ : Class mac_unit.
+        The mac unit information holder class. For describe PE I/O interconnection and math of faulty behavior.
+    model_mac_fault_dict_list : List of Dictionary
+        Fault dctionary for output feature maps.
+        The list are the same order as the Keras model layer list. Each Dictionary in List is for its corresponding layer.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
+
+    Returns
+    -------
+    model_preprocess_data: List of Dictionary.
+        The list are the same order as the Keras model layer list. Each Dictionary in List is for its corresponding layer.
+        The Dictionary contains the configuration and data for Tensor operation part.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
+
+    """
+    model_depth=len(model.layers)
+    model_preprocess_data_list=[None for _ in range(model_depth)]
+
+    for layer_num in range(1,model_depth):
+        preprocess_data=preprocess_layer_mac_fault(model.layers[layer_num],
+                                                   mac_unit_,
+                                                   model_mac_fault_dict_list[layer_num], 
+                                                   **kwargs)
+        
+        model_preprocess_data_list[layer_num]=preprocess_data
+        
+    return model_preprocess_data_list
         

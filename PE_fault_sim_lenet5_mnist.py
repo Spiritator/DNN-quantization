@@ -20,7 +20,7 @@ from simulator.metrics.topk_metrics import top2_acc
 
 from simulator.comp_unit.PEarray import PEarray
 from simulator.comp_unit.tile import tile_PE, tile_FC_PE
-from simulator.comp_unit.mac import mac_unit
+from simulator.comp_unit.mac import mac_unit, preprocess_model_mac_fault
 from simulator.comp_unit.mapping_flow import PE_mapping_forward, PE_mapping_backward, mapping_valid_checker
 
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, conf_score_vary_10, conf_score_vary_50

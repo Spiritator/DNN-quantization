@@ -19,6 +19,7 @@ from tensorflow.python.keras.utils import conv_utils
 
 from .quantized_ops import quantizer
 from ..fault.fault_ops import inject_layer_sa_fault_tensor
+from ..fault.fault_mac import mac_fault_injector
 from .intra_layer_ops import QuantizedDenseCore, QuantizedConv2DCore, QuantizedBatchNormalizationCore, QuantizedDepthwiseConv2DCore, DistributedConv2D, QuantizedDistributedConv2DCore
 
 
@@ -132,9 +133,9 @@ class QuantizedDense(Dense):
         # output mac fault injection
         if self.mac_unit is not None:
             if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
-                output = self.mac_unit.inject_mac_fault_caller(output, self.ofmap_sa_fault_injection, 
-                                                               ifmap=inputs, wght=quantized_kernel, 
-                                                               layer_type='Dense')
+                output = mac_fault_injector(self.mac_unit)(output, fault_dict=self.ofmap_sa_fault_injection, 
+                                                           ifmap=inputs, wght=quantized_kernel, 
+                                                           layer_type='Dense')
         # activation function
         if self.activation is not None:
             output = self.activation(output)
@@ -292,12 +293,12 @@ class QuantizedConv2D(Conv2D):
         # output mac fault injection
         if self.mac_unit is not None:
             if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
-                outputs = self.mac_unit.inject_mac_fault_caller(outputs, self.ofmap_sa_fault_injection, 
-                                                                ifmap=inputs, wght=quantized_kernel,      
-                                                                layer_type='Conv2D',
-                                                                ksizes=self.kernel_size, 
-                                                                padding=self.padding, 
-                                                                dilation_rates=self.dilation_rate)
+                outputs = mac_fault_injector(self.mac_unit)(outputs, fault_dict=self.ofmap_sa_fault_injection, 
+                                                            ifmap=inputs, wght=quantized_kernel,      
+                                                            layer_type='Conv2D',
+                                                            ksizes=self.kernel_size, 
+                                                            padding=self.padding, 
+                                                            dilation_rates=self.dilation_rate)
         # activation function
         if self.activation is not None:
             outputs = self.activation(outputs)
@@ -762,12 +763,12 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
         # output mac fault injection
         if self.mac_unit is not None:
             if self.ofmap_sa_fault_injection is not None and self.quant_mode in ['hybrid','intrinsic'] and not self.last_layer:
-                outputs = self.mac_unit.inject_mac_fault_caller(outputs, self.ofmap_sa_fault_injection, 
-                                                                ifmap=inputs, wght=quantized_depthwise_kernel, 
-                                                                layer_type='DepthwiseConv2D',
-                                                                ksizes=self.kernel_size, 
-                                                                padding=self.padding, 
-                                                                dilation_rates=self.dilation_rate)
+                outputs = mac_fault_injector(self.mac_unit)(outputs, fault_dict=self.ofmap_sa_fault_injection, 
+                                                            ifmap=inputs, wght=quantized_depthwise_kernel, 
+                                                            layer_type='DepthwiseConv2D',
+                                                            ksizes=self.kernel_size, 
+                                                            padding=self.padding, 
+                                                            dilation_rates=self.dilation_rate)
         # activation function
         if self.activation is not None:
             outputs = self.activation(outputs)

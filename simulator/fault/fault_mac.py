@@ -15,15 +15,60 @@ class mac_fault_injector:
         
     Arguments
     ---------
-    mac_unit: 
+    mac_unit: mac_unit Class.
+    
         | The holder for fault injection configurations.
-        | structure:
-          =========================================================TODO
+        | quantizer: The quantize library of simulator.
+        | quant_mode: The quantization mode of MAC. 
+        | noise_inject: Using mac noise fault injection method or not.
+        | sim_truncarry: Simulate the truncation carry during mac math fault injection. 
+        | fast_gen: Use fast generation or not.
      
     fault_dict: Dictionary.
-        | The holder for fault injection data i.e. modulators and arrays for tf.constant.
-        | structure:
-            =======================================================TODO
+        The holder for fault injection data i.e. modulators and arrays for tf.constant.
+    
+    fault_dict description: (Dictionary)
+    -----------------------------------------
+    | mac math fault injection unique fault
+    >>> preprocess_data={'fd_coor': 2D Ndarray, #the coordinate of fault in layer
+    ...                  'psum_idx_ofmap': 2D Ndarray, #faulty ofmap coordinate
+    ...                  'fault_param': String, #the faulty param
+    ...                  'fault_type': String, #the fault type
+    ...                  'fault_bit': Integer, #the fault bit order
+    ...                  'psum_idx_ifmap': 2D Ndarray, #faulty ifmap coordinate
+    ...                  'psum_idx_wght': 2D Ndarray, #faulty wght coordinate
+    ...                  'modulator': Ndarray, #fault_bit order coefficient
+    ...                  'signbit': Bool or Ndarray, #fault_bit on sign bit indication
+    ...                  }
+
+    | mac math fault injection scatter fault
+    >>> preprocess_data={'fd_coor': 2D Ndarray, #the coordinate of fault in layer
+    ...                  'param_ofmap': 1D Ndarray, #the faulty ofmap param index
+    ...                  'param_ifmap': 1D Ndarray, #the faulty ifmap param index
+    ...                  'param_wght': 1D Ndarray, #the faulty wght param index
+    ...                  'idx_ofmap': 2D Ndarray, #faulty ofmap coordinate
+    ...                  'modulator_ofmap': List, #polarty data list for ofmap fault
+    ...                  'idx_ifmap_ifmap': 2D Ndarray, #faulty ifmap coordinate
+    ...                  'idx_ifmap_wght': 2D Ndarray, #faulty ifmap correspond wght coordinate
+    ...                  'modulator_ifmap': List, #polarty data list for ifmap fault
+    ...                  'idx_wght_wght': 2D Ndarray, #faulty wght coordinate
+    ...                  'idx_wght_ifmap': 2D Ndarray, #faulty wght correspond ifmap coordinate
+    ...                  'modulator_wght': List, #polarty data list for wght fault
+    ...                  'faultbit_ofmap': 1D Ndarray, #the ofmap fault bit order
+    ...                  'faultbit_ifmap': 1D Ndarray, #the ifmap fault bit order
+    ...                  'faultbit_wght': 1D Ndarray, #the wght fault bit order
+    ...                  'cnt_psidx': 1D Ndarray, #the counter for uneven psidx number on single ofmap pixel
+    ...                  'psum_idx_list_len': Integer, #number of psum_idx
+    ...                  }
+    
+    | mac noise fault injection unique fault
+    >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+    ... #the standard deviation amplifier mask, same shape as target ofmap
+
+    | mac noise fault injection scatter fault
+    >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+    ... #the standard deviation amplifier mask, same shape as target ofmap
+
         
     """
     def __init__(self, mac_unit, fault_dict=None):
@@ -48,9 +93,7 @@ class mac_fault_injector:
         return ifmap
     
     def _polarity_check(self, fault_type, FI_param, modulator, signbit):
-        """ Get the polarity of parameter 
-            
-        """
+        """ Get the polarity of parameter """
         modulator=tf.constant(modulator)
         polarity=tf.bitwise.bitwise_and(FI_param,modulator)
         polarity=tf.math.sign(polarity)
@@ -116,10 +159,10 @@ class mac_fault_injector:
             This alteration will be later add onto ofmap tensor
             
             psum_alter: The product data by multiply coefficient data and fault bit order. That is:
-                | if fault_param=='ifmap_in' or fault_param=='ifmap_out':
-                |     psum_alter= tf.multiply(wght_alloc,2**fault_bit)
-                | elif fault_param=='wght_in' or fault_param=='wght_out':
-                |     psum_alter= tf.multiply(ifmap_alloc,2**fault_bit)
+                >>> if fault_param=='ifmap_in' or fault_param=='ifmap_out':
+                ...     psum_alter= tf.multiply(wght_alloc,2**fault_bit)
+                ... elif fault_param=='wght_in' or fault_param=='wght_out':
+                ...     psum_alter= tf.multiply(ifmap_alloc,2**fault_bit)
         """
 
         if self.quant_mode=='intrinsic':

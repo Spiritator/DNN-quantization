@@ -219,37 +219,42 @@ class PEarray:
         complete a tile computation.
         The 3D PE array dataflow model is for mapping the tile data to computaion unit.
         
-        Arguments
-        ---------
-        n_x: Integer. 
-            Number of PEs in a row.
-        n_y: Integer. 
-            Number of PEs in a column.
-        n_clk: Integer. 
-            Number of clock cycles for a tile to process.
-        fault_num: Integer. 
-            Number of faults in array.
-        fault_dict: Dictionary. 
-            The fault information {location : fault type}
-                example: fault_dict = {(PE_x1,PE_y1):{‘param’:‘ifmap_in’,
-                                                      ‘global’:False,
-                                                      ‘SA_type’:’flip’,
-                                                      ‘SA_bit’:3} ,
-                                       (PE_x2,PE_y2):{‘param’:‘psum_out’,
-                                                      ‘global’:True,
-                                                      ‘SA_type’:’0’,
-                                                      ‘SA_bit’:5} ,
-                                       }
-               'param' must be one of [ifmap_in, ifmap_out, wght_in, wght_out, psum_in, psum_out ]
-                                       
-        ofmap_tile: Class. 
-            The tile_PE class for PE array fault tolerance analysis. Output feature maps tile.
-        wght_tile: Class. 
-            The tile_PE class for PE array fault tolerance analysis. Weights feature maps tile.
-        ifmap_tile: Class. 
-            The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
-        mac_config: Class. 
-            The class of MAC unit configurations.
+    Arguments
+    ---------
+    n_x: Integer. 
+        Number of PEs in a row.
+    n_y: Integer. 
+        Number of PEs in a column.
+    n_clk: Integer. 
+        Number of clock cycles for a tile to process.
+    fault_num: Integer. 
+        Number of faults in array.
+    fault_dict: Dictionary. 
+        | The fault information 
+        >>> { location : fault info }
+        
+        >>> fault_dict = {(PE_x1,PE_y1):{‘param’:‘ifmap_in’,
+        ...                              ‘global’:False,
+        ...                              ‘SA_type’:’flip’,
+        ...                              ‘SA_bit’:3} ,
+        ...               (PE_x2,PE_y2):{‘param’:‘psum_out’,
+        ...                              ‘global’:True,
+        ...                              ‘SA_type’:’0’,
+        ...                              ‘SA_bit’:5} ,
+        ...              }
+         
+        | 'param' must be one of 
+        >>> [ifmap_in, ifmap_out, wght_in, wght_out, psum_in, psum_out ]
+                                   
+    ofmap_tile: Class. 
+        The tile_PE class for PE array fault tolerance analysis. Output feature maps tile.
+    wght_tile: Class. 
+        The tile_PE class for PE array fault tolerance analysis. Weights feature maps tile.
+    ifmap_tile: Class. 
+        The tile_PE class for PE array fault tolerance analysis. Iutput feature maps tile.
+    mac_config: Class. 
+        The class of MAC unit configurations.
+        
 
     """
     def __init__(self, n_x, n_y, n_clk=None, ofmap_tile=None, wght_tile=None, ifmap_tile=None, mac_config=None):
@@ -1210,10 +1215,10 @@ class PEarray:
     def serialize_slices(self, fault_dict, mapping_shape, slice_n_clk=None, pack_size=1, t_clk_dims=-2, slice_dims=-1, dataflow_pre_plan=False):
         """ Serialize slice dimension into t_clk dimension. Converge the slice order on PE dataflow model.
             
-            | if pack_size >1:
-            |     keep slice dimension
-            | else:
-            |     flatten slice dimension into t_clk dimension
+            >>> if pack_size >1:
+            ...     #keep slice dimension
+            ... else:
+            ...     #flatten slice dimension into t_clk dimension
         
         """
         if not dataflow_pre_plan:
@@ -1269,10 +1274,10 @@ class PEarray:
     def deserialize_slices(self, fault_dict, mapping_shape, slice_n_clk=None, pack_size=1, t_clk_dims=None, slice_dims=None):
         """ Deserialize t_clk dimension into slice dimension. Split t_clk axis for multiple slices of tile.
                     
-            | if pack_size >1:
-            |     partially split the t_clk dimension into existing slice dimension
-            | else:
-            |     split t_clk dimension into new slice dimension
+            >>> if pack_size >1:
+            ...     #partially split the t_clk dimension into existing slice dimension
+            ... else:
+            ...     #split t_clk dimension into new slice dimension
 
         """
         index=np.array(list(fault_dict.keys()))

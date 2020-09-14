@@ -42,10 +42,25 @@ class mac_unit:
         Weight data I/O description.
     psum_io: Dictionary. 
         Partial sum data I/O description. Partial sum fault prapagation is through MAC operation.
+    noise_inject: Bool.
+        Using mac noise fault injection method or not.
+    sim_truncarry: Bool. 
+        Simulate the truncation carry during mac math fault injection. 
+        The truncation carry is cause by the carry-out of thrown away fractional bits. 
+        It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
+        How ever this could cause huge time overhead for absolute bit-true model.
+    fast_gen: Bool. 
+        Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
+        The fault dictionay is form by fault data contamination.
+    amp_factor_fmap: Float. 
+        The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
+    amp_factor_wght: Float. 
+        The adjustment term for Gaussian standard deviation of the weight value noise simulation.
+        
         
     I/O description: (Dictionary)
     -----------------------------
-    data_io={'type':'io_pair', 'dimension':'PE_x', 'direction':'forward'}
+    >>> data_io={'type':'io_pair', 'dimension':'PE_x', 'direction':'forward'}
         
     type: The type of I/O. 
         | 'io_pair' the data flow from a primary input to a primary output which forms a I/O pair. The I/O pair become a systolic stream in PE array at some point.
@@ -58,8 +73,51 @@ class mac_unit:
     direction: the direction of I/O pair deliver data on the given dimension. 
         | 'forward' data prapagate along the index of PEs. 
         | 'backward' data prapagate by the reversed order of PE index.
-            
+        
+        
+    preprocess_data description: (Dictionary)
+    -----------------------------------------
+    | mac math fault injection unique fault
+    >>> preprocess_data={'fd_coor': 2D Ndarray, #the coordinate of fault in layer
+    ...                  'psum_idx_ofmap': 2D Ndarray, #faulty ofmap coordinate
+    ...                  'fault_param': String, #the faulty param
+    ...                  'fault_type': String, #the fault type
+    ...                  'fault_bit': Integer, #the fault bit order
+    ...                  'psum_idx_ifmap': 2D Ndarray, #faulty ifmap coordinate
+    ...                  'psum_idx_wght': 2D Ndarray, #faulty wght coordinate
+    ...                  'modulator': Ndarray, #fault_bit order coefficient
+    ...                  'signbit': Bool or Ndarray, #fault_bit on sign bit indication
+    ...                  }
 
+    | mac math fault injection scatter fault
+    >>> preprocess_data={'fd_coor': 2D Ndarray, #the coordinate of fault in layer
+    ...                  'param_ofmap': 1D Ndarray, #the faulty ofmap param index
+    ...                  'param_ifmap': 1D Ndarray, #the faulty ifmap param index
+    ...                  'param_wght': 1D Ndarray, #the faulty wght param index
+    ...                  'idx_ofmap': 2D Ndarray, #faulty ofmap coordinate
+    ...                  'modulator_ofmap': List, #polarty data list for ofmap fault
+    ...                  'idx_ifmap_ifmap': 2D Ndarray, #faulty ifmap coordinate
+    ...                  'idx_ifmap_wght': 2D Ndarray, #faulty ifmap correspond wght coordinate
+    ...                  'modulator_ifmap': List, #polarty data list for ifmap fault
+    ...                  'idx_wght_wght': 2D Ndarray, #faulty wght coordinate
+    ...                  'idx_wght_ifmap': 2D Ndarray, #faulty wght correspond ifmap coordinate
+    ...                  'modulator_wght': List, #polarty data list for wght fault
+    ...                  'faultbit_ofmap': 1D Ndarray, #the ofmap fault bit order
+    ...                  'faultbit_ifmap': 1D Ndarray, #the ifmap fault bit order
+    ...                  'faultbit_wght': 1D Ndarray, #the wght fault bit order
+    ...                  'cnt_psidx': 1D Ndarray, #the counter for uneven psidx number on single ofmap pixel
+    ...                  'psum_idx_list_len': Integer, #number of psum_idx
+    ...                  }
+    
+    | mac noise fault injection unique fault
+    >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+    ... #the standard deviation amplifier mask, same shape as target ofmap
+
+    | mac noise fault injection scatter fault
+    >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+    ... #the standard deviation amplifier mask, same shape as target ofmap
+
+    
     """
     def __init__(self, quantizers, quant_mode='hybrid', 
                  ifmap_io=None, wght_io=None, psum_io=None, 

@@ -1316,10 +1316,14 @@ class io_data_solver:
         if len(faultvalue)>0:
             if isinstance(faultvalue[0]['id'],np.ndarray):
                 state='fastgen'
-                idlist=np.array([info['id'] for info in faultvalue])
-                maxx=np.max(np.concatenate(idlist))
-                if idlist.dtype==np.object:
-                    idl_cnt=np.array([len(i) for i in idlist])
+                idlist=[info['id'] for info in faultvalue]
+                idl_cnt=np.array([len(i) for i in idlist])
+                if np.min(idl_cnt)==np.max(idl_cnt):
+                    idlist=np.array(idlist)
+                    maxx=np.max(np.concatenate(idlist))
+                else:
+                    idlist=np.array(idlist,dtype=np.object)
+                    maxx=np.max(np.concatenate(idlist))
                     idl_cnt=np.cumsum(idl_cnt)-1
                     idlist=np.concatenate(idlist)
                     idlist=(idlist,idl_cnt)
@@ -2106,7 +2110,7 @@ class io_data_solver:
                 psidx_cnt=np.cumsum(psidx_cnt)[:-1]
                 layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
 
-        layer_psum_idx=np.array(layer_psum_idx)
+        layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
         
         if print_detail:
             print('\r    Tile2Layer (7/9): Remove Outlier Fault Coordinates...          ',end=' ')

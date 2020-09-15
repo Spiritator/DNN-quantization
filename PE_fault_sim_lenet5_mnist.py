@@ -53,14 +53,11 @@ model=quantized_lenet5(nbits=model_word_length,
                        batch_size=batch_size,
                        quant_mode=None)
 
-model_mac_math_fault_dict_list=[None for i in range(8)] 
 
 # PE represent computation unit
 PE=mac_unit(mac_config, noise_inject=noise_inject)
 # PE array
 MXU=PEarray(8,8,mac_config=PE)
-# assign fault dictionary
-fault_loc,fault_info=MXU.make_single_SA_fault(n_bit=model_wl, fault_type='flip')
 
 # conv1
 ofmap_tile_conv1=tile_PE((1,28,28,8),is_fmap=True,wl=model_wl)
@@ -120,6 +117,11 @@ MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
 #%% generate fault dictionary
 
+# assign fault dictionary
+fault_loc,fault_info=MXU.make_single_SA_fault(n_bit=model_wl, fault_type='flip')
+
+model_mac_math_fault_dict_list=[None for i in range(8)] 
+
 PE_mapping_forward(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
                    ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
                    pre_plan=True,print_detail=True)
@@ -148,6 +150,9 @@ MXU.clear_all()
 #model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
 #MXU.clear_all()
 
+# make preprocess data
+model_preprocess_data_list=preprocess_model_mac_fault(model, PE, model_mac_math_fault_dict_list)
+
 K.clear_session()
 
 #%% model setup
@@ -158,7 +163,7 @@ model=quantized_lenet5(nbits=model_word_length,
                        rounding_method=rounding_method,
                        batch_size=batch_size,
                        quant_mode='hybrid',
-                       ofmap_fault_dict_list=model_mac_math_fault_dict_list,
+                       ofmap_fault_dict_list=model_preprocess_data_list,
                        mac_unit=PE)
 t = time.time()-t
 print('\nModel build time: %f s'%t)

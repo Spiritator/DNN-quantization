@@ -253,7 +253,7 @@ class mac_fault_injector:
     
         Returns
         -------
-        Tensor. 
+        output: Tensor. 
             The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
         Reminder!!
@@ -263,6 +263,41 @@ class mac_fault_injector:
             For example x=layers.ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
             The tile setting must be padding='valid' which means no padding.
             Or else there might be fault.
+            
+        fault_dit Example
+        -----------------
+        | mac math fault injection unique fault
+        >>> preprocess_data={'fd_coor': 2D Ndarray, #the coordinate of fault in layer
+        ...                  'psum_idx_ofmap': 2D Ndarray, #faulty ofmap coordinate
+        ...                  'fault_param': String, #the faulty param
+        ...                  'fault_type': String, #the fault type
+        ...                  'fault_bit': Integer, #the fault bit order
+        ...                  'psum_idx_ifmap': 2D Ndarray, #faulty ifmap coordinate
+        ...                  'psum_idx_wght': 2D Ndarray, #faulty wght coordinate
+        ...                  'modulator': Ndarray, #fault_bit order coefficient
+        ...                  'signbit': Bool or Ndarray, #fault_bit on sign bit indication
+        ...                  }
+    
+        | mac math fault injection scatter fault
+        >>> preprocess_data={'fd_coor': 2D Ndarray, #the coordinate of fault in layer
+        ...                  'param_ofmap': 1D Ndarray, #the faulty ofmap param index
+        ...                  'param_ifmap': 1D Ndarray, #the faulty ifmap param index
+        ...                  'param_wght': 1D Ndarray, #the faulty wght param index
+        ...                  'idx_ofmap': 2D Ndarray, #faulty ofmap coordinate
+        ...                  'modulator_ofmap': List, #polarty data list for ofmap fault
+        ...                  'idx_ifmap_ifmap': 2D Ndarray, #faulty ifmap coordinate
+        ...                  'idx_ifmap_wght': 2D Ndarray, #faulty ifmap correspond wght coordinate
+        ...                  'modulator_ifmap': List, #polarty data list for ifmap fault
+        ...                  'idx_wght_wght': 2D Ndarray, #faulty wght coordinate
+        ...                  'idx_wght_ifmap': 2D Ndarray, #faulty wght correspond ifmap coordinate
+        ...                  'modulator_wght': List, #polarty data list for wght fault
+        ...                  'faultbit_ofmap': 1D Ndarray, #the ofmap fault bit order
+        ...                  'faultbit_ifmap': 1D Ndarray, #the ifmap fault bit order
+        ...                  'faultbit_wght': 1D Ndarray, #the wght fault bit order
+        ...                  'cnt_psidx': 1D Ndarray, #the counter for uneven psidx number on single ofmap pixel
+        ...                  'psum_idx_list_len': Integer, #number of psum_idx
+        ...                  }
+
         """
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
@@ -502,6 +537,18 @@ class mac_fault_injector:
             The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
+            
+            >>> preprocess_data={'fd_coor': 2D Ndarray, #the coordinate of fault in layer
+            ...                  'psum_idx_ofmap': 2D Ndarray, #faulty ofmap coordinate
+            ...                  'fault_param': String, #the faulty param
+            ...                  'fault_type': String, #the fault type
+            ...                  'fault_bit': Integer, #the fault bit order
+            ...                  'psum_idx_ifmap': 2D Ndarray, #faulty ifmap coordinate
+            ...                  'psum_idx_wght': 2D Ndarray, #faulty wght coordinate
+            ...                  'modulator': Ndarray, #fault_bit order coefficient
+            ...                  'signbit': Bool or Ndarray, #fault_bit on sign bit indication
+            ...                  }
+            
         quantizer: Class or List. 
             The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
@@ -526,7 +573,7 @@ class mac_fault_injector:
         
         Returns
         -------
-        Tensor. 
+        output: Tensor. 
             The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
         Reminder!!
@@ -657,6 +704,26 @@ class mac_fault_injector:
             The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
+            
+            >>> preprocess_data={'fd_coor': 2D Ndarray, #the coordinate of fault in layer
+            ...                  'param_ofmap': 1D Ndarray, #the faulty ofmap param index
+            ...                  'param_ifmap': 1D Ndarray, #the faulty ifmap param index
+            ...                  'param_wght': 1D Ndarray, #the faulty wght param index
+            ...                  'idx_ofmap': 2D Ndarray, #faulty ofmap coordinate
+            ...                  'modulator_ofmap': List, #polarty data list for ofmap fault
+            ...                  'idx_ifmap_ifmap': 2D Ndarray, #faulty ifmap coordinate
+            ...                  'idx_ifmap_wght': 2D Ndarray, #faulty ifmap correspond wght coordinate
+            ...                  'modulator_ifmap': List, #polarty data list for ifmap fault
+            ...                  'idx_wght_wght': 2D Ndarray, #faulty wght coordinate
+            ...                  'idx_wght_ifmap': 2D Ndarray, #faulty wght correspond ifmap coordinate
+            ...                  'modulator_wght': List, #polarty data list for wght fault
+            ...                  'faultbit_ofmap': 1D Ndarray, #the ofmap fault bit order
+            ...                  'faultbit_ifmap': 1D Ndarray, #the ifmap fault bit order
+            ...                  'faultbit_wght': 1D Ndarray, #the wght fault bit order
+            ...                  'cnt_psidx': 1D Ndarray, #the counter for uneven psidx number on single ofmap pixel
+            ...                  'psum_idx_list_len': Integer, #number of psum_idx
+            ...                  }
+            
         quantizer: Class or List. 
             The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
@@ -684,7 +751,7 @@ class mac_fault_injector:
         
         Returns
         -------
-        Tensor. 
+        output: Tensor. 
             The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
         Reminder!!
@@ -864,10 +931,18 @@ class mac_fault_injector:
         fast_gen: Bool. 
             Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
             The fault dictionay is form by fault data contamination.
+            
+            | mac noise fault injection unique fault
+            >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+            ... #the standard deviation amplifier mask, same shape as target ofmap
+        
+            | mac noise fault injection scatter fault
+            >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+            ... #the standard deviation amplifier mask, same shape as target ofmap
         
         Returns
         -------
-        Tensor. 
+        output: Tensor. 
             The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
         """                            
@@ -909,10 +984,13 @@ class mac_fault_injector:
             The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
-        
+            
+            >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+            ... #the standard deviation amplifier mask, same shape as target ofmap
+
         Returns
         -------
-        Tensor. 
+        output: Tensor. 
             The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
         """
@@ -947,10 +1025,13 @@ class mac_fault_injector:
             The Tensor to be injected fault by math alteration. Quantized Tensor. Layer output.
         fault_dict: Dictionary or List. 
             The dictionary contain fault list information.
+            
+            >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+            ... #the standard deviation amplifier mask, same shape as target ofmap
         
         Returns
         -------
-        Tensor. 
+        output: Tensor. 
             The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
         
         """
@@ -1013,7 +1094,7 @@ class mac_fault_injector:
 
         Returns
         -------
-        Tensor. 
+        output: Tensor. 
             The amount of adjustment apply to output feature map of a DNN layer which represent the faulty behabvior of MAC unit.
             
         Reminder!!

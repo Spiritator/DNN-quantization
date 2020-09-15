@@ -13,7 +13,7 @@ from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from ..utils_tool.weight_conversion import convert_original_weight_layer_name
 from ..utils_tool.dataset_setup import dataset_setup
 from .evaluate import evaluate_FT
-from ..testing.fault_list import generate_model_stuck_fault
+from ..fault.fault_list import generate_model_stuck_fault
 import time
 import numpy as np
 

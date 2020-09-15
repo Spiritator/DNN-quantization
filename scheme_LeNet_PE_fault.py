@@ -24,7 +24,7 @@ from simulator.comp_unit.mapping_flow import PE_mapping_forward,PE_mapping_backw
 
 #%% setting parameter
 
-noise_inject=False
+noise_inject=True
 report_filename='metric'
 
 result_save_folder=os.path.join('..','test_result','mnist_lenet5_PE_fault')
@@ -109,7 +109,7 @@ MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 #%% fault generation
 
 def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
-    model_mac_math_fault_dict_list=[None for i in range(8)] 
+    model_mac_fault_dict_list=[None for i in range(8)] 
     psidx_cnt=0
     
     # clear fault dictionary every iteration
@@ -131,7 +131,7 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
                        ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
                        pre_plan=True,print_detail=True)
     MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    model_mac_math_fault_dict_list[1], psidx_tmp = PE_mapping_backward(ref_model.layers[1], MXU, print_detail=True, return_detail=True)
+    model_mac_fault_dict_list[1], psidx_tmp = PE_mapping_backward(ref_model.layers[1], MXU, print_detail=True, return_detail=True)
     psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
@@ -139,7 +139,7 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
                        ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
                        pre_plan=True,print_detail=True)
     MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    model_mac_math_fault_dict_list[3], psidx_tmp = PE_mapping_backward(ref_model.layers[3], MXU, print_detail=True, return_detail=True)
+    model_mac_fault_dict_list[3], psidx_tmp = PE_mapping_backward(ref_model.layers[3], MXU, print_detail=True, return_detail=True)
     psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
@@ -157,7 +157,10 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
     #model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
     #MXU.clear_all()
     
-    return model_mac_math_fault_dict_list, psidx_cnt
+    # make preprocess data
+    model_mac_fault_dict_list=preprocess_model_mac_fault(ref_model, PE, model_mac_fault_dict_list)
+    
+    return model_mac_fault_dict_list, psidx_cnt
 
 #%% test run
 compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}

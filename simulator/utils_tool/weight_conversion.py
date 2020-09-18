@@ -11,6 +11,7 @@ all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-Tensorflow
 
 import h5py, os
 import numpy as np
+from scipy import stats
 
 
 def load_attributes_from_hdf5_group(group, name):
@@ -444,17 +445,75 @@ def fuse_BN_weight_beta(original_weight_name,layer_names=None,fused_weight_name=
     
     return fused_weight_name
 
-def check_weight_distribution(weight_name):
+def check_weight_distribution(weight_name, quantiles=None, bins=None):
     """
     
 
     Parameters
     ----------
-    weight_name : TYPE
-        DESCRIPTION.
+    weight_name : String
+        The weight file name for distribution check.
+    quantiles: Float or List of Float. 
+        | The quantiles for layer weight distribution inpection.
+        | Default [0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ]
+    bins: Integer
+        The number of bins for layer weight histogram inspection.
 
     Returns
     -------
-    None.
+    model_weight_distribution: List of List of Dictionary
+        The weight distribution information for given model. Outer List index is the same as layer index in model.
+        Inner List stands for [kernel, bias] and each element contains statistic information.
+        
+        >>> [[{'mean':average,'std_dev':standard_deviation,'kstest':KstestResult}, #L1 kernal
+        ...   {'mean':average,'std_dev':standard_deviation,'kstest':KstestResult}], #L1 bias
+        ...  [{'mean':average,'std_dev':standard_deviation,'kstest':KstestResult}, #L2 kernal
+        ...   {'mean':average,'std_dev':standard_deviation,'kstest':KstestResult}], #L2 bias
+        ...  --- ]
 
     """
+    o_weight_f = h5py.File(weight_name,'r')        
+        
+    if quantiles is None:
+        quantiles=np.linspace(0,1,11)
+    if bins is None:
+        bins=100
+    
+    layer_names = load_attributes_from_hdf5_group(o_weight_f, 'layer_names')
+    model_weight_distribution = [None for i in range(len(layer_names))]
+                
+    for layer_iter, layer_name in enumerate(layer_names):
+        o_group = o_weight_f[layer_name]
+        weight_names = load_attributes_from_hdf5_group(o_group, 'weight_names')
+        weight_values = [np.asarray(o_group[weight_name]) for weight_name in weight_names]
+        if len(weight_names) != 0:        
+            layer_distinfo=list()
+            for weight_iter, weight_name in enumerate(weight_names):
+                analyze_wght = weight_values[weight_iter]
+                analyze_wght=analyze_wght.flatten()
+                
+                mean,stddev=stats.norm.fit(analyze_wght)
+                diststat=stats.norm(loc=mean,scale=stddev)
+                ksresult=list(stats.kstest(analyze_wght.flatten(),diststat.cdf))
+                quantile_values=np.quantile(analyze_wght,quantiles)
+                hist,bin_edges=np.histogram(analyze_wght, bins=bins)
+                
+                dist_info=dict()
+                dist_info['weight_name']=weight_name
+                dist_info['mean']=mean
+                dist_info['std_dev']=stddev
+                dist_info['kstest']=ksresult
+                dist_info['quantile']=quantile_values.astype(np.float32)
+                dist_info['hist']=hist.astype(np.int32)
+                dist_info['bin_edges']=bin_edges
+                
+                layer_distinfo.append(dist_info)
+            
+            model_weight_distribution[layer_iter]=layer_distinfo
+        
+        
+    o_weight_f.close()
+    model_weight_distribution.insert(0,None)
+    
+    return model_weight_distribution
+

@@ -28,7 +28,7 @@ img_width, img_height = 224, 224
 
 class_number=1000
 
-validation_data_dir = '../../dataset/imagenet_val_imagedatagenerator_setsize'
+validation_data_dir = '../../dataset/imagenet_val_imagedatagenerator'
 nb_validation_samples = 50000
 
 #%%

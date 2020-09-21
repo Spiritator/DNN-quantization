@@ -55,6 +55,53 @@ def view_intermediate(model,input_x):
     else:
         return [output[0] for output in intermediate_output]
                  
+def _build_intermediate_model(model,observe_layer_idxs):
+    """ Build model with observed layer input feature maps as output list """
+    output_list=list()
+    
+    for n_layer in observe_layer_idxs:
+        fmap=model.layers[n_layer].input
+        output_list.append(fmap)
+        
+    intermediate_model=Model(inputs=model.input,outputs=output_list)   
+    
+    return intermediate_model
+
+@tf.function
+def fmap_statistic(fmap, num_quantiles=None, bins=None):
+    """ Make statistic analysis on given fmap data with tf.funtion
+
+    Parameters
+    ----------
+    fmap : Ndarray
+        The input feature maps of targeted observe layer. 
+    num_quantiles: Integer. 
+        The number of intervals the returned num_quantiles + 1 cut points divide the range into.
+    bins: Integer
+        The number of bins for layer weight histogram inspection.
+
+    Returns
+    -------
+    mean : Float
+        The mean of fmap.
+    stddev : Float
+        The standard deviation of fmap.
+    hist : Ndarray (Integer)
+        The count of appearence in histogram value section.
+    bin_edges : Ndarray (Float)
+        The value of histogram section edges.
+    quantile_values : Ndarray (Float)
+        The data value of quantile points.
+
+    """
+    mean=tf.reduce_mean(fmap)
+    stddev=tf.math.reduce_std(fmap)
+    bin_edges=tf.linspace(tf.reduce_min(fmap),tf.reduce_max(fmap),bins+1)
+    hist=tfp.stats.histogram(fmap,bin_edges)
+    quantile_values=tfp.stats.quantiles(fmap,num_quantiles)
+
+    return mean, stddev, hist, bin_edges, quantile_values
+    
 def view_fmap_distribution_batch(model,input_x=None, observe_layer_idxs=None, 
                                  num_quantiles=None, bins=None):
     """ View feature map distribution for a single batch of sample
@@ -83,9 +130,17 @@ def view_fmap_distribution_batch(model,input_x=None, observe_layer_idxs=None,
         The feature map distribution information for given model. List index is the same as layer index in model.
         Each element contains statistic information.
         
-        >>> [{'mean':average,'std_dev':standard_deviation,'kstest':KstestResult}, #L1 ifmap
-        ...  {'mean':average,'std_dev':standard_deviation,'kstest':KstestResult}, #L2 ifmap
-        ...  --- ]
+        >>> [{'mean':average,                  #L1 ifmap
+        ...   'std_dev':standard_deviation,
+        ...   'hist':histogram_count,
+        ...   'bin_edges':histogram_bin_egdes,
+        ...   'quntile':quantile_data_value},
+        ...  {'mean':average,                  #L2 ifmap
+        ...   'std_dev':standard_deviation,
+        ...   'hist':histogram_count,
+        ...   'bin_edges':histogram_bin_egdes,
+        ...   'quntile':quantile_data_value},
+        ...  --- ]                             # Layer N ifmap
 
 
     """
@@ -100,25 +155,22 @@ def view_fmap_distribution_batch(model,input_x=None, observe_layer_idxs=None,
     if observe_layer_idxs is None:
         observe_layer_idxs=range(model_depth)
     
-    # build statistic model
-    output_list=list()
-    for n_layer in observe_layer_idxs:
-        fmap=model.layers[n_layer].input
-        mean=tf.reduce_mean(fmap)
-        stddev=tf.math.reduce_std(fmap)
-        bin_edges=tf.linspace(tf.reduce_min(fmap),tf.reduce_max(fmap),bins+1)
-        hist=tfp.stats.histogram(fmap,bin_edges)
-        quantile_values=tfp.stats.quantiles(fmap,num_quantiles)
-        
-        dist_info=[tf.stack([mean,stddev]),hist,bin_edges,quantile_values]
-        output_list.append(dist_info)
-        
     print('building statistic model...')
-    statistic_model=Model(inputs=model.input,outputs=output_list)   
+    statistic_model=_build_intermediate_model(model,observe_layer_idxs)
     
-    distribution_list=statistic_model.predict(input_x)
+    ifmap_list=statistic_model.predict(input_x)
     
-    return distribution_list
+    for idx,fmap in enumerate(ifmap_list):
+        stats_tmp=fmap_statistic(fmap,num_quantiles,bins)
+        dist_tmp={'layer_name':layer_names[idx],
+                  'mean':stats_tmp[0].numpy(),
+                  'std_dev':stats_tmp[1].numpy(),
+                  'hist':stats_tmp[2].numpy(),
+                  'bin_edges':stats_tmp[3].numpy(),
+                  'quntile':stats_tmp[4].numpy()}
+        model_fmap_distribution[observe_layer_idxs[idx]]=dist_tmp
+
+    return model_fmap_distribution
              
         
 def view_fmap_distribution(model,input_x=None, batch_size=None, datagen=None, observe_layer_idxs=None, 
@@ -155,9 +207,17 @@ def view_fmap_distribution(model,input_x=None, batch_size=None, datagen=None, ob
         The feature map distribution information for given model. List index is the same as layer index in model.
         Each element contains statistic information.
         
-        >>> [{'mean':average,'std_dev':standard_deviation,'kstest':KstestResult}, #L1 ifmap
-        ...  {'mean':average,'std_dev':standard_deviation,'kstest':KstestResult}, #L2 ifmap
-        ...  --- ]
+        >>> [{'mean':average,                  #L1 ifmap
+        ...   'std_dev':standard_deviation,
+        ...   'hist':histogram_count,
+        ...   'bin_edges':histogram_bin_egdes,
+        ...   'quntile':quantile_data_value},
+        ...  {'mean':average,                  #L2 ifmap
+        ...   'std_dev':standard_deviation,
+        ...   'hist':histogram_count,
+        ...   'bin_edges':histogram_bin_egdes,
+        ...   'quntile':quantile_data_value},
+        ...  --- ]                             # Layer N ifmap
 
 
     """

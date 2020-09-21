@@ -13,6 +13,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 import numpy as np
+import tqdm as tqdm
 
 def view_intermediate(model,input_x):
     """View all the intermediate output of a DNN model
@@ -162,7 +163,7 @@ def view_fmap_distribution_batch(model,input_x=None, observe_layer_idxs=None,
     
     for idx,fmap in enumerate(ifmap_list):
         stats_tmp=fmap_statistic(fmap,num_quantiles,bins)
-        dist_tmp={'layer_name':layer_names[idx],
+        dist_tmp={'layer_name':layer_names[observe_layer_idxs[idx]],
                   'mean':stats_tmp[0].numpy(),
                   'std_dev':stats_tmp[1].numpy(),
                   'hist':stats_tmp[2].numpy(),
@@ -232,6 +233,7 @@ def view_fmap_distribution(model,input_x=None, batch_size=None, datagen=None, ob
     if datagen is None:
         datagen=ImageDataGenerator()
         datagen=datagen.flow(input_x,batch_size=batch_size)
+    num_steps=len(datagen)
         
     is_label=isinstance(datagen[0],tuple)
         
@@ -240,22 +242,47 @@ def view_fmap_distribution(model,input_x=None, batch_size=None, datagen=None, ob
     model_fmap_distribution = [None for i in range(model_depth)]
     if observe_layer_idxs is None:
         observe_layer_idxs=range(model_depth)
+    for i in observe_layer_idxs:
+        model_fmap_distribution[i]={'layer_name':layer_names[i],
+                                    'mean':0.0,
+                                    'std_dev':0.0,
+                                    'hist':np.zeros(bins,dtype=np.float32),
+                                    'bin_edges':np.zeros(bins+1,dtype=np.float32),
+                                    'quntile':np.zeros(num_quantiles+1,dtype=np.float32)}
     
-    # build statistic model
-    output_list=list()
-    for n_layer in observe_layer_idxs:
-        fmap=model.layers[n_layer].input
-        mean=tf.reduce_mean(fmap)
-        stddev=tf.math.reduce_std(fmap)
-        bin_edges=tf.linspace(tf.reduce_min(fmap),tf.reduce_max(fmap),bins+1)
-        hist=tfp.stats.histogram(fmap,bin_edges)
-        quantile_values=tfp.stats.quantiles(fmap,num_quantiles)
-        
-        dist_info=[mean,stddev,hist,bin_edges,quantile_values]
-        output_list.append(dist_info)
-        
     print('building statistic model...')
-    statistic_model=Model(inputs=model.input,outputs=output_list)
+    statistic_model=_build_intermediate_model(model,observe_layer_idxs)
+    
+    pbar=tqdm.tqdm(desc='Steps', total=num_steps)
+    cnt=0
+    for data in datagen:
+        if is_label:
+            data=data[0]
+            
+        ifmap_list=statistic_model.predict(data)
+        
+        for idx,fmap in enumerate(ifmap_list):
+            stats_tmp=fmap_statistic(fmap,num_quantiles,bins)
+            model_fmap_distribution[observe_layer_idxs[idx]]['mean']+=stats_tmp[0].numpy()
+            model_fmap_distribution[observe_layer_idxs[idx]]['std_dev']+=stats_tmp[1].numpy()
+            model_fmap_distribution[observe_layer_idxs[idx]]['hist']+=stats_tmp[2].numpy()
+            model_fmap_distribution[observe_layer_idxs[idx]]['bin_edges']+=stats_tmp[3].numpy()
+            model_fmap_distribution[observe_layer_idxs[idx]]['quntile']+=stats_tmp[4].numpy()
+        
+        pbar.update()
+        cnt+=1
+        if cnt==num_steps:
+            break
+    pbar.close()
+        
+    for i in observe_layer_idxs:
+        model_fmap_distribution[i]['mean']/=num_steps
+        model_fmap_distribution[i]['std_dev']/=num_steps
+        model_fmap_distribution[i]['hist']/=num_steps
+        model_fmap_distribution[i]['bin_edges']/=num_steps
+        model_fmap_distribution[i]['quntile']/=num_steps
+
+    return model_fmap_distribution
 
     
 

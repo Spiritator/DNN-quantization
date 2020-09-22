@@ -188,8 +188,8 @@ def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False,fast_mode=T
                                    print_detail=print_detail,
                                    fast_mode=fast_mode)
     
-    model_ifmap_fault_dict_list[13],model_ofmap_fault_dict_list[13],model_weight_fault_dict_list[13]\
-    =generate_layer_memory_mapping(ref_model.layers[13],
+    model_ifmap_fault_dict_list[12],model_ofmap_fault_dict_list[12],model_weight_fault_dict_list[12]\
+    =generate_layer_memory_mapping(ref_model.layers[12],
                                    GLB_ifmap,GLB_wght,GLB_ofmap,
                                    ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,
                                    print_detail=print_detail,

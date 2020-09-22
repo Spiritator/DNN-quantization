@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-
-'''
+"""
 Quantizer for quantization ops call. Including decimal point shifting, rounding, overflow handling.
 
 @author: Yung-Yu Tsai
 
-'''
+"""
 
 from __future__ import absolute_import
 import tensorflow as tf

@@ -19,12 +19,12 @@ def comp_num_estimate(model,add_topo=None):
     '''
     estimation_report=dict()
     layer_list=model.layers
-    total_mult=0
-    total_accum=0
-    total_mac=0
-    total_mult_bit=0
-    total_accum_bit=0
-    total_mac_bit=0
+    total_mult=np.int64(0)
+    total_accum=np.int64(0)
+    total_mac=np.int64(0)
+    total_mult_bit=np.int64(0)
+    total_accum_bit=np.int64(0)
+    total_mac_bit=np.int64(0)
     for layer in layer_list:
         layer_config=layer.get_config()
         if len(layer.weights) != 0:

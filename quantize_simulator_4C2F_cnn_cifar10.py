@@ -13,13 +13,15 @@ import numpy as np
 import tensorflow.keras.backend as K
 import time
 
-
 from simulator.models.model_library import quantized_4C2F
 from simulator.utils_tool.weight_conversion import convert_original_weight_layer_name
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.metrics.topk_metrics import top2_acc
+from simulator.metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50
 from simulator.approximation.estimate import comp_num_estimate
+from simulator.inference.evaluate import evaluate_FT
 
 #%%
 # model setup
@@ -51,14 +53,13 @@ x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_
 
 t = time.time()
 
-test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
+prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
+test_result = evaluate_FT('lenet',prediction=prediction,test_label=y_test,loss_function=categorical_crossentropy,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50])
 
 t = time.time()-t
-
 print('\nruntime: %f s'%t)
-print('\nTest loss:', test_result[0])
-print('Test top1 accuracy:', test_result[1])
-print('Test top2 accuracy:', test_result[2])
+for key in test_result.keys():
+    print('Test %s\t:'%key, test_result[key])
 
 computaion_esti=comp_num_estimate(model)
 print('\nTotal # of computations:', computaion_esti['total_MAC'])
@@ -68,7 +69,7 @@ print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
 # draw confusion matrix
 
 print('\n')
-prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
+#prediction = model.predict(x_test, verbose=1, batch_size=batch_size)
 prediction = np.argmax(prediction, axis=1)
 
 show_confusion_matrix(np.argmax(y_test, axis=1),prediction,class_indices,'Confusion Matrix',figsize=(8,6),normalize=False)

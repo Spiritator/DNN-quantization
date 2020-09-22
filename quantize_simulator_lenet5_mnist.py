@@ -18,6 +18,7 @@ from simulator.models.model_library import quantized_lenet5
 from simulator.utils_tool.weight_conversion import convert_original_weight_layer_name
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.metrics.topk_metrics import top2_acc
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, conf_score_vary_10, conf_score_vary_20
 from simulator.approximation.estimate import comp_num_estimate
@@ -62,7 +63,6 @@ x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_
 t = time.time()
 
 #test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
-from tensorflow.keras.losses import categorical_crossentropy
 prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
 test_result = evaluate_FT('lenet',prediction=prediction,test_label=y_test,loss_function=categorical_crossentropy,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_20])
 

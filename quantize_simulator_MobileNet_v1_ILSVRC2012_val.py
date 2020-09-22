@@ -7,11 +7,15 @@ Created on Tue Sep 25 14:32:50 2018
 evaluate quantized testing result with custom Keras quantize layer of MobileNetV1
 """
 
-from tensorflow.keras.utils import multi_gpu_model
+from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.mobilenet import QuantizedMobileNetV1,QuantizedMobileNetV1FusedBN
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.utils_tool.confusion_matrix import show_confusion_matrix
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.metrics.topk_metrics import top5_acc
+from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
+from simulator.inference.evaluate import evaluate_FT
+
 import time
 import numpy as np
 
@@ -22,6 +26,7 @@ img_width, img_height = 224, 224
 class_number=1000
 batch_size=40
 
+set_size=2
 validation_data_dir = '../../dataset/imagenet_val_imagedatagenerator_setsize_2'
 nb_validation_samples = 50000
 
@@ -84,14 +89,14 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
+prediction = parallel_model.predict_generator(datagen, verbose=1, steps=len(datagen))
+#prediction = model.predict_generator(datagen, verbose=1, steps=len(datagen))
+test_result = evaluate_FT('mobilenet',prediction=prediction,test_label=to_categorical(datagen.classes,1000),loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],fuseBN=True,setsize=set_size)
 
 t = time.time()-t
-print('evaluate done')
-print('\nruntime: %f s'%t)        
-print('\nTest loss:', test_result[0])
-print('Test top1 accuracy:', test_result[1])
-print('Test top5 accuracy:', test_result[2])
+print('\nruntime: %f s'%t)
+for key in test_result.keys():
+    print('Test %s\t:'%key, test_result[key])
 
 #%%
 # draw confusion matrix

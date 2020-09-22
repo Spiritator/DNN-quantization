@@ -445,9 +445,8 @@ def fuse_BN_weight_beta(original_weight_name,layer_names=None,fused_weight_name=
     
     return fused_weight_name
 
-def check_weight_distribution(weight_name, quantiles=None, bins=None):
-    """
-    
+def view_weight_distribution(weight_name, quantiles=None, bins=None):
+    """ View the weight distribution and return the statistics into information list
 
     Parameters
     ----------

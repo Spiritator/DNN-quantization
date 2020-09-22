@@ -1,10 +1,10 @@
-'''
-reference: https://github.com/BertMoons/QuantizedNeuralNetworks-Keras-Tensorflow
-all the credit refer to BertMoons on QuantizedNeuralNetworks-Keras-Tensorflow
+# -*- coding: utf-8 -*-
+"""
+Model library for custom quantized model LeNet-5, 4C2F-CNN, DroneNet
 
 @author: Yung-Yu Tsai
 
-'''
+"""
 import tensorflow as tf
 
 from tensorflow.keras.models import Sequential, Model
@@ -88,9 +88,6 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest',
     x = MaxPooling2D(pool_size=(2,2))(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 5')
-    #x = tf.reshape(x, (batch_size,-1))
-    #x = Reshape((-1,))(x)
-    #x = Flatten()(x)
     x = QuantizedFlatten()(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 6')
@@ -119,12 +116,6 @@ def quantized_lenet5(nbits=8, fbits=4, rounding_method='nearest',
 
     model=Model(inputs=input_shape, outputs=x, name='quantized_lenet5')
     
-#    model.summary()
-#    model.compile(loss='categorical_crossentropy',
-#    			  optimizer='adam',metrics=['accuracy'])
-
-#    model.summary()
-
     return model
 
 def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest', 
@@ -137,24 +128,24 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest',
                    overflow_mode=False, stop_gradient=False):
     
     print('\nBuilding model : Quantized 4C2F CNN')
-    pbar=tqdm(total=17)
+    pbar=tqdm(total=16)
     
     layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
     if mac_unit is not None:
         mac_unit.consistency_check(quant_mode,layer_quantizer)
     
     if ifmap_fault_dict_list is None:
-        ifmap_fault_dict_list=[None for i in range(14)]
+        ifmap_fault_dict_list=[None for i in range(13)]
     else:
         pbar.set_postfix_str('Inject input fault')
     pbar.update()
     if ofmap_fault_dict_list is None:
-        ofmap_fault_dict_list=[None for i in range(14)]
+        ofmap_fault_dict_list=[None for i in range(13)]
     else:
         pbar.set_postfix_str('Inject output fault')
     pbar.update()
     if weight_fault_dict_list is None:
-        weight_fault_dict_list=[[None,None] for i in range(14)]
+        weight_fault_dict_list=[[None,None] for i in range(13)]
     else:
         pbar.set_postfix_str('Inject weight fault')
     pbar.update()
@@ -227,7 +218,6 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest',
     pbar.update()
     
     pbar.set_postfix_str('Building Layer 9')
-    #x = Flatten()(x)
     x = QuantizedFlatten()(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 10')
@@ -241,18 +231,15 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest',
                        quant_mode=quant_mode)(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 11')
-    x = Activation('relu')(x)
-    pbar.update()
-    pbar.set_postfix_str('Building Layer 12')
     x = Dropout(0.5)(x)
     pbar.update()
-    pbar.set_postfix_str('Building Layer 13')
+    pbar.set_postfix_str('Building Layer 12')
     x = QuantizedDense(num_classes,
                        quantizers=layer_quantizer,
                        activation='softmax',
-                       ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
-                       ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
-                       weight_sa_fault_injection=weight_fault_dict_list[13],
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[12],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[12],
+                       weight_sa_fault_injection=weight_fault_dict_list[12],
                        mac_unit=mac_unit,
                        quant_mode=quant_mode,
                        last_layer=True)(x)
@@ -262,13 +249,8 @@ def quantized_4C2F(nbits=8, fbits=4, rounding_method='nearest',
     
     model=Model(inputs=input_shape, outputs=x, name='quantized_4C2F')
     
-#    model.compile(loss='categorical_crossentropy',
-#                  optimizer='adam',
-#                  metrics=['accuracy', top2_acc])
-    
-#    model.summary()
-
     return model
+
 
 def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_method='nearest', 
                      input_shape=(32,32,3), num_classes=10, batch_size=None, 
@@ -428,7 +410,6 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
     pbar.update()
     
     pbar.set_postfix_str('Building Layer 17')
-    #x = Flatten()(x)
     x = QuantizedFlatten()(x)
     pbar.update()
     pbar.set_postfix_str('Building Layer 18')
@@ -471,12 +452,6 @@ def quantized_4C2FBN(nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, rounding_me
     
     model=Model(inputs=input_shape, outputs=x, name='quantized_4C2FBN')
     
-#    model.compile(loss='categorical_crossentropy',
-#                  optimizer='adam',
-#                  metrics=['accuracy', top2_acc])
-    
-    #model.summary()
-
     return model
 
 
@@ -571,96 +546,266 @@ def quantized_droneNet(version, nbits=8, fbits=4, BN_nbits=None, BN_fbits=None, 
     else:
         return Model(inputs=input_shape, outputs=outputs, *args, **kwargs)
     
+    
+# model with activation function as a independent layer for examine the feature maps distribution
+def quantized_lenet5_splt_act(nbits=8, fbits=4, rounding_method='nearest', 
+                              input_shape=(28,28,1), num_classes=10, batch_size=None, 
+                              ifmap_fault_dict_list=None, 
+                              ofmap_fault_dict_list=None, 
+                              weight_fault_dict_list=None, 
+                              mac_unit=None,
+                              quant_mode='hybrid', 
+                              overflow_mode=False, stop_gradient=False,):
+    
+    print('\nBuilding model : Quantized Lenet 5')
+    pbar=tqdm(total=14)
+    
+    layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
+    
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for i in range(8)]
+    else:
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for i in range(8)]
+    else:
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for i in range(8)]
+    else:
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
+        
+    pbar.set_postfix_str('Building Layer 0')
+    input_shape = Input(batch_shape=(batch_size,)+input_shape)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 1')
+    x = QuantizedConv2D(filters=16,
+                        quantizers=layer_quantizer,
+                        kernel_size=(5,5),
+                        padding='same',
+                        strides=(1, 1),                              
+                        activation=None,
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
+                        weight_sa_fault_injection=weight_fault_dict_list[1],
+                        mac_unit=mac_unit,
+                        quant_mode=quant_mode)(input_shape)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 2')
+    x = Activation('relu')(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 3')
+    x = MaxPooling2D(pool_size=(2,2))(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 4')
+    x = QuantizedConv2D(filters=36,
+                        quantizers=layer_quantizer,
+                        kernel_size=(5,5),
+                        padding='same',
+                        strides=(1, 1),
+                        activation=None,
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[3],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[3],
+                        weight_sa_fault_injection=weight_fault_dict_list[3],
+                        mac_unit=mac_unit,
+                        quant_mode=quant_mode)(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 5')
+    x = Activation('relu')(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 6')
+    x = MaxPooling2D(pool_size=(2,2))(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 7')
+    x = QuantizedFlatten()(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 8')
+    x = QuantizedDense(128,
+                       quantizers=layer_quantizer,
+                       activation=None,
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
+                       weight_sa_fault_injection=weight_fault_dict_list[6],
+                       mac_unit=mac_unit,
+                       quant_mode=quant_mode)(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 9')
+    x = Activation('relu')(x)    
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 10')
+    x = QuantizedDense(num_classes,
+                       quantizers=layer_quantizer,
+                       activation='softmax',
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[7],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[7],
+                       weight_sa_fault_injection=weight_fault_dict_list[7],
+                       mac_unit=mac_unit,
+                       quant_mode=quant_mode,
+                       last_layer=True)(x)
+    pbar.update()
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
 
-#def convert_original_weight_layer_name(original_weight_name,quantized_weight_name=None):
-#    
-#    def load_attributes_from_hdf5_group(group, name):
-#        """Loads attributes of the specified name from the HDF5 group.
-#    
-#        This method deals with an inherent problem
-#        of HDF5 file which is not able to store
-#        data larger than HDF5_OBJECT_HEADER_LIMIT bytes.
-#    
-#        # Arguments
-#            group: A pointer to a HDF5 group.
-#            name: A name of the attributes to load.
-#    
-#        # Returns
-#            data: Attributes data.
-#        """
-#        if name in group.attrs:
-#            data = [n.decode('utf8') for n in group.attrs[name]]
-#        else:
-#            data = []
-#            chunk_id = 0
-#            while ('%s%d' % (name, chunk_id)) in group.attrs:
-#                data.extend([n.decode('utf8')
-#                             for n in group.attrs['%s%d' % (name, chunk_id)]])
-#                chunk_id += 1
-#        return data
-#    
-#    
-#    o_weight_f = h5py.File(original_weight_name,'r')
-#    if quantized_weight_name is None:
-#        quantized_weight_name=original_weight_name[:-3]+'_quantized.h5'
-#        if os.path.isfile(quantized_weight_name):
-#            o_weight_f.close()
-#            return quantized_weight_name
-#        else:
-#            q_weight_f = h5py.File(quantized_weight_name,'w')
-#    else:
-#        if os.path.isfile(quantized_weight_name):
-#            o_weight_f.close()
-#            return quantized_weight_name
-#        else:
-#            q_weight_f = h5py.File(quantized_weight_name,'w')
-#        
-#        
-#    if 'keras_version' in o_weight_f.attrs:
-#            original_keras_version = o_weight_f.attrs['keras_version'].decode('utf8')
-#    else:
-#        original_keras_version = '1'
-#    if 'backend' in o_weight_f.attrs:
-#        original_backend = o_weight_f.attrs['backend'].decode('utf8')
-#    else:
-#        original_backend = None
-#        
-#    
-#    layer_names = load_attributes_from_hdf5_group(o_weight_f, 'layer_names')
-#    filtered_layer_names = []
-#    for layer_name in layer_names:
-#        o_group = o_weight_f[layer_name]
-#        weight_names = load_attributes_from_hdf5_group(o_group, 'weight_names')
-#        if weight_names:
-#            filtered_layer_names.append(layer_name)
-#            
-#    quantized_layer_names = []
-#    for layer in layer_names:
-#        if layer in filtered_layer_names:
-#            quantized_layer_names.append('quantized_'+layer)
-#        else:
-#            quantized_layer_names.append(layer)
-#            
-#    q_weight_f.attrs.create('layer_names',[temp.encode('utf8') for temp in quantized_layer_names])
-#    q_weight_f.attrs.create('backend',original_backend.encode('utf8'))
-#    q_weight_f.attrs.create('keras_version',original_keras_version.encode('utf8'))
-#    
-#    for layer_iter, layer_name in enumerate(layer_names):
-#        o_group = o_weight_f[layer_name]
-#        weight_names = load_attributes_from_hdf5_group(o_group, 'weight_names')
-#        weight_values = [np.asarray(o_group[weight_name]) for weight_name in weight_names]
-#        quantized_layer = q_weight_f.create_group(quantized_layer_names[layer_iter])
-#        if layer_name in filtered_layer_names:
-#            quantized_layer.attrs.create('weight_names',[('quantized_'+temp).encode('utf8') for temp in weight_names])
-#        else:
-#            quantized_layer.attrs.create('weight_names',[temp.encode('utf8') for temp in weight_names])
-#        quantized_sublayer = quantized_layer.create_group(quantized_layer_names[layer_iter])
-#        
-#        for weight_iter, weight_name in enumerate(weight_names):
-#            quantized_sublayer.create_dataset(weight_name[len(layer_name)+1:],weight_values[weight_iter].shape,weight_values[weight_iter].dtype,weight_values[weight_iter])
-#        
-#        
-#    o_weight_f.close()
-#    q_weight_f.close()
-#    
-#    return quantized_weight_name
+    model=Model(inputs=input_shape, outputs=x, name='quantized_lenet5')
+    
+    return model
+
+
+# model with activation function as a independent layer for examine the feature maps distribution
+def quantized_4C2F_splt_act(nbits=8, fbits=4, rounding_method='nearest', 
+                            input_shape=(32,32,3), num_classes=10, batch_size=None, 
+                            ifmap_fault_dict_list=None, 
+                            ofmap_fault_dict_list=None, 
+                            weight_fault_dict_list=None, 
+                            mac_unit=None,
+                            quant_mode='hybrid', 
+                            overflow_mode=False, stop_gradient=False):
+    
+    print('\nBuilding model : Quantized 4C2F CNN')
+    pbar=tqdm(total=21)
+    
+    layer_quantizer=build_layer_quantizer(nbits,fbits,rounding_method,overflow_mode,stop_gradient)
+    if mac_unit is not None:
+        mac_unit.consistency_check(quant_mode,layer_quantizer)
+    
+    if ifmap_fault_dict_list is None:
+        ifmap_fault_dict_list=[None for i in range(14)]
+    else:
+        pbar.set_postfix_str('Inject input fault')
+    pbar.update()
+    if ofmap_fault_dict_list is None:
+        ofmap_fault_dict_list=[None for i in range(14)]
+    else:
+        pbar.set_postfix_str('Inject output fault')
+    pbar.update()
+    if weight_fault_dict_list is None:
+        weight_fault_dict_list=[[None,None] for i in range(14)]
+    else:
+        pbar.set_postfix_str('Inject weight fault')
+    pbar.update()
+    
+    pbar.set_postfix_str('Building Layer 0')
+    input_shape = Input(batch_shape=(batch_size,)+input_shape)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 1')
+    x = QuantizedConv2D(filters=32,
+                        quantizers=layer_quantizer,
+                        kernel_size=(3, 3),
+                        padding='same',
+                        strides=(1, 1),
+                        activation=None,
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[1],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[1],
+                        weight_sa_fault_injection=weight_fault_dict_list[1],
+                        mac_unit=mac_unit,
+                        quant_mode=quant_mode)(input_shape)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 2')
+    x = Activation('relu')(x)    
+    
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 3')
+    x = QuantizedConv2D(filters=32,
+                        quantizers=layer_quantizer,
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        activation=None,
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[2],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[2],
+                        weight_sa_fault_injection=weight_fault_dict_list[2],
+                        mac_unit=mac_unit,
+                        quant_mode=quant_mode)(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 4')
+    x = Activation('relu')(x)    
+    
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 5')
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 6')
+    x = Dropout(0.25)(x)
+    pbar.update()
+    
+    pbar.set_postfix_str('Building Layer 7')
+    x = QuantizedConv2D(filters=64,
+                        quantizers=layer_quantizer,
+                        kernel_size=(3, 3),
+                        padding='same',
+                        strides=(1, 1),
+                        activation=None,
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[5],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[5],
+                        weight_sa_fault_injection=weight_fault_dict_list[5],
+                        mac_unit=mac_unit,
+                        quant_mode=quant_mode)(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 8')
+    x = Activation('relu')(x)    
+
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 9')
+    x = QuantizedConv2D(filters=64,
+                        quantizers=layer_quantizer,
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        activation=None,
+                        ifmap_sa_fault_injection=ifmap_fault_dict_list[6],
+                        ofmap_sa_fault_injection=ofmap_fault_dict_list[6],
+                        weight_sa_fault_injection=weight_fault_dict_list[6],
+                        mac_unit=mac_unit,
+                        quant_mode=quant_mode)(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 10')
+    x = Activation('relu')(x)    
+    
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 11')
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 12')
+    x = Dropout(0.25)(x)
+    pbar.update()
+    
+    pbar.set_postfix_str('Building Layer 13')
+    x = QuantizedFlatten()(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 14')
+    x = QuantizedDense(512,
+                       quantizers=layer_quantizer,
+                       activation=None,
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[10],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[10],
+                       weight_sa_fault_injection=weight_fault_dict_list[10],
+                       mac_unit=mac_unit,
+                       quant_mode=quant_mode)(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 15')
+    x = Activation('relu')(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 16')
+    x = Dropout(0.5)(x)
+    pbar.update()
+    pbar.set_postfix_str('Building Layer 17')
+    x = QuantizedDense(num_classes,
+                       quantizers=layer_quantizer,
+                       activation='softmax',
+                       ifmap_sa_fault_injection=ifmap_fault_dict_list[13],
+                       ofmap_sa_fault_injection=ofmap_fault_dict_list[13],
+                       weight_sa_fault_injection=weight_fault_dict_list[13],
+                       mac_unit=mac_unit,
+                       quant_mode=quant_mode,
+                       last_layer=True)(x)
+    pbar.update()
+    pbar.set_postfix_str('Model Built')
+    pbar.close()
+    
+    model=Model(inputs=input_shape, outputs=x, name='quantized_4C2F')
+    
+    return model
+

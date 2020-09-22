@@ -21,6 +21,7 @@ from simulator.metrics.topk_metrics import top2_acc
 from simulator.memory.mem_bitmap import bitmap
 from simulator.memory.tile import tile, tile_FC, generate_layer_memory_mapping
 from simulator.fault.fault_core import generate_model_modulator
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.inference.evaluate import evaluate_FT
 #from simulator.fault.fault_list import generate_model_stuck_fault
@@ -183,8 +184,8 @@ model_ifmap_fault_dict_list[10],model_ofmap_fault_dict_list[10],model_weight_fau
                                ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,
                                fast_mode=fast_mode)
 
-model_ifmap_fault_dict_list[13],model_ofmap_fault_dict_list[13],model_weight_fault_dict_list[13]\
-=generate_layer_memory_mapping(model.layers[13],
+model_ifmap_fault_dict_list[12],model_ofmap_fault_dict_list[12],model_weight_fault_dict_list[12]\
+=generate_layer_memory_mapping(model.layers[12],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
                                ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,
                                fast_mode=fast_mode)
@@ -233,7 +234,6 @@ x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_
 t = time.time()
 
 #test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
-from tensorflow.keras.losses import categorical_crossentropy
 prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
 test_result = evaluate_FT('cifar10',prediction=prediction,test_label=y_test,loss_function=categorical_crossentropy,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50])
 

@@ -15,6 +15,7 @@ import time
 from simulator.memory.mem_bitmap import bitmap
 from simulator.memory.tile import tile, tile_FC, generate_layer_memory_mapping
 from simulator.fault.fault_core import generate_model_modulator
+from tensorflow.keras.losses import categorical_crossentropy
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.inference.evaluate import evaluate_FT
 
@@ -514,7 +515,6 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-from tensorflow.keras.losses import categorical_crossentropy
 #prediction = parallel_model.predict_generator(datagen, verbose=1, steps=len(datagen))
 prediction = model.predict_generator(datagen, verbose=1, steps=len(datagen))
 test_result = evaluate_FT('resnet',prediction=prediction,test_label=to_categorical(datagen.classes,1000),loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],fuseBN=True,setsize=set_size)

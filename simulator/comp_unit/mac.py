@@ -1098,6 +1098,7 @@ class mac_unit:
         return psum_idx_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap
 
     def preprocess_mac_noise_fault_tensor(self, fault_dict, ofmap_shape, 
+                                          dist_stats_fmap=None, dist_stats_wght=None,
                                           amp_factor_fmap=1.0, amp_factor_wght=1.0,
                                           quantizer=None, 
                                           fast_gen=None):
@@ -1123,6 +1124,10 @@ class mac_unit:
             The dictionary contain fault list information.
         ofmap_shape: Tuple. 
             The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
+        dist_stats_fmap : Dictionary.
+            Statistic dctionary for input feature maps.
+        dist_stats_wght : Dictionary.
+            Statistic dctionary for weights.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1257,6 +1262,7 @@ class mac_unit:
         return preprocess_data
     
     def preprocess_mac_noise_fault_uni(self, fault_dict, ofmap_shape, 
+                                       dist_stats_fmap=None, dist_stats_wght=None,
                                        amp_factor_fmap=1.0, amp_factor_wght=1.0,
                                        quantizer=None):
         """ Fault injection mac output Gaussian noise model.
@@ -1279,6 +1285,10 @@ class mac_unit:
             The dictionary contain fault list information.
         ofmap_shape: Tuple. 
             The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
+        dist_stats_fmap : Dictionary.
+            Statistic dctionary for input feature maps.
+        dist_stats_wght : Dictionary.
+            Statistic dctionary for weights.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1361,6 +1371,7 @@ class mac_unit:
         return preprocess_data
     
     def preprocess_mac_noise_fault_scatter(self, fault_dict, ofmap_shape, 
+                                           dist_stats_fmap=None, dist_stats_wght=None,
                                            amp_factor_fmap=1.0, amp_factor_wght=1.0,
                                            quantizer=None):
         """ Fault injection mac output Gaussian noise model.
@@ -1385,6 +1396,10 @@ class mac_unit:
             The dictionary contain fault list information.
         ofmap_shape: Tuple. 
             The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
+        dist_stats_fmap : Dictionary.
+            Statistic dctionary for input feature maps.
+        dist_stats_wght : Dictionary.
+            Statistic dctionary for weights.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1474,6 +1489,7 @@ class mac_unit:
                                     noise_inject=None, sim_truncarry=None, fast_gen=None,
                                     quantizer=None, quant_mode=None, layer_type='Conv2D',
                                     ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
+                                    dist_stats_fmap=None, dist_stats_wght=None,
                                     amp_factor_fmap=1.0, amp_factor_wght=1.0,
                                     **kwargs):
         """ The function caller for decide which fault injection method will be used.
@@ -1516,6 +1532,10 @@ class mac_unit:
             The type of padding algorithm to use.
         dilation_rate: Tuple. Size 2. 
             The dilation rate (row, col).
+        dist_stats_fmap : Dictionary.
+            Statistic dctionary for input feature maps.
+        dist_stats_wght : Dictionary.
+            Statistic dctionary for weights.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1579,7 +1599,8 @@ class mac_unit:
             raise AttributeError('The attributes of Layer quantizer and MAC unit quantizer are different!!')
 
    
-def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict, **kwargs):
+def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict,
+                               layer_wght_dist_stat=None, layer_fmap_dist_stat=None, **kwargs):
     """ Layer wise handle mac fault injection preprocess part before model/layer call
         Seperate the CPU and GPU processing. The preprocess function under mac_unit class are for CPU process.
 
@@ -1592,7 +1613,12 @@ def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict, **kwargs)
     layer_mac_fault_dict : Dictionary
         Fault dctionary for output feature maps.
         The layers have no weight and MAC operation are setting its fault dictionary to None.
-
+    layer_wght_dist_stat : Dictionary
+        Statistic dctionary for weights.
+        The layers have no weight and MAC operation are setting its statistic dictionary to None.
+    layer_fmap_dist_stat : Dictionary
+        Statistic dctionary for input feature maps.
+        The layers have no weight and MAC operation are setting its statistic dictionary to None.
     Returns
     -------
     preprocess_data: Dictionary.
@@ -1632,7 +1658,8 @@ def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict, **kwargs)
             
     return preprocess_data
 
-def preprocess_model_mac_fault(model, mac_unit_, model_mac_fault_dict_list, **kwargs):
+def preprocess_model_mac_fault(model, mac_unit_, model_mac_fault_dict_list, 
+                               model_wght_dist_stat_list=None, model_fmap_dist_stat_list=None, **kwargs):
     """ Model wise handle mac fault injection preprocess part before model/layer call
         Seperate the CPU and GPU processing. The preprocess function under mac_unit class are for CPU process.
 
@@ -1646,6 +1673,12 @@ def preprocess_model_mac_fault(model, mac_unit_, model_mac_fault_dict_list, **kw
         Fault dctionary for output feature maps.
         The list are the same order as the Keras model layer list. Each Dictionary in List is for its corresponding layer.
         The layers have no weight and MAC operation are setting its fault dictionary to None.
+    model_wght_dist_stat_list : List of Dictionary
+        The model weight distribution statistic list. Each Dictionary in List is for its corresponding layer.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
+    model_fmap_dist_stat_list : List of Dictionary
+        The model feature map distribution statistic list. Each Dictionary in List is for its corresponding layer.
+        The layers have no weight and MAC operation are setting its fault dictionary to None.
 
     Returns
     -------
@@ -1657,11 +1690,26 @@ def preprocess_model_mac_fault(model, mac_unit_, model_mac_fault_dict_list, **kw
     """
     model_depth=len(model.layers)
     model_preprocess_data_list=[None for _ in range(model_depth)]
+    if model_wght_dist_stat_list is not None and len(model_wght_dist_stat_list)!=model_depth:
+        raise AttributeError('The length of model_wght_dist_stat_list should be the same as number of layers in model.')
+    if model_fmap_dist_stat_list is not None and len(model_fmap_dist_stat_list)!=model_depth:
+        raise AttributeError('The length of model_fmap_dist_stat_list should be the same as number of layers in model.')
 
     for layer_num in range(1,model_depth):
+        if model_wght_dist_stat_list is None:
+            layer_wght_dist_stat=None
+        else:
+            layer_wght_dist_stat=model_wght_dist_stat_list[layer_num]
+        if model_fmap_dist_stat_list is None:
+            layer_fmap_dist_stat=None
+        else:
+            layer_fmap_dist_stat=model_fmap_dist_stat_list[layer_num]
+
         preprocess_data=preprocess_layer_mac_fault(model.layers[layer_num],
                                                    mac_unit_,
                                                    model_mac_fault_dict_list[layer_num], 
+                                                   layer_wght_dist_stat=layer_wght_dist_stat,
+                                                   layer_fmap_dist_stat=layer_fmap_dist_stat,
                                                    **kwargs)
         
         model_preprocess_data_list[layer_num]=preprocess_data

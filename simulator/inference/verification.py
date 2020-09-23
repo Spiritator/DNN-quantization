@@ -135,12 +135,12 @@ def view_fmap_distribution_batch(model,input_x=None, observe_layer_idxs=None,
         ...   'std_dev':standard_deviation,
         ...   'hist':histogram_count,
         ...   'bin_edges':histogram_bin_egdes,
-        ...   'quntile':quantile_data_value},
+        ...   'quantile':quantile_data_value},
         ...  {'mean':average,                  #L2 ifmap
         ...   'std_dev':standard_deviation,
         ...   'hist':histogram_count,
         ...   'bin_edges':histogram_bin_egdes,
-        ...   'quntile':quantile_data_value},
+        ...   'quantile':quantile_data_value},
         ...  --- ]                             # Layer N ifmap
 
 
@@ -168,7 +168,7 @@ def view_fmap_distribution_batch(model,input_x=None, observe_layer_idxs=None,
                   'std_dev':stats_tmp[1].numpy(),
                   'hist':stats_tmp[2].numpy(),
                   'bin_edges':stats_tmp[3].numpy(),
-                  'quntile':stats_tmp[4].numpy()}
+                  'quantile':stats_tmp[4].numpy()}
         model_fmap_distribution[observe_layer_idxs[idx]]=dist_tmp
 
     return model_fmap_distribution
@@ -212,12 +212,12 @@ def view_fmap_distribution(model,input_x=None, batch_size=None, datagen=None, ob
         ...   'std_dev':standard_deviation,
         ...   'hist':histogram_count,
         ...   'bin_edges':histogram_bin_egdes,
-        ...   'quntile':quantile_data_value},
+        ...   'quantile':quantile_data_value},
         ...  {'mean':average,                  #L2 ifmap
         ...   'std_dev':standard_deviation,
         ...   'hist':histogram_count,
         ...   'bin_edges':histogram_bin_egdes,
-        ...   'quntile':quantile_data_value},
+        ...   'quantile':quantile_data_value},
         ...  --- ]                             # Layer N ifmap
 
 
@@ -248,7 +248,7 @@ def view_fmap_distribution(model,input_x=None, batch_size=None, datagen=None, ob
                                     'std_dev':0.0,
                                     'hist':np.zeros(bins,dtype=np.float32),
                                     'bin_edges':np.zeros(bins+1,dtype=np.float32),
-                                    'quntile':np.zeros(num_quantiles+1,dtype=np.float32)}
+                                    'quantile':np.zeros(num_quantiles+1,dtype=np.float32)}
     
     print('building statistic model...')
     statistic_model=_build_intermediate_model(model,observe_layer_idxs)
@@ -267,7 +267,7 @@ def view_fmap_distribution(model,input_x=None, batch_size=None, datagen=None, ob
             model_fmap_distribution[observe_layer_idxs[idx]]['std_dev']+=stats_tmp[1].numpy()
             model_fmap_distribution[observe_layer_idxs[idx]]['hist']+=stats_tmp[2].numpy()
             model_fmap_distribution[observe_layer_idxs[idx]]['bin_edges']+=stats_tmp[3].numpy()
-            model_fmap_distribution[observe_layer_idxs[idx]]['quntile']+=stats_tmp[4].numpy()
+            model_fmap_distribution[observe_layer_idxs[idx]]['quantile']+=stats_tmp[4].numpy()
         
         pbar.update()
         cnt+=1
@@ -280,7 +280,7 @@ def view_fmap_distribution(model,input_x=None, batch_size=None, datagen=None, ob
         model_fmap_distribution[i]['std_dev']/=num_steps
         model_fmap_distribution[i]['hist']/=num_steps
         model_fmap_distribution[i]['bin_edges']/=num_steps
-        model_fmap_distribution[i]['quntile']/=num_steps
+        model_fmap_distribution[i]['quantile']/=num_steps
 
     return model_fmap_distribution
 

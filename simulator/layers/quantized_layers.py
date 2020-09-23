@@ -741,7 +741,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
                     data_format=self.data_format)
 
         # add bias
-        if self.bias:
+        if self.use_bias:
             if self.quant_mode in ['hybrid','intrinsic']:
                 quantized_bias = quantizer_weight.quantize(self.bias)
             

@@ -11,7 +11,7 @@ evaluate computation unit fault injection testing result of LeNet-5
 
 import numpy as np
 import tensorflow.keras.backend as K
-import time, os
+import time, os, pickle
 
 from simulator.models.model_library import quantized_lenet5
 from simulator.utils_tool.dataset_setup import dataset_setup
@@ -151,7 +151,14 @@ MXU.clear_all()
 #MXU.clear_all()
 
 # make preprocess data
-model_preprocess_data_list=preprocess_model_mac_fault(model, PE, model_mac_math_fault_dict_list)
+with open('../test_fault_dictionary_stuff/wght_distribution_info_lenet.pickle', 'rb') as fdfile:
+    lenet_wght_distribution_info = pickle.load(fdfile)
+with open('../test_fault_dictionary_stuff/ifmap_distribution_info_lenet.pickle', 'rb') as fdfile:
+    lenet_ifmap_distribution_info = pickle.load(fdfile)
+    
+model_preprocess_data_list=preprocess_model_mac_fault(model, PE, model_mac_math_fault_dict_list,
+                                                      model_fmap_dist_stat_list=lenet_ifmap_distribution_info,
+                                                      model_wght_dist_stat_list=lenet_wght_distribution_info)
 
 K.clear_session()
 
@@ -174,8 +181,7 @@ print('Model compiled !')
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
-#%%
-#dataset setup
+#%% dataset setup
 
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('mnist')
 

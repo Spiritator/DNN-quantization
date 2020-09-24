@@ -110,14 +110,17 @@ class mac_unit:
     ...                  }
     
     | mac noise fault injection unique fault
-    >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+    >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray,
+    ...                  'mean_sum_ofmap': 4D Ndarray} 
     ... #the standard deviation amplifier mask, same shape as target ofmap
+    ... #the mean value moving mask, same shape as target ofmap
 
     | mac noise fault injection scatter fault
-    >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
+    >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray, 
+    ...                  'mean_sum_ofmap': 4D Ndarray} 
     ... #the standard deviation amplifier mask, same shape as target ofmap
+    ... #the mean value moving mask, same shape as target ofmap
 
-    
     """
     def __init__(self, quantizers, quant_mode='hybrid', 
                  ifmap_io=None, wght_io=None, psum_io=None, 
@@ -1044,6 +1047,7 @@ class mac_unit:
                 
             # (coor idx, num of psidx, psum idx)
             psum_idx_amp=np.ones(len(fault_value),dtype=np.float32)
+            psum_idx_mean=np.ones(len(fault_value),dtype=np.float32)
             fault_bit=np.array(fault_bit)
             param_ifmap=np.array(param_ifmap)
             param_wght=np.array(param_wght)
@@ -1064,6 +1068,7 @@ class mac_unit:
                 fault_type.append(info['SA_type'])
             
             psum_idx_amp=np.ones(np.sum(cnt_psidx),dtype=np.float32)
+            psum_idx_mean=np.zeros(np.sum(cnt_psidx),dtype=np.float32)
             cnt_psidx=np.cumsum(cnt_psidx)[:-1]
 
             fault_param=np.array(fault_param)
@@ -1092,10 +1097,12 @@ class mac_unit:
         
         if len(type0)>0:
             np.multiply.at(psum_idx_amp, type0, np.divide(1,np.sqrt(2),dtype=np.float32))
+            np.multiply.at(psum_idx_mean, type0, 0.5)
         if len(type1)>0:
             np.multiply.at(psum_idx_amp, type1, np.divide(1,np.sqrt(2),dtype=np.float32))
+            np.multiply.at(psum_idx_mean, type1, 0.5)
 
-        return psum_idx_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap
+        return psum_idx_amp,psum_idx_mean,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap
 
     def preprocess_mac_noise_fault_tensor(self, fault_dict, ofmap_shape, 
                                           dist_stats_fmap=None, dist_stats_wght=None,
@@ -1126,8 +1133,8 @@ class mac_unit:
             The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
         dist_stats_fmap : Dictionary.
             Statistic dctionary for input feature maps.
-        dist_stats_wght : Dictionary.
-            Statistic dctionary for weights.
+        dist_stats_wght : List of Dictionary.
+            Statistic dctionary for kernel and bias.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1162,6 +1169,14 @@ class mac_unit:
             amp_factor_fmap=self.amp_factor_fmap
         if amp_factor_wght==1.0:
             amp_factor_wght=self.amp_factor_wght
+        mean_factor_fmap=0.0
+        mean_factor_wght=0.0
+        if dist_stats_fmap is not None:
+            amp_factor_fmap=np.float32(dist_stats_fmap['std_dev'])
+            mean_factor_fmap=np.float32(dist_stats_fmap['mean'])
+        if dist_stats_wght is not None:
+            amp_factor_wght=np.float32(dist_stats_wght['std_dev'])
+            mean_factor_wght=np.float32(dist_stats_wght['mean'])
             
         preprocess_data=dict()
             
@@ -1191,59 +1206,80 @@ class mac_unit:
                 # give the weight's value amplifier
                 stddev_amp=np.multiply(stddev_amp,amp_factor_wght)
                 stddev_amp=np.multiply(stddev_amp,fault_order)
+                mean_sum=np.multiply(mean_factor_wght,psum_idx_cnt)
+                mean_sum=np.multiply(mean_sum,fault_order)
                 
             elif fault_param=='wght_in' or fault_param=='wght_out':
                 # give the feature map's value amplifier
                 stddev_amp=np.multiply(stddev_amp,amp_factor_fmap)
-                #TODO
-                # dafaq is relu effect
-                # relu
-                #wght_amp=np.clip(wght_amp, 0, np.inf)
                 stddev_amp=np.multiply(stddev_amp,fault_order)
+                mean_sum=np.multiply(mean_factor_fmap,psum_idx_cnt)
+                mean_sum=np.multiply(mean_sum,fault_order)
+                # relu effect redution (the percentage of zero data)
+                if dist_stats_fmap is not None:
+                    quantile=dist_stats_fmap['quantile']
+                    relu_redu=np.float32(np.divide(np.subtract(np.sum(quantile>0),0.5),len(quantile)-1))
+                else:
+                    relu_redu=np.float32(1)
+                stddev_amp=np.multiply(stddev_amp,np.sqrt(relu_redu))
+                mean_sum=np.multiply(mean_sum,relu_redu)
                 
                            
             # fault injection of ofmap
             elif fault_param=='psum_in' or fault_param=='psum_out':
                  stddev_amp=np.multiply(stddev_amp,fault_order)
+                 mean_sum=np.float32(0)
     
             # add psum_alter back to ofmap
             stddev_amp_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
             np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
+            mean_sum_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
+            np.add.at(mean_sum_ofmap,tuple([*fd_coor.T]),mean_sum)
             
             preprocess_data['stddev_amp_ofmap']=stddev_amp_ofmap
+            preprocess_data['mean_sum_ofmap']=mean_sum_ofmap
 
         else: # slow loop gen
             # loop data extraction
             if isinstance(fd_value[0]['id'],int):
-                stddev_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=False)
+                stddev_amp,mean_sum,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=False)
             
             elif isinstance(fd_value[0]['id'],list):
-                stddev_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=True)
+                stddev_amp,mean_sum,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=True)
                 
             # the scaling for fault bit order
             fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb),dtype=np.float32)
-
+    
             # fault injection
-
+    
             # ofmap fault
             if len(param_ofmap)>0:
-                 np.multiply.at(stddev_amp, param_ofmap, fault_order)
+                np.multiply.at(stddev_amp, param_ofmap, fault_order)
+                np.multiply.at(mean_sum, param_ofmap, 0.0)
                 
             # ifmap fault
             if len(param_ifmap)>0:
                 # give the weight's value amplifier
                 ifmap_amp=np.multiply(fault_order,amp_factor_wght)
                 np.multiply.at(stddev_amp, param_ifmap, ifmap_amp)
+                ifmap_sum=np.multiply(fault_order,mean_factor_wght)
+                np.multiply.at(mean_sum, param_ifmap, ifmap_sum)        
             
             # wght fault
             if len(param_wght)>0:
                 # give the feature map's value amplifier
                 wght_amp=np.multiply(fault_order,amp_factor_fmap)
-                #TODO
-                # dafaq is relu effect
-                # relu
-                #wght_amp=np.clip(wght_amp, 0, np.inf)
                 np.multiply.at(stddev_amp, param_wght, wght_amp)
+                wght_sum=np.multiply(fault_order,mean_factor_fmap)
+                np.multiply.at(mean_sum, param_wght, wght_sum)
+                # relu effect redution (the percentage of zero data)
+                if dist_stats_fmap is not None:
+                    quantile=dist_stats_fmap['quantile']
+                    relu_redu=np.float32(np.divide(np.subtract(np.sum(quantile>0),0.5),len(quantile)-1))
+                else:
+                    relu_redu=np.float32(1)
+                np.multiply.at(stddev_amp, param_wght, np.sqrt(relu_redu))
+                np.multiply.at(mean_sum, param_wght, relu_redu)
                 
             if cnt_psidx is not None:
                 stddev_amp=np.split(stddev_amp,cnt_psidx)
@@ -1252,12 +1288,20 @@ class mac_unit:
                     stddevpixel=np.sqrt(np.sum(np.power(stddevpixel,2,dtype=np.float32)),dtype=np.float32)
                     stddevpixel=np.multiply(stddevpixel,nsum)
                 stddev_amp=np.array(stddev_amp)
-            
+                
+                mean_sum=np.split(mean_sum,cnt_psidx)
+                for meanpixel in mean_sum:
+                    meanpixel=np.sum(meanpixel)
+                mean_sum=np.array(mean_sum)
+    
             # add psum_alter back to ofmap
             stddev_amp_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
             np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
+            mean_sum_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
+            np.add.at(mean_sum_ofmap,tuple([*fd_coor.T]),mean_sum)
             
             preprocess_data['stddev_amp_ofmap']=stddev_amp_ofmap
+            preprocess_data['mean_sum_ofmap']=mean_sum_ofmap
                         
         return preprocess_data
     
@@ -1287,8 +1331,8 @@ class mac_unit:
             The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
         dist_stats_fmap : Dictionary.
             Statistic dctionary for input feature maps.
-        dist_stats_wght : Dictionary.
-            Statistic dctionary for weights.
+        dist_stats_wght : List of Dictionary.
+            Statistic dctionary for kernel and bias.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1316,10 +1360,19 @@ class mac_unit:
             else:
                 quantizer_output =quantizer
                             
+        # mean & std setup
         if amp_factor_fmap==1.0:
             amp_factor_fmap=self.amp_factor_fmap
         if amp_factor_wght==1.0:
             amp_factor_wght=self.amp_factor_wght
+        mean_factor_fmap=0.0
+        mean_factor_wght=0.0
+        if dist_stats_fmap is not None:
+            amp_factor_fmap=np.float32(dist_stats_fmap['std_dev'])
+            mean_factor_fmap=np.float32(dist_stats_fmap['mean'])
+        if dist_stats_wght is not None:
+            amp_factor_wght=np.float32(dist_stats_wght[0]['std_dev'])
+            mean_factor_wght=np.float32(dist_stats_wght[0]['mean'])
             
         preprocess_data=dict()
             
@@ -1347,26 +1400,38 @@ class mac_unit:
             # give the weight's value amplifier
             stddev_amp=np.multiply(stddev_amp,amp_factor_wght)
             stddev_amp=np.multiply(stddev_amp,fault_order)
+            mean_sum=np.multiply(mean_factor_wght,psum_idx_cnt)
+            mean_sum=np.multiply(mean_sum,fault_order)
             
         elif fault_param=='wght_in' or fault_param=='wght_out':
             # give the feature map's value amplifier
             stddev_amp=np.multiply(stddev_amp,amp_factor_fmap)
-            #TODO
-            # dafaq is relu effect
-            # relu
-            #wght_amp=np.clip(wght_amp, 0, np.inf)
             stddev_amp=np.multiply(stddev_amp,fault_order)
+            mean_sum=np.multiply(mean_factor_fmap,psum_idx_cnt)
+            mean_sum=np.multiply(mean_sum,fault_order)
+            # relu effect redution (the percentage of zero data)
+            if dist_stats_fmap is not None:
+                quantile=dist_stats_fmap['quantile']
+                relu_redu=np.float32(np.divide(np.subtract(np.sum(quantile>0),0.5),len(quantile)-1))
+            else:
+                relu_redu=np.float32(1)
+            stddev_amp=np.multiply(stddev_amp,np.sqrt(relu_redu))
+            mean_sum=np.multiply(mean_sum,relu_redu)
             
                        
         # fault injection of ofmap
         elif fault_param=='psum_in' or fault_param=='psum_out':
              stddev_amp=np.multiply(stddev_amp,fault_order)
+             mean_sum=np.float32(0)
 
         # add psum_alter back to ofmap
         stddev_amp_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
         np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
+        mean_sum_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
+        np.add.at(mean_sum_ofmap,tuple([*fd_coor.T]),mean_sum)
         
         preprocess_data['stddev_amp_ofmap']=stddev_amp_ofmap
+        preprocess_data['mean_sum_ofmap']=mean_sum_ofmap
         
         return preprocess_data
     
@@ -1398,8 +1463,8 @@ class mac_unit:
             The ofmap shape for fault injection. The shape is needed for generate the mask amplifier.
         dist_stats_fmap : Dictionary.
             Statistic dctionary for input feature maps.
-        dist_stats_wght : Dictionary.
-            Statistic dctionary for weights.
+        dist_stats_wght : List of Dictionary.
+            Statistic dctionary for kernel and bias.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1431,6 +1496,14 @@ class mac_unit:
             amp_factor_fmap=self.amp_factor_fmap
         if amp_factor_wght==1.0:
             amp_factor_wght=self.amp_factor_wght
+        mean_factor_fmap=0.0
+        mean_factor_wght=0.0
+        if dist_stats_fmap is not None:
+            amp_factor_fmap=np.float32(dist_stats_fmap['std_dev'])
+            mean_factor_fmap=np.float32(dist_stats_fmap['mean'])
+        if dist_stats_wght is not None:
+            amp_factor_wght=np.float32(dist_stats_wght['std_dev'])
+            mean_factor_wght=np.float32(dist_stats_wght['mean'])
             
         preprocess_data=dict()
             
@@ -1439,10 +1512,10 @@ class mac_unit:
 
         # loop data extraction
         if isinstance(fd_value[0]['id'],int):
-            stddev_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=False)
+            stddev_amp,mean_sum,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=False)
         
         elif isinstance(fd_value[0]['id'],list):
-            stddev_amp,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=True)
+            stddev_amp,mean_sum,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap=self._fault_noise_extract_loop(fd_value, repetitive=True)
             
         # the scaling for fault bit order
         fault_order=np.power(2.,np.subtract(fault_bit,quantizer_output.fb),dtype=np.float32)
@@ -1451,23 +1524,32 @@ class mac_unit:
 
         # ofmap fault
         if len(param_ofmap)>0:
-             np.multiply.at(stddev_amp, param_ofmap, fault_order)
+            np.multiply.at(stddev_amp, param_ofmap, fault_order)
+            np.multiply.at(mean_sum, param_ofmap, 0.0)
             
         # ifmap fault
         if len(param_ifmap)>0:
             # give the weight's value amplifier
             ifmap_amp=np.multiply(fault_order,amp_factor_wght)
             np.multiply.at(stddev_amp, param_ifmap, ifmap_amp)
+            ifmap_sum=np.multiply(fault_order,mean_factor_wght)
+            np.multiply.at(mean_sum, param_ifmap, ifmap_sum)        
         
         # wght fault
         if len(param_wght)>0:
             # give the feature map's value amplifier
             wght_amp=np.multiply(fault_order,amp_factor_fmap)
-            #TODO
-            # dafaq is relu effect
-            # relu
-            #wght_amp=np.clip(wght_amp, 0, np.inf)
             np.multiply.at(stddev_amp, param_wght, wght_amp)
+            wght_sum=np.multiply(fault_order,mean_factor_fmap)
+            np.multiply.at(mean_sum, param_wght, wght_sum)
+            # relu effect redution (the percentage of zero data)
+            if dist_stats_fmap is not None:
+                quantile=dist_stats_fmap['quantile']
+                relu_redu=np.float32(np.divide(np.subtract(np.sum(quantile>0),0.5),len(quantile)-1))
+            else:
+                relu_redu=np.float32(1)
+            np.multiply.at(stddev_amp, param_wght, np.sqrt(relu_redu))
+            np.multiply.at(mean_sum, param_wght, relu_redu)
             
         if cnt_psidx is not None:
             stddev_amp=np.split(stddev_amp,cnt_psidx)
@@ -1476,12 +1558,20 @@ class mac_unit:
                 stddevpixel=np.sqrt(np.sum(np.power(stddevpixel,2,dtype=np.float32)),dtype=np.float32)
                 stddevpixel=np.multiply(stddevpixel,nsum)
             stddev_amp=np.array(stddev_amp)
-        
+            
+            mean_sum=np.split(mean_sum,cnt_psidx)
+            for meanpixel in mean_sum:
+                meanpixel=np.sum(meanpixel)
+            mean_sum=np.array(mean_sum)
+
         # add psum_alter back to ofmap
         stddev_amp_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
         np.add.at(stddev_amp_ofmap,tuple([*fd_coor.T]),stddev_amp)
+        mean_sum_ofmap=np.zeros(ofmap_shape,dtype=np.float32)
+        np.add.at(mean_sum_ofmap,tuple([*fd_coor.T]),mean_sum)
         
         preprocess_data['stddev_amp_ofmap']=stddev_amp_ofmap
+        preprocess_data['mean_sum_ofmap']=mean_sum_ofmap
                         
         return preprocess_data
 
@@ -1534,8 +1624,8 @@ class mac_unit:
             The dilation rate (row, col).
         dist_stats_fmap : Dictionary.
             Statistic dctionary for input feature maps.
-        dist_stats_wght : Dictionary.
-            Statistic dctionary for weights.
+        dist_stats_wght : List of Dictionary.
+            Statistic dctionary for kernel and bias.
         amp_factor_fmap: Float. 
             The adjustment term for Gaussian standard deviation of the ifmap value noise simulation.
         amp_factor_wght: Float. 
@@ -1567,14 +1657,18 @@ class mac_unit:
                 
             if fast_gen:
                 preprocess_data=self.preprocess_mac_noise_fault_uni(fault_dict, ofmap_shape, 
+                                                                    dist_stats_fmap=dist_stats_fmap,
+                                                                    dist_stats_wght=dist_stats_wght,
                                                                     amp_factor_fmap=amp_factor_fmap,
                                                                     amp_factor_wght=amp_factor_wght,
                                                                     quantizer=quantizer)
             else:
-                preprocess_data=self.preprocess_mac_math_fault_scatter(fault_dict, ofmap_shape, 
-                                                                       amp_factor_fmap=amp_factor_fmap,
-                                                                       amp_factor_wght=amp_factor_wght,
-                                                                       quantizer=quantizer)
+                preprocess_data=self.preprocess_mac_noise_fault_scatter(fault_dict, ofmap_shape, 
+                                                                        dist_stats_fmap=dist_stats_fmap,
+                                                                        dist_stats_wght=dist_stats_wght,
+                                                                        amp_factor_fmap=amp_factor_fmap,
+                                                                        amp_factor_wght=amp_factor_wght,
+                                                                        quantizer=quantizer)
         else:
             if fast_gen:
                 preprocess_data=self.preprocess_mac_math_fault_uni(fault_dict,
@@ -1600,7 +1694,7 @@ class mac_unit:
 
    
 def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict,
-                               layer_wght_dist_stat=None, layer_fmap_dist_stat=None, **kwargs):
+                               layer_fmap_dist_stat=None, layer_wght_dist_stat=None, **kwargs):
     """ Layer wise handle mac fault injection preprocess part before model/layer call
         Seperate the CPU and GPU processing. The preprocess function under mac_unit class are for CPU process.
 
@@ -1613,11 +1707,11 @@ def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict,
     layer_mac_fault_dict : Dictionary
         Fault dctionary for output feature maps.
         The layers have no weight and MAC operation are setting its fault dictionary to None.
-    layer_wght_dist_stat : Dictionary
-        Statistic dctionary for weights.
-        The layers have no weight and MAC operation are setting its statistic dictionary to None.
     layer_fmap_dist_stat : Dictionary
         Statistic dctionary for input feature maps.
+        The layers have no weight and MAC operation are setting its statistic dictionary to None.
+    layer_wght_dist_stat : List of Dictionary.
+        Statistic dctionary for kernel and bias.
         The layers have no weight and MAC operation are setting its statistic dictionary to None.
     Returns
     -------
@@ -1636,6 +1730,8 @@ def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict,
             preprocess_data=mac_unit_.preprocess_mac_fault_caller(layer_mac_fault_dict, 
                                                                   ofmap_shape=layer.output_shape,
                                                                   layer_type='Dense',
+                                                                  dist_stats_fmap=layer_fmap_dist_stat, 
+                                                                  dist_stats_wght=layer_wght_dist_stat,
                                                                   **kwargs)
         elif 'conv' in layer_name and 'depth' not in layer_name:
             preprocess_data=mac_unit_.preprocess_mac_fault_caller(layer_mac_fault_dict, 
@@ -1644,6 +1740,8 @@ def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict,
                                                                   ksizes=layer.kernel_size, 
                                                                   padding=layer.padding, 
                                                                   dilation_rates=layer.dilation_rate, 
+                                                                  dist_stats_fmap=layer_fmap_dist_stat, 
+                                                                  dist_stats_wght=layer_wght_dist_stat,
                                                                   **kwargs)
         elif 'conv' in layer_name and 'depth' in layer_name:
             preprocess_data=mac_unit_.preprocess_mac_fault_caller(layer_mac_fault_dict, 
@@ -1651,7 +1749,9 @@ def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict,
                                                                   layer_type='DepthwiseConv2D',
                                                                   ksizes=layer.kernel_size, 
                                                                   padding=layer.padding, 
-                                                                  dilation_rates=layer.dilation_rate, 
+                                                                  dilation_rates=layer.dilation_rate,
+                                                                  dist_stats_fmap=layer_fmap_dist_stat, 
+                                                                  dist_stats_wght=layer_wght_dist_stat,
                                                                   **kwargs)
         else:
             raise TypeError('Layer is neigher Dense, Conv2D or DepthwiseConv2D. Layer mac fault dict should be None.')
@@ -1659,7 +1759,7 @@ def preprocess_layer_mac_fault(layer, mac_unit_, layer_mac_fault_dict,
     return preprocess_data
 
 def preprocess_model_mac_fault(model, mac_unit_, model_mac_fault_dict_list, 
-                               model_wght_dist_stat_list=None, model_fmap_dist_stat_list=None, **kwargs):
+                               model_fmap_dist_stat_list=None, model_wght_dist_stat_list=None, **kwargs):
     """ Model wise handle mac fault injection preprocess part before model/layer call
         Seperate the CPU and GPU processing. The preprocess function under mac_unit class are for CPU process.
 
@@ -1708,8 +1808,8 @@ def preprocess_model_mac_fault(model, mac_unit_, model_mac_fault_dict_list,
         preprocess_data=preprocess_layer_mac_fault(model.layers[layer_num],
                                                    mac_unit_,
                                                    model_mac_fault_dict_list[layer_num], 
-                                                   layer_wght_dist_stat=layer_wght_dist_stat,
                                                    layer_fmap_dist_stat=layer_fmap_dist_stat,
+                                                   layer_wght_dist_stat=layer_wght_dist_stat,
                                                    **kwargs)
         
         model_preprocess_data_list[layer_num]=preprocess_data

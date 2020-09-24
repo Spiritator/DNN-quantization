@@ -950,15 +950,21 @@ class mac_fault_injector:
             # data allocation
             stddev_amp_ofmap=fault_dict['stddev_amp_ofmap']
             stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+            mean_sum_ofmap=fault_dict['mean_sum_ofmap']
+            mean_sum_ofmap=tf.constant(mean_sum_ofmap)
             gaussian_noise_mask=tf.random.normal(ofmap.shape)
             gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+            gaussian_noise_mask=tf.add(gaussian_noise_mask,mean_sum_ofmap)
             output=tf.add(ofmap, gaussian_noise_mask)
 
         else: # slow loop gen
             stddev_amp_ofmap=fault_dict['stddev_amp_ofmap']
             stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+            mean_sum_ofmap=fault_dict['mean_sum_ofmap']
+            mean_sum_ofmap=tf.constant(mean_sum_ofmap)
             gaussian_noise_mask=tf.random.normal(ofmap.shape)
             gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+            gaussian_noise_mask=tf.add(gaussian_noise_mask,mean_sum_ofmap)
             output=tf.add(ofmap, gaussian_noise_mask)
                         
         return output
@@ -996,8 +1002,11 @@ class mac_fault_injector:
         """
         stddev_amp_ofmap=fault_dict['stddev_amp_ofmap']
         stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+        mean_sum_ofmap=fault_dict['mean_sum_ofmap']
+        mean_sum_ofmap=tf.constant(mean_sum_ofmap)
         gaussian_noise_mask=tf.random.normal(ofmap.shape)
         gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+        gaussian_noise_mask=tf.add(gaussian_noise_mask,mean_sum_ofmap)
         output=tf.add(ofmap, gaussian_noise_mask)
         
         return output
@@ -1037,8 +1046,11 @@ class mac_fault_injector:
         """
         stddev_amp_ofmap=fault_dict['stddev_amp_ofmap']
         stddev_amp_ofmap=tf.constant(stddev_amp_ofmap)
+        mean_sum_ofmap=fault_dict['mean_sum_ofmap']
+        mean_sum_ofmap=tf.constant(mean_sum_ofmap)
         gaussian_noise_mask=tf.random.normal(ofmap.shape)
         gaussian_noise_mask=tf.multiply(gaussian_noise_mask,stddev_amp_ofmap)
+        gaussian_noise_mask=tf.add(gaussian_noise_mask,mean_sum_ofmap)
         output=tf.add(ofmap, gaussian_noise_mask)
         
         return output

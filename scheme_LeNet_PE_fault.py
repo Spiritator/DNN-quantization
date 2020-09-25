@@ -8,7 +8,7 @@ An example of using inference scheme to arange analysis and save result.
 evaluate PE array fault injection testing result of LeNet-5
 """
 
-import os,csv
+import os,csv,pickle
 import tensorflow.keras.backend as K
 
 from simulator.inference.scheme import inference_scheme
@@ -39,7 +39,9 @@ batch_size=20
 config_dir=os.path.join('..','pe_mapping_config')
 network_dir='lenet'
 dataflow_dir='ws'
-config_dir=os.path.join(config_dir, network_dir, dataflow_dir)
+#PEarraysize='8x8'
+PEarraysize='16x16'
+config_dir=os.path.join(config_dir, network_dir, dataflow_dir, PEarraysize)
 mac_config=os.path.join(config_dir,'mac_unit_config.json')
 model_wl=model_word_length
 
@@ -57,7 +59,8 @@ def call_model():
 # PE represent computation unit
 PE=mac_unit(mac_config, noise_inject=noise_inject)
 # PE array
-MXU=PEarray(8,8,mac_config=PE)
+#MXU=PEarray(8,8,mac_config=PE)
+MXU=PEarray(16,16,mac_config=PE)
 # assign fault dictionary
 fault_locs=list()
 fault_infos=list()
@@ -65,46 +68,94 @@ for i in range(test_rounds):
     loc_tmp,info_tmp=MXU.make_single_SA_fault(n_bit=model_wl, fault_type='flip')
     fault_locs.append(loc_tmp)
     fault_infos.append(info_tmp)
+    
+with open('../test_fault_dictionary_stuff/wght_distribution_info_lenet.pickle', 'rb') as fdfile:
+    lenet_wght_distribution_info = pickle.load(fdfile)
+with open('../test_fault_dictionary_stuff/ifmap_distribution_info_lenet.pickle', 'rb') as fdfile:
+    lenet_ifmap_distribution_info = pickle.load(fdfile)
 
-#%% PE mapping setup
+#%% PE mapping setup 8x8 WS
+
+# # conv1
+# ofmap_tile_conv1=tile_PE((1,28,28,8),is_fmap=True,wl=model_wl)
+# ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)
+# wght_tile_conv1 =tile_PE((5,5,1,8),is_fmap=False,wl=model_wl)
+# ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
+# ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
+# wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
+# MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
+
+# # conv2
+# ofmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
+# ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
+# wght_tile_conv2 =tile_PE((5,5,16,16),is_fmap=False,wl=model_wl)
+# ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
+# ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
+# wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
+# MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
+
+
+# # FC1
+# ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
+# ifmap_tile_fc1=tile_FC_PE((1,882),is_fmap=True,wl=model_wl)
+# wght_tile_fc1 =tile_FC_PE((882,8),is_fmap=False,wl=model_wl)
+# ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
+# ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
+# wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
+# MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
+
+# # FC2
+# ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
+# ifmap_tile_fc2=tile_FC_PE((1,128),is_fmap=True,wl=model_wl)
+# wght_tile_fc2 =tile_FC_PE((128,10),is_fmap=False,wl=model_wl)
+# ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
+# ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
+# wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
+# MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
+
+#%% PE mapping setup 16x16 WS
+
+# PE represent computation unit
+PE=mac_unit(mac_config, noise_inject=noise_inject)
+# PE array
+MXU=PEarray(16,16,mac_config=PE)
 
 # conv1
-ofmap_tile_conv1=tile_PE((1,28,28,8),is_fmap=True,wl=model_wl)
+ofmap_tile_conv1=tile_PE((1,28,28,16),is_fmap=True,wl=model_wl)
 ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)
-wght_tile_conv1 =tile_PE((5,5,1,8),is_fmap=False,wl=model_wl)
+wght_tile_conv1 =tile_PE((5,5,1,16),is_fmap=False,wl=model_wl)
 ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
 ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
 wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
 MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
 
 # conv2
-ofmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
+ofmap_tile_conv2=tile_PE((1,14,14,32),is_fmap=True,wl=model_wl)
 ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
-wght_tile_conv2 =tile_PE((5,5,16,16),is_fmap=False,wl=model_wl)
+wght_tile_conv2 =tile_PE((5,5,16,32),is_fmap=False,wl=model_wl)
 ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
 ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
 wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
 MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
 
-## FC1
-#ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
-#ifmap_tile_fc1=tile_FC_PE((1,882),is_fmap=True,wl=model_wl)
-#wght_tile_fc1 =tile_FC_PE((882,8),is_fmap=False,wl=model_wl)
-#ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
-#ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
-#wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
-#MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
+# # FC1
+# ofmap_tile_fc1=tile_FC_PE((1,16),is_fmap=True,wl=model_wl)
+# ifmap_tile_fc1=tile_FC_PE((1,882),is_fmap=True,wl=model_wl)
+# wght_tile_fc1 =tile_FC_PE((882,16),is_fmap=False,wl=model_wl)
+# ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
+# ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
+# wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
+# MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
 
-## FC2
-#ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
-#ifmap_tile_fc2=tile_FC_PE((1,128),is_fmap=True,wl=model_wl)
-#wght_tile_fc2 =tile_FC_PE((128,10),is_fmap=False,wl=model_wl)
-#ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
-#ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
-#wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
-#MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
-
+# # FC2
+# ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
+# ifmap_tile_fc2=tile_FC_PE((1,128),is_fmap=True,wl=model_wl)
+# wght_tile_fc2 =tile_FC_PE((128,10),is_fmap=False,wl=model_wl)
+# ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
+# ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
+# wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
+# MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
 
 #%% fault generation
 
@@ -158,7 +209,9 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
     #MXU.clear_all()
     
     # make preprocess data
-    model_mac_fault_dict_list=preprocess_model_mac_fault(ref_model, PE, model_mac_fault_dict_list)
+    model_mac_fault_dict_list=preprocess_model_mac_fault(ref_model, PE, model_mac_fault_dict_list,
+                                                         model_fmap_dist_stat_list=lenet_ifmap_distribution_info,
+                                                         model_wght_dist_stat_list=lenet_wght_distribution_info)
     
     return model_mac_fault_dict_list, psidx_cnt
 

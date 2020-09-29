@@ -58,7 +58,7 @@ weightT=tf.Variable(weight)
 ofmap=np.zeros([4,56,56,64],dtype='float32')
 
 # load fault dictionary 
-with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as fdfile:
+with open('../test_fault_dictionary_stuff/fault_dict_solved_layer_psumout.pickle', 'rb') as fdfile:
     fault_dict_solved_layer = pickle.load(fdfile)
 
 
@@ -102,7 +102,7 @@ with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as
 
 #%% test inject mac math fault not fast gen
 
-# with open('../pe_mapping_config/fault_dict_solved_layer_scatter.pickle', 'rb') as fdfile:
+# with open('../test_fault_dictionary_stuff/fault_dict_solved_layer_scatter.pickle', 'rb') as fdfile:
 #     fault_dict_solved_scatter = pickle.load(fdfile)
     
 # # mac_unit preprocess
@@ -121,51 +121,6 @@ with open('../pe_mapping_config/fault_dict_solved_layer_wghtin.pickle', 'rb') as
 
 #%% layer mac macth FI test
 
-# PE=mac_unit(quantizers=quantizer(nb=8,
-#                                   fb=6,
-#                                   rounding_method='nearest'),
-#             quant_mode='hybrid',
-#             ifmap_io={'type':'io_pair', 
-#                       'dimension':'PE_x', 
-#                       'direction':'forward'},
-#             wght_io={'type':'io_pair',
-#                       'dimension':'PE_y',
-#                       'direction':'forward'},
-#             psum_io={'type':'io_pair', 
-#                       'dimension':'PE_y', 
-#                       'direction':'forward'},
-#             noise_inject=False,
-#             fast_gen=True
-#             )
-
-# # mac_unit preprocess
-# preprocess_data=PE.preprocess_mac_fault_caller(fault_dict_solved_layer, layer_type='Conv2D',padding='same')
-
-# ifmap=np.divide(np.random.randint(-32,31,[4,56,56,32]),2**6,dtype='float32')
-# weight=np.divide(np.random.randint(-32,31,[3,3,32,64]),2**6,dtype='float32')
-
-# input_shape=Input(batch_shape=(4,56,56,32))
-# x=QuantizedConv2D(filters=64,
-#                   quantizers=qtz,
-#                   kernel_size=(3,3),
-#                   padding='same',
-#                   strides=(1, 1),                              
-#                   activation='relu',
-#                   use_bias=False,
-#                   quant_mode='hybrid',
-#                   ofmap_sa_fault_injection=preprocess_data,
-#                   mac_unit=PE)(input_shape)
-# model=Model(inputs=input_shape, outputs=x, name='test_model')
-
-# model.layers[1].set_weights([weight])
-
-# # ofmap_alter=model.predict(ifmap,verbose=1,batch_size=4)
-# ofmap_alter=model(ifmap)
-# ofmap_alter=ofmap_alter.numpy()
-
-
-#%% layer mac noise FI test
-
 PE=mac_unit(quantizers=quantizer(nb=8,
                                   fb=6,
                                   rounding_method='nearest'),
@@ -179,14 +134,13 @@ PE=mac_unit(quantizers=quantizer(nb=8,
             psum_io={'type':'io_pair', 
                       'dimension':'PE_y', 
                       'direction':'forward'},
-            noise_inject=True,
-            fast_gen=True,
-            amp_factor_fmap=0.28,
-            amp_factor_wght=0.28
+            noise_inject=False,
+            psumfault_handle='direct_sum', # ['single','direct_sum','rand_sum']
+            fast_gen=True
             )
 
 # mac_unit preprocess
-preprocess_data=PE.preprocess_mac_fault_caller(fault_dict_solved_layer, ofmap_shape=(4,56,56,64))
+preprocess_data=PE.preprocess_mac_fault_caller(fault_dict_solved_layer, layer_type='Conv2D',padding='same')
 
 ifmap=np.divide(np.random.randint(-32,31,[4,56,56,32]),2**6,dtype='float32')
 weight=np.divide(np.random.randint(-32,31,[3,3,32,64]),2**6,dtype='float32')
@@ -209,3 +163,50 @@ model.layers[1].set_weights([weight])
 # ofmap_alter=model.predict(ifmap,verbose=1,batch_size=4)
 ofmap_alter=model(ifmap)
 ofmap_alter=ofmap_alter.numpy()
+
+
+#%% layer mac noise FI test
+
+# PE=mac_unit(quantizers=quantizer(nb=8,
+#                                   fb=6,
+#                                   rounding_method='nearest'),
+#             quant_mode='hybrid',
+#             ifmap_io={'type':'io_pair', 
+#                       'dimension':'PE_x', 
+#                       'direction':'forward'},
+#             wght_io={'type':'io_pair',
+#                       'dimension':'PE_y',
+#                       'direction':'forward'},
+#             psum_io={'type':'io_pair', 
+#                       'dimension':'PE_y', 
+#                       'direction':'forward'},
+#             noise_inject=True,
+#             fast_gen=True,
+#             amp_factor_fmap=0.28,
+#             amp_factor_wght=0.28
+#             )
+
+# # mac_unit preprocess
+# preprocess_data=PE.preprocess_mac_fault_caller(fault_dict_solved_layer, ofmap_shape=(4,56,56,64))
+
+# ifmap=np.divide(np.random.randint(-32,31,[4,56,56,32]),2**6,dtype='float32')
+# weight=np.divide(np.random.randint(-32,31,[3,3,32,64]),2**6,dtype='float32')
+
+# input_shape=Input(batch_shape=(4,56,56,32))
+# x=QuantizedConv2D(filters=64,
+#                   quantizers=qtz,
+#                   kernel_size=(3,3),
+#                   padding='same',
+#                   strides=(1, 1),                              
+#                   activation='relu',
+#                   use_bias=False,
+#                   quant_mode='hybrid',
+#                   ofmap_sa_fault_injection=preprocess_data,
+#                   mac_unit=PE)(input_shape)
+# model=Model(inputs=input_shape, outputs=x, name='test_model')
+
+# model.layers[1].set_weights([weight])
+
+# # ofmap_alter=model.predict(ifmap,verbose=1,batch_size=4)
+# ofmap_alter=model(ifmap)
+# ofmap_alter=ofmap_alter.numpy()

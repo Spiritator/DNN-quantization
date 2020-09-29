@@ -385,11 +385,7 @@ class mac_fault_injector:
                                                     sim_truncarry, 
                                                     ifmap_alloc, 
                                                     wght_alloc)
-                
-            #TODO
-            # there is no way to know the psum of exact time frame
-            # fault on psum do it the way in PE RTL test
-            
+                            
             # fault injection of ofmap
             elif fault_param=='psum_in' or fault_param=='psum_out':
                 if self.psumfault_handle=='single':

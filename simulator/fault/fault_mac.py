@@ -22,6 +22,7 @@ class mac_fault_injector:
         | quant_mode: The quantization mode of MAC. 
         | noise_inject: Using mac noise fault injection method or not.
         | sim_truncarry: Simulate the truncation carry during mac math fault injection. 
+        | psumfault_handle: The method of handling fault on 'psum_in' and 'psum_out'.
         | fast_gen: Use fast generation or not.
      
     fault_dict: Dictionary.
@@ -69,7 +70,10 @@ class mac_fault_injector:
     >>> preprocess_data={'stddev_amp_ofmap': 4D Ndarray} 
     ... #the standard deviation amplifier mask, same shape as target ofmap
 
-        
+    Warning!!
+    ---------
+    These fault injection method is not suitable for tf.function the decision flow is complex for 
+    converting all of them to tensor graph. Recommand using Keras model to wrap these fault injection method.
     """
     def __init__(self, mac_unit, fault_dict=None):
         """ mac fault injector initializer """
@@ -80,6 +84,7 @@ class mac_fault_injector:
 
         self.noise_inject=mac_unit.noise_inject
         self.sim_truncarry=mac_unit.sim_truncarry
+        self.psumfault_handle=mac_unit.psumfault_handle
         self.fast_gen=mac_unit.fast_gen
         
     def _padding_ifmap(self, ifmap, ksizes, dilation_rates):
@@ -387,9 +392,17 @@ class mac_fault_injector:
             
             # fault injection of ofmap
             elif fault_param=='psum_in' or fault_param=='psum_out':
-                psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
-                
-                psum_alter=tf.reduce_sum(psum_alter, axis=1)
+                if self.psumfault_handle=='single':
+                    psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
+                elif self.psumfault_handle=='rand_sum':
+                    randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=1, dtype=tf.int32)
+                    polarity=tf.multiply(polarity,randpolar)
+                    psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
+                    psum_alter=tf.reduce_sum(psum_alter, axis=1)
+                elif self.psumfault_handle=='direct_sum':
+                    psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
+                    psum_alter=tf.reduce_sum(psum_alter, axis=1)
+                    
                 psum_alter=quantizer_output.right_shift_back(psum_alter)
                 psum_alter=quantizer_output.right_shift_back(psum_alter)
 
@@ -459,9 +472,18 @@ class mac_fault_injector:
             # ofmap fault injection
             if FI_ofmap:
                 faultbit_ofmap=tf.constant(fault_dict['faultbit_ofmap'])
-                psum_alter_ofmap=tf.multiply(polarity_ofmap, faultbit_ofmap)
-                
-                psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
+
+                if self.psumfault_handle=='single':
+                    psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
+                elif self.psumfault_handle=='rand_sum':
+                    randpolar=tf.random.uniform(polarity_ofmap.shape, minval=0, maxval=1, dtype=tf.int32)
+                    polarity_ofmap=tf.multiply(polarity_ofmap,randpolar)
+                    psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
+                    psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
+                elif self.psumfault_handle=='direct_sum':
+                    psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
+                    psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
+
                 psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
                 psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
                 
@@ -663,16 +685,20 @@ class mac_fault_injector:
                                                 sim_truncarry, 
                                                 ifmap_alloc, 
                                                 wght_alloc)
-            
-        #TODO
-        # there is no way to know the psum of exact time frame
-        # fault on psum do it the way in PE RTL test
-        
+                    
         # fault injection of ofmap
         elif fault_param=='psum_in' or fault_param=='psum_out':
-            psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
-            
-            psum_alter=tf.reduce_sum(psum_alter, axis=1)
+            if self.psumfault_handle=='single':
+                psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
+            elif self.psumfault_handle=='rand_sum':
+                randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=1, dtype=tf.int32)
+                polarity=tf.multiply(polarity,randpolar)
+                psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
+                psum_alter=tf.reduce_sum(psum_alter, axis=1)
+            elif self.psumfault_handle=='direct_sum':
+                psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
+                psum_alter=tf.reduce_sum(psum_alter, axis=1)
+                
             psum_alter=quantizer_output.right_shift_back(psum_alter)
             psum_alter=quantizer_output.right_shift_back(psum_alter)
 
@@ -848,10 +874,19 @@ class mac_fault_injector:
         
         # ofmap fault injection
         if FI_ofmap:
-            faultbit_ofmap=tf.constant(fault_dict['faultbit_ofmap'])
-            psum_alter_ofmap=tf.multiply(polarity_ofmap, faultbit_ofmap)
+            faultbit_ofmap=tf.constant(fault_dict['faultbit_ofmap'])            
+
+            if self.psumfault_handle=='single':
+                psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
+            elif self.psumfault_handle=='rand_sum':
+                randpolar=tf.random.uniform(polarity_ofmap.shape, minval=0, maxval=1, dtype=tf.int32)
+                polarity_ofmap=tf.multiply(polarity_ofmap,randpolar)
+                psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
+                psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
+            elif self.psumfault_handle=='direct_sum':
+                psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
+                psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
             
-            psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
             psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
             psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
             

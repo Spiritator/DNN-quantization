@@ -49,6 +49,19 @@ class mac_unit:
         The truncation carry is cause by the carry-out of thrown away fractional bits. 
         It could be 1 in addition or -1 in subtraction, when the unwanted fractional bits value overflow to the needed fractional bits.
         How ever this could cause huge time overhead for absolute bit-true model.
+    psumfault_handle: String
+        | The method of handling fault on 'psum_in' and 'psum_out'.
+        | 'single': treat all the partial sum alter generate by fault on the same ofmap pixel as one fault. 
+        |    Only one stuck at fault is applied.
+        | 'direct_sum': Sums all the partial sum alter generate by fault on the same ofmap pixel. 
+        |    This may exaggerate or underestimate the fault effect. 
+        |    Since the accumulated partial sum in each clock cycle is not visible in layer tensor.
+        | 'rand_sum': Randomly give the polarity to all the partial sum alter generate by fault on the same ofmap pixel. 
+        |    Assume that the 0 and 1 appearence are the same in partial sum of each clock cycle which is not visible in layer tensor. 
+        |    Simulate the randomness of actual polarity. Mitigate the exaggerated or underestimated the fault effect
+        |
+        | When psum_io is 'io_pair' default psumfault_handle is 'rand_sum'.
+        | Else psum_io is 'one_way_out' default psumfault_handle is 'single'.
     fast_gen: Bool. 
         Use fast generation or not. Fast generation has the same fault bit and SA type for all coordinates.
         The fault dictionay is form by fault data contamination.
@@ -124,7 +137,7 @@ class mac_unit:
     """
     def __init__(self, quantizers, quant_mode='hybrid', 
                  ifmap_io=None, wght_io=None, psum_io=None, 
-                 noise_inject=True, sim_truncarry=False, fast_gen=True,
+                 noise_inject=True, sim_truncarry=False, psumfault_handle=None, fast_gen=True,
                  amp_factor_fmap=1.0, amp_factor_wght=1.0):
         """ Class initialization """
         if not isinstance(quantizers,str):
@@ -143,6 +156,15 @@ class mac_unit:
         self.fast_gen=fast_gen
         self.amp_factor_fmap=amp_factor_fmap
         self.amp_factor_wght=amp_factor_wght
+        if psumfault_handle is None:
+            if psum_io['type']=='io_pair':
+                psumfault_handle='rand_sum'
+            else:
+                psumfault_handle='single'
+        else:
+            if psumfault_handle not in ['single','direct_sum','rand_sum']:
+                raise ValueError('The psumfault_handle must be one of \'single\',\'direct_sum\',\'rand_sum\'. ')
+            self.psumfault_handle=psumfault_handle
         
     def _setup(self, setup_file):
         """
@@ -443,7 +465,7 @@ class mac_unit:
     def preprocess_mac_math_fault_tensor(self, fault_dict, 
                                          quantizer=None, quant_mode=None, layer_type='Conv2D',
                                          ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
-                                         sim_truncarry=None, fast_gen=None):
+                                         sim_truncarry=None, psumfault_handle=None, fast_gen=None):
         """ The fault injection mathematical model for used in Layer Tensor computing.
             Include both fast generation (fast_gen is True) and scattered generation (fast_gen is False).
             Fast generation means the all the fault information dict are refer to the same source defect 
@@ -522,6 +544,8 @@ class mac_unit:
             self.quant_mode=quant_mode
         if sim_truncarry is None:
             sim_truncarry=self.sim_truncarry
+        if psumfault_handle is None:
+            psumfault_handle=self.psumfault_handle
         if fast_gen is not None:
             self.fast_gen=fast_gen
             
@@ -538,7 +562,6 @@ class mac_unit:
             # (coor idx, num of psidx, psum idx)
             psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
             psum_idx_ofmap=psum_idx_list[:,:,order_get_psidx_o]
-            preprocess_data['psum_idx_ofmap']=psum_idx_ofmap
         
             fault_param=fd_value[0]['param']
             fault_type=fd_value[0]['SA_type']
@@ -557,6 +580,12 @@ class mac_unit:
     
                 preprocess_data['psum_idx_ifmap']=psum_idx_ifmap
                 preprocess_data['psum_idx_wght']=psum_idx_wght
+                preprocess_data['psum_idx_ofmap']=psum_idx_ofmap
+            else:
+                if psumfault_handle=='single':
+                    preprocess_data['psum_idx_ofmap']=fd_coor
+                else:
+                    preprocess_data['psum_idx_ofmap']=psum_idx_ofmap
                 
             # check polarity
             if fault_param=='ifmap_in' or fault_param=='ifmap_out':
@@ -594,7 +623,10 @@ class mac_unit:
                 idx_ofmap=psum_idx_ofmap[:,:,order_get_psidx_o]
                 faultbit_ofmap=fault_bit[param_ofmap]
                 
-                preprocess_data['idx_ofmap']=idx_ofmap
+                if psumfault_handle=='single':
+                    preprocess_data['idx_ofmap']=fd_coor
+                else:
+                    preprocess_data['idx_ofmap']=idx_ofmap
                                 
                 # check polarity
                 if self.quant_mode=='intrinsic':
@@ -691,7 +723,7 @@ class mac_unit:
     def preprocess_mac_math_fault_uni(self, fault_dict, 
                                       quantizer=None, quant_mode=None, layer_type='Conv2D',
                                       ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
-                                      sim_truncarry=None):
+                                      sim_truncarry=None, psumfault_handle=None):
         """ The fault injection mathematical model for used in Lyer Tensor computing.
             This function is only for fast generation.
             Fast generation means the all the fault information dict are refer to the same source defect 
@@ -762,6 +794,8 @@ class mac_unit:
             self.quant_mode=quant_mode
         if sim_truncarry is None:
             sim_truncarry=self.sim_truncarry
+        if psumfault_handle is None:
+            psumfault_handle=self.psumfault_handle
             
         preprocess_data=dict()
             
@@ -775,7 +809,6 @@ class mac_unit:
         # (coor idx, num of psidx, psum idx)
         psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
         psum_idx_ofmap=psum_idx_list[:,:,order_get_psidx_o]
-        preprocess_data['psum_idx_ofmap']=psum_idx_ofmap
     
         fault_param=fd_value[0]['param']
         fault_type=fd_value[0]['SA_type']
@@ -794,6 +827,12 @@ class mac_unit:
 
             preprocess_data['psum_idx_ifmap']=psum_idx_ifmap
             preprocess_data['psum_idx_wght']=psum_idx_wght
+            preprocess_data['psum_idx_ofmap']=psum_idx_ofmap
+        else:
+            if psumfault_handle=='single':
+                preprocess_data['psum_idx_ofmap']=fd_coor
+            else:
+                preprocess_data['psum_idx_ofmap']=psum_idx_ofmap
             
         # check polarity
         if fault_param=='ifmap_in' or fault_param=='ifmap_out':
@@ -816,7 +855,7 @@ class mac_unit:
     def preprocess_mac_math_fault_scatter(self, fault_dict, 
                                           quantizer=None, quant_mode=None, layer_type='Conv2D',
                                           ksizes=(3,3), padding='valid', dilation_rates=(1,1), 
-                                          sim_truncarry=None):
+                                          sim_truncarry=None, psumfault_handle=None):
         """ The fault injection mathematical model for used in Layer Tensor computing
             Include both fast generation (fast_gen is True) and scattered generation (fast_gen is False).
             Scattered generation means the faults are from distinct defect sources that need to be split into 
@@ -890,6 +929,8 @@ class mac_unit:
             self.quant_mode=quant_mode
         if sim_truncarry is None:
             sim_truncarry=self.sim_truncarry
+        if psumfault_handle is None:
+            psumfault_handle=self.psumfault_handle
             
         preprocess_data=dict()
             
@@ -917,7 +958,10 @@ class mac_unit:
             idx_ofmap=psum_idx_ofmap[:,:,order_get_psidx_o]
             faultbit_ofmap=fault_bit[param_ofmap]
             
-            preprocess_data['idx_ofmap']=idx_ofmap
+            if psumfault_handle=='single':
+                preprocess_data['idx_ofmap']=fd_coor
+            else:
+                preprocess_data['idx_ofmap']=idx_ofmap
                             
             # check polarity
             if self.quant_mode=='intrinsic':

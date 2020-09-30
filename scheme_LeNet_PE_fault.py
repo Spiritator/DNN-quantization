@@ -58,9 +58,11 @@ def call_model():
 
 # PE represent computation unit
 PE=mac_unit(mac_config, noise_inject=noise_inject)
+
 # PE array
 #MXU=PEarray(8,8,mac_config=PE)
 MXU=PEarray(16,16,mac_config=PE)
+
 # assign fault dictionary
 fault_locs=list()
 fault_infos=list()
@@ -68,7 +70,13 @@ for i in range(test_rounds):
     loc_tmp,info_tmp=MXU.make_single_SA_fault(n_bit=model_wl, fault_type='flip')
     fault_locs.append(loc_tmp)
     fault_infos.append(info_tmp)
-    
+# Read in fault dictionary
+# with open('../test_fault_dictionary_stuff/validate_mac_math_lenet_fault_locs_8x8.pickle', 'rb') as fdfile:
+#     fault_locs = pickle.load(fdfile)
+# with open('../test_fault_dictionary_stuff/validate_mac_math_lenet_fault_infos_8x8.pickle', 'rb') as fdfile:
+#     fault_infos = pickle.load(fdfile)
+
+# Read in distribution info
 with open('../test_fault_dictionary_stuff/wght_distribution_info_lenet.pickle', 'rb') as fdfile:
     lenet_wght_distribution_info = pickle.load(fdfile)
 with open('../test_fault_dictionary_stuff/ifmap_distribution_info_lenet.pickle', 'rb') as fdfile:

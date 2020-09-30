@@ -232,8 +232,8 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_i
             #kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
         
             # get output for conv multiply
-            output = tf.extract_image_patches(inputs, 
-                                              ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+            output = tf.image.extract_patches(inputs, 
+                                              sizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
                                               strides=strides,
                                               rates=rate,#[1,1,1,1],
                                               padding=padding )
@@ -271,8 +271,8 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_i
             #kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
         
             # get output for conv multiply
-            output = tf.extract_image_patches(inputs, 
-                                              ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+            output = tf.image.extract_patches(inputs, 
+                                              sizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
                                               strides=strides,
                                               rates=rate,#[1,1,1,1],
                                               padding=padding )
@@ -321,11 +321,11 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_i
         kernel = tf.split(kernel,kernel.shape.dims[3].value,axis=3)
     
         # get patch shape, needed for ofmap shape estimation
-        patch = tf.extract_image_patches(output[0], 
-                                               ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
-                                               strides=strides,
-                                               rates=rate,#[1,1,1,1],
-                                               padding=padding )
+        patch = tf.image.extract_patches(output[0], 
+                                         sizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+                                         strides=strides,
+                                         rates=rate,#[1,1,1,1],
+                                         padding=padding )
         patch_shape = patch.get_shape()
         #[input channel, ofmap height, ofmap width, num of kernel psum * input channel]
     
@@ -358,11 +358,11 @@ def QuantizedConv2DCore(inputs, kernel, strides, rate, padding, data_format, Q_i
     
         def outer_body(batch, ofmap):
             # extract patch form global 'output'
-            output_patch = tf.extract_image_patches(tf.gather(output,batch), 
-                                               ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
-                                               strides=strides,
-                                               rates=rate,#[1,1,1,1],
-                                               padding=padding )
+            output_patch = tf.image.extract_patches(tf.gather(output,batch), 
+                                                    sizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+                                                    strides=strides,
+                                                    rates=rate,#[1,1,1,1],
+                                                    padding=padding )
             # prepare inner loop interation variable 'out_kernel'
             out_kernel=tf.constant(0)
             # placeholder 'outputs', ofmaps will be concatenated to this tensor. 
@@ -490,8 +490,8 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
         kernel_shape = kernel.get_shape()
     
         # get patch shape, needed for ofmap shape estimation
-        output = tf.extract_image_patches(inputs, 
-                                          ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+        output = tf.image.extract_patches(inputs, 
+                                          sizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
                                           strides=strides,
                                           rates=rate,#[1,1,1,1],
                                           padding=padding )
@@ -531,11 +531,11 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
         # dont need in depthwise conv2D
     
         # get patch shape, needed for ofmap shape estimation
-        patch = tf.extract_image_patches(output[0], 
-                                               ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
-                                               strides=strides,
-                                               rates=rate,#[1,1,1,1],
-                                               padding=padding )
+        patch = tf.image.extract_patches(output[0], 
+                                         sizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+                                         strides=strides,
+                                         rates=rate,#[1,1,1,1],
+                                         padding=padding )
         patch_shape = patch.get_shape()
         #[input channel, ofmap height, ofmap width, num of kernel psum * input channel]
     
@@ -564,11 +564,11 @@ def QuantizedDepthwiseConv2DCore(inputs, kernel, strides, rate, padding, data_fo
     
         def outer_body(batch, ofmap):
             # extract patch form global 'output'
-            output_patch = tf.extract_image_patches(tf.gather(output,batch), 
-                                               ksizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
-                                               strides=strides,
-                                               rates=rate,#[1,1,1,1],
-                                               padding=padding )
+            output_patch = tf.image.extract_patches(tf.gather(output,batch), 
+                                                    sizes=(1,kernel_shape.dims[0], kernel_shape.dims[1],1), 
+                                                    strides=strides,
+                                                    rates=rate,#[1,1,1,1],
+                                                    padding=padding )
             # start inner loop. pass loop iterator, ofmap placeholder and patch. 
             # Take 2nd element [1] as ofmap!
             outputs=inner_body(output_patch)

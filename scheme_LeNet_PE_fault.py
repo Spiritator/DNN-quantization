@@ -123,11 +123,6 @@ with open('../test_fault_dictionary_stuff/ifmap_distribution_info_lenet.pickle',
 
 #%% PE mapping setup 16x16 WS
 
-# PE represent computation unit
-PE=mac_unit(mac_config, noise_inject=noise_inject)
-# PE array
-MXU=PEarray(16,16,mac_config=PE)
-
 # conv1
 ofmap_tile_conv1=tile_PE((1,28,28,16),is_fmap=True,wl=model_wl)
 ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)

@@ -113,19 +113,19 @@ class quantizer:
         return Xq
     
     def capping(self, X, clip_through=None, overflow_sim=None):
+        """ Handle overflow value saturate or wrap-around """
         if clip_through is None:
             clip_through=self.stop_gradient
         if overflow_sim is None:
             overflow_sim=self.overflow_mode
 
         if not overflow_sim:
-            Xq=tf.divide(X,self.shift_factor)
             if clip_through:
-                Xq = self.clip_through(Xq)    
+                Xq = self.clip_through(X, min_val=self.min_value*self.shift_factor, max_val=self.max_value*self.shift_factor)
             else:
-                Xq = self.clip(Xq)
+                Xq = self.clip(X, min_val=self.min_value*self.shift_factor, max_val=self.max_value*self.shift_factor)
         else:
-            Xq=self.wrap_around(Xq)
+            Xq=self.wrap_around(X)
 
         return Xq
     

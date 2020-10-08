@@ -18,9 +18,9 @@ import time
 import numpy as np
 
 def inference_scheme(model_func, 
-                     model_augment, 
-                     compile_augment, 
-                     dataset_augment, 
+                     model_argument, 
+                     compile_argument, 
+                     dataset_argument, 
                      result_save_file, 
                      append_save_file=False,
                      weight_load=False, 
@@ -29,24 +29,25 @@ def inference_scheme(model_func,
                      fault_gen=False, 
                      fault_param=None,
                      FT_evaluate=False, 
-                     FT_augment=None, 
+                     FT_argument=None, 
                      show_summary=False, 
                      multi_gpu=False, 
                      gpu_num=2, 
                      name_tag=None,
-                     save_file_add_on=None):
+                     save_file_add_on=None,
+                     verbose=7):
     """Take scheme as input and run different setting of inference automaticly. Write the results into a csv file.
 
     Arguments
     ---------
     model_func: The callable function which returns a DNN model. 
         (Keras funtional model API recommmanded).
-    model_augment: List of Dictionarys. 
-        The augments for DNN model function.
-    compile_augment: Dictionary. 
-        The augments for model compile augment.
-    dataset_augment: Dictionary. 
-        The augments for dataset setup.
+    model_argument: List of Dictionarys. 
+        The arguments for DNN model function.
+    compile_argument: Dictionary. 
+        The arguments for model compile argument.
+    dataset_argument: Dictionary. 
+        The arguments for dataset setup.
     result_save_file: String. 
         The file and directory to the result csv file.
     append_save_file: Bool. 
@@ -59,13 +60,13 @@ def inference_scheme(model_func,
         Save runtime in result file or not.
     fault_gen: Bool. 
         If True, generate fault dict list inside inference_scheme (slower, consume less memory). 
-        If False, using the fault dict list from model_augment (faster, consume huge memory).
+        If False, using the fault dict list from model_argument (faster, consume huge memory).
     fault_param: Dictionay. 
-        The augment for fault generation function.
+        The argument for fault generation function.
     FT_evaluate: Bool. 
         Doing fault tolerance analysis or not.
-    FT_augment: Dictionary. 
-        The augments for fault tolerance analysis. (if FT_evaluate is True)
+    FT_argument: Dictionary. 
+        The arguments for fault tolerance analysis. (if FT_evaluate is True)
     show_summary: Bool.
         Show the model compile summary or not.
     multi_gpu: Bool. 
@@ -83,38 +84,45 @@ def inference_scheme(model_func,
             | {'item name 1':[item data list], 
             |  'item name 2':[item data list], 
             |  ...}
-
+            
+    verbose: Integer. 
+        | The verbosity of inference run printing information max 7 (print all info), min 0 (print nothing).
+        | The description below shows the minimum verbosity for info to print.
+        | Dataset Infos: dataset name (6), prepare and ready (6), data shape/number (7).
+        | Scheme Run Index (1)
+        | Model Building: building start (7), layer progress (5), build time (3).
+        | Evaluation: evaluating start (6), inference steps (4), runtime (3).
+        | Fault Tolerance Metrics (2)
+        | Scheme Run Seperation Line (2)
+        
     Returns
     -------
     None
         Running the inference scheme.
     """
     if not callable(model_func):
-        raise TypeError('The model_func augment must be a callable function which returns a Keras DNN model.')
+        raise TypeError('The model_func argument must be a callable function which returns a Keras DNN model.')
         
-        
-    print('preparing dataset...')
-    x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup( **dataset_augment)
+    if verbose>5:
+        print('preparing dataset...')
+    x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup(verbose=verbose-5, **dataset_argument)
     if datagen is not None:
-        datagen_y_test=to_categorical(datagen.classes,datagen.num_classes)
-    
-    print('dataset ready')
+        y_test=to_categorical(datagen.classes,datagen.num_classes)
+    if verbose>5:
+        print('dataset ready')
         
-    
-    for scheme_num in range(len(model_augment)):
+    n_scheme=len(model_argument)
+    for scheme_num in range(n_scheme):
         if name_tag is None:
             name_tag=' '
-        print('Running inference scheme %s %d/%d'%(name_tag,scheme_num+1,len(model_augment)))
+        if n_scheme>1 and verbose>0:
+            print('Running inference scheme %s %d/%d'%(name_tag,scheme_num+1,n_scheme))
         
-        print('Building model...')
-        
-            
-        if datagen is not None:
-            x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup( **dataset_augment)
-        
+        if verbose>6:
+            print('Building model...')
         t = time.time()
         
-        modelaug_tmp=model_augment[scheme_num]
+        modelaug_tmp=model_argument[scheme_num]
         
         if fault_gen:
             model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **fault_param)
@@ -122,7 +130,7 @@ def inference_scheme(model_func,
             modelaug_tmp['ofmap_fault_dict_list']=model_ofmap_fdl
             modelaug_tmp['weight_fault_dict_list']=model_weight_fdl
 
-        model=model_func( **modelaug_tmp)
+        model=model_func(verbose=verbose>4, **modelaug_tmp)
         
         if weight_load:
             weight_name_convert=convert_original_weight_layer_name(weight_name,print_detail=False)
@@ -134,70 +142,74 @@ def inference_scheme(model_func,
         
         if multi_gpu:
             t = time.time()-t
-            print('model build time: %f s'%t)
+            if verbose>2:
+                print('model build time: %f s'%t)
             
-            print('Building multi GPU model...',end=' ')
+            if verbose>6:
+                print('Building multi GPU model...',end=' ')
             t = time.time()            
             parallel_model = multi_gpu_model(model, gpus=gpu_num)
-            parallel_model.compile( **compile_augment)
+            parallel_model.compile( **compile_argument)
             if show_summary:
                 parallel_model.summary()
             t = time.time()-t
-            print('/rmulti GPU model build time: %f s'%t)            
+            if verbose>2:
+                print('/rmulti GPU model build time: %f s'%t)            
         else:
-            model.compile( **compile_augment)
+            model.compile( **compile_argument)
             t = time.time()-t
-            print('model build time: %f s'%t)
+            if verbose>2:
+                print('model build time: %f s'%t)
             
         
         t = time.time()
-        print('evaluating...')
-        
-        if multi_gpu:
-            if datagen is None:
-                if FT_evaluate:
-                    prediction = parallel_model.predict(x_test, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
-                    FT_augment['prediction']=prediction
-                    FT_augment['test_label']=y_test
-                    test_result = evaluate_FT( **FT_augment)
-                else:
-                    test_result = parallel_model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
-            else:
-                if FT_evaluate:
-                    prediction = parallel_model.predict_generator(datagen, verbose=1,steps=len(datagen))
-                    FT_augment['prediction']=prediction
-                    FT_augment['test_label']=datagen_y_test
-                    test_result = evaluate_FT( **FT_augment)
-                else:
-                    test_result = parallel_model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
+        if verbose>5:
+            print('evaluating...')
+        if verbose>3:
+            infverbose=1
         else:
-            if datagen is None:
-                if FT_evaluate:
-                    prediction = model.predict(x_test, verbose=1,batch_size=model_augment[scheme_num]['batch_size'])
-                    FT_augment['prediction']=prediction
-                    FT_augment['test_label']=y_test
-                    test_result = evaluate_FT( **FT_augment)
+            infverbose=0
+            
+        if multi_gpu:
+            if FT_evaluate:
+                if datagen is None:
+                    prediction = parallel_model.predict(x_test, verbose=infverbose,batch_size=model_argument[scheme_num]['batch_size'])
                 else:
-                    test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=model_augment[scheme_num]['batch_size'])
+                    prediction = parallel_model.predict(datagen, verbose=infverbose,steps=len(datagen))
+                FT_argument['prediction']=prediction
+                FT_argument['test_label']=y_test
+                test_result = evaluate_FT( **FT_argument)
             else:
-                if FT_evaluate:
-                    prediction = model.predict_generator(datagen, verbose=1,steps=len(datagen))
-                    FT_augment['prediction']=prediction
-                    FT_augment['test_label']=datagen_y_test
-                    test_result = evaluate_FT( **FT_augment)
+                if datagen is None:
+                    test_result = parallel_model.evaluate(x_test, y_test, verbose=infverbose, batch_size=model_argument[scheme_num]['batch_size'])
                 else:
-                    test_result = model.evaluate_generator(datagen, verbose=1, steps=len(datagen))
+                    test_result = parallel_model.evaluate(datagen, verbose=infverbose, steps=len(datagen))
+        else:
+            if FT_evaluate:
+                if datagen is None:
+                    prediction = model.predict(x_test, verbose=infverbose,batch_size=model_argument[scheme_num]['batch_size'])
+                else:
+                    prediction = model.predict(datagen, verbose=infverbose,steps=len(datagen))
+                FT_argument['prediction']=prediction
+                FT_argument['test_label']=y_test
+                test_result = evaluate_FT( **FT_argument)
+            else:
+                if datagen is None:
+                    test_result = model.evaluate(x_test, y_test, verbose=infverbose, batch_size=model_argument[scheme_num]['batch_size'])
+                else:
+                    test_result = model.evaluate(datagen, verbose=infverbose, steps=len(datagen))
         
         t = time.time()-t
-        #print('evaluate done')
-        print('\nruntime: %f s'%t)        
+        if verbose>2:
+            print('\nruntime: %f s'%t)        
         
-        if FT_evaluate:
-            for key in test_result.keys():
-                print('Test %s\t:'%key, test_result[key])
-        else:
-            for i in range(len(test_result)):
-                print('Test %s\t:'%model.metrics_names[i], test_result[i])
+        if verbose>1:
+            if FT_evaluate:
+                for key in test_result.keys():
+                    print('Test %s\t:'%key, test_result[key])
+            else:
+                for i in range(len(test_result)):
+                    print('Test %s\t:'%model.metrics_names[i], test_result[i])
             
         if (scheme_num == 0 and not append_save_file) or (append_save_file and not os.path.exists(result_save_file)):
             with open(result_save_file, 'w', newline='') as csvfile:
@@ -252,8 +264,9 @@ def inference_scheme(model_func,
             
         K.clear_session()
         del model
-                            
-        print('\n===============================================\n')
+                  
+        if verbose>1:          
+            print('\n===============================================\n')
 
 
 def gen_test_round_list(num_of_bit,upper_bound,lower_bound,left_bound=-3,right_bound=0):

@@ -58,7 +58,8 @@ class PEflow:
         PE_required_axes_prior: List of Strings. axis ϵ ['PE_x', 'PE_y', 't_clk']
             The axis of direction in PE array i.e. 'PE_x', 'PE_y', 't_clk'. 
             These axes are the dimension in PE array dataflow model for tile mapping.
-            The order in List is the priority for data mapping in PE array.
+            The order in List is the priority for data mapping in PE array that is dimension order [2,1,0].
+            Example -> ['PE_x', 'PE_y', 't_clk'] means the map priority PE -> [1,2,0] for shape [PE_y, PE_x, t_clk]
         tile_mapping_prior: List or Tuple of Integer. 
             The list for ravel priority of slice_shape dimensions. The list is the dimension index.
 
@@ -169,11 +170,11 @@ class PEflow:
         
     def check_prior(self, data_shape):
         if (not isinstance(self.permute_info.PE_required_axes_prior,list)) and (not isinstance(self.permute_info.PE_required_axes_prior,str)):
-            raise TypeError('The augment PE_required_axes must be String or List of Strings dtype.')
+            raise TypeError('The argument PE_required_axes must be String or List of Strings dtype.')
             
         for axis in self.permute_info.PE_required_axes_prior:
             if axis not in self.axis_element:
-                raise ValueError('The augment PE_required_axes must be in list %s'%(str(self.axis_element)))
+                raise ValueError('The argument PE_required_axes must be in list %s'%(str(self.axis_element)))
                         
         if len(data_shape)!=len(self.permute_info.tile_mapping_prior):
             raise ValueError('The length of tile_mapping_prior must equals to data shape, but got %d and %d.'%(len(self.permute_info.tile_mapping_prior),len(data_shape)))
@@ -181,33 +182,33 @@ class PEflow:
     def check_fix(self):
         if isinstance(self.fixed_info.PE_fix_axis,str):
             if self.fixed_info.PE_fix_axis not in self.axis_element:
-                raise ValueError('The augment PE_dix_dims must be in list %s'%(str(self.axis_element)))
+                raise ValueError('The argument PE_dix_dims must be in list %s'%(str(self.axis_element)))
         elif isinstance(self.fixed_info.PE_fix_axis,list):
             for dim in self.fixed_info.PE_fix_axis:
                 if dim not in self.axis_element:
-                    raise ValueError('The augment PE_dix_dims must be in list %s'%(str(self.axis_element)))
+                    raise ValueError('The argument PE_dix_dims must be in list %s'%(str(self.axis_element)))
         else:
             raise TypeError('PE_fix_axis must either be integer or list of integer.')
 
     def check_broadcast(self):
         if isinstance(self.broadcast_info.PE_broadcast_axis,str):
             if self.broadcast_info.PE_broadcast_axis not in self.axis_element:
-                raise ValueError('The augment PE_broadcast_axis must be in list %s'%(str(self.axis_element)))
+                raise ValueError('The argument PE_broadcast_axis must be in list %s'%(str(self.axis_element)))
         elif isinstance(self.broadcast_info.PE_broadcast_axis,list):
             for dim in self.broadcast_info.PE_broadcast_axis:
                 if dim not in self.axis_element:
-                    raise ValueError('The augment PE_broadcast_axis must be in list %s'%(str(self.axis_element)))
+                    raise ValueError('The argument PE_broadcast_axis must be in list %s'%(str(self.axis_element)))
         else:
             raise TypeError('PE_broadcast_axis must either be integer or list of integer.')
             
     def check_streaming(self):
         if isinstance(self.streaming_info.PE_stream_axis,str):
             if self.streaming_info.PE_stream_axis not in self.axis_element:
-                raise ValueError('The augment PE_stream_axis must be in list %s'%(str(self.axis_element)))
+                raise ValueError('The argument PE_stream_axis must be in list %s'%(str(self.axis_element)))
         elif isinstance(self.streaming_info.PE_stream_axis,list):
             for dim in self.streaming_info.PE_stream_axis:
                 if dim not in self.axis_element:
-                    raise ValueError('The augment PE_stream_axis must be in list %s'%(str(self.axis_element)))
+                    raise ValueError('The argument PE_stream_axis must be in list %s'%(str(self.axis_element)))
         else:
             raise TypeError('PE_stream_axis must either be integer or list of integer.')
 
@@ -2207,7 +2208,12 @@ class PEarray:
         #TODO
         # should this be a ERROR?
         if not pack_num[1:] == pack_num[:-1]:
-            print('WARNING: The number of slices of ifmap, ofmap, weight should be the same but got %s'%str(pack_num))
+            txtparam='ifmap, ofmap, weight'
+            if self.use_bias:
+                txtparam+=', bias'
+            if self.use_psum:
+                txtparam+=', psum'
+            print('WARNING: The number of slices of %s should be the same but got %s'%(txtparam,str(pack_num)))
         
         pack_clk=[self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2]]
         if self.use_bias:

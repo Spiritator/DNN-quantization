@@ -82,7 +82,7 @@ class QuantizedDense(Dense):
 
     def call(self, inputs):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
-            raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
+            raise ValueError('Invalid quantization mode. The \'quant_mode\' argument must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
         
         # set quantizer
         if isinstance(self.quantizer,list) and len(self.quantizer)==3:
@@ -216,7 +216,7 @@ class QuantizedConv2D(Conv2D):
 
     def call(self, inputs):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
-            raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
+            raise ValueError('Invalid quantization mode. The \'quant_mode\' argument must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
         
         # set quantizer
         if isinstance(self.quantizer,list) and len(self.quantizer)==3:
@@ -392,7 +392,7 @@ class QuantizedBatchNormalization(BatchNormalization):
 
     def call(self, inputs, training=None):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
-            raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
+            raise ValueError('Invalid quantization mode. The \'quant_mode\' argument must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
 
         if isinstance(self.quantizer,list) and len(self.quantizer)==3:
             quantizer_input =self.quantizer[0]
@@ -686,7 +686,7 @@ class QuantizedDepthwiseConv2D(DepthwiseConv2D):
 
     def call(self, inputs, training=None):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
-            raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
+            raise ValueError('Invalid quantization mode. The \'quant_mode\' argument must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
 
         # set quantizer
         if isinstance(self.quantizer,list) and len(self.quantizer)==3:
@@ -881,7 +881,7 @@ class QuantizedDistributedConv2D(Conv2D):
 
     def call(self, inputs):
         if self.quant_mode not in [None,'extrinsic','hybrid','intrinsic']:
-            raise ValueError('Invalid quantization mode. The \'quant_mode\' augment must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
+            raise ValueError('Invalid quantization mode. The \'quant_mode\' argument must be one of \'extrinsic\' , \'intrinsic\' , \'hybrid\' or None.')
 
         if isinstance(self.quantizer,list) and len(self.quantizer)==3:
             quantizer_input =self.quantizer[0]
@@ -1003,7 +1003,7 @@ class QuantizedDistributedConv2D(Conv2D):
                         n_splt=n_splt*len(splt)
                 return [(input_shape[0],) + tuple(new_space) + (self.filters,) for i in range(n_splt)]
             else:
-                raise ValueError('splits augment must be integer or list.')
+                raise ValueError('splits argument must be integer or list.')
                 
         if self.data_format == 'channels_first':
             space = input_shape[2:]
@@ -1027,7 +1027,7 @@ class QuantizedDistributedConv2D(Conv2D):
                         n_splt=n_splt*len(splt)
                 return [(input_shape[0],self.filters) + tuple(new_space) for i in range(n_splt)]
             else:
-                raise ValueError('splits augment must be integer or list.')
+                raise ValueError('splits argument must be integer or list.')
         
     def get_config(self):
         if isinstance(self.quantizer,list):

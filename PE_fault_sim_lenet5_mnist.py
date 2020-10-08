@@ -28,7 +28,7 @@ from simulator.inference.evaluate import evaluate_FT
 
 #%% setting parameter
 
-noise_inject=True
+noise_inject=False
 
 weight_name='../mnist_lenet5_weight.h5'
 model_word_length=8
@@ -39,12 +39,13 @@ batch_size=20
 # PE array fault simulation parameter
 config_dir='../pe_mapping_config'
 network_dir='lenet'
-dataflow_dir='ws'
-#PEarraysize='8x8'
-PEarraysize='16x16'
+dataflow_dir='os'
+PEarraysize='8x8'
+#PEarraysize='16x16'
 config_dir=os.path.join(config_dir, network_dir, dataflow_dir, PEarraysize)
 mac_config=os.path.join(config_dir,'mac_unit_config.json')
 model_wl=model_word_length
+mapping_verbose=5
 
 #%% dataflow setup
 
@@ -55,35 +56,35 @@ model=quantized_lenet5(nbits=model_word_length,
                        batch_size=batch_size,
                        quant_mode=None)
 
-#%% 8x8 ws PE
+#%% 8x8 PE
 
-# # PE represent computation unit
-# PE=mac_unit(mac_config, noise_inject=noise_inject)
-# # PE array
-# MXU=PEarray(8,8,mac_config=PE)
+# PE represent computation unit
+PE=mac_unit(mac_config, noise_inject=noise_inject)
+# PE array
+MXU=PEarray(8,8,mac_config=PE)
 
-# # conv1
-# ofmap_tile_conv1=tile_PE((1,28,28,8),is_fmap=True,wl=model_wl)
-# ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)
-# wght_tile_conv1 =tile_PE((5,5,1,8),is_fmap=False,wl=model_wl)
-# ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
-# ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
-# wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
-# MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
+# conv1
+ofmap_tile_conv1=tile_PE((1,28,28,8),is_fmap=True,wl=model_wl)
+ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)
+wght_tile_conv1 =tile_PE((5,5,1,8),is_fmap=False,wl=model_wl)
+ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
+ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
+wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
+MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
 
 # check=mapping_valid_checker(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
 #                             ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
 #                             print_detail=True)
 # MXU.clear_all()
 
-# # conv2
-# ofmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
-# ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
-# wght_tile_conv2 =tile_PE((5,5,16,16),is_fmap=False,wl=model_wl)
-# ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
-# ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
-# wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
-# MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
+# conv2
+ofmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
+ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
+wght_tile_conv2 =tile_PE((5,5,16,16),is_fmap=False,wl=model_wl)
+ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
+ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
+wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
+MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
 # check=mapping_valid_checker(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
 #                             ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
@@ -118,35 +119,35 @@ model=quantized_lenet5(nbits=model_word_length,
 #                             print_detail=True)
 # MXU.clear_all()
 
-#%% 16x16 ws PE
+#%% 16x16 PE
 
-# PE represent computation unit
-PE=mac_unit(mac_config, noise_inject=noise_inject)
-# PE array
-MXU=PEarray(16,16,mac_config=PE)
+# # PE represent computation unit
+# PE=mac_unit(mac_config, noise_inject=noise_inject)
+# # PE array
+# MXU=PEarray(16,16,mac_config=PE)
 
-# conv1
-ofmap_tile_conv1=tile_PE((1,28,28,16),is_fmap=True,wl=model_wl)
-ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)
-wght_tile_conv1 =tile_PE((5,5,1,16),is_fmap=False,wl=model_wl)
-ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
-ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
-wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
-MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
+# # conv1
+# ofmap_tile_conv1=tile_PE((1,28,28,16),is_fmap=True,wl=model_wl)
+# ifmap_tile_conv1=tile_PE((1,28,28,1),is_fmap=True,wl=model_wl)
+# wght_tile_conv1 =tile_PE((5,5,1,16),is_fmap=False,wl=model_wl)
+# ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
+# ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
+# wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
+# MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
 
 # check=mapping_valid_checker(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
 #                             ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
 #                             print_detail=True)
 # MXU.clear_all()
 
-# conv2
-ofmap_tile_conv2=tile_PE((1,14,14,32),is_fmap=True,wl=model_wl)
-ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
-wght_tile_conv2 =tile_PE((5,5,16,32),is_fmap=False,wl=model_wl)
-ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
-ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
-wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
-MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
+# # conv2
+# ofmap_tile_conv2=tile_PE((1,14,14,32),is_fmap=True,wl=model_wl)
+# ifmap_tile_conv2=tile_PE((1,14,14,16),is_fmap=True,wl=model_wl)
+# wght_tile_conv2 =tile_PE((5,5,16,32),is_fmap=False,wl=model_wl)
+# ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
+# ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
+# wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
+# MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
 # check=mapping_valid_checker(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
 #                             ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
@@ -189,31 +190,31 @@ fault_loc,fault_info=MXU.make_single_SA_fault(n_bit=model_wl, fault_type='flip')
 model_mac_math_fault_dict_list=[None for i in range(8)] 
 
 PE_mapping_forward(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
-                   ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
-                   pre_plan=True,print_detail=True)
+                    ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
+                    pre_plan=True,verbose=mapping_verbose)
 MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
-model_mac_math_fault_dict_list[1] = PE_mapping_backward(model.layers[1], MXU, print_detail=True)
+model_mac_math_fault_dict_list[1] = PE_mapping_backward(model.layers[1], MXU, verbose=mapping_verbose)
 MXU.clear_all()
 
 PE_mapping_forward(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
                    ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
-                   pre_plan=True,print_detail=True)
+                   pre_plan=True,verbose=mapping_verbose)
 MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
-model_mac_math_fault_dict_list[3] = PE_mapping_backward(model.layers[3], MXU, print_detail=True)
+model_mac_math_fault_dict_list[3] = PE_mapping_backward(model.layers[3], MXU, verbose=mapping_verbose)
 MXU.clear_all()
 
 #PE_mapping_forward(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
 #                   ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
-#                   pre_plan=True,print_detail=True)
+#                   pre_plan=True,verbose=mapping_verbose)
 #MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
-#model_mac_math_fault_dict_list[6] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
+#model_mac_math_fault_dict_list[6] = PE_mapping_backward(model.layers[7], MXU, verbose=mapping_verbose)
 #MXU.clear_all()
 #
 #PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
 #                   ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
-#                   pre_plan=True,print_detail=True)
+#                   pre_plan=True,verbose=mapping_verbose)
 #MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
-#model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
+#model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, verbose=mapping_verbose)
 #MXU.clear_all()
 
 # make preprocess data

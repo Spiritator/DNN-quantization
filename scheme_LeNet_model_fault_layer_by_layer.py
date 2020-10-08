@@ -51,11 +51,11 @@ for j in range(len(ref_model.layers)):
 
 #%%
 # test
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
-dataset_augment={'dataset':'mnist'}
+dataset_argument={'dataset':'mnist'}
 
-FT_augment={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
+FT_argument={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
 
 for layer_id in param_layers:
     input_bits=param_size_report['input_bits'][layer_id]
@@ -96,7 +96,7 @@ for layer_id in param_layers:
                'layer_gen_list':[layer_id]}
         
         # fault generation
-        model_augment=list()
+        model_argument=list()
         for i in range(test_rounds_lists[test_rounds]):
             print('Generating fault for test round %d...'%(i+1))
             model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
@@ -110,7 +110,7 @@ for layer_id in param_layers:
 #                                      model_weight_fdl,
 #                                      fast_gen=True)
             
-            model_augment.append({'nbits':model_word_length,
+            model_argument.append({'nbits':model_word_length,
                                   'fbits':model_fractional_bit,
                                   'rounding_method':'nearest',
                                   'batch_size':batch_size,
@@ -121,14 +121,14 @@ for layer_id in param_layers:
     
         result_save_file=result_save_folder+'/'+str(layer_id)+'/'+str(fr)+'.csv'
         inference_scheme(quantized_lenet5, 
-                         model_augment, 
-                         compile_augment, 
-                         dataset_augment, 
+                         model_argument, 
+                         compile_argument, 
+                         dataset_argument, 
                          result_save_file, 
                          weight_load=True, 
                          weight_name=weight_name, 
                          FT_evaluate=True, 
-                         FT_augment=FT_augment, 
+                         FT_argument=FT_argument, 
                          name_tag='fault rate '+str(fr))
 
 

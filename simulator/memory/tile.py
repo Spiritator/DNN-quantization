@@ -37,9 +37,9 @@ class tile:
     def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
         """ Tile initializer """
         if not isinstance(is_fmap,bool):
-            raise TypeError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
+            raise TypeError('Argument is_fmap must be True (feature map tile) or False (weight tile)')
         if len(tile_shape) != 4:
-            raise ValueError('The augment tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
+            raise ValueError('The argument tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
         if is_fmap:    
             self.Tm=tile_shape[3]
             self.Tn=tile_shape[0]
@@ -69,13 +69,13 @@ class tile:
     def check_prior(self):
         """ Check the given priorty argument is valid """
         if not isinstance(self.row_prior,list) or not isinstance(self.col_prior,list) or len(self.row_prior)!=self.shape_len or len(self.col_prior)!=self.shape_len:
-            raise ValueError('The augment row_prior and col_prior must be in list dtype and have length %d but got length %d and %d'%(self.shape_len,len(self.row_prior),len(self.col_prior)))
+            raise ValueError('The argument row_prior and col_prior must be in list dtype and have length %d but got length %d and %d'%(self.shape_len,len(self.row_prior),len(self.col_prior)))
                 
         for i in range(self.shape_len):
             if self.row_prior[i] not in self.prior_element:
-                raise ValueError('The augment row_prior must be in list %s'%(str(self.prior_element)))
+                raise ValueError('The argument row_prior must be in list %s'%(str(self.prior_element)))
             if self.col_prior[i] not in self.prior_element:
-                raise ValueError('The augment col_prior must be in list %s'%(str(self.prior_element)))
+                raise ValueError('The argument col_prior must be in list %s'%(str(self.prior_element)))
     
     def priorexchange(self,prior):
         """ Transfer String priority axis to its corresponding size and axis index.
@@ -92,7 +92,7 @@ class tile:
             Index of prior in shape.
         """
         if prior not in self.prior_element:
-            raise ValueError('The augment row_prior must be in list %s'%(str(self.prior_element)))
+            raise ValueError('The argument row_prior must be in list %s'%(str(self.prior_element)))
             
         if self.is_fmap:
             axis_idex=[3,0,1,2]
@@ -883,9 +883,9 @@ class tile_FC(tile):
     def __init__(self, tile_shape, is_fmap, wl=32, row_prior=[], col_prior=[]):
         """ tile_FC initializer """
         if not isinstance(is_fmap,bool):
-            raise TypeError('Augment is_fmap must be True (feature map tile) or False (weight tile)')
+            raise TypeError('Argument is_fmap must be True (feature map tile) or False (weight tile)')
         if len(tile_shape) != 2:
-            raise ValueError('The augment tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
+            raise ValueError('The argument tile_shape must be in Tuple dtype and have length 4 but got length %d'%len(tile_shape))
         if is_fmap:    
             self.Tm=tile_shape[1]
             self.Tn=tile_shape[0]
@@ -929,7 +929,7 @@ class tile_FC(tile):
             Index of prior in shape.
         """
         if prior not in self.prior_element:
-            raise ValueError('The augment row_prior must be in list %s'%(str(self.prior_element)))
+            raise ValueError('The argument row_prior must be in list %s'%(str(self.prior_element)))
             
         if self.is_fmap:
             axis_idex=[1,0]

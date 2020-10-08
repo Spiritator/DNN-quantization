@@ -33,7 +33,7 @@ def _check_fault_modulator(data, fault_modulator):
         If not, raise error.
     """
     if not isinstance(fault_modulator,list) or len(fault_modulator)!=3:
-        raise ValueError('augment fault_modulator must be datatype list and length 3. [modulator0, modulator1, modulatorF]')
+        raise ValueError('argument fault_modulator must be datatype list and length 3. [modulator0, modulator1, modulatorF]')
         
     for i in range(3):
         if fault_modulator[i] is not None:
@@ -58,7 +58,7 @@ def inject_layer_sa_fault_nparray(data_in, fault_dict, quantizer):
         | The quantizer class contain following quantize operation infromation.
         | word_width: Integer. The fix-point representation of the parameter word length.
         | fractional_bits: Integer. Number of fractional bits in a fix-point parameter
-        | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+        | rounding: String. Rounding method of quantization, argument must be one of 'nearest' , 'down', 'zero', 'stochastic'.
 
     Returns
     -------
@@ -87,7 +87,7 @@ def inject_layer_sa_fault_tensor(data, fault_list, quantizer):
         | The quantizer class contain following quantize operation infromation.
         | word_width: Variable. The fix-point representation of the parameter word length.
         | fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-        | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+        | rounding: String. Rounding method of quantization, argument must be one of 'nearest' , 'down', 'zero', 'stochastic'.
 
     Returns
     -------

@@ -42,11 +42,11 @@ def call_model():
 
 #%%
 # test
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
-dataset_augment={'dataset':'cifar10'}
+dataset_argument={'dataset':'cifar10'}
 
-FT_augment={'model_name':'4c2f','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
+FT_argument={'model_name':'4c2f','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
 
 for test_rounds,fr in enumerate(fault_rate_list):
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
@@ -71,7 +71,7 @@ for test_rounds,fr in enumerate(fault_rate_list):
            'print_detail':False}
     
     # fault generation
-    model_augment=list()
+    model_argument=list()
     for i in range(test_rounds_lists[test_rounds]):
         print('Generating fault for test round %d...'%(i+1))
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
@@ -85,7 +85,7 @@ for test_rounds,fr in enumerate(fault_rate_list):
 #                                  model_weight_fdl,
 #                                  fast_gen=True)
         
-        model_augment.append({'nbits':model_word_length,
+        model_argument.append({'nbits':model_word_length,
                               'fbits':model_fractional_bit,
                               'rounding_method':'nearest',
                               'batch_size':batch_size,
@@ -96,14 +96,14 @@ for test_rounds,fr in enumerate(fault_rate_list):
 
     result_save_file=result_save_folder+'/'+str(fr)+'.csv'
     inference_scheme(quantized_4C2F, 
-                     model_augment, 
-                     compile_augment, 
-                     dataset_augment, 
+                     model_argument, 
+                     compile_argument, 
+                     dataset_argument, 
                      result_save_file, 
                      weight_load=True, 
                      weight_name=weight_name, 
                      FT_evaluate=True, 
-                     FT_augment=FT_augment,
+                     FT_argument=FT_argument,
                      name_tag='fault rate '+str(fr))
 
 

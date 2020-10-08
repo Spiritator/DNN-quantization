@@ -20,7 +20,7 @@ def PE_mapping_forward(ifmap_tile,
                        ofmap_expand_config,
                        PEarray_setup_config,
                        pre_plan=False,
-                       print_detail=False):
+                       verbose=4):
     """ Data mapping high level control
         Pre-plan the dataflow for backward PE mapping.    
         Or mapping the tile fault dictionary to PE dataflow model.
@@ -42,7 +42,7 @@ def PE_mapping_forward(ifmap_tile,
     ofmap_expand_config: Dictionary or String. 
         Configuration for output feature maps tile expansion.
     
-        If data type Dictionary, the dictionary is input augment for tile expansion function that writing in dictionay format.
+        If data type Dictionary, the dictionary is input argument for tile expansion function that writing in dictionay format.
         It will be use as **configuration put into expansion function.
         Else if data type String, the string is the directory to the JSON file which contains the configuration of 
         tile expansion function written in the format that can be read in as dictionary and **configuration put into expansion function.
@@ -50,7 +50,7 @@ def PE_mapping_forward(ifmap_tile,
     PEarray_setup_config: Dictionary or String. 
         Configuration for PE array dataflow setup.
         
-        If data type Dictionary, the dictionary is input augment for PE array dataflow setup function that writing in dictionay format.
+        If data type Dictionary, the dictionary is input argument for PE array dataflow setup function that writing in dictionay format.
         It will be use as **configuration put into expansion function.
         Else if data type String, the string is the directory to the JSON file which contains the configuration of 
         PE array dataflow setup function written in the format that can be read in as dictionary and **configuration put into PE array dataflow setup function.
@@ -59,9 +59,15 @@ def PE_mapping_forward(ifmap_tile,
         Plan the dataflow model ahead. If True there will be no actual Tile to PEarray fault dictionary list transformation.
         Only save the expansion configuration for later PEarray to Tile transform.
         
-    print_detail: Bool. 
+    verbose: Integer. 
         Print the progress of forward mapping.
-    
+    verbose: Integer. 
+        | The verbosity of printing forward mapping progress. max 5 (print all info), min 0 (print nothing), Folding All info 5.
+        | The description below shows the minimum verbosity for info to print.
+        | Mapping Start (2)
+        | Mapping Tasks (3)
+        | Folding forward/backward mapping info (5)
+
     Returns
     -------
     Fault Dictionary / None
@@ -69,9 +75,16 @@ def PE_mapping_forward(ifmap_tile,
         
 
     """
-    if print_detail:
-        print('PE array dataflow forward mapping ...')
-        print('    Task (1/7): Load Tile Config ...',end=' ')
+    if verbose>1:
+        if verbose==5:
+            print('\rPE array dataflow forward mapping ...',end=' ')
+        else:
+            print('\nPE array dataflow forward mapping ...')
+    if verbose>2:
+        if verbose==5:
+            print('\r    Task (1/7): Load Tile Config ...',end=' ')
+        else:
+            print('    Task (1/7): Load Tile Config ...',end=' ')
     # load ifmap config
     if isinstance(ifmap_expand_config,str):
         with open(ifmap_expand_config, 'r') as config_file:
@@ -99,7 +112,7 @@ def PE_mapping_forward(ifmap_tile,
     else:
         raise TypeError('ofmap_expand_config must be String or Dictionary.')
         
-    if print_detail:
+    if verbose>2:
         print('\r    Task (2/7): Load PE Array Config ...',end=' ')
     # load PEarray config
     if isinstance(PEarray_setup_config,str):
@@ -110,7 +123,7 @@ def PE_mapping_forward(ifmap_tile,
     else:
         raise TypeError('PEarray_setup_config must be String or Dictionary.')
     
-    if print_detail:
+    if verbose>2:
         print('\r    Task (3/7): Tile Expnasion ...         ',end=' ') 
     # expand ifmap
     if 'ksizes' not in ifmap_expand_config:
@@ -132,7 +145,7 @@ def PE_mapping_forward(ifmap_tile,
         ofmap_tile.expand_extract_patches(dataflow_pre_plan=pre_plan, **ofmap_expand_config)
 
     # setup PEarray
-    if print_detail:
+    if verbose>2:
         print('\r    Task (4/7): Tile Expnasion ...         ',end=' ') 
     PEarray.ifmap_tile=ifmap_tile
     PEarray.wght_tile=wght_tile
@@ -140,7 +153,7 @@ def PE_mapping_forward(ifmap_tile,
     PEarray.setup_dataflow(**PEarray_setup_config)
 
     # premapping
-    if print_detail:
+    if verbose>2:
         print('\r    Task (5/7): Tile Pre-mapping ...',end=' ') 
     PEarray.premapping_tile('ofmap', dataflow_pre_plan=pre_plan)
     PEarray.premapping_tile('wght', dataflow_pre_plan=pre_plan)
@@ -149,7 +162,7 @@ def PE_mapping_forward(ifmap_tile,
     PEarray.premapping_tile('psum', dataflow_pre_plan=pre_plan)
         
     # duplication
-    if print_detail:
+    if verbose>2:
         print('\r    Task (6/7): Mapping Duplication ...',end=' ') 
     PEarray.duplicate_mapping('ofmap', dataflow_pre_plan=pre_plan)
     PEarray.duplicate_mapping('wght', dataflow_pre_plan=pre_plan)
@@ -158,21 +171,24 @@ def PE_mapping_forward(ifmap_tile,
     PEarray.duplicate_mapping('psum', dataflow_pre_plan=pre_plan)
         
     # alignment
-    if print_detail:
+    if verbose>2:
         print('\r    Task (7/7): Clock Cycle Alignment ...',end=' ') 
     PEarray.align_slice_pack(dataflow_pre_plan=pre_plan)
     
     PEarray.mapping_shape_save()
-    if print_detail:
-        print('\r    Task (7/7): All Done.                 ')
-    
+    if verbose>2:
+        if verbose==5:
+            print('\r    Task (7/7): All Done.                 ',end='')
+        else:
+            print('\r    Task (7/7): All Done.                 ')
+            
     if pre_plan:
         return None
     else:
         return PEarray.fault_dict
     
     
-def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_detail=False, return_detail=False):
+def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, verbose=4, return_detail=False):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to layer.
         
@@ -184,21 +200,38 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     fault_dict: Dictionary. 
         The fault dictionary be assigned to PEarray. 
         If None assuming that the fault dictionary of PEarray is already set.
+    save2tile: Bool.
+        Save solved fault dictionary to respective data tile or not.
+        True for getting the fault information on data tile. False for PE fault injection model fault dictionary list.
+        Usually False for simulation.
+    verbose: Integer. 
+        | The verbosity of printing backward mapping progress. max 4 (print all info), min 0 (print nothing), Folding All info 5.
+        | The description below shows the minimum verbosity for info to print.
+        | Mapping Start (2)
+        | Mapping Tasks (3)
+        | Folding forward/backward mapping info (5)
+        | Mapping Sub-Tasks (4) i.e. decompose slice pack, solve correspond I/O, Tile to Layer.
+        | Mapping Result (1)
+    return_detail: Bool.
+        Return layer mapping detail for sum up whole model mapping information.
     
     Returns
     -------
     The fault information Dictionary of Layer.
     """        
-    if print_detail:
-        print('\nPE array dataflow backward mapping ...')
-    else:
+    if verbose>1:
+        if verbose==5:
+            print('\rPE array dataflow backward mapping ...',end=' ')
+        else:
+            print('\nPE array dataflow backward mapping ...')
+    if verbose<4:
         PEarray.ifmap_tile.print_detail=False
         PEarray.ofmap_tile.print_detail=False
         PEarray.wght_tile.print_detail=False
     
     layer_weight_shape=[weight_shape.shape for weight_shape in layer.get_weights()]
     if len(layer_weight_shape)==0:
-        if print_detail:
+        if verbose>2:
             print('    no weight layer Skipped!')
         if return_detail:
             empty_info={'num_base_coor':0,
@@ -227,11 +260,14 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
             return None, empty_info
         return None
         
-    if print_detail:
-        print('    Task (1/6): Decompose Slice Pack ...',end=' ') 
-    PEarray.decompose_slice_pack(print_detail=print_detail)
+    if verbose>2:
+        if verbose==5:
+            print('\r    Task (1/6): Decompose Slice Pack ...',end=' ')
+        else:
+            print('    Task (1/6): Decompose Slice Pack ...',end=' ') 
+    PEarray.decompose_slice_pack(print_detail=verbose>3)
 
-    if print_detail:
+    if verbose>2:
         print('\r    Task (2/6): Reduce Mapping ...     ',end=' ') 
     PEarray.reduce_mapping('ofmap')
     PEarray.reduce_mapping('wght')
@@ -239,7 +275,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     PEarray.reduce_mapping('bias')
     PEarray.reduce_mapping('psum')
     
-    if print_detail:
+    if verbose>2:
         print('\r    Task (3/6): Tile Demapping...      ',end=' ') 
     PEarray.demapping_tile('ofmap')
     PEarray.demapping_tile('wght')
@@ -247,7 +283,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     PEarray.demapping_tile('bias')
     PEarray.demapping_tile('psum')
     
-    if print_detail:
+    if verbose>2:
         print('\r    Task (4/6): Tile Shrinking... ',end=' ') 
     if PEarray.ofmap_tile.expand_method=='reshape':
         PEarray.ofmap_tile.shrink_reshape_data()
@@ -275,32 +311,41 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     else:
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
          
-    if print_detail:
+    if verbose>2:
         print('\r    Task (5/6): Solve Fault I/O ...                                     ',end=' ') 
     # organize fault dict and give partial sum index
     solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,fault_num=PEarray.fault_num)
-    PE_mac_fault_dict=solver.solve_correspond_io(save2tile,print_detail)
+    PE_mac_fault_dict=solver.solve_correspond_io(save2tile,verbose>3)
     
-    if print_detail:
+    if verbose>2:
         print('\r    Task (6/6): Tile Return to layer ...                              ',end=' ')
     # inter tile fault dictionary transform to layer
     if not save2tile:
-        PE_mac_fault_dict=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=print_detail)
+        PE_mac_fault_dict=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=verbose>3)
     else:
-        ifmap_fd=solver.tile2layer(based_tile='ifmap',layer=layer,print_detail=print_detail)
-        wght_fd=solver.tile2layer(based_tile='wght',layer=layer,print_detail=print_detail)
-        ofmap_fd=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=print_detail)
+        ifmap_fd=solver.tile2layer(based_tile='ifmap',layer=layer,print_detail=verbose>3)
+        wght_fd=solver.tile2layer(based_tile='wght',layer=layer,print_detail=verbose>3)
+        ofmap_fd=solver.tile2layer(based_tile='ofmap',layer=layer,print_detail=verbose>3)
         PE_mac_fault_dict=(ifmap_fd, wght_fd, None, ofmap_fd)
         
-    if print_detail:
-        print('\r    Task (6/6): All Done.                                              ')
-        
+    if verbose>2:
+        if verbose==5:
+            print('\r    Task (6/6): All Done.                                              ',end='')
+        else:
+            print('\r    Task (6/6): All Done.                                              ')
+    if verbose>0:
         if not save2tile:
             report_2layer=solver.report_layer_map()
-            print('    mapped layer faults | base coors %d | ofmap %d '%(report_2layer['num_base_coor'], report_2layer['num_layer_fault_coor']))
+            if verbose==5:
+                print('\r    mapped layer faults | base coors %d | ofmap %d '%(report_2layer['num_base_coor'], report_2layer['num_layer_fault_coor']))
+            else:
+                print('    mapped layer faults | base coors %d | ofmap %d '%(report_2layer['num_base_coor'], report_2layer['num_layer_fault_coor']))
             print('                        | total psum index %d '%report_2layer['num_layer_psum_idx'])
         else:
-            print('    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fd),len(ofmap_fd),str([len(wght_fd),0])))
+            if verbose==5:
+                print('\r    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fd),len(ofmap_fd),str([len(wght_fd),0])))
+            else:
+                print('    mapped layer faults | ifmap %d | ofmap %d | weight %s '%(len(ifmap_fd),len(ofmap_fd),str([len(wght_fd),0])))
 
     if return_detail:
         return PE_mac_fault_dict, solver.report_layer_map()
@@ -308,7 +353,7 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, print_
     return PE_mac_fault_dict
 
 
-def PE_mapping2tile(PEarray, fault_dict=None, print_detail=False):
+def PE_mapping2tile(PEarray, fault_dict=None, print_detail=True):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to ifmap, weight and ofmap tile.
         
@@ -418,7 +463,7 @@ def mapping_valid_checker(ifmap_tile,
     ofmap_expand_config: Dictionary or String. 
         Configuration for output feature maps tile expansion.
     
-        If data type Dictionary, the dictionary is input augment for tile expansion function that writing in dictionay format.
+        If data type Dictionary, the dictionary is input argument for tile expansion function that writing in dictionay format.
         It will be use as **configuration put into expansion function.
         Else if data type String, the string is the directory to the JSON file which contains the configuration of 
         tile expansion function written in the format that can be read in as dictionary and **configuration put into expansion function.
@@ -426,7 +471,7 @@ def mapping_valid_checker(ifmap_tile,
     PEarray_setup_config: Dictionary or String. 
         Configuration for PE array dataflow setup.
         
-        If data type Dictionary, the dictionary is input augment for PE array dataflow setup function that writing in dictionay format.
+        If data type Dictionary, the dictionary is input argument for PE array dataflow setup function that writing in dictionay format.
         It will be use as **configuration put into expansion function.
         Else if data type String, the string is the directory to the JSON file which contains the configuration of 
         PE array dataflow setup function written in the format that can be read in as dictionary and **configuration put into PE array dataflow setup function.
@@ -440,7 +485,7 @@ def mapping_valid_checker(ifmap_tile,
         The mapping is feasible or not.
     """        
     if print_detail:
-        print('Dataflow mapping feasblility check...')
+        print('\nDataflow mapping feasblility check...')
     
     # Generate test fault
     fault_loc_i=tuple()

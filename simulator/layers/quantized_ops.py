@@ -33,7 +33,7 @@ class quantizer:
     def __init__(self,nb,fb,rounding_method='nearest',overflow_mode=False,stop_gradient=False):
         """ Quantizer initilizer """
         if not isinstance(nb,int) or not isinstance(fb,int):
-            raise ValueError('The word width and fractional bits augment must be integer type!')
+            raise ValueError('The word width and fractional bits argument must be integer type!')
         if nb<=fb-1:
             raise ValueError('Not enough word width %d for fractional bits %d'%(nb,fb))
         self.nb=nb

@@ -119,7 +119,7 @@ with open('../test_fault_dictionary_stuff/fault_dict_solved_layer_psumout.pickle
 # ofmap_alt_scatter=ofmap_alt_scatter.numpy()
 
 
-#%% layer mac macth FI test
+#%% layer mac math FI test
 
 PE=mac_unit(quantizers=quantizer(nb=8,
                                   fb=6,

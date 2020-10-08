@@ -24,7 +24,7 @@ from simulator.comp_unit.mapping_flow import PE_mapping_forward,PE_mapping_backw
 
 #%% setting parameter
 
-noise_inject=True
+noise_inject=False
 report_filename='metric'
 
 result_save_folder=os.path.join('..','test_result','mnist_lenet5_PE_fault')
@@ -44,17 +44,19 @@ PEarraysize='16x16'
 config_dir=os.path.join(config_dir, network_dir, dataflow_dir, PEarraysize)
 mac_config=os.path.join(config_dir,'mac_unit_config.json')
 model_wl=model_word_length
+mapping_verbose=5
 
 test_rounds=20
 
 #%% model & fault information setup
 
 # model for get configuration
-def call_model():
+def call_model(verbose=False):
     return quantized_lenet5(nbits=model_word_length,
                             fbits=model_fractional_bit,
                             batch_size=batch_size,
-                            quant_mode=None)
+                            quant_mode=None,
+                            verbose=verbose)
 
 # PE represent computation unit
 PE=mac_unit(mac_config, noise_inject=noise_inject)
@@ -82,7 +84,7 @@ with open('../test_fault_dictionary_stuff/wght_distribution_info_lenet.pickle', 
 with open('../test_fault_dictionary_stuff/ifmap_distribution_info_lenet.pickle', 'rb') as fdfile:
     lenet_ifmap_distribution_info = pickle.load(fdfile)
 
-#%% PE mapping setup 8x8 WS
+#%% PE mapping setup 8x8
 
 # # conv1
 # ofmap_tile_conv1=tile_PE((1,28,28,8),is_fmap=True,wl=model_wl)
@@ -121,7 +123,7 @@ with open('../test_fault_dictionary_stuff/ifmap_distribution_info_lenet.pickle',
 # wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
 # MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
 
-#%% PE mapping setup 16x16 WS
+#%% PE mapping setup 16x16
 
 # conv1
 ofmap_tile_conv1=tile_PE((1,28,28,16),is_fmap=True,wl=model_wl)
@@ -162,7 +164,7 @@ MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
 #%% fault generation
 
-def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
+def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,verbose):
     model_mac_fault_dict_list=[None for i in range(8)] 
     psidx_cnt=0
     
@@ -183,33 +185,33 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
     
     PE_mapping_forward(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
                        ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
-                       pre_plan=True,print_detail=True)
+                       pre_plan=True,verbose=verbose)
     MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    model_mac_fault_dict_list[1], psidx_tmp = PE_mapping_backward(ref_model.layers[1], MXU, print_detail=True, return_detail=True)
+    model_mac_fault_dict_list[1], psidx_tmp = PE_mapping_backward(ref_model.layers[1], MXU, verbose=verbose, return_detail=True)
     psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
     PE_mapping_forward(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
-                       ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
-                       pre_plan=True,print_detail=True)
+                        ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
+                        pre_plan=True,verbose=verbose)
     MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    model_mac_fault_dict_list[3], psidx_tmp = PE_mapping_backward(ref_model.layers[3], MXU, print_detail=True, return_detail=True)
+    model_mac_fault_dict_list[3], psidx_tmp = PE_mapping_backward(ref_model.layers[3], MXU, verbose=verbose, return_detail=True)
     psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
-    #PE_mapping_forward(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
+    # PE_mapping_forward(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
     #                   ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
-    #                   pre_plan=True,print_detail=True)
-    #MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    #model_mac_math_fault_dict_list[6] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
-    #MXU.clear_all()
-    #
-    #PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
+    #                   pre_plan=True,verbose=verbose)
+    # MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
+    # model_mac_math_fault_dict_list[6] = PE_mapping_backward(model.layers[7], MXU, verbose=verbose)
+    # MXU.clear_all()
+    
+    # PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
     #                   ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
-    #                   pre_plan=True,print_detail=True)
-    #MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    #model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, print_detail=True)
-    #MXU.clear_all()
+    #                   pre_plan=True,verbose=verbose)
+    # MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
+    # model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, verbose=verbose)
+    # MXU.clear_all()
     
     # make preprocess data
     model_mac_fault_dict_list=preprocess_model_mac_fault(ref_model, PE, model_mac_fault_dict_list,
@@ -219,20 +221,20 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,print_detail=False):
     return model_mac_fault_dict_list, psidx_cnt
 
 #%% test run
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
-dataset_augment={'dataset':'mnist'}
+dataset_argument={'dataset':'mnist'}
 
-FT_augment={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
+FT_argument={'model_name':'lenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50]}    
     
 
 for round_id in range(test_rounds):
-    print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-    print('|=|        Test Round %d/%d'%(round_id,test_rounds))
-    print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
+    print('======================================')
+    print('        Test Round %d/%d'%(round_id,test_rounds))
+    print('======================================')
     ref_model=call_model()
     # fault generation
-    model_mac_math_fdl, psidx_count=gen_model_PE_fault_dict(ref_model,fault_locs[round_id],fault_infos[round_id],print_detail=True)
+    model_mac_math_fdl, psidx_count=gen_model_PE_fault_dict(ref_model,fault_locs[round_id],fault_infos[round_id],verbose=mapping_verbose)
     K.clear_session()
     
     info_add_on={'PE y':[fault_locs[round_id][0]],
@@ -242,7 +244,7 @@ for round_id in range(test_rounds):
                  'SA bit':[fault_infos[round_id]['SA_bit']],
                  'num psidx':[psidx_count]}
     
-    model_augment=[{'nbits':model_word_length,
+    model_argument=[{'nbits':model_word_length,
                     'fbits':model_fractional_bit,
                     'rounding_method':rounding_method,
                     'batch_size':batch_size,
@@ -253,17 +255,18 @@ for round_id in range(test_rounds):
     # inference test
     result_save_file=os.path.join(result_save_folder, dataflow_type, report_filename+'.csv')
     inference_scheme(quantized_lenet5, 
-                     model_augment, 
-                     compile_augment, 
-                     dataset_augment, 
+                     model_argument, 
+                     compile_argument, 
+                     dataset_argument, 
                      result_save_file, 
                      append_save_file=True,
                      weight_load=True, 
                      weight_name=weight_name, 
                      save_runtime=True,
                      FT_evaluate=True, 
-                     FT_augment=FT_augment,
-                     save_file_add_on=info_add_on)
+                     FT_argument=FT_argument,
+                     save_file_add_on=info_add_on,
+                     verbose=4)
 
 #%% write fault information save file
 

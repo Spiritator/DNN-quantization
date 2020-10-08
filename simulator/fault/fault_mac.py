@@ -234,7 +234,7 @@ class mac_fault_injector:
             | The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
             | word_width: Variable. The fix-point representation of the parameter word length.
             | fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            | rounding: String. Rounding method of quantization, argument must be one of 'nearest' , 'down', 'zero', 'stochastic'.
         quant_mode: String. Be either 'intrinsic' or 'hybrid'.
             | The quantization mode of MAC.
             | 'intrinsic' means truncate before accumulation. 
@@ -571,7 +571,7 @@ class mac_fault_injector:
             The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            rounding: String. Rounding method of quantization, argument must be one of 'nearest' , 'down', 'zero', 'stochastic'.
         quant_mode: String. Be either 'intrinsic' or 'hybrid'.
             The quantization mode of MAC. 
             'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
@@ -750,7 +750,7 @@ class mac_fault_injector:
             The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
             word_width: Variable. The fix-point representation of the parameter word length.
             fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            rounding: String. Rounding method of quantization, argument must be one of 'nearest' , 'down', 'zero', 'stochastic'.
         quant_mode: String. Be either 'intrinsic' or 'hybrid'.
             The quantization mode of MAC. 
             'intrinsic' means truncate before accumulation. 'hybrid' means accumulate with the word length of multiplier output than truncate.
@@ -1119,7 +1119,7 @@ class mac_fault_injector:
             | The quantizer class, one or in list [input, weight, output]. The quantizer class contain following quantize operation infromation.
             | word_width: Variable. The fix-point representation of the parameter word length.
             | fractional_bits: Variable. Number of fractional bits in a fix-point parameter
-            | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', 'zero', 'stochastic'.
+            | rounding: String. Rounding method of quantization, argument must be one of 'nearest' , 'down', 'zero', 'stochastic'.
         quant_mode: String. Be either 'intrinsic' or 'hybrid'.
             | The quantization mode of MAC.
             | 'intrinsic' means truncate before accumulation. 

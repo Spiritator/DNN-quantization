@@ -14,7 +14,12 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import backend as K
 
 
-def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, batch_size=32, data_augmentation = False, data_dir = None, preprocessing_function=None):
+def dataset_setup(dataset, 
+                  img_rows = 224, img_cols = 224, 
+                  num_classes = 10, batch_size=32, 
+                  data_augmentation = False, data_dir = None, 
+                  preprocessing_function=None,
+                  verbose=2):
     """
     Dataset Setup Wrapper
         Dataset prepare automation for Mnist, Cifar10 or Keras ImageDataGenerator.
@@ -37,6 +42,11 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, bat
         The directory of Keras ImageDataGenerator target. The default is None.
     preprocessing_function : Callable function, optional
         The fucntion for input image preprocessing. The default is None.
+    verbose: Integer.
+        | The verbosity of dataset setup information
+        | 2: Show setup process, dataset name and data shape/number
+        | 1: Only show setup process and dataset name 
+        | 0: Dont print info
 
     Returns
     -------
@@ -57,16 +67,18 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, bat
 
     """
     if (dataset == "cifar10"):
-
-        print('Setup CIFAR-10 dataset...')
+        
+        if verbose>0:
+            print('Setup CIFAR-10 dataset...')
 
         num_classes = 10
         
         # The data, split between train and test sets:
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-        print('x_train shape:', x_train.shape)
-        print(x_train.shape[0], 'train samples')
-        print(x_test.shape[0], 'test samples')
+        if verbose>1:
+            print('x_train shape:', x_train.shape)
+            print(x_train.shape[0], 'train samples')
+            print(x_test.shape[0], 'test samples')
         
         # Convert class vectors to binary class matrices.
         y_train = keras.utils.to_categorical(y_train, num_classes)
@@ -80,11 +92,13 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, bat
         x_test /= 255
         
         if not data_augmentation:
-            print('Not using data augmentation.')
+            if verbose>1:
+                print('Not using data augmentation.')
             datagen=None
             
         else:
-            print('Using real-time data augmentation.')
+            if verbose>1:
+                print('Using real-time data augmentation.')
             # This will do preprocessing and realtime data augmentation:
             datagen = ImageDataGenerator(
                 featurewise_center=False,  # set input mean to 0 over the dataset
@@ -123,7 +137,8 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, bat
 
     elif (dataset == "mnist"):
 
-        print('Setup MNIST dataset...')
+        if verbose>0:
+            print('Setup MNIST dataset...')
         
         num_classes = 10
         # input image dimensions
@@ -145,9 +160,10 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, bat
         x_test = x_test.astype('float32')
         x_train /= 255
         x_test /= 255
-        print('x_train shape:', x_train.shape)
-        print(x_train.shape[0], 'train samples')
-        print(x_test.shape[0], 'test samples')
+        if verbose>1:
+            print('x_train shape:', x_train.shape)
+            print(x_train.shape[0], 'train samples')
+            print(x_test.shape[0], 'test samples')
         
         # convert class vectors to binary class matrices
         y_train = keras.utils.to_categorical(y_train, num_classes)
@@ -161,7 +177,8 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, bat
         if data_dir is None:
             raise NameError('Please specify the ImageDataGenerator directory')
         
-        print('Setup ImageDataGenerator custom dataset at %s ...' % data_dir)
+        if verbose>0:
+            print('Setup ImageDataGenerator custom dataset at %s ...' % data_dir)
         
         # input image dimensions
         
@@ -171,6 +188,8 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, bat
             input_shape = (img_cols, img_rows, 3)
         
         if data_augmentation:
+            if verbose>1:
+                print('Using real-time data augmentation.')
             if preprocessing_function is not None:
                 evaluation_datagen = ImageDataGenerator(
                 shear_range=0.2,
@@ -184,6 +203,8 @@ def dataset_setup(dataset, img_rows = 224, img_cols = 224, num_classes = 10, bat
                 zoom_range=0.2,
                 horizontal_flip=True)
         else:
+            if verbose>1:
+                print('Not using data augmentation.')
             if preprocessing_function is not None:
                 evaluation_datagen = ImageDataGenerator(preprocessing_function=preprocessing_function)
             else:

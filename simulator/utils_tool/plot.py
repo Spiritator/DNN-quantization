@@ -155,7 +155,7 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_si
 
     """
     if stat_dir is None and report_filename is None:
-        raise ValueError('Both augment stat_dir and report_filename are None! Choose one of them as data to draw analysis plot.')
+        raise ValueError('Both argument stat_dir and report_filename are None! Choose one of them as data to draw analysis plot.')
         
     if stat_dir is None:
         with open(os.path.join(report_filename), 'r', newline='') as repo_csvfile:
@@ -299,9 +299,9 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
 
     """
     if not isinstance(stat_data_list,list):
-        raise TypeError('augment stat_data_list should be type list consist of dictionary of stat_data of a FT analysis.')
+        raise TypeError('argument stat_data_list should be type list consist of dictionary of stat_data of a FT analysis.')
     if not isinstance(plot_color_list,list):
-        raise TypeError('augment plot_color_list should be type list consist of dictionary of color sheme of a FT analysis in pyplot color format string.')
+        raise TypeError('argument plot_color_list should be type list consist of dictionary of color sheme of a FT analysis in pyplot color format string.')
     if len(stat_data_list)!=len(plot_color_list):
         raise ValueError('stat_data_list not equal to plot_color_list please check your data.')        
         

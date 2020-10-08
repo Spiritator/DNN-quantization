@@ -18,7 +18,7 @@ weight_name_BN='../cifar10_4C2FBN_weight.h5'
 weight_name_BN_fused='../cifar10_4C2FBN_weight_fused_BN.h5'
 batch_size=25
 
-model_augment_BN=[{'nbits':16,'fbits':8,'rounding_method':'nearest','batch_size':batch_size,'quant_mode':'extrinsic'},
+model_argument_BN=[{'nbits':16,'fbits':8,'rounding_method':'nearest','batch_size':batch_size,'quant_mode':'extrinsic'},
                   {'nbits':14,'fbits':7,'rounding_method':'nearest','batch_size':batch_size,'quant_mode':'extrinsic'},
                   {'nbits':12,'fbits':6,'rounding_method':'nearest','batch_size':batch_size,'quant_mode':'extrinsic'},
                   {'nbits':10,'fbits':5,'rounding_method':'nearest','batch_size':batch_size,'quant_mode':'extrinsic'},
@@ -34,14 +34,14 @@ model_augment_BN=[{'nbits':16,'fbits':8,'rounding_method':'nearest','batch_size'
                   {'nbits':10,'fbits':5,'rounding_method':'nearest','batch_size':batch_size,'quant_mode':'intrinsic'},
                   {'nbits':8,'fbits':4,'rounding_method':'nearest','batch_size':batch_size,'quant_mode':'intrinsic'}]
 
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
-dataset_augment={'dataset':'cifar10'}
+dataset_argument={'dataset':'cifar10'}
 
 # 4C2FBN
-inference_scheme(quantized_4C2FBN, model_augment_BN, compile_augment, dataset_augment, result_save_file_BN, weight_load=True, weight_name=weight_name_BN)
+inference_scheme(quantized_4C2FBN, model_argument_BN, compile_argument, dataset_argument, result_save_file_BN, weight_load=True, weight_name=weight_name_BN)
 
 # 4C2FBN fused
-inference_scheme(quantized_4C2F, model_augment_BN, compile_augment, dataset_augment, result_save_file_BN_fused, weight_load=True, weight_name=weight_name_BN_fused)
+inference_scheme(quantized_4C2F, model_argument_BN, compile_argument, dataset_argument, result_save_file_BN_fused, weight_load=True, weight_name=weight_name_BN_fused)
 
 

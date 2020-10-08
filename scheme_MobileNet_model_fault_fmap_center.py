@@ -56,11 +56,11 @@ def call_model():
 
 #%%
 # test
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top5_acc]}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top5_acc]}
 
-dataset_augment={'dataset':'ImageDataGenerator','img_rows':img_width,'img_cols':img_height,'batch_size':batch_size,'data_augmentation':False,'data_dir':validation_data_dir,'preprocessing_function':preprocess_input}
+dataset_argument={'dataset':'ImageDataGenerator','img_rows':img_width,'img_cols':img_height,'batch_size':batch_size,'data_augmentation':False,'data_dir':validation_data_dir,'preprocessing_function':preprocess_input}
 
-FT_augment={'model_name':'mobilenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],'fuseBN':True,'setsize':set_size}    
+FT_argument={'model_name':'mobilenet','loss_function':categorical_crossentropy,'metrics':['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],'fuseBN':True,'setsize':set_size}    
 
 for concen in concentration_list:
     
@@ -89,12 +89,12 @@ for concen in concentration_list:
                'print_detail':False}
         
         # fault generation
-        model_augment=list()
+        model_argument=list()
         for i in range(test_rounds_lists[test_rounds]):
             print('Generating fault for test round %d...'%(i+1))
             model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
                         
-            model_augment.append({'weights':weight_name,
+            model_argument.append({'weights':weight_name,
                                   'nbits':model_word_length,
                                   'fbits':model_fractional_bit,
                                   'rounding_method':rounding_method,
@@ -106,14 +106,14 @@ for concen in concentration_list:
     
         result_save_file=result_save_folder+'/'+str(concen)+'/'+str(fr)+'.csv'
         inference_scheme(QuantizedMobileNetV1FusedBN, 
-                         model_augment, 
-                         compile_augment, 
-                         dataset_augment, 
+                         model_argument, 
+                         compile_argument, 
+                         dataset_argument, 
                          result_save_file, 
                          FT_evaluate=True, 
-                         FT_augment=FT_augment, 
+                         FT_argument=FT_argument, 
                          name_tag='fault rate '+str(fr))
         
-        del model_augment
+        del model_argument
 
 

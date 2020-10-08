@@ -32,11 +32,11 @@ batch_size=25
 
 
 # model setup
-# all augments use the same quantize precision
+# all arguments use the same quantize precision
 #model=quantized_4C2F(nbits=8,fbits=4,rounding_method='nearest')
 #model=quantized_4C2F(nbits=16,fbits=8,rounding_method='nearest',batch_size=batch_size,quant_mode='hybrid',overflow_mode=[True,False,True])
 model=quantized_4C2F(nbits=10,fbits=6,rounding_method='nearest',batch_size=batch_size,quant_mode='hybrid')
-# each augment uses different quantize precision. information list [input, weight, output]
+# each argument uses different quantize precision. information list [input, weight, output]
 #model=quantized_4C2F(nbits=[12,6,12],fbits=[6,3,6],rounding_method='nearest')
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 weight_name=convert_original_weight_layer_name(weight_name)

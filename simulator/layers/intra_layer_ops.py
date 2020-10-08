@@ -625,18 +625,18 @@ def DistributedConv2D(x, kernel, split_type, splits, strides=(1, 1), padding='va
         | 'k_seq' can't coexist with 'k_height' or 'k_width'.
     
     splits: 
-        For one single split the splits augment will be an Integer or List of Integer. 
-        The augment for setting splits on channel axis.
+        For one single split the splits argument will be an Integer or List of Integer. 
+        The argument for setting splits on channel axis.
         Either a 0-D integer `Tensor` indicating the number of splits 
         along split_dim or a 1-D integer `Tensor` containing the sizes of 
         each output tensor along split_dim. If a scalar then it must evenly
         divide `value.shape[axis]`; otherwise the sum of sizes along the 
         split dimension must match that of the `value`.
         
-        For splits on multiple splits typesthe splits augment will be List of (Integer or List of Integer).
+        For splits on multiple splits typesthe splits argument will be List of (Integer or List of Integer).
         List length is the number of split types permute according to the split_type list order.
         
-        For split on multiple layers the splits augment will be List of (List of (Integer or List of Integer)).
+        For split on multiple layers the splits argument will be List of (List of (Integer or List of Integer)).
         List length of first level is the number of target layers.
         List length of second level is the number of split types permute according to the split_type list order.
 
@@ -870,18 +870,18 @@ def QuantizedDistributedConv2DCore(x, kernel, split_type, splits, strides, dilat
         'k_seq' can't coexist with 'k_height' or 'k_width'.
     
     splits: 
-        For one single split the splits augment will be an Integer or List of Integer. 
-        The augment for setting splits on channel axis.
+        For one single split the splits argument will be an Integer or List of Integer. 
+        The argument for setting splits on channel axis.
         Either a 0-D integer `Tensor` indicating the number of splits 
         along split_dim or a 1-D integer `Tensor` containing the sizes of 
         each output tensor along split_dim. If a scalar then it must evenly
         divide `value.shape[axis]`; otherwise the sum of sizes along the 
         split dimension must match that of the `value`.
         
-        For splits on multiple splits typesthe splits augment will be List of (Integer or List of Integer).
+        For splits on multiple splits typesthe splits argument will be List of (Integer or List of Integer).
         List length is the number of split types permute according to the split_type list order.
         
-        For split on multiple layers the splits augment will be List of (List of (Integer or List of Integer)).
+        For split on multiple layers the splits argument will be List of (List of (Integer or List of Integer)).
         List length of first level is the number of target layers.
         List length of second level is the number of split types permute according to the split_type list order.
 

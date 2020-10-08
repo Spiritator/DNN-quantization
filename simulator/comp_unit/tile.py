@@ -645,7 +645,7 @@ class tile_PE(tile):
         elif isinstance(orig_prior[0],str):
             for i in range(len(self.tile_shape)):
                 if orig_prior[i] not in self.prior_element:
-                    raise ValueError('The augment orig_prior must be in list %s'%(str(self.prior_element)))
+                    raise ValueError('The argument orig_prior must be in list %s'%(str(self.prior_element)))
             self.expand_prior_orig=self.get_tile_dims_prior(orig_prior)
         
         self.expand_shape=expect_shape

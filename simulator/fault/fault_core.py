@@ -21,13 +21,13 @@ def generate_single_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer,t
         | The quantizer class contain following quantize operation infromation.
         | word_width: Integer. The fix-point representation of the parameter word length.
         | fractional_bits: Integer. Number of fractional bits in a fix-point parameter.
-        | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
+        | rounding: String. Rounding method of quantization, argument must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
     fault_bit: Integer. 0 <= fault_bit < word length
         The index of the SA fault bit on a fix-point parameter.
     stuck_at: String. One of '1' , '0' or 'flip'.
         The SA type of the faulty bit, input argument must be one of '1' , '0' or 'flip'.
     tensor_return: Bool. 
-        Return augment in Tensor or Ndarray.
+        Return argument in Tensor or Ndarray.
 
     Returns
     -------
@@ -80,13 +80,13 @@ def generate_multiple_stuck_at_fault(original_value,fault_bit,stuck_at,quantizer
         | The quantizer class contain following quantize operation infromation.
         | word_width: Integer. The fix-point representation of the parameter word length.
         | fractional_bits: Integer. Number of fractional bits in a fix-point parameter.
-        | rounding: String. Rounding method of quantization, augment must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
+        | rounding: String. Rounding method of quantization, argument must be one of 'nearest' , 'down', \'zero\', 'stochastic'.
     fault_bit: List of Integers. 
         The index of the SA fault bit on a fix-point parameter.
     stuck_at: List of String. 
-        The SA type of the faulty bit, augment must be one of '1' , '0' or 'flip'.
+        The SA type of the faulty bit, argument must be one of '1' , '0' or 'flip'.
     tensor_return: Bool. 
-        Return augment in Tensor dtype or nparray.
+        Return argument in Tensor dtype or nparray.
 
     Returns
     -------
@@ -156,7 +156,7 @@ def generate_stuck_at_fault_modulator(word_width,fractional_bits,fault_bit,stuck
     fault_bit: List of Integer. 
         The index of the SA fault bit on a fix-point parameter.
     stuck_at: List of String. '1' , '0' or 'flip'
-        The SA type of the faulty bit, input augment must be one of '1' , '0' or 'flip'.
+        The SA type of the faulty bit, input argument must be one of '1' , '0' or 'flip'.
 
     Returns
     -------

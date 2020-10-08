@@ -29,16 +29,16 @@ model_config={'nbits':model_word_length,
               'batch_size':batch_size,
               'quant_mode':None}
 
-model_augment=[model_config for i in range(test_rounds)]
+model_argument=[model_config for i in range(test_rounds)]
 
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
 
-dataset_augment={'dataset':'mnist'}
+dataset_argument={'dataset':'mnist'}
 
 inference_scheme(quantized_lenet5, 
-                 model_augment, 
-                 compile_augment, 
-                 dataset_augment, 
+                 model_argument, 
+                 compile_argument, 
+                 dataset_argument, 
                  result_save_file, 
                  weight_load=True, 
                  weight_name=weight_name, 
@@ -60,16 +60,16 @@ model_config={'nbits':model_word_length,
               'batch_size':batch_size,
               'quant_mode':None}
 
-model_augment_BN=[model_config for i in range(test_rounds)]
+model_argument_BN=[model_config for i in range(test_rounds)]
 
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
 
-dataset_augment={'dataset':'cifar10'}
+dataset_argument={'dataset':'cifar10'}
 
 inference_scheme(quantized_4C2F, 
-                 model_augment_BN, 
-                 compile_augment, 
-                 dataset_augment, 
+                 model_argument_BN, 
+                 compile_argument, 
+                 dataset_argument, 
                  result_save_file_BN_fused, 
                  weight_load=True, 
                  weight_name=weight_name_BN_fused, 
@@ -96,11 +96,11 @@ model_config={'weights':weight_name,
               'batch_size':batch_size,
               'quant_mode':None}
 
-model_augment=[model_config for i in range(test_rounds)]
+model_argument=[model_config for i in range(test_rounds)]
 
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
 
-dataset_augment={'dataset':'ImageDataGenerator',
+dataset_argument={'dataset':'ImageDataGenerator',
                  'img_rows':img_width,
                  'img_cols':img_height,
                  'batch_size':batch_size,
@@ -109,9 +109,9 @@ dataset_augment={'dataset':'ImageDataGenerator',
                  'preprocessing_function':preprocess_input_mob}
 
 inference_scheme(QuantizedMobileNetV1FusedBN, 
-                 model_augment, 
-                 compile_augment, 
-                 dataset_augment, 
+                 model_argument, 
+                 compile_argument, 
+                 dataset_argument, 
                  result_save_file, 
                  save_runtime=True)
 
@@ -137,11 +137,11 @@ model_config={'weights':weight_name,
               'batch_size':batch_size,
               'quant_mode':None}
 
-model_augment=[model_config for i in range(test_rounds)]
+model_argument=[model_config for i in range(test_rounds)]
 
-compile_augment={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
+compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy']}
 
-dataset_augment={'dataset':'ImageDataGenerator',
+dataset_argument={'dataset':'ImageDataGenerator',
                  'img_rows':img_width,
                  'img_cols':img_height,
                  'batch_size':batch_size,
@@ -151,9 +151,9 @@ dataset_augment={'dataset':'ImageDataGenerator',
 
 
 inference_scheme(QuantizedResNet50FusedBN, 
-                 model_augment, 
-                 compile_augment, 
-                 dataset_augment, 
+                 model_argument, 
+                 compile_argument, 
+                 dataset_argument, 
                  result_save_file,
                  save_runtime=True)
 

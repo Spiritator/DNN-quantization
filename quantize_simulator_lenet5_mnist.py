@@ -31,9 +31,9 @@ weight_name='../mnist_lenet5_weight.h5'
 batch_size=25
 
 # model setup
-# all augments use the same quantize precision
+# all arguments use the same quantize precision
 #model=quantized_lenet5(nbits=8,fbits=4,rounding_method='nearest')
-# each augment uses different quantize precision. information list [input, weight, output]
+# each argument uses different quantize precision. information list [input, weight, output]
 #model=quantized_lenet5(nbits=[10,4,10],fbits=[5,2,5],rounding_method='nearest')
 # intrinsic quantization
 #model=quantized_lenet5(nbits=8,fbits=2,rounding_method='nearest',batch_size=batch_size,quant_mode='hybrid',overflow_mode=[True,False,True])

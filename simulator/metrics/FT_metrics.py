@@ -49,10 +49,10 @@ def FT_metric_setup(model,fuseBN=None,setsize=50,score=None,fault_free_pred=None
     resnet50_fusedBN_imagenet_stat=[1.3531466766715,0.680959999883174,0.883000002408027]
 
     if not isinstance(fuseBN,bool) and fuseBN is not None:
-        raise ValueError('Augment fusedBN is a indicator for whether the model is fused BN or not. Please use bool type.')
+        raise ValueError('Argument fusedBN is a indicator for whether the model is fused BN or not. Please use bool type.')
         
     if not isinstance(model,str):
-        raise ValueError('Augment model is the name of model please use string to assign model name.')
+        raise ValueError('Argument model is the name of model please use string to assign model name.')
         
     if model.lower() in ['lenet','lenet5','lenet-5','le']:
         ff_score=lenet5_mnist_stat

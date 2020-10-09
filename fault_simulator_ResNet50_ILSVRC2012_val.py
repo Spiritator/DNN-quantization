@@ -120,8 +120,8 @@ print('dataset ready')
 t = time.time()
 print('evaluating...')
 
-#prediction = parallel_model.predict_generator(datagen, verbose=1, steps=len(datagen))
-prediction = model.predict_generator(datagen, verbose=1, steps=len(datagen))
+#prediction = parallel_model.predict(datagen, verbose=1, steps=len(datagen))
+prediction = model.predict(datagen, verbose=1, steps=len(datagen))
 test_result = evaluate_FT('resnet',prediction=prediction,test_label=to_categorical(datagen.classes,1000),loss_function=categorical_crossentropy,metrics=['accuracy',top5_acc,acc_loss,relative_acc,pred_miss,top5_pred_miss,conf_score_vary_10,conf_score_vary_50],fuseBN=True,setsize=set_size)
 
 t = time.time()-t
@@ -133,7 +133,7 @@ for key in test_result.keys():
 # draw confusion matrix
 
 #print('\n')
-#prediction = model.predict_generator(datagen, verbose=1, steps=len(datagen))
+#prediction = model.predict(datagen, verbose=1, steps=len(datagen))
 #prediction = np.argmax(prediction, axis=1)
 #
 #show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)

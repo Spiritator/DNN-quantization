@@ -9,7 +9,6 @@ evaluate memory fault injection testing result of MobileNetV1
 """
 
 from simulator.inference.scheme import inference_scheme
-from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.mobilenet import QuantizedMobileNetV1FusedBN, preprocess_input
 from simulator.metrics.topk_metrics import top5_acc
 from tensorflow.keras.losses import categorical_crossentropy
@@ -17,6 +16,7 @@ from simulator.memory.mem_bitmap import bitmap
 from simulator.memory.tile import tile, tile_FC, generate_layer_memory_mapping
 from simulator.fault.fault_core import generate_model_modulator
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
+from simulator.models.model_mods import make_ref_model
 
 # dimensions of our images.
 img_width, img_height = 224, 224
@@ -60,13 +60,13 @@ test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,100, 100 ,100 ,50 ,50 ,10 ,10 ,10 ,5
 # fault generation
 
 # model for get configuration
-def call_model():
-    return QuantizedMobileNetV1FusedBN(weights=weight_name, 
-                                       nbits=model_word_length,
-                                       fbits=model_fractional_bit, 
-                                       rounding_method=rounding_method,
-                                       batch_size=batch_size,
-                                       quant_mode=None)
+ref_model=make_ref_model(QuantizedMobileNetV1FusedBN(weights=weight_name, 
+                                                     nbits=model_word_length,
+                                                     fbits=model_fractional_bit, 
+                                                     rounding_method=rounding_method,
+                                                     batch_size=batch_size,
+                                                     quant_mode=None,
+                                                     verbose=False))
 
 # memory mapping
 GLB_wght=bitmap(row_wght, col_wght*word_wght*model_wl, wl=model_wl)  # 65KB
@@ -474,12 +474,12 @@ for test_rounds,fr in enumerate(fault_rate_list):
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
     print('|=|        Test Bit Fault Rate %s'%str(fr))
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-    ref_model=call_model()
         
     # fault generation
     model_argument=list()
-    for i in range(test_rounds_lists[test_rounds]):
-        print('Generating fault for test round %d...'%(i+1))
+    n_round=test_rounds_lists[test_rounds]
+    for i in range(n_round):
+        print('\rGenerating fault for test round %d/%d...'%(i+1,n_round),end='')
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=gen_model_mem_fault_dict(ref_model,fr)
         
         model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\

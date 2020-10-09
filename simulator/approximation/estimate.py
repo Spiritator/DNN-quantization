@@ -109,7 +109,7 @@ def get_model_param_size(model,batch_size):
     layer_list=model.layers
     for layer in layer_list:
         layer_config=layer.get_config()
-        if len(layer.weights) == 0:
+        if len(layer.weight_shape) == 0:
             param_size_report['input_params'].append(0)
             param_size_report['input_bits'].append(0)
             param_size_report['output_params'].append(0)

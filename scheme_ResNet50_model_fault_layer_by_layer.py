@@ -10,7 +10,6 @@ Using inference scheme to arange analysis and save result layer by layer.
 import os
 
 from simulator.inference.scheme import inference_scheme
-from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.resnet50 import QuantizedResNet50FusedBN, preprocess_input
 from simulator.metrics.topk_metrics import top5_acc
 from tensorflow.keras.losses import categorical_crossentropy
@@ -18,6 +17,7 @@ from simulator.fault.fault_list import generate_model_stuck_fault
 from simulator.approximation.estimate import get_model_param_size
 from simulator.inference.scheme import gen_test_round_list
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
+from simulator.models.model_mods import make_ref_model
 
 # dimensions of our images.
 img_width, img_height = 224, 224
@@ -42,16 +42,15 @@ test_round_lower_bound=2
 #%%
 
 # model for get configuration
-def call_model():
-    return QuantizedResNet50FusedBN(weights=weight_name, 
-                                    nbits=model_word_length,
-                                    fbits=model_fractional_bit, 
-                                    rounding_method=rounding_method,
-                                    batch_size=batch_size,
-                                    quant_mode=None)
+ref_model=make_ref_model(QuantizedResNet50FusedBN(weights=weight_name, 
+                                                  nbits=model_word_length,
+                                                  fbits=model_fractional_bit, 
+                                                  rounding_method=rounding_method,
+                                                  batch_size=batch_size,
+                                                  quant_mode=None,
+                                                  verbose=False))
 
 # layer by layer information
-ref_model=call_model()
 param_size_report=get_model_param_size(ref_model,batch_size)
 
 param_layers=list()
@@ -87,7 +86,6 @@ for layer_id in param_layers:
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
         print('|=|        Test Bit Fault Rate %s'%str(fr))
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-        ref_model=call_model()
         
         # fault parameter setting
         param={'model':ref_model,
@@ -108,8 +106,9 @@ for layer_id in param_layers:
         
         # fault generation
         model_argument=list()
-        for i in range(test_rounds_lists[test_rounds]):
-            print('Generating fault for test round %d...'%(i+1))
+        n_round=test_rounds_lists[test_rounds]
+        for i in range(n_round):
+            print('\rGenerating fault for test round %d/%d...'%(i+1,n_round),end='')
             model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
             
 #            model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\

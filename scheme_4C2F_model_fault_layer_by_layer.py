@@ -17,7 +17,7 @@ from tensorflow.keras.losses import categorical_crossentropy
 from simulator.fault.fault_list import generate_model_stuck_fault
 from simulator.approximation.estimate import get_model_param_size
 from simulator.inference.scheme import gen_test_round_list
-
+from simulator.models.model_mods import make_ref_model
 
 #%%
 # setting parameter
@@ -34,14 +34,13 @@ test_round_lower_bound=10
 #%%
 
 # model for get configuration
-def call_model():
-    return quantized_4C2F(nbits=model_word_length,
+ref_model=make_ref_model(quantized_4C2F(nbits=model_word_length,
                          fbits=model_fractional_bit,
                          batch_size=batch_size,
-                         quant_mode=None)
+                         quant_mode=None,
+                         verbose=False))
     
 # layer by layer information
-ref_model=call_model()
 param_size_report=get_model_param_size(ref_model,batch_size)
 
 param_layers=list()
@@ -76,7 +75,6 @@ for layer_id in param_layers:
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
         print('|=|        Test Bit Fault Rate %s'%str(fr))
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-        ref_model=call_model()
         
         # fault parameter setting
         param={'model':ref_model,
@@ -97,8 +95,9 @@ for layer_id in param_layers:
         
         # fault generation
         model_argument=list()
-        for i in range(test_rounds_lists[test_rounds]):
-            print('Generating fault for test round %d...'%(i+1))
+        n_round=test_rounds_lists[test_rounds]
+        for i in range(n_round):
+            print('\rGenerating fault for test round %d/%d...'%(i+1,n_round),end='')
             model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
             
 #            model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\

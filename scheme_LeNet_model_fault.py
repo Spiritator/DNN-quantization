@@ -15,7 +15,7 @@ from simulator.metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pr
 from tensorflow.keras.losses import categorical_crossentropy
 from simulator.fault.fault_list import generate_model_stuck_fault
 from simulator.fault.fault_core import generate_model_modulator
-
+from simulator.models.model_mods import make_ref_model
 
 #%%
 # setting parameter
@@ -33,11 +33,11 @@ test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,100 ,1
 #%%
 
 # model for get configuration
-def call_model():
-    return quantized_lenet5(nbits=model_word_length,
-                            fbits=model_fractional_bit,
-                            batch_size=batch_size,
-                            quant_mode=None)
+ref_model=make_ref_model(quantized_lenet5(nbits=model_word_length,
+                                          fbits=model_fractional_bit,
+                                          batch_size=batch_size,
+                                          quant_mode=None,
+                                          verbose=False))
 
 
 #%%
@@ -52,7 +52,6 @@ for test_rounds,fr in enumerate(fault_rate_list):
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
     print('|=|        Test Bit Fault Rate %s'%str(fr))
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-    ref_model=call_model()
     
     # fault parameter setting
     param={'model':ref_model,
@@ -72,8 +71,9 @@ for test_rounds,fr in enumerate(fault_rate_list):
     
     # fault generation
     model_argument=list()
-    for i in range(test_rounds_lists[test_rounds]):
-        print('Generating fault for test round %d...'%(i+1))
+    n_round=test_rounds_lists[test_rounds]
+    for i in range(n_round):
+        print('\rGenerating fault for test round %d/%d...'%(i+1,n_round),end='')
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
         
 #        model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\

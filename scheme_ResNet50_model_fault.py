@@ -9,13 +9,13 @@ evaluate fault injection testing result of ResNet50
 """
 
 from simulator.inference.scheme import inference_scheme
-from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.resnet50 import QuantizedResNet50FusedBN, preprocess_input
 from simulator.metrics.topk_metrics import top5_acc
 from tensorflow.keras.losses import categorical_crossentropy
 from simulator.fault.fault_list import generate_model_stuck_fault
 from simulator.fault.fault_core import generate_model_modulator
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
+from simulator.models.model_mods import make_ref_model
 
 # dimensions of our images.
 img_width, img_height = 224, 224
@@ -40,13 +40,13 @@ test_rounds_lists=[200  ,200  ,200  ,200 ,200 ,200 ,200 ,200 ,200 ,100 ,100 ,100
 #%%
 
 # model for get configuration
-def call_model():
-    return QuantizedResNet50FusedBN(weights=weight_name, 
-                                    nbits=model_word_length,
-                                    fbits=model_fractional_bit, 
-                                    rounding_method=rounding_method,
-                                    batch_size=batch_size,
-                                    quant_mode=None)
+ref_model=make_ref_model(QuantizedResNet50FusedBN(weights=weight_name, 
+                                                  nbits=model_word_length,
+                                                  fbits=model_fractional_bit, 
+                                                  rounding_method=rounding_method,
+                                                  batch_size=batch_size,
+                                                  quant_mode=None,
+                                                  verbose=False))
 
 
 #%%
@@ -61,7 +61,6 @@ for test_rounds,fr in enumerate(fault_rate_list):
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
     print('|=|        Test Bit Fault Rate %s'%str(fr))
     print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-    ref_model=call_model()
     
     # fault parameter setting
     param={'model':ref_model,
@@ -81,8 +80,9 @@ for test_rounds,fr in enumerate(fault_rate_list):
     
     # fault generation
     model_argument=list()
-    for i in range(test_rounds_lists[test_rounds]):
-        print('Generating fault for test round %d...'%(i+1))
+    n_round=test_rounds_lists[test_rounds]
+    for i in range(n_round):
+        print('\rGenerating fault for test round %d/%d...'%(i+1,n_round),end='')
         model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
         
 #        model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\

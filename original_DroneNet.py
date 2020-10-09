@@ -59,11 +59,11 @@ evaluation_generator = evaluation_datagen.flow_from_directory(
 
 t = time.time()
 
-test_result = model.evaluate_generator(evaluation_generator, steps=nb_validation_samples//batch_size)
+test_result = model.evaluate(evaluation_generator, steps=nb_validation_samples//batch_size)
 
 t = time.time()-t
 
-prediction = model.predict_generator(evaluation_generator,nb_validation_samples//batch_size)
+prediction = model.predict(evaluation_generator,nb_validation_samples//batch_size)
 prediction = np.argmax(prediction, axis=1)
 
 print('\nruntime: %f s'%t)        

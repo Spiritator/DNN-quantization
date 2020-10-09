@@ -20,6 +20,7 @@ from simulator.comp_unit.tile import tile_PE, tile_FC_PE
 from simulator.comp_unit.PEarray import PEarray
 from simulator.comp_unit.mac import mac_unit, preprocess_model_mac_fault
 from simulator.comp_unit.mapping_flow import PE_mapping_forward,PE_mapping_backward
+from simulator.models.model_mods import make_ref_model
 
 
 #%% setting parameter
@@ -51,12 +52,11 @@ test_rounds=20
 #%% model & fault information setup
 
 # model for get configuration
-def call_model(verbose=False):
-    return quantized_lenet5(nbits=model_word_length,
-                            fbits=model_fractional_bit,
-                            batch_size=batch_size,
-                            quant_mode=None,
-                            verbose=verbose)
+ref_model=make_ref_model(quantized_lenet5(nbits=model_word_length,
+                                          fbits=model_fractional_bit,
+                                          batch_size=batch_size,
+                                          quant_mode=None,
+                                          verbose=False))
 
 # PE represent computation unit
 PE=mac_unit(mac_config, noise_inject=noise_inject)
@@ -232,7 +232,6 @@ for round_id in range(test_rounds):
     print('======================================')
     print('        Test Round %d/%d'%(round_id,test_rounds))
     print('======================================')
-    ref_model=call_model()
     # fault generation
     model_mac_math_fdl, psidx_count=gen_model_PE_fault_dict(ref_model,fault_locs[round_id],fault_infos[round_id],verbose=mapping_verbose)
     K.clear_session()

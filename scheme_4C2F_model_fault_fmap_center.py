@@ -15,6 +15,7 @@ from simulator.metrics.topk_metrics import top2_acc
 from simulator.metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_50
 from tensorflow.keras.losses import categorical_crossentropy
 from simulator.fault.fault_list import generate_model_stuck_fault
+from simulator.models.model_mods import make_ref_model
 
 #%%
 # setting parameter
@@ -33,11 +34,11 @@ concentration_list=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 #%%
 
 # model for get configuration
-def call_model():
-    return quantized_4C2F(nbits=model_word_length,
+ref_model=make_ref_model(quantized_4C2F(nbits=model_word_length,
                          fbits=model_fractional_bit,
                          batch_size=batch_size,
-                         quant_mode=None)
+                         quant_mode=None,
+                         verbose=False))
     
 #%%
 # test
@@ -56,7 +57,6 @@ for concen in concentration_list:
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
         print('|=|        Test Bit Fault Rate %s'%str(fr))
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-        ref_model=call_model()
         
         # fault parameter setting
         param={'model':ref_model,
@@ -75,8 +75,9 @@ for concen in concentration_list:
         
         # fault generation
         model_argument=list()
-        for i in range(test_rounds_lists[test_rounds]):
-            print('Generating fault for test round %d...'%(i+1))
+        n_round=test_rounds_lists[test_rounds]
+        for i in range(n_round):
+            print('\rGenerating fault for test round %d/%d...'%(i+1,n_round),end='')
             model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
             
 #            model_ifmap_fdl, model_ofmap_fdl, model_weight_fdl\

@@ -108,16 +108,24 @@ class pseudo_layer:
         Only store layer Shape information.
     
     '''
-    def __init__(self,input_shape,output_shape,weight_shape):
+    def __init__(self,input_shape,output_shape,weight_shape,name,config,kernel_size=None,padding=None,dilation_rate=None):
         self.input_shape=input_shape
         self.output_shape=output_shape
         self.weight_shape=weight_shape
+        self.name=name
+        self.kernel_size=kernel_size
+        self.padding=padding
+        self.dilation_rate=dilation_rate
+        self.config=config
         
     def get_weights(self):
         weights=list()
         for shape in self.weight_shape:
             weights.append(np.zeros(shape))
         return weights
+    
+    def get_config(self):
+        return self.config
         
 def make_ref_model(model):
     '''Make a reference model of psuedo_model class.
@@ -129,7 +137,22 @@ def make_ref_model(model):
     layer_list=list()
     for i in range(len(model.layers)):
         layer=model.layers[i]
-        ref_layer=pseudo_layer(layer.input_shape,layer.output_shape,[weight_shape.shape for weight_shape in layer.get_weights()])
+        config=layer.get_config()
+        if 'conv' in layer.__class__.__name__.lower():
+            ref_layer=pseudo_layer(layer.input_shape,
+                                   layer.output_shape,
+                                   [weight_shape.shape for weight_shape in layer.get_weights()],
+                                   layer.name,
+                                   config,
+                                   layer.kernel_size, 
+                                   layer.padding, 
+                                   layer.dilation_rate)
+        else:
+            ref_layer=pseudo_layer(layer.input_shape,
+                                   layer.output_shape,
+                                   [weight_shape.shape for weight_shape in layer.get_weights()],
+                                   layer.name,
+                                   config,)
         layer_list.append(ref_layer)
         
     ref_model=pseudo_model(layer_list)

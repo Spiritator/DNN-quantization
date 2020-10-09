@@ -10,12 +10,12 @@ Using inference scheme to arange analysis and save result. Evaluate the FT diffe
 import os
 
 from simulator.inference.scheme import inference_scheme
-from tensorflow.keras.utils import multi_gpu_model,to_categorical
 from simulator.models.mobilenet import QuantizedMobileNetV1FusedBN, preprocess_input
 from simulator.metrics.topk_metrics import top5_acc
 from tensorflow.keras.losses import categorical_crossentropy
 from simulator.fault.fault_list import generate_model_stuck_fault
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
+from simulator.models.model_mods import make_ref_model
 
 #%%
 # setting parameter
@@ -45,13 +45,13 @@ concentration_list=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 #%%
 
 # model for get configuration
-def call_model():
-    return QuantizedMobileNetV1FusedBN(weights=weight_name, 
-                                       nbits=model_word_length,
-                                       fbits=model_fractional_bit, 
-                                       rounding_method=rounding_method,
-                                       batch_size=batch_size,
-                                       quant_mode=None)
+ref_model=make_ref_model(QuantizedMobileNetV1FusedBN(weights=weight_name, 
+                                                     nbits=model_word_length,
+                                                     fbits=model_fractional_bit, 
+                                                     rounding_method=rounding_method,
+                                                     batch_size=batch_size,
+                                                     quant_mode=None,
+                                                     verbose=False))
 
 
 #%%
@@ -71,7 +71,6 @@ for concen in concentration_list:
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
         print('|=|        Test Bit Fault Rate %s'%str(fr))
         print('|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|=|')
-        ref_model=call_model()
         
         # fault parameter setting
         param={'model':ref_model,
@@ -90,8 +89,9 @@ for concen in concentration_list:
         
         # fault generation
         model_argument=list()
-        for i in range(test_rounds_lists[test_rounds]):
-            print('Generating fault for test round %d...'%(i+1))
+        n_round=test_rounds_lists[test_rounds]
+        for i in range(n_round):
+            print('\rGenerating fault for test round %d/%d...'%(i+1,n_round),end='')
             model_ifmap_fdl,model_ofmap_fdl,model_weight_fdl=generate_model_stuck_fault( **param)
                         
             model_argument.append({'weights':weight_name,

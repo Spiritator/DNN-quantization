@@ -136,8 +136,7 @@ for layer_id in param_layers:
                          compile_argument, 
                          dataset_argument, 
                          result_save_file, 
-                         FT_evaluate=True, 
-                         FT_argument=FT_argument, 
+                         FT_evaluate_argument=FT_argument, 
                          name_tag='fault rate '+str(fr))
         
         del model_argument

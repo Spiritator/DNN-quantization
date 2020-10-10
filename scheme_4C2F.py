@@ -39,9 +39,9 @@ compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics'
 dataset_argument={'dataset':'cifar10'}
 
 # 4C2FBN
-inference_scheme(quantized_4C2FBN, model_argument_BN, compile_argument, dataset_argument, result_save_file_BN, weight_load=True, weight_name=weight_name_BN)
+inference_scheme(quantized_4C2FBN, model_argument_BN, compile_argument, dataset_argument, result_save_file_BN, weight_load_name=weight_name_BN)
 
 # 4C2FBN fused
-inference_scheme(quantized_4C2F, model_argument_BN, compile_argument, dataset_argument, result_save_file_BN_fused, weight_load=True, weight_name=weight_name_BN_fused)
+inference_scheme(quantized_4C2F, model_argument_BN, compile_argument, dataset_argument, result_save_file_BN_fused, weight_load_name=weight_name_BN_fused)
 
 

@@ -110,10 +110,8 @@ for concen in concentration_list:
                          compile_argument, 
                          dataset_argument, 
                          result_save_file, 
-                         fault_gen=True,
-                         fault_param=param,
-                         FT_evaluate=True, 
-                         FT_argument=FT_argument, 
+                         fault_gen_param=param,
+                         FT_evaluate_argument=FT_argument, 
                          name_tag='fault rate '+str(fr))
         
         del model_argument

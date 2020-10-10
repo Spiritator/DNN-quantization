@@ -104,10 +104,8 @@ for concen in concentration_list:
                          compile_argument, 
                          dataset_argument, 
                          result_save_file, 
-                         weight_load=True, 
-                         weight_name=weight_name, 
-                         FT_evaluate=True, 
-                         FT_argument=FT_argument, 
+                         weight_load_name=weight_name, 
+                         FT_evaluate_argument=FT_argument, 
                          name_tag='fault rate '+str(fr))
 
 

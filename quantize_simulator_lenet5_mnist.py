@@ -12,7 +12,6 @@ evaluate quantized testing result with custom Keras quantize layer of LeNet-5
 import numpy as np
 import tensorflow.keras.backend as K
 import time
-#from keras.utils import multi_gpu_model
 
 from simulator.models.model_library import quantized_lenet5
 from simulator.utils_tool.weight_conversion import convert_original_weight_layer_name

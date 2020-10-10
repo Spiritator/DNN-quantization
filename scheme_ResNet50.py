@@ -38,5 +38,5 @@ compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics'
 dataset_argument={'dataset':'ImageDataGenerator','img_rows':img_width,'img_cols':img_height,'batch_size':batch_size,'data_augmentation':False,'data_dir':validation_data_dir,'preprocessing_function':preprocess_input}
 
 
-inference_scheme(QuantizedResNet50, model_argument, compile_argument, dataset_argument, result_save_file, multi_gpu=True, gpu_num=2)
+inference_scheme(QuantizedResNet50, model_argument, compile_argument, dataset_argument, result_save_file, multi_gpu_num=2)
 

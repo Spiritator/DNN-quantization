@@ -40,8 +40,7 @@ inference_scheme(quantized_lenet5,
                  compile_argument, 
                  dataset_argument, 
                  result_save_file, 
-                 weight_load=True, 
-                 weight_name=weight_name, 
+                 weight_load_name=weight_name, 
                  save_runtime=True)
 
 #%%
@@ -71,8 +70,7 @@ inference_scheme(quantized_4C2F,
                  compile_argument, 
                  dataset_argument, 
                  result_save_file_BN_fused, 
-                 weight_load=True, 
-                 weight_name=weight_name_BN_fused, 
+                 weight_load_name=weight_name_BN_fused, 
                  save_runtime=True)
 
 #%%

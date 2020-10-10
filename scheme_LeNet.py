@@ -27,6 +27,6 @@ compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics'
 dataset_argument={'dataset':'mnist'}
 
 
-inference_scheme(quantized_lenet5, model_argument, compile_argument, dataset_argument, result_save_file, weight_load=True, weight_name=weight_name)
+inference_scheme(quantized_lenet5, model_argument, compile_argument, dataset_argument, result_save_file, weight_load_name=weight_name)
 
 

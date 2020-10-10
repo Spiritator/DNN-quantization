@@ -259,11 +259,9 @@ for round_id in range(test_rounds):
                      dataset_argument, 
                      result_save_file, 
                      append_save_file=True,
-                     weight_load=True, 
-                     weight_name=weight_name, 
+                     weight_load_name=weight_name, 
                      save_runtime=True,
-                     FT_evaluate=True, 
-                     FT_argument=FT_argument,
+                     FT_evaluate_argument=FT_argument,
                      save_file_add_on=info_add_on,
                      verbose=4)
 

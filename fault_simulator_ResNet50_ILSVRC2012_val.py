@@ -36,8 +36,7 @@ else:
     validation_data_dir = '../../dataset/imagenet_val_imagedatagenerator_setsize_%d'%set_size
 
 
-#%%
-# fault generation
+#%% fault generation
 
 # model for get configuration
 ref_model=make_ref_model(QuantizedResNet50FusedBN(weights='../resnet50_weights_tf_dim_ordering_tf_kernels_fused_BN.h5', 
@@ -70,8 +69,7 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
 #                          fast_gen=True)
 
 
-#%%
-# model setup
+#%% model setup
 
 # print('Building model...')
 # t = time.time()
@@ -90,9 +88,7 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
 # print('model build time: %f s'%t)
 
 # multi GPU model
-
 print('Building multi GPU model...')
-
 t = time.time()
 strategy = tf.distribute.MirroredStrategy(['/gpu:0', '/gpu:1'])
 with strategy.scope():
@@ -111,16 +107,14 @@ with strategy.scope():
 t = time.time()-t
 print('multi GPU model build time: %f s'%t)
 
-#%%
-#dataset setup
+#%% dataset setup
 
 print('preparing dataset...')
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, batch_size = batch_size*strategy.num_replicas_in_sync, data_augmentation = False, data_dir = validation_data_dir, preprocessing_function = preprocess_input)
 print('dataset ready')
 
 
-#%%
-# test
+#%% test
 
 t = time.time()
 print('evaluating...')
@@ -134,8 +128,7 @@ print('\nruntime: %f s'%t)
 for key in test_result.keys():
     print('Test %s\t:'%key, test_result[key])
 
-#%%
-# draw confusion matrix
+#%% draw confusion matrix
 
 #print('\n')
 #prediction = model.predict(datagen, verbose=1, steps=len(datagen))

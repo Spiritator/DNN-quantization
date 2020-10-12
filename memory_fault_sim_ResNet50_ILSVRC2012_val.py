@@ -7,7 +7,8 @@ Created on Tue Sep 25 14:32:50 2018
 evaluate memory fault injection testing result of ResNet50
 """
 
-from tensorflow.keras.utils import multi_gpu_model,to_categorical
+import tensorflow as tf
+from tensorflow.keras.utils import to_categorical
 from simulator.models.resnet50 import QuantizedResNet50FusedBN,preprocess_input
 from simulator.utils_tool.dataset_setup import dataset_setup
 from simulator.metrics.topk_metrics import top5_acc
@@ -55,8 +56,7 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 
 fast_mode=True
 
-#%%
-# fault generation
+#%% fault generation
 
 # model for get configuration
 model = QuantizedResNet50FusedBN(weights='../resnet50_weights_tf_dim_ordering_tf_kernels_fused_BN.h5', 
@@ -80,8 +80,7 @@ GLB_wght.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
 GLB_ifmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
 GLB_ofmap.gen_bitmap_SA_fault_dict(fault_rate,fast_gen=True)
 
-#%%
-# tile setting
+#%% tile setting
 
 # conv1
 ofmap_tile_conv1=tile((1,56,56,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
@@ -172,8 +171,7 @@ ofmap_tile_fc1000=tile_FC((1,250),is_fmap=True,wl=model_wl)
 ifmap_tile_fc1000=tile_FC((1,1024),is_fmap=True,wl=model_wl)
 wght_tile_fc1000 =tile_FC((1024,250),is_fmap=False,wl=model_wl)
 
-#%%
-# generate fault dictionary
+#%% generate fault dictionary
 model_ifmap_fault_dict_list[2],model_ofmap_fault_dict_list[2],model_weight_fault_dict_list[2]\
 =generate_layer_memory_mapping(model.layers[2],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
@@ -449,8 +447,7 @@ model_ifmap_fault_dict_list[123],model_ofmap_fault_dict_list[123],model_weight_f
                                ifmap_tile_fc1000,wght_tile_fc1000,ofmap_tile_fc1000,
                                fast_mode=fast_mode)
 
-#%%
-# generate modulator
+#%% generate modulator
 
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
 =generate_model_modulator(model,
@@ -462,13 +459,10 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                           fast_gen=True)
 
 
-#%%
-# model setup
+#%% model setup
 
 print('Building model...')
-
 t = time.time()
-
 model = QuantizedResNet50FusedBN(weights='../resnet50_weights_tf_dim_ordering_tf_kernels_fused_BN.h5', 
                                  nbits=model_word_length,
                                  fbits=model_fractional_bit, 
@@ -480,37 +474,39 @@ model = QuantizedResNet50FusedBN(weights='../resnet50_weights_tf_dim_ordering_tf
                                  weight_fault_dict_list=model_weight_fault_dict_list)
 
 #model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
-
 t = time.time()-t
-
 model.summary()
 
 print('model build time: %f s'%t)
 
-# multi GPU model
+# # multi GPU model
+# print('Building multi GPU model...')
+# t = time.time()
+# strategy = tf.distribute.MirroredStrategy(['/gpu:0', '/gpu:1'])
+# with strategy.scope():
+#     parallel_model = QuantizedResNet50FusedBN(weights='../resnet50_weights_tf_dim_ordering_tf_kernels_fused_BN.h5', 
+#                                               nbits=model_word_length,
+#                                               fbits=model_fractional_bit, 
+#                                               rounding_method=rounding_method,
+#                                               batch_size=batch_size,
+#                                               quant_mode='hybrid',
+#                                               ifmap_fault_dict_list=model_ifmap_fault_dict_list,
+#                                               ofmap_fault_dict_list=model_ofmap_fault_dict_list,
+#                                               weight_fault_dict_list=model_weight_fault_dict_list)
+#     parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
+#     parallel_model.summary()
 
-#print('Building multi GPU model...')
-#
-#t = time.time()
-#parallel_model = multi_gpu_model(model, gpus=2)
-#parallel_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top5_acc])
-#
-#parallel_model.summary()
-#
-#t = time.time()-t
-#
-#print('multi GPU model build time: %f s'%t)
+# t = time.time()-t
+# print('multi GPU model build time: %f s'%t)
 
-#%%
-#dataset setup
+#%% dataset setup
 
 print('preparing dataset...')
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, batch_size = batch_size, data_augmentation = False, data_dir = validation_data_dir, preprocessing_function = preprocess_input)
 print('dataset ready')
 
 
-#%%
-# test
+#%% test
 
 t = time.time()
 print('evaluating...')
@@ -524,11 +520,9 @@ print('\nruntime: %f s'%t)
 for key in test_result.keys():
     print('Test %s\t:'%key, test_result[key])
 
-#%%
-# draw confusion matrix
+#%% draw confusion matrix
 
 #print('\n')
-#prediction = model.predict(datagen, verbose=1, steps=len(datagen))
 #prediction = np.argmax(prediction, axis=1)
 #
 #show_confusion_matrix(datagen.classes,prediction,datagen.class_indices.keys(),'Confusion Matrix',figsize=(10,8),normalize=False,big_matrix=True)

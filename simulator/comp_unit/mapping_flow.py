@@ -61,7 +61,7 @@ def PE_mapping_forward(ifmap_tile,
         
     verbose: Integer. 
         Print the progress of forward mapping.
-    verbose: Integer. 
+    verbose: Integer. Default 4.
         | The verbosity of printing forward mapping progress. max 5 (print all info), min 0 (print nothing), Folding All info 5.
         | The description below shows the minimum verbosity for info to print.
         | Mapping Start (2)
@@ -204,8 +204,8 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, verbos
         Save solved fault dictionary to respective data tile or not.
         True for getting the fault information on data tile. False for PE fault injection model fault dictionary list.
         Usually False for simulation.
-    verbose: Integer. 
-        | The verbosity of printing backward mapping progress. max 4 (print all info), min 0 (print nothing), Folding All info 5.
+    verbose: Integer. Default 4.
+        | The verbosity of printing backward mapping progress. max 5 (print all info), min 0 (print nothing), Folding All info 5.
         | The description below shows the minimum verbosity for info to print.
         | Mapping Start (2)
         | Mapping Tasks (3)
@@ -507,7 +507,7 @@ def mapping_valid_checker(ifmap_tile,
     ofmap_tile.fault_dict={fault_loc_o:{'SA_type':'flip','SA_bit':fault_bit_o}}
     
     # Forward mapping
-    PE_fault_dict=PE_mapping_forward(ifmap_tile,wght_tile,ofmap_tile,PEarray,ifmap_expand_config,wght_expand_config,ofmap_expand_config,PEarray_setup_config,print_detail=print_detail)
+    PE_fault_dict=PE_mapping_forward(ifmap_tile,wght_tile,ofmap_tile,PEarray,ifmap_expand_config,wght_expand_config,ofmap_expand_config,PEarray_setup_config,verbose=5)
 
     # Sampple fault list
     forward_fault_num=len(PE_fault_dict)

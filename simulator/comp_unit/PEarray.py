@@ -2213,7 +2213,9 @@ class PEarray:
                 txtparam+=', bias'
             if self.use_psum:
                 txtparam+=', psum'
+            print('\n========================================================')
             print('WARNING: The number of slices of %s should be the same but got %s'%(txtparam,str(pack_num)))
+            print('==========================================================\n')
         
         pack_clk=[self.shape_ofmap_mapping[-2],self.shape_wght_mapping[-2],self.shape_ifmap_mapping[-2]]
         if self.use_bias:

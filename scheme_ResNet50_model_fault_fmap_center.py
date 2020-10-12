@@ -17,8 +17,7 @@ from simulator.fault.fault_list import generate_model_stuck_fault
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top5_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.models.model_mods import make_ref_model
 
-#%%
-# setting parameter
+#%% setting parameter
 
 # dimensions of our images.
 img_width, img_height = 224, 224
@@ -42,9 +41,7 @@ test_rounds_lists=[200  ,200  ,200  ,200 ,200 ,200 ,200 ,200 ,200 ,100 ,100 ,100
 # different level of concentration on center of feature maps
 concentration_list=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
-#%%
-
-# model for get configuration
+#%% model for get configuration
 
 ref_model=make_ref_model(QuantizedResNet50FusedBN(weights=weight_name, 
                                                   nbits=model_word_length,
@@ -54,8 +51,8 @@ ref_model=make_ref_model(QuantizedResNet50FusedBN(weights=weight_name,
                                                   quant_mode=None,
                                                   verbose=False))
 
-#%%
-# test
+#%% test
+
 compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top5_acc]}
 
 dataset_argument={'dataset':'ImageDataGenerator','img_rows':img_width,'img_cols':img_height,'batch_size':batch_size,'data_augmentation':False,'data_dir':validation_data_dir,'preprocessing_function':preprocess_input}

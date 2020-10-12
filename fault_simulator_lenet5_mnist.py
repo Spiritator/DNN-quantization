@@ -24,8 +24,7 @@ from tensorflow.keras.losses import categorical_crossentropy
 from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2_pred_miss, conf_score_vary_10, conf_score_vary_50
 from simulator.inference.evaluate import evaluate_FT
 
-#%%
-# setting parameter
+#%% setting parameter
 
 weight_name='../mnist_lenet5_weight.h5'
 model_word_length=8
@@ -34,8 +33,7 @@ rounding_method='nearest'
 batch_size=20
 fault_rate=0.0001
 
-#%%
-# fault generation
+#%% fault generation
 
 # model for get configuration
 model=quantized_lenet5(nbits=model_word_length,
@@ -75,8 +73,7 @@ print('\nfault gen time: %f s'%t)
 #model_ofmap_fault_dict_list[6]=None
 #model_ofmap_fault_dict_list[7]=None
 
-#%%
-# model setup
+#%% model setup
 
 t = time.time()
 model=quantized_lenet5(nbits=model_word_length,
@@ -96,13 +93,11 @@ print('Model compiled !')
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
-#%%
-#dataset setup
+#%% dataset setup
 
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('mnist')
 
-#%%
-# view test result
+#%% view test result
 
 t = time.time()
 
@@ -115,8 +110,7 @@ print('\nruntime: %f s'%t)
 for key in test_result.keys():
     print('Test %s\t:'%key, test_result[key])
 
-#%%
-# draw confusion matrix
+#%% draw confusion matrix
 
 print('\n')
 #prediction = model.predict(x_test, verbose=1, batch_size=batch_size)

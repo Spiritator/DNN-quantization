@@ -19,8 +19,7 @@ from simulator.approximation.estimate import get_model_param_size
 from simulator.inference.scheme import gen_test_round_list
 from simulator.models.model_mods import make_ref_model
 
-#%%
-# setting parameter
+#%% setting parameter
 
 result_save_folder='../test_result/cifar10_4C2F_model_fault_rate_lbl'
 weight_name='../cifar10_4C2FBN_weight_fused_BN.h5'
@@ -31,7 +30,7 @@ batch_size=20
 test_round_upper_bound=200
 test_round_lower_bound=10
 
-#%%
+#%% configuration
 
 # model for get configuration
 ref_model=make_ref_model(quantized_4C2F(nbits=model_word_length,
@@ -48,8 +47,8 @@ for j in range(len(ref_model.layers)):
     if param_size_report['input_params'][j]!=0:
         param_layers.append(j)
 
-#%%
-# test
+#%% test
+
 compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
 dataset_argument={'dataset':'cifar10'}

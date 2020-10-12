@@ -18,8 +18,7 @@ from simulator.memory.tile import tile, tile_FC, generate_layer_memory_mapping
 from simulator.fault.fault_core import generate_model_modulator
 from simulator.models.model_mods import make_ref_model
 
-#%%
-# setting parameter
+#%% setting parameter
 
 result_save_folder='../test_result/mnist_lenet5_memory_fault_rate'
 weight_name='../mnist_lenet5_weight.h5'
@@ -40,8 +39,7 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 fault_rate_list=  [2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
 test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,100 ,100 ,100 ,50  ,50  ,20  ,10  ]
 
-#%%
-# fault generation
+#%% fault generation
 
 # model for get configuration
 ref_model=make_ref_model(quantized_lenet5(nbits=model_word_length,
@@ -75,6 +73,7 @@ ofmap_tile_fc2=tile_FC((1,10),is_fmap=True,wl=model_wl)
 ifmap_tile_fc2=tile_FC((1,128),is_fmap=True,wl=model_wl)
 wght_tile_fc2 =tile_FC((128,10),is_fmap=False,wl=model_wl)
 
+#%% fault gen function
 
 def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False,fast_mode=True):
     model_ifmap_fault_dict_list=[None for i in range(8)]
@@ -134,8 +133,8 @@ def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False,fast_mode=T
     
     return model_ifmap_fault_dict_list,model_ofmap_fault_dict_list,model_weight_fault_dict_list
 
-#%%
-# test
+#%% test
+
 compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
 dataset_argument={'dataset':'mnist'}

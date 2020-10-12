@@ -77,8 +77,8 @@ def inference_scheme(model_func,
             |  'item name 2':[item data list], 
             |  ...}
             
-    verbose: Integer. 
-        | The verbosity of inference run printing information max 7 (print all info), min 0 (print nothing).
+    verbose: Integer. Default 7.
+        | The verbosity of inference run printing information max 8 (print all info), min 0 (print nothing).
         | The description below shows the minimum verbosity for info to print.
         | Dataset Infos: dataset name (6), prepare and ready (6), data shape/number (7).
         | Scheme Run Index (1)

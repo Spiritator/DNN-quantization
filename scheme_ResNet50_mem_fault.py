@@ -57,8 +57,7 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 fault_rate_list=  [5e-7,1e-6,2e-6,5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
 test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,100 ,100 ,100, 50  ,50  ,10  ,10  ,10  ,2   ,2   ,2   ,2   ]
 
-#%%
-# fault generation
+#%% fault generation
 
 # model for get configuration
 ref_model=make_ref_model(QuantizedResNet50FusedBN(weights=weight_name, 
@@ -75,8 +74,7 @@ GLB_wght=bitmap(row_wght, col_wght*word_wght*model_wl, wl=model_wl)  # 514KB
 GLB_ifmap=bitmap(row_ifmap, col_ifmap*word_ifmap*model_wl, wl=model_wl) # 196KB
 GLB_ofmap=bitmap(row_ofmap, col_ofmap*word_ofmap*model_wl, wl=model_wl) # 196KB
 
-#%%
-# tile setting
+#%% tile setting
 
 # conv1
 ofmap_tile_conv1=tile((1,56,56,32),is_fmap=True,wl=model_wl,row_prior=memory_row_priority,col_prior=memory_column_priority)
@@ -167,7 +165,7 @@ ofmap_tile_fc1000=tile_FC((1,250),is_fmap=True,wl=model_wl)
 ifmap_tile_fc1000=tile_FC((1,1024),is_fmap=True,wl=model_wl)
 wght_tile_fc1000 =tile_FC((1024,250),is_fmap=False,wl=model_wl)
 
-#%%
+#%% fault gen function
 
 def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False,fast_mode=True):
     model_ifmap_fault_dict_list=[None for i in range(124)]
@@ -581,8 +579,8 @@ def gen_model_mem_fault_dict(ref_model,fault_rate,print_detail=False,fast_mode=T
     
     return model_ifmap_fault_dict_list,model_ofmap_fault_dict_list,model_weight_fault_dict_list
 
-#%%
-# test
+#%% test
+
 compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top5_acc]}
 
 dataset_argument={'dataset':'ImageDataGenerator','img_rows':img_width,'img_cols':img_height,'batch_size':batch_size,'data_augmentation':False,'data_dir':validation_data_dir,'preprocessing_function':preprocess_input}

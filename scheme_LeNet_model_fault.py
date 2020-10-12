@@ -17,8 +17,7 @@ from simulator.fault.fault_list import generate_model_stuck_fault
 from simulator.fault.fault_core import generate_model_modulator
 from simulator.models.model_mods import make_ref_model
 
-#%%
-# setting parameter
+#%% setting parameter
 
 result_save_folder='../test_result/mnist_lenet5_model_fault_rate'
 weight_name='../mnist_lenet5_weight.h5'
@@ -30,9 +29,8 @@ batch_size=20
 fault_rate_list=  [5e-7,1e-6,2e-6,5e-6,1e-5,2e-5,5e-5,1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1]
 test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,100 ,100 ,100 ,100 ,50  ,50  ]
 
-#%%
+#%% model for get configuration
 
-# model for get configuration
 ref_model=make_ref_model(quantized_lenet5(nbits=model_word_length,
                                           fbits=model_fractional_bit,
                                           batch_size=batch_size,
@@ -40,8 +38,8 @@ ref_model=make_ref_model(quantized_lenet5(nbits=model_word_length,
                                           verbose=False))
 
 
-#%%
-# test
+#%% test
+
 compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
 dataset_argument={'dataset':'mnist'}

@@ -39,7 +39,7 @@ else:
 test_round_upper_bound=100
 test_round_lower_bound=2
 
-#%%
+#%% configuration
 
 # model for get configuration
 ref_model=make_ref_model(QuantizedResNet50FusedBN(weights=weight_name, 
@@ -59,8 +59,8 @@ for j in range(len(ref_model.layers)):
         param_layers.append(j)
 
 
-#%%
-# test
+#%% test
+
 compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top5_acc]}
 
 dataset_argument={'dataset':'ImageDataGenerator','img_rows':img_width,'img_cols':img_height,'batch_size':batch_size,'data_augmentation':False,'data_dir':validation_data_dir,'preprocessing_function':preprocess_input}

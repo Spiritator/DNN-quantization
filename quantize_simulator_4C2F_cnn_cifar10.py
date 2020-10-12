@@ -23,13 +23,11 @@ from simulator.metrics.FT_metrics import acc_loss,relative_acc,pred_miss,top2_pr
 from simulator.approximation.estimate import comp_num_estimate
 from simulator.inference.evaluate import evaluate_FT
 
-#%%
-# model setup
+#%% model setup
 
 #weight_name='../cifar10_4C2F_weight.h5'
 weight_name='../cifar10_4C2FBN_weight_fused_BN.h5'
 batch_size=25
-
 
 # model setup
 # all arguments use the same quantize precision
@@ -43,13 +41,11 @@ weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
-#%%
-#dataset setup
+#%% dataset setup
 
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('cifar10')
 
-#%%
-# view test result
+#%% view test result
 
 t = time.time()
 
@@ -65,8 +61,7 @@ computaion_esti=comp_num_estimate(model)
 print('\nTotal # of computations:', computaion_esti['total_MAC'])
 print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
 
-#%%
-# draw confusion matrix
+#%% draw confusion matrix
 
 print('\n')
 #prediction = model.predict(x_test, verbose=1, batch_size=batch_size)

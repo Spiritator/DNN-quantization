@@ -17,8 +17,7 @@ from tensorflow.keras.losses import categorical_crossentropy
 from simulator.fault.fault_list import generate_model_stuck_fault
 from simulator.models.model_mods import make_ref_model
 
-#%%
-# setting parameter
+#%% setting parameter
 
 result_save_folder='../test_result/cifar10_4C2F_model_fault_rate_fmc'
 weight_name='../cifar10_4C2FBN_weight_fused_BN.h5'
@@ -31,17 +30,15 @@ test_rounds_lists=[200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,200 ,100 ,1
 # different level of concentration on center of feature maps
 concentration_list=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
-#%%
-
-# model for get configuration
+#%% model for get configuration
 ref_model=make_ref_model(quantized_4C2F(nbits=model_word_length,
                          fbits=model_fractional_bit,
                          batch_size=batch_size,
                          quant_mode=None,
                          verbose=False))
     
-#%%
-# test
+#%% test
+
 compile_argument={'loss':'categorical_crossentropy','optimizer':'adam','metrics':['accuracy',top2_acc]}
 
 dataset_argument={'dataset':'cifar10'}

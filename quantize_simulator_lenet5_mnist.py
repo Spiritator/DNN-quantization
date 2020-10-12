@@ -23,8 +23,7 @@ from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2
 from simulator.approximation.estimate import comp_num_estimate
 from simulator.inference.evaluate import evaluate_FT
 
-#%%
-# model setup
+#%% model setup
 
 weight_name='../mnist_lenet5_weight.h5'
 batch_size=25
@@ -52,15 +51,13 @@ model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accurac
 #parallel_model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
 
 
-#%%
-#dataset setup
+#%% dataset setup
 
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('mnist')
 
-#%%
-# view test result
-t = time.time()
+#%% view test result
 
+t = time.time()
 #test_result = model.evaluate(x_test, y_test, verbose=1, batch_size=batch_size)
 prediction = model.predict(x_test, verbose=1,batch_size=batch_size)
 test_result = evaluate_FT('lenet',prediction=prediction,test_label=y_test,loss_function=categorical_crossentropy,metrics=['accuracy',top2_acc,acc_loss,relative_acc,pred_miss,top2_pred_miss,conf_score_vary_10,conf_score_vary_20])
@@ -74,8 +71,7 @@ computaion_esti=comp_num_estimate(model)
 print('\nTotal # of computations:', computaion_esti['total_MAC'])
 print('Total # of MAC bits:', computaion_esti['total_MAC_bits'])
 
-#%%
-# draw confusion matrix
+#%% draw confusion matrix
 
 print('\n')
 #prediction = model.predict(x_test, verbose=1,batch_size=batch_size)

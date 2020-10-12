@@ -34,8 +34,7 @@ if K.image_data_format() == 'channels_first':
 else:
     input_shape = Input(shape=(img_width, img_height, 3))
 
-#%%
-# model setup
+#%% model setup
 
 model=quantized_droneNet(2, nbits=8, fbits=4, BN_nbits=8, BN_fbits=4, rounding_method='nearest', inputs=input_shape,  include_top=True, classes=class_number)
 model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy',top2_acc])
@@ -43,13 +42,11 @@ weight_name=convert_original_weight_layer_name(weight_name)
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
-#%%
-#dataset setup
+#%% dataset setup
 
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('ImageDataGenerator', img_rows = img_width, img_cols = img_height, data_augmentation = False, data_dir = dataset_dir)
 
-#%%
-# view test result
+#%% view test result
 
 t = time.time()
 
@@ -62,8 +59,7 @@ print('\nTest loss:', test_result[0])
 print('Test top1 accuracy:', test_result[1])
 print('Test top2 accuracy:', test_result[2])
 
-#%%
-# draw confusion matrix
+#%% draw confusion matrix
 
 print('\n')
 prediction = model.predict_generator(datagen, verbose=1)

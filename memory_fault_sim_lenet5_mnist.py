@@ -7,8 +7,6 @@ Created on Fri Aug 24 11:33:23 2018
 evaluate memory fault injection testing result of LeNet-5
 """
 
-# setup
-
 import numpy as np
 import tensorflow.keras.backend as K
 import time

@@ -7,12 +7,9 @@ Created on Fri Aug 24 11:33:23 2018
 evaluate memory fault injection testing result of 4C2F CNN
 """
 
-# setup
-
 import numpy as np
 import tensorflow.keras.backend as K
 import time
-
 
 from simulator.models.model_library import quantized_4C2F
 from simulator.utils_tool.dataset_setup import dataset_setup
@@ -26,8 +23,7 @@ from simulator.metrics.FT_metrics import acc_loss, relative_acc, pred_miss, top2
 from simulator.inference.evaluate import evaluate_FT
 #from simulator.fault.fault_list import generate_model_stuck_fault
 
-#%%
-# setting parameter
+#%% setting parameter
 
 weight_name='../cifar10_4C2FBN_weight_fused_BN.h5'
 model_word_length=16
@@ -45,8 +41,7 @@ memory_row_priority=['Tr','Tm','Tc','Tn']
 
 fast_mode=True
 
-#%%
-# fault generation
+#%% fault generation
 
 # model for get configuration
 model=quantized_4C2F(nbits=model_word_length,
@@ -59,8 +54,7 @@ model_ifmap_fault_dict_list=[None for i in range(14)]
 model_ofmap_fault_dict_list=[None for i in range(14)] 
 model_weight_fault_dict_list=[[None,None] for i in range(14)]
 
-#%%
-# buffer size 25.6KB
+#%% buffer size 25KB
 
 row=80
 col=40
@@ -105,8 +99,7 @@ ofmap_tile_fc2=tile_FC((1,10),is_fmap=True,wl=model_wl)
 ifmap_tile_fc2=tile_FC((1,512),is_fmap=True,wl=model_wl)
 wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
 
-#%%
-# buffer size 80KB
+#%% buffer size 80KB
 
 #row=100
 #col=100
@@ -152,8 +145,8 @@ wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
 #wght_tile_fc2 =tile_FC((512,10),is_fmap=False,wl=model_wl)
 
 
-#%%
-# generate fault dictionary
+#%% generate fault dictionary
+
 model_ifmap_fault_dict_list[1],model_ofmap_fault_dict_list[1],model_weight_fault_dict_list[1]\
 =generate_layer_memory_mapping(model.layers[1],
                                GLB_ifmap,GLB_wght,GLB_ofmap,
@@ -190,8 +183,7 @@ model_ifmap_fault_dict_list[12],model_ofmap_fault_dict_list[12],model_weight_fau
                                ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,
                                fast_mode=fast_mode)
 
-#%%
-# generate modulator
+#%% generate modulator
 
 model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dict_list\
 =generate_model_modulator(model,
@@ -202,8 +194,7 @@ model_ifmap_fault_dict_list, model_ofmap_fault_dict_list, model_weight_fault_dic
                           model_weight_fault_dict_list,
                           fast_gen=True)
 
-#%%
-# model setup
+#%% model setup
 
 t = time.time()
 model=quantized_4C2F(nbits=model_word_length,
@@ -223,13 +214,11 @@ print('Model compiled !')
 model.load_weights(weight_name)
 print('orginal weight loaded')
 
-#%%
-#dataset setup
+#%% dataset setup
 
 x_train, x_test, y_train, y_test, class_indices, datagen, input_shape = dataset_setup('cifar10')
 
-#%%
-# view test result
+#%% view test result
 
 t = time.time()
 
@@ -242,8 +231,7 @@ print('\nruntime: %f s'%t)
 for key in test_result.keys():
     print('Test %s\t:'%key, test_result[key])
 
-#%%
-# draw confusion matrix
+#%% draw confusion matrix
 
 print('\n')
 #prediction = model.predict(x_test, verbose=1, batch_size=batch_size)

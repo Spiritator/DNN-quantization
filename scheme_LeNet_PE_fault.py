@@ -47,7 +47,7 @@ mac_config=os.path.join(config_dir,'mac_unit_config.json')
 model_wl=model_word_length
 mapping_verbose=5
 
-test_rounds=20
+test_rounds=200
 
 #%% model & fault information setup
 
@@ -203,14 +203,14 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,verbose):
     #                   ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
     #                   pre_plan=True,verbose=verbose)
     # MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    # model_mac_math_fault_dict_list[6] = PE_mapping_backward(model.layers[7], MXU, verbose=verbose)
+    # model_mac_math_fault_dict_list[6], psidx_tmp = PE_mapping_backward(model.layers[7], MXU, verbose=verbose, return_detail=True)
     # MXU.clear_all()
     
     # PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
     #                   ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
     #                   pre_plan=True,verbose=verbose)
     # MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
-    # model_mac_math_fault_dict_list[7] = PE_mapping_backward(model.layers[7], MXU, verbose=verbose)
+    # model_mac_math_fault_dict_list[7], psidx_tmp = PE_mapping_backward(model.layers[7], MXU, verbose=verbose, return_detail=True)
     # MXU.clear_all()
     
     # make preprocess data
@@ -265,13 +265,4 @@ for round_id in range(test_rounds):
                      save_file_add_on=info_add_on,
                      verbose=4)
 
-#%% write fault information save file
-
-# info_save_file=os.path.join(result_save_folder,dataflow_type,'info.csv')
-# with open(info_save_file,'w',newline='') as info_file:
-#     writer=csv.writer(info_file,)
-#     writer.writerow(['PE y','PE x','param','SA type','SA bit','num psidx'])
-#     for i in range(test_rounds):
-#         writer.writerow([fault_locs[i][0], fault_locs[i][1], fault_infos[i]['param'], fault_infos[i]['SA_type'], fault_infos[i]['SA_bit'], num_psidx[i]])
-        
         

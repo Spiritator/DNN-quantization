@@ -38,9 +38,9 @@ batch_size=20
 config_dir='../pe_mapping_config'
 network_dir='4C2F'
 dataflow_dir='ws'
-#PEarraysize='8x8'
+PEarraysize='8x8'
 #PEarraysize='16x16'
-PEarraysize='32x32'
+#PEarraysize='32x32'
 config_dir=os.path.join(config_dir, network_dir, dataflow_dir, PEarraysize)
 mac_config=os.path.join(config_dir,'mac_unit_config.json')
 model_wl=model_word_length
@@ -57,94 +57,94 @@ model=quantized_4C2F(nbits=model_word_length,
 
 #%% 8x8 PE
 
-# # PE represent computation unit
-# PE=mac_unit(mac_config, noise_inject=noise_inject)
-# # PE array
-# MXU=PEarray(8,8,mac_config=PE)
+# PE represent computation unit
+PE=mac_unit(mac_config, noise_inject=noise_inject)
+# PE array
+MXU=PEarray(8,8,mac_config=PE)
 
-# # conv1
-# ofmap_tile_conv1=tile_PE((1,16,16,16),is_fmap=True,wl=model_wl)
-# ifmap_tile_conv1=tile_PE((1,16,16,3),is_fmap=True,wl=model_wl)
-# wght_tile_conv1 =tile_PE((3,3,3,16),is_fmap=False,wl=model_wl)
-# ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
-# ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
-# wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
-# MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
+# conv1
+ofmap_tile_conv1=tile_PE((1,16,16,16),is_fmap=True,wl=model_wl)
+ifmap_tile_conv1=tile_PE((1,16,16,3),is_fmap=True,wl=model_wl)
+wght_tile_conv1 =tile_PE((3,3,3,16),is_fmap=False,wl=model_wl)
+ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
+ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
+wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
+MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
 
-# check=mapping_valid_checker(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
-#                             ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
-#                             print_detail=True)
-# MXU.clear_all()
+check=mapping_valid_checker(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
+                            ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
+                            print_detail=True)
+MXU.clear_all()
 
-# # conv2
-# ofmap_tile_conv2=tile_PE((1,15,15,16),is_fmap=True,wl=model_wl)
-# ifmap_tile_conv2=tile_PE((1,17,17,16),is_fmap=True,wl=model_wl)
-# wght_tile_conv2 =tile_PE((3,3,16,16),is_fmap=False,wl=model_wl)
-# ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
-# ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
-# wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
-# MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
+# conv2
+ofmap_tile_conv2=tile_PE((1,15,15,16),is_fmap=True,wl=model_wl)
+ifmap_tile_conv2=tile_PE((1,17,17,16),is_fmap=True,wl=model_wl)
+wght_tile_conv2 =tile_PE((3,3,16,16),is_fmap=False,wl=model_wl)
+ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
+ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
+wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
+MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
-# check=mapping_valid_checker(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
-#                             ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
-#                             print_detail=True)
-# MXU.clear_all()
+check=mapping_valid_checker(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
+                            ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
+                            print_detail=True)
+MXU.clear_all()
 
-# # conv3
-# ofmap_tile_conv3=tile_PE((1,15,15,16),is_fmap=True,wl=model_wl)
-# ifmap_tile_conv3=tile_PE((1,15,15,16),is_fmap=True,wl=model_wl)
-# wght_tile_conv3 =tile_PE((3,3,16,16),is_fmap=False,wl=model_wl)
-# ofmap_config_conv3=os.path.join(config_dir,'ofmap_config_conv3.json')
-# ifmap_config_conv3=os.path.join(config_dir,'ifmap_config_conv3.json')
-# wght_config_conv3 =os.path.join(config_dir,'wght_config_conv3.json')
-# MXU_config_conv3  =os.path.join(config_dir,'MXU_config_conv3.json')
+# conv3
+ofmap_tile_conv3=tile_PE((1,15,15,16),is_fmap=True,wl=model_wl)
+ifmap_tile_conv3=tile_PE((1,15,15,16),is_fmap=True,wl=model_wl)
+wght_tile_conv3 =tile_PE((3,3,16,16),is_fmap=False,wl=model_wl)
+ofmap_config_conv3=os.path.join(config_dir,'ofmap_config_conv3.json')
+ifmap_config_conv3=os.path.join(config_dir,'ifmap_config_conv3.json')
+wght_config_conv3 =os.path.join(config_dir,'wght_config_conv3.json')
+MXU_config_conv3  =os.path.join(config_dir,'MXU_config_conv3.json')
 
-# check=mapping_valid_checker(ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3,MXU,
-#                             ifmap_config_conv3,wght_config_conv3,ofmap_config_conv3,MXU_config_conv3,
-#                             print_detail=True)
-# MXU.clear_all()
+check=mapping_valid_checker(ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3,MXU,
+                            ifmap_config_conv3,wght_config_conv3,ofmap_config_conv3,MXU_config_conv3,
+                            print_detail=True)
+MXU.clear_all()
 
-# # conv4
-# ofmap_tile_conv4=tile_PE((1,13,13,16),is_fmap=True,wl=model_wl)
-# ifmap_tile_conv4=tile_PE((1,15,15,16),is_fmap=True,wl=model_wl)
-# wght_tile_conv4 =tile_PE((3,3,16,16),is_fmap=False,wl=model_wl)
-# ofmap_config_conv4=os.path.join(config_dir,'ofmap_config_conv4.json')
-# ifmap_config_conv4=os.path.join(config_dir,'ifmap_config_conv4.json')
-# wght_config_conv4 =os.path.join(config_dir,'wght_config_conv4.json')
-# MXU_config_conv4  =os.path.join(config_dir,'MXU_config_conv4.json')
+# conv4
+ofmap_tile_conv4=tile_PE((1,13,13,16),is_fmap=True,wl=model_wl)
+ifmap_tile_conv4=tile_PE((1,15,15,16),is_fmap=True,wl=model_wl)
+wght_tile_conv4 =tile_PE((3,3,16,16),is_fmap=False,wl=model_wl)
+ofmap_config_conv4=os.path.join(config_dir,'ofmap_config_conv4.json')
+ifmap_config_conv4=os.path.join(config_dir,'ifmap_config_conv4.json')
+wght_config_conv4 =os.path.join(config_dir,'wght_config_conv4.json')
+MXU_config_conv4  =os.path.join(config_dir,'MXU_config_conv4.json')
 
-# check=mapping_valid_checker(ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4,MXU,
-#                             ifmap_config_conv4,wght_config_conv4,ofmap_config_conv4,MXU_config_conv4,
-#                             print_detail=True)
-# MXU.clear_all()
+check=mapping_valid_checker(ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4,MXU,
+                            ifmap_config_conv4,wght_config_conv4,ofmap_config_conv4,MXU_config_conv4,
+                            print_detail=True)
+MXU.clear_all()
 
-# # FC1
-# ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
-# ifmap_tile_fc1=tile_FC_PE((1,288),is_fmap=True,wl=model_wl)
-# wght_tile_fc1 =tile_FC_PE((288,8),is_fmap=False,wl=model_wl)
-# ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
-# ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
-# wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
-# MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
+# FC1
+ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
+ifmap_tile_fc1=tile_FC_PE((1,288),is_fmap=True,wl=model_wl)
+wght_tile_fc1 =tile_FC_PE((288,8),is_fmap=False,wl=model_wl)
+ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
+ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
+wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
+MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
 
-# check=mapping_valid_checker(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
-#                             ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
-#                             print_detail=True)
-# MXU.clear_all()
+check=mapping_valid_checker(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
+                            ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
+                            print_detail=True)
+MXU.clear_all()
 
-# # FC2
-# ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
-# ifmap_tile_fc2=tile_FC_PE((1,176),is_fmap=True,wl=model_wl)
-# wght_tile_fc2 =tile_FC_PE((176,10),is_fmap=False,wl=model_wl)
-# ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
-# ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
-# wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
-# MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
+# FC2
+ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
+ifmap_tile_fc2=tile_FC_PE((1,176),is_fmap=True,wl=model_wl)
+wght_tile_fc2 =tile_FC_PE((176,10),is_fmap=False,wl=model_wl)
+ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
+ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
+wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
+MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
 
-# check=mapping_valid_checker(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
-#                             ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
-#                             print_detail=True)
-# MXU.clear_all()
+check=mapping_valid_checker(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
+                            ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
+                            print_detail=True)
+MXU.clear_all()
 
 #%% 16x16 PE
 
@@ -239,94 +239,94 @@ model=quantized_4C2F(nbits=model_word_length,
 
 #%% 32x32 PE
 
-# PE represent computation unit
-PE=mac_unit(mac_config, noise_inject=noise_inject)
-# PE array
-MXU=PEarray(32,32,mac_config=PE)
+# # PE represent computation unit
+# PE=mac_unit(mac_config, noise_inject=noise_inject)
+# # PE array
+# MXU=PEarray(32,32,mac_config=PE)
 
-# conv1
-ofmap_tile_conv1=tile_PE((1,32,32,32),is_fmap=True,wl=model_wl)
-ifmap_tile_conv1=tile_PE((1,32,32,3),is_fmap=True,wl=model_wl)
-wght_tile_conv1 =tile_PE((3,3,3,32),is_fmap=False,wl=model_wl)
-ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
-ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
-wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
-MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
+# # conv1
+# ofmap_tile_conv1=tile_PE((1,32,32,32),is_fmap=True,wl=model_wl)
+# ifmap_tile_conv1=tile_PE((1,32,32,3),is_fmap=True,wl=model_wl)
+# wght_tile_conv1 =tile_PE((3,3,3,32),is_fmap=False,wl=model_wl)
+# ofmap_config_conv1=os.path.join(config_dir,'ofmap_config_conv1.json')
+# ifmap_config_conv1=os.path.join(config_dir,'ifmap_config_conv1.json')
+# wght_config_conv1 =os.path.join(config_dir,'wght_config_conv1.json')
+# MXU_config_conv1  =os.path.join(config_dir,'MXU_config_conv1.json')
 
-check=mapping_valid_checker(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
-                            ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
-                            print_detail=True)
-MXU.clear_all()
+# check=mapping_valid_checker(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
+#                             ifmap_config_conv1,wght_config_conv1,ofmap_config_conv1,MXU_config_conv1,
+#                             print_detail=True)
+# MXU.clear_all()
 
-# conv2
-ofmap_tile_conv2=tile_PE((1,30,30,32),is_fmap=True,wl=model_wl)
-ifmap_tile_conv2=tile_PE((1,32,32,32),is_fmap=True,wl=model_wl)
-wght_tile_conv2 =tile_PE((3,3,32,32),is_fmap=False,wl=model_wl)
-ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
-ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
-wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
-MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
+# # conv2
+# ofmap_tile_conv2=tile_PE((1,30,30,32),is_fmap=True,wl=model_wl)
+# ifmap_tile_conv2=tile_PE((1,32,32,32),is_fmap=True,wl=model_wl)
+# wght_tile_conv2 =tile_PE((3,3,32,32),is_fmap=False,wl=model_wl)
+# ofmap_config_conv2=os.path.join(config_dir,'ofmap_config_conv2.json')
+# ifmap_config_conv2=os.path.join(config_dir,'ifmap_config_conv2.json')
+# wght_config_conv2 =os.path.join(config_dir,'wght_config_conv2.json')
+# MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 
-check=mapping_valid_checker(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
-                            ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
-                            print_detail=True)
-MXU.clear_all()
+# check=mapping_valid_checker(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
+#                             ifmap_config_conv2,wght_config_conv2,ofmap_config_conv2,MXU_config_conv2,
+#                             print_detail=True)
+# MXU.clear_all()
 
-# conv3
-ofmap_tile_conv3=tile_PE((1,15,15,64),is_fmap=True,wl=model_wl)
-ifmap_tile_conv3=tile_PE((1,15,15,32),is_fmap=True,wl=model_wl)
-wght_tile_conv3 =tile_PE((3,3,32,64),is_fmap=False,wl=model_wl)
-ofmap_config_conv3=os.path.join(config_dir,'ofmap_config_conv3.json')
-ifmap_config_conv3=os.path.join(config_dir,'ifmap_config_conv3.json')
-wght_config_conv3 =os.path.join(config_dir,'wght_config_conv3.json')
-MXU_config_conv3  =os.path.join(config_dir,'MXU_config_conv3.json')
+# # conv3
+# ofmap_tile_conv3=tile_PE((1,15,15,64),is_fmap=True,wl=model_wl)
+# ifmap_tile_conv3=tile_PE((1,15,15,32),is_fmap=True,wl=model_wl)
+# wght_tile_conv3 =tile_PE((3,3,32,64),is_fmap=False,wl=model_wl)
+# ofmap_config_conv3=os.path.join(config_dir,'ofmap_config_conv3.json')
+# ifmap_config_conv3=os.path.join(config_dir,'ifmap_config_conv3.json')
+# wght_config_conv3 =os.path.join(config_dir,'wght_config_conv3.json')
+# MXU_config_conv3  =os.path.join(config_dir,'MXU_config_conv3.json')
 
-check=mapping_valid_checker(ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3,MXU,
-                            ifmap_config_conv3,wght_config_conv3,ofmap_config_conv3,MXU_config_conv3,
-                            print_detail=True)
-MXU.clear_all()
+# check=mapping_valid_checker(ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3,MXU,
+#                             ifmap_config_conv3,wght_config_conv3,ofmap_config_conv3,MXU_config_conv3,
+#                             print_detail=True)
+# MXU.clear_all()
 
-# conv4
-ofmap_tile_conv4=tile_PE((1,13,13,32),is_fmap=True,wl=model_wl)
-ifmap_tile_conv4=tile_PE((1,15,15,64),is_fmap=True,wl=model_wl)
-wght_tile_conv4 =tile_PE((3,3,64,32),is_fmap=False,wl=model_wl)
-ofmap_config_conv4=os.path.join(config_dir,'ofmap_config_conv4.json')
-ifmap_config_conv4=os.path.join(config_dir,'ifmap_config_conv4.json')
-wght_config_conv4 =os.path.join(config_dir,'wght_config_conv4.json')
-MXU_config_conv4  =os.path.join(config_dir,'MXU_config_conv4.json')
+# # conv4
+# ofmap_tile_conv4=tile_PE((1,13,13,32),is_fmap=True,wl=model_wl)
+# ifmap_tile_conv4=tile_PE((1,15,15,64),is_fmap=True,wl=model_wl)
+# wght_tile_conv4 =tile_PE((3,3,64,32),is_fmap=False,wl=model_wl)
+# ofmap_config_conv4=os.path.join(config_dir,'ofmap_config_conv4.json')
+# ifmap_config_conv4=os.path.join(config_dir,'ifmap_config_conv4.json')
+# wght_config_conv4 =os.path.join(config_dir,'wght_config_conv4.json')
+# MXU_config_conv4  =os.path.join(config_dir,'MXU_config_conv4.json')
 
-check=mapping_valid_checker(ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4,MXU,
-                            ifmap_config_conv4,wght_config_conv4,ofmap_config_conv4,MXU_config_conv4,
-                            print_detail=True)
-MXU.clear_all()
+# check=mapping_valid_checker(ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4,MXU,
+#                             ifmap_config_conv4,wght_config_conv4,ofmap_config_conv4,MXU_config_conv4,
+#                             print_detail=True)
+# MXU.clear_all()
 
-# FC1
-ofmap_tile_fc1=tile_FC_PE((1,32),is_fmap=True,wl=model_wl)
-ifmap_tile_fc1=tile_FC_PE((1,576),is_fmap=True,wl=model_wl)
-wght_tile_fc1 =tile_FC_PE((576,32),is_fmap=False,wl=model_wl)
-ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
-ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
-wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
-MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
+# # FC1
+# ofmap_tile_fc1=tile_FC_PE((1,32),is_fmap=True,wl=model_wl)
+# ifmap_tile_fc1=tile_FC_PE((1,576),is_fmap=True,wl=model_wl)
+# wght_tile_fc1 =tile_FC_PE((576,32),is_fmap=False,wl=model_wl)
+# ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
+# ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
+# wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
+# MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
 
-check=mapping_valid_checker(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
-                            ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
-                            print_detail=True)
-MXU.clear_all()
+# check=mapping_valid_checker(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
+#                             ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
+#                             print_detail=True)
+# MXU.clear_all()
 
-# FC2
-ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
-ifmap_tile_fc2=tile_FC_PE((1,512),is_fmap=True,wl=model_wl)
-wght_tile_fc2 =tile_FC_PE((512,10),is_fmap=False,wl=model_wl)
-ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
-ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
-wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
-MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
+# # FC2
+# ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
+# ifmap_tile_fc2=tile_FC_PE((1,512),is_fmap=True,wl=model_wl)
+# wght_tile_fc2 =tile_FC_PE((512,10),is_fmap=False,wl=model_wl)
+# ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
+# ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
+# wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
+# MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
 
-check=mapping_valid_checker(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
-                            ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
-                            print_detail=True)
-MXU.clear_all()
+# check=mapping_valid_checker(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
+#                             ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
+#                             print_detail=True)
+# MXU.clear_all()
 
 #%% generate fault dictionary
 

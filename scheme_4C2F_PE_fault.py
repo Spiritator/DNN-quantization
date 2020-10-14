@@ -27,7 +27,7 @@ from simulator.models.model_mods import make_ref_model
 noise_inject=False
 report_filename='metric'
 
-result_save_folder=os.path.join('..','test_result','mnist_lenet5_PE_fault')
+result_save_folder=os.path.join('..','test_result','cifar10_4C2F_PE_fault')
 dataflow_type='ws'
 weight_name=os.path.join('..','cifar10_4C2FBN_weight_fused_BN.h5')
 model_word_length=16
@@ -123,23 +123,23 @@ ifmap_config_conv4=os.path.join(config_dir,'ifmap_config_conv4.json')
 wght_config_conv4 =os.path.join(config_dir,'wght_config_conv4.json')
 MXU_config_conv4  =os.path.join(config_dir,'MXU_config_conv4.json')
 
-# FC1
-ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
-ifmap_tile_fc1=tile_FC_PE((1,288),is_fmap=True,wl=model_wl)
-wght_tile_fc1 =tile_FC_PE((288,8),is_fmap=False,wl=model_wl)
-ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
-ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
-wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
-MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
+# # FC1
+# ofmap_tile_fc1=tile_FC_PE((1,8),is_fmap=True,wl=model_wl)
+# ifmap_tile_fc1=tile_FC_PE((1,288),is_fmap=True,wl=model_wl)
+# wght_tile_fc1 =tile_FC_PE((288,8),is_fmap=False,wl=model_wl)
+# ofmap_config_fc1=os.path.join(config_dir,'ofmap_config_fc1.json')
+# ifmap_config_fc1=os.path.join(config_dir,'ifmap_config_fc1.json')
+# wght_config_fc1 =os.path.join(config_dir,'wght_config_fc1.json')
+# MXU_config_fc1  =os.path.join(config_dir,'MXU_config_fc1.json')
 
-# FC2
-ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
-ifmap_tile_fc2=tile_FC_PE((1,176),is_fmap=True,wl=model_wl)
-wght_tile_fc2 =tile_FC_PE((176,10),is_fmap=False,wl=model_wl)
-ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
-ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
-wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
-MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
+# # FC2
+# ofmap_tile_fc2=tile_FC_PE((1,10),is_fmap=True,wl=model_wl)
+# ifmap_tile_fc2=tile_FC_PE((1,176),is_fmap=True,wl=model_wl)
+# wght_tile_fc2 =tile_FC_PE((176,10),is_fmap=False,wl=model_wl)
+# ofmap_config_fc2=os.path.join(config_dir,'ofmap_config_fc2.json')
+# ifmap_config_fc2=os.path.join(config_dir,'ifmap_config_fc2.json')
+# wght_config_fc2 =os.path.join(config_dir,'wght_config_fc2.json')
+# MXU_config_fc2  =os.path.join(config_dir,'MXU_config_fc2.json')
 
 #%% 16x16 PE
 
@@ -272,12 +272,12 @@ def gen_model_PE_fault_dict(ref_model,fault_loc,fault_info,verbose):
     ofmap_tile_conv4.clear()
     ifmap_tile_conv4.clear()
     wght_tile_conv4.clear()
-    ofmap_tile_fc1.clear()
-    ifmap_tile_fc1.clear()
-    wght_tile_fc1.clear()
-    ofmap_tile_fc2.clear()
-    ifmap_tile_fc2.clear()
-    wght_tile_fc2.clear()
+    # ofmap_tile_fc1.clear()
+    # ifmap_tile_fc1.clear()
+    # wght_tile_fc1.clear()
+    # ofmap_tile_fc2.clear()
+    # ifmap_tile_fc2.clear()
+    # wght_tile_fc2.clear()
     MXU.clear_all()
     
     PE_mapping_forward(ifmap_tile_conv1,wght_tile_conv1,ofmap_tile_conv1,MXU,
@@ -308,19 +308,19 @@ def gen_model_PE_fault_dict(ref_model,fault_loc,fault_info,verbose):
     model_mac_fault_dict_list[6], psidx_tmp = PE_mapping_backward(ref_model.layers[6], MXU, verbose=verbose, return_detail=True)
     MXU.clear_all()
     
-    PE_mapping_forward(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
-                      ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
-                      pre_plan=True,verbose=verbose)
-    MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
-    model_mac_fault_dict_list[10], psidx_tmp = PE_mapping_backward(ref_model.layers[10], MXU, verbose=verbose, return_detail=True)
-    MXU.clear_all()
+    # PE_mapping_forward(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
+    #                   ifmap_config_fc1,wght_config_fc1,ofmap_config_fc1,MXU_config_fc1,
+    #                   pre_plan=True,verbose=verbose)
+    # MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
+    # model_mac_fault_dict_list[10], psidx_tmp = PE_mapping_backward(ref_model.layers[10], MXU, verbose=verbose, return_detail=True)
+    # MXU.clear_all()
     
-    PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
-                      ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
-                      pre_plan=True,verbose=verbose)
-    MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
-    model_mac_fault_dict_list[12], psidx_tmp = PE_mapping_backward(ref_model.layers[12], MXU, verbose=verbose, return_detail=True)
-    MXU.clear_all()
+    # PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
+    #                   ifmap_config_fc2,wght_config_fc2,ofmap_config_fc2,MXU_config_fc2,
+    #                   pre_plan=True,verbose=verbose)
+    # MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
+    # model_mac_fault_dict_list[12], psidx_tmp = PE_mapping_backward(ref_model.layers[12], MXU, verbose=verbose, return_detail=True)
+    # MXU.clear_all()
     
     # make preprocess data
     model_mac_fault_dict_list=preprocess_model_mac_fault(ref_model, PE, model_mac_fault_dict_list,

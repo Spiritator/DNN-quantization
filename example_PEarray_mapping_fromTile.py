@@ -22,17 +22,17 @@ ifmap_tile=tile_PE((1,28,28,16),is_fmap=True,wl=8)
 ofmap_tile=tile_PE((1,28,28,32),is_fmap=True,wl=8)
 
 wght_tile.fault_dict = {(2, 2, 3, 10): {'SA_type': 'flip', 'SA_bit': 4}}
-with open('../pe_mapping_config/fault_dict_wght_tile.pickle', 'rb') as fdfile:
+with open('../test_fault_dictionary_stuff/fault_dict_wght_tile.pickle', 'rb') as fdfile:
     wght_tile.fault_dict = pickle.load(fdfile)
 orig_coors_w=np.array(list(wght_tile.fault_dict.keys()))
 
 ifmap_tile.fault_dict = {(0, 15, 6, 3): {'SA_type': 'flip', 'SA_bit': 7}}
-with open('../pe_mapping_config/fault_dict_ifmap_tile.pickle', 'rb') as fdfile:
+with open('../test_fault_dictionary_stuff/fault_dict_ifmap_tile.pickle', 'rb') as fdfile:
     ifmap_tile.fault_dict  = pickle.load(fdfile)
 orig_coors_if=np.array(list(ifmap_tile.fault_dict.keys()))
 
 ofmap_tile.fault_dict = {(0, 15, 6, 6): {'SA_type': 'flip', 'SA_bit': 7}}
-with open('../pe_mapping_config/fault_dict_ofmap_tile.pickle', 'rb') as fdfile:
+with open('../test_fault_dictionary_stuff/fault_dict_ofmap_tile.pickle', 'rb') as fdfile:
     ofmap_tile.fault_dict  = pickle.load(fdfile)
 
 wght_tile.use_bias=True

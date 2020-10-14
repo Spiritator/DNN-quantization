@@ -1863,16 +1863,34 @@ class io_data_solver:
         else:
             return poped_index
     
-    def _gen_base_coor(self, tile_shape, layer_shape, is_ifmap=None):
+    def _gen_base_coor(self, tile_shape, layer_shape, is_fmap=None, padding=None, ksizes=None ,dilation_rates=None):
         """ Generate layer base coordinates for tile to layer duplication """
-        restore_multiple=np.divide(layer_shape,tile_shape,dtype=np.float32)
-        restore_multiple=np.ceil(restore_multiple)
-        restore_multiple=restore_multiple.astype(np.int32)
+        if padding is None:
+            restore_multiple=np.divide(layer_shape,tile_shape,dtype=np.float32)
+            restore_multiple=np.ceil(restore_multiple)
+            restore_multiple=restore_multiple.astype(np.int32)
+        else:
+            if not is_fmap:
+                raise ValueError('Only input feature map tile has padding attribute, given weight tile.')
+            if padding == 'same':
+                dilated_ksize_row_reduce = (ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1))//2
+                dilated_ksize_col_reduce = (ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1))//2
+            elif padding == 'valid':
+                dilated_ksize_row_reduce = ksizes[1] + (ksizes[1]-1) * (dilation_rates[1] - 1) - 1
+                dilated_ksize_col_reduce = ksizes[2] + (ksizes[2]-1) * (dilation_rates[2] - 1) - 1
+            tile_shape_tmp=np.array(tile_shape)
+            tile_shape_tmp[1]-=dilated_ksize_row_reduce
+            tile_shape_tmp[2]-=dilated_ksize_col_reduce
+            restore_multiple=np.floor_divide(layer_shape,tile_shape_tmp)
+            
         
-        if is_ifmap is not None:
-            if is_ifmap:
+        if is_fmap is not None:
+            if is_fmap:
                 restore_multiple=restore_multiple[self.order_restoremult_fmap]
-                reorder_shape=np.array(tile_shape)[self.order_restoremult_fmap]
+                if padding is None:
+                    reorder_shape=np.array(tile_shape)[self.order_restoremult_fmap]
+                else:
+                    reorder_shape=np.array(tile_shape_tmp)[self.order_restoremult_fmap]
             else:
                 restore_multiple=restore_multiple[self.order_restoremult_wght]
                 reorder_shape=np.array(tile_shape)[self.order_restoremult_wght]
@@ -1882,8 +1900,8 @@ class io_data_solver:
         base_coor=list(np.ndindex(*restore_multiple))            
         base_coor=np.multiply(base_coor,np.tile(reorder_shape,[len(base_coor),1]))
            
-        if is_ifmap is not None:
-            if is_ifmap:
+        if is_fmap is not None:
+            if is_fmap:
                 restore_multiple=restore_multiple[self.order_restoremult_fmap]
                 base_coor=base_coor[:,self.order_restoremult_fmap]
             else:
@@ -1962,9 +1980,9 @@ class io_data_solver:
         if print_detail:
             print('\r    Tile2Layer (2/9): Get Base Coordinates...       ',end=' ')
         # get base coors
-        base_coor_o, restore_multiple_o=self._gen_base_coor(self.ofmap_tile.tile_shape, layer_output_shape, is_ifmap=True)
-        base_coor_w, restore_multiple_w=self._gen_base_coor(self.wght_tile.tile_shape, layer_weight_shape[0], is_ifmap=False)
-        base_coor_i, restore_multiple_i=self._gen_base_coor(self.ifmap_tile.tile_shape, layer_input_shape, is_ifmap=True)
+        base_coor_o, restore_multiple_o=self._gen_base_coor(self.ofmap_tile.tile_shape, layer_output_shape, is_fmap=True)
+        base_coor_w, restore_multiple_w=self._gen_base_coor(self.wght_tile.tile_shape, layer_weight_shape[0], is_fmap=False)
+        base_coor_i, restore_multiple_i=self._gen_base_coor(self.ifmap_tile.tile_shape, layer_input_shape, is_fmap=True, padding=self.ifmap_tile.padding, ksizes=self.ifmap_tile.ksizes, dilation_rates=self.ifmap_tile.dilation_rates)
         
         # consistency check
         self._check_tile_consistency(restore_multiple_i,restore_multiple_w,restore_multiple_o,layer)
@@ -2266,332 +2284,4 @@ class io_data_solver:
         self.num_psum_idx=0
 
 
-#=============================
-# this function is depricated   
-#=============================
-def _solve_correspond_io(ofmap_tile, wght_tile, ifmap_tile, fault_num=None, print_detail=False):
-    """ Solving the PE array to Tile mapping fault dictionarys.
-        Regarding ofmap, ifmap, weight, partial sum, bias fault dictionarys, 
-        and find the relation between them. Give fault info (psum index).
-    
-    """
-    print('Warning: this function is depricated, use class io_data_solver instead!')
-    
-    ofmap_fd=ofmap_tile.fault_dict
-    ifmap_fd=ifmap_tile.fault_dict
-    wght_fd=wght_tile.fault_dict
-    psum_fd=ofmap_tile.psum_fault_dict
-    bias_fd=wght_tile.bias_fault_dict
-    
-    #ofmap_coors=np.array(list(ofmap_fd.keys()))
-    ifmap_coors=np.array(list(ifmap_fd.keys()))
-    wght_coors =np.array(list(wght_fd.keys()))
-    psum_coors =np.array(list(psum_fd.keys()))
-    #bias_coors =np.array(list(bias_fd.keys()))
-    
-    ofmap_vl=np.array(list(ofmap_fd.values()))
-    ifmap_vl=np.array(list(ifmap_fd.values()))
-    wght_vl =np.array(list(wght_fd.values()))
-    psum_vl =np.array(list(psum_fd.values()))
-    bias_vl =np.array(list(bias_fd.values()))
-    
-    def state_setting(faultvalue):
-        if len(faultvalue)>0:
-            if isinstance(faultvalue[0]['id'],np.ndarray):
-                state='fastgen'
-                idlist=np.array([info['id'] for info in faultvalue])
-                maxx=np.max(np.concatenate(idlist))
-                if idlist.dtype==np.object:
-                    idl_cnt=np.array([len(i) for i in idlist])
-                    idl_cnt=np.cumsum(idl_cnt)-1
-                    idlist=np.concatenate(idlist)
-                    idlist=(idlist,idl_cnt)
-            elif isinstance(faultvalue[0]['id'],int):
-                state='normal'
-                idlist=[info['id'] for info in faultvalue]
-                maxx=max(idlist)
-            elif isinstance(faultvalue[0]['id'],list):
-                state='repetitive'
-                idlist=[info['id'] for info in faultvalue]
-                maxx=max([max(idl) for idl in idlist])
-        else:
-            idlist=list()
-            state=None
-            maxx=-1
-        
-        return idlist,state,maxx
-    
-    ofmap_id,ostate,maxo=state_setting(ofmap_vl)
-    ifmap_id,istate,maxi=state_setting(ifmap_vl)
-    wght_id,wstate,maxw=state_setting(wght_vl)
-    psum_id,pstate,maxp=state_setting(psum_vl)
-    bias_id,bstate,maxb=state_setting(bias_vl)
-    
-    if fault_num==None:
-        fault_num=max([maxo,maxi,maxw,maxp,maxb])+1
-        
-    new_solved_fd=dict()
-    
-    def state_idxget(idlist,faultcoors,faultvalue,state,faultid,paramin):
-        if state is None:
-            idx=None
-            param=None
-            faultindex=None
-            
-        elif state=='fastgen':
-            if isinstance(idlist,np.ndarray):
-                idx=np.argwhere(idlist==faultid)
-                if len(idx)==0:
-                    idx=None
-                    param=None
-                    faultindex=None
-                else:
-                    idx=idx[0][0]
-                    param=faultvalue[idx]['param']
-                    faultindex=faultcoors[idx]
-                    
-            elif isinstance(idlist,tuple):
-                idl_cnt=idlist[1]
-                idlist=idlist[0]
-                
-                idx=np.argwhere(idlist==faultid)
-                if len(idx)==0:
-                    idx=None
-                    param=None
-                    faultindex=None
-                else:
-                    idx=idx[0][0]
-                    idx=np.searchsorted(idl_cnt,idx)
-                    param=faultvalue[idx]['param']
-                    faultindex=faultcoors[idx]
-            
-        elif state=='normal':
-            try:
-                idx=idlist.index(i)
-                param=faultvalue[idx]['param']
-                faultindex=faultcoors[idx]
-            except ValueError:
-                idx=None
-                param=None
-                faultindex=None
-                
-        elif state=='repetitive':
-            idx=None
-            param=None
-            faultindex=None
-            for ii,idl in enumerate(idlist):
-                if faultid in idl:
-                    ii2=idl.index(faultid)
-                    idx=[ii,ii2]
-                    param=faultvalue[ii]['param'][ii2]
-                    faultindex=faultcoors[ii]
-        
-        if paramin is not None:
-            param=paramin
-        
-        return idx,param,faultindex
-    
-    def state_make_new_fd(state,faultid,paramin,opindex,windex,iindex,faultvalue,idx,newfd):
-        try:
-            # psum index (Batch, Output Channel, Ofmap Row, Ofmap Column, Ifmap Channel, Kernel Row, Kernel Column, Ifmap Row, Ifmap Column)
-            psidx=tuple(np.concatenate([opindex[[0,3,1,2]],windex[[2,0,1]],iindex[[1,2]]]))
-            if state is None:
-                pass
-            elif state=='fastgen':
-                try:
-                    newfv=newfd[tuple(opindex)]
-                    newfv['psum_idx'].append(psidx)
-                except KeyError:
-                    newfv=faultvalue[idx].copy()
-                    newfv.update({'psum_idx':[psidx]})
-                    newfd[tuple(opindex)]=newfv
-            elif state=='normal':
-                newfv=faultvalue[idx].copy()
-                newfv.update({'psum_idx':psidx})
-                newfd[tuple(opindex)]=newfv
-            elif state=='repetitive':
-                try:
-                    newfv=newfd[tuple(opindex)]
-                    newfv['SA_bit'].append(faultvalue[idx[0]]['SA_bit'][idx[1]])
-                    newfv['SA_type'].append(faultvalue[idx[0]]['SA_type'][idx[1]])
-                    newfv['param'].append(paramin)
-                    newfv['psum_idx'].append(psidx)
-                    newfv['id'].append(faultid)
-                except KeyError:
-                    newfv={'SA_bit':[faultvalue[idx[0]]['SA_bit'][idx[1]]],
-                           'SA_type':[faultvalue[idx[0]]['SA_type'][idx[1]]],
-                           'param':[paramin],
-                           'psum_idx':[psidx],
-                           'id':[faultid]}
-                    newfd[tuple(opindex)]=newfv
-        except TypeError:
-            pass
-        
-
-    #TODO 
-    # the fast access 'fast gen' method
-    if pstate=='fastgen' and wstate=='fastgen' and istate=='fastgen':
-        # solve psum, use as basis for fault id search
-        if isinstance(psum_id,np.ndarray):
-            pshape_cnt=psum_id.shape
-            if len(pshape_cnt)>1:
-                psum_id=psum_id.flatten()
-        elif isinstance(psum_id,tuple):
-            pshape_cnt=psum_id[1]
-            psum_id=psum_id[0]
-        
-        # solve ifmap
-        if isinstance(ifmap_id,np.ndarray):
-            ishape=ifmap_id.shape
-            if len(ishape)>1:
-                ifmap_id=ifmap_id.flatten()
-                sorter_i=np.argsort(ifmap_id)
-                search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
-                search_i=sorter_i[search_i]
-                search_i=np.floor_divide(search_i,ishape[1])
-                ifmap_index=ifmap_coors[search_i]
-            else:
-                sorter_i=np.argsort(ifmap_id)
-                search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
-                search_i=sorter_i[search_i]
-                ifmap_index=ifmap_coors[search_i]
-        elif isinstance(ifmap_id,tuple):
-            ifmap_idl_cnt=ifmap_id[1]
-            ifmap_id=ifmap_id[0]
-            sorter_i=np.argsort(ifmap_id)
-            search_i=np.searchsorted(ifmap_id,psum_id,sorter=sorter_i)
-            search_i=sorter_i[search_i]
-            search_i=np.searchsorted(ifmap_idl_cnt,search_i)
-            ifmap_index=ifmap_coors[search_i]
-            
-        # solve weight
-        if isinstance(wght_id,np.ndarray):
-            wshape=wght_id.shape
-            if len(wshape)>1:
-                wght_id=wght_id.flatten()
-                sorter_w=np.argsort(wght_id)
-                search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
-                search_w=sorter_w[search_w]
-                search_w=np.floor_divide(search_w,wshape[1])
-                wght_index=wght_coors[search_w]
-            else:
-                sorter_w=np.argsort(wght_id)
-                search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
-                search_w=sorter_w[search_w]
-                wght_index=wght_coors[search_w]
-        elif isinstance(wght_id,tuple):
-            wght_idl_cnt=wght_id[1]
-            wght_id=wght_id[0]
-            sorter_w=np.argsort(wght_id)
-            search_w=np.searchsorted(wght_id,psum_id,sorter=sorter_w)
-            search_w=sorter_w[search_w]
-            search_w=np.searchsorted(wght_idl_cnt,search_w)
-            wght_index=wght_coors[search_w]
-        
-        # build psum_idx
-        if isinstance(pshape_cnt,tuple):
-            if len(pshape_cnt)>1:
-                outpsum_index=np.repeat(psum_coors,pshape_cnt[1],axis=0)
-        elif isinstance(pshape_cnt,np.ndarray):
-            cnt0=pshape_cnt[0]+1
-            idlrep=pshape_cnt[1:]-pshape_cnt[:-1]
-            idlrep=np.concatenate([[cnt0],idlrep])
-            idlconstruct=np.repeat(np.arange(len(idlrep)),idlrep)
-            outpsum_index=psum_coors[idlconstruct]
-            
-        psum_index=np.concatenate([outpsum_index[:,[0,3,1,2]],wght_index[:,[2,0,1]],ifmap_index[:,[1,2]]],axis=1)
-        if isinstance(pshape_cnt,tuple):
-            if len(pshape_cnt)>1:
-                psum_index=np.split(psum_index,pshape_cnt[0])
-        elif isinstance(pshape_cnt,np.ndarray):
-            psum_index=np.split(psum_index,idlrep)
-
-        for i,opidx in enumerate(psum_coors):
-            newfv=psum_vl[i].copy()
-            newfv.update({'psum_idx':psum_index[i]})
-            new_solved_fd[tuple(opidx)]=newfv
-            
-        return new_solved_fd
-    
-    if print_detail:
-        pbar=tqdm.tqdm(desc='\tSolved Fault', total=fault_num, leave=False)
-    
-    for i in range(fault_num):
-        param=None
-        
-        pidx,param,psum_index=state_idxget(psum_id,psum_coors,psum_vl,pstate,i,param)
-        widx,param,wght_index=state_idxget(wght_id,wght_coors,wght_vl,wstate,i,param)
-        iidx,param,ifmap_index=state_idxget(ifmap_id,ifmap_coors,ifmap_vl,istate,i,param)
-        #oidx,param,ofmap_index=state_idxget(ofmap_id,ofmap_coors,ofmap_vl,ostate,i,param)
-        #bidx,param,bias_index=state_idxget(bias_id,bias_coors,bias_vl,bstate,i,param)
-        
-        # partial sum index (batch, Tn, TrO, TcO, Tm, TrK, TcK, TrI, TcI)
-        if param is not None:
-            state_make_new_fd(pstate,i,param,psum_index,wght_index,ifmap_index,psum_vl,pidx,new_solved_fd)
-            
-#            if param=='ifmap_in' and iidx is not None:
-#                state_make_new_fd(istate,i,param,psum_index,wght_index,ifmap_vl,iidx,new_ifmap_fd,ifmap_index)
-#                            
-#            elif param=='ifmap_out' and iidx is not None:
-#                state_make_new_fd(istate,i,param,psum_index,wght_index,ifmap_vl,iidx,new_ifmap_fd,ifmap_index)
-#            
-#            elif param=='wght_in' and widx is not None:
-#                state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
-#                            
-#            elif param=='wght_out'and widx is not None:
-#                state_make_new_fd(wstate,i,param,psum_index,wght_index,wght_vl,widx,new_wght_fd,wght_index)
-#                                
-#            elif param=='psum_in' and pidx is not None:
-#                if bidx is None:                                   
-#                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
-#                else:
-#                    new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
-                            
-#                try:
-#                    if pstate=='repetitive':
-#                        pidxx=pidx[0]
-#                    else:
-#                        pidxx=pidx
-#
-#                    if psum_vl[pidxx]['edge']:
-#                        if bidx is None:
-#                            psum_index=np.ravel_multi_index(np.array(psum_index)[[0,3,2,1]],np.array(ofmap_tile.tile_shape)[[0,3,2,1]])
-#                            psum_index-=1
-#                            if psum_index<0:
-#                                continue
-#                            
-#                            psum_index=np.unravel_index(psum_index,np.array(ofmap_tile.tile_shape)[[0,3,2,1]])
-#                            psum_index=np.array(psum_index)[[0,3,2,1]]
-#                            
-#                            wght_index=np.ravel_multi_index(np.array(wght_index)[[3,2,1,0]],np.array(wght_tile.tile_shape)[[3,2,1,0]])
-#                            wght_index-=1
-#                            if wght_index<0:
-#                                continue
-#                            
-#                            wght_index=np.unravel_index(wght_index,np.array(ofmap_tile.tile_shape)[[3,2,1,0]])
-#                            wght_index=np.array(wght_index)[[3,2,1,0]]
-#                            
-#                        
-#                            state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
-#                            
-#                        else:
-#                            new_bias_fd[tuple(bias_index)]=bias_vl[bidx]
-#                except:
-#                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
-#            
-#            elif param=='psum_out' and pidx is not None:
-#                if oidx is None:
-#                    state_make_new_fd(pstate,i,param,psum_index,wght_index,psum_vl,pidx,new_ofmap_fd,psum_index)
-#                    new_ofmap_fd[tuple(psum_index)].update({'ofmap':False})
-#                else:
-#                    state_make_new_fd(ostate,i,param,ofmap_index,wght_index,ofmap_vl,oidx,new_ofmap_fd,ofmap_index)                   
-#                    new_ofmap_fd[tuple(ofmap_index)].update({'ofmap':True})
-                    
-        if print_detail:
-            pbar.update()
-        
-    if print_detail:
-        pbar.close()
-    
-    return new_solved_fd
             

@@ -32,7 +32,7 @@ weight_name='../cifar10_4C2FBN_weight_fused_BN.h5'
 model_word_length=16
 model_fractional_bit=12
 rounding_method=['down','nearest','down']
-batch_size=20
+batch_size=10
 
 # PE array fault simulation parameter
 config_dir='../pe_mapping_config'

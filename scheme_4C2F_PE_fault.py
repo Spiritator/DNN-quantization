@@ -285,6 +285,7 @@ def gen_model_PE_fault_dict(ref_model,fault_loc,fault_info,verbose):
                         pre_plan=True,verbose=verbose)
     MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
     model_mac_fault_dict_list[1], psidx_tmp = PE_mapping_backward(ref_model.layers[1], MXU, verbose=verbose, return_detail=True)
+    psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
     PE_mapping_forward(ifmap_tile_conv2,wght_tile_conv2,ofmap_tile_conv2,MXU,
@@ -292,6 +293,7 @@ def gen_model_PE_fault_dict(ref_model,fault_loc,fault_info,verbose):
                        pre_plan=True,verbose=verbose)
     MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
     model_mac_fault_dict_list[2], psidx_tmp = PE_mapping_backward(ref_model.layers[2], MXU, verbose=verbose, return_detail=True)
+    psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
     PE_mapping_forward(ifmap_tile_conv3,wght_tile_conv3,ofmap_tile_conv3,MXU,
@@ -299,6 +301,7 @@ def gen_model_PE_fault_dict(ref_model,fault_loc,fault_info,verbose):
                         pre_plan=True,verbose=verbose)
     MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
     model_mac_fault_dict_list[5], psidx_tmp = PE_mapping_backward(ref_model.layers[5], MXU, verbose=verbose, return_detail=True)
+    psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
     PE_mapping_forward(ifmap_tile_conv4,wght_tile_conv4,ofmap_tile_conv4,MXU,
@@ -306,6 +309,7 @@ def gen_model_PE_fault_dict(ref_model,fault_loc,fault_info,verbose):
                        pre_plan=True,verbose=verbose)
     MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
     model_mac_fault_dict_list[6], psidx_tmp = PE_mapping_backward(ref_model.layers[6], MXU, verbose=verbose, return_detail=True)
+    psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     MXU.clear_all()
     
     # PE_mapping_forward(ifmap_tile_fc1,wght_tile_fc1,ofmap_tile_fc1,MXU,
@@ -313,6 +317,7 @@ def gen_model_PE_fault_dict(ref_model,fault_loc,fault_info,verbose):
     #                   pre_plan=True,verbose=verbose)
     # MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
     # model_mac_fault_dict_list[10], psidx_tmp = PE_mapping_backward(ref_model.layers[10], MXU, verbose=verbose, return_detail=True)
+    # psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     # MXU.clear_all()
     
     # PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
@@ -320,6 +325,7 @@ def gen_model_PE_fault_dict(ref_model,fault_loc,fault_info,verbose):
     #                   pre_plan=True,verbose=verbose)
     # MXU.gen_PEarray_permanent_fault_dict(fault_loc, fault_info, mac_config=True)
     # model_mac_fault_dict_list[12], psidx_tmp = PE_mapping_backward(ref_model.layers[12], MXU, verbose=verbose, return_detail=True)
+    # psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     # MXU.clear_all()
     
     # make preprocess data

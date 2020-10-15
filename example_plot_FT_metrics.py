@@ -11,7 +11,7 @@ from simulator.utils_tool.plot import make_FT_report,plot_FT_analysis,plot_FT_an
 import os
 import numpy as np
 
-#%% plot 
+#%% plot single data line
 
 stat_folder_dir='imagenet_mobilenet_memory_fault_rate_fmap'
 stat_data=make_FT_report('../test_result/'+stat_folder_dir,stat_folder_dir)
@@ -107,3 +107,16 @@ plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,va
                    'concentration','fault rate',
                    valfmt='{x:.2f}',aspect_ratio=0.3,annotate=False,xtick_rot=-60,
                    label_redu=2,grid_width=1)
+
+
+#%% import for PE array fault simulation result
+
+from simulator.utils_tool.plot import collect_metric_PE,dict_format_mfv_to_b2Dm
+
+#%% plot 2D heat map for PE array fault simulation result
+
+result_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88.csv'
+pe_sim_stat=collect_metric_PE(result_pe_sim)
+pe_sim_stat=dict_format_mfv_to_b2Dm(pe_sim_stat,8,8)
+
+

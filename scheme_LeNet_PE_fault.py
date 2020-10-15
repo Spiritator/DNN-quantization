@@ -204,6 +204,7 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,verbose):
     #                   pre_plan=True,verbose=verbose)
     # MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
     # model_mac_math_fault_dict_list[6], psidx_tmp = PE_mapping_backward(model.layers[7], MXU, verbose=verbose, return_detail=True)
+    # psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     # MXU.clear_all()
     
     # PE_mapping_forward(ifmap_tile_fc2,wght_tile_fc2,ofmap_tile_fc2,MXU,
@@ -211,6 +212,7 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,verbose):
     #                   pre_plan=True,verbose=verbose)
     # MXU.gen_PEarray_permanent_fault_dict(faultloc, faultinfo, mac_config=True)
     # model_mac_math_fault_dict_list[7], psidx_tmp = PE_mapping_backward(model.layers[7], MXU, verbose=verbose, return_detail=True)
+    # psidx_cnt+=psidx_tmp['num_layer_psum_idx']
     # MXU.clear_all()
     
     # make preprocess data

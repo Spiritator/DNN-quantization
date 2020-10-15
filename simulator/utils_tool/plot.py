@@ -363,8 +363,8 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
             plt.savefig(pic_path,dpi=250)
     
 def _heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw={}, cbarlabel="", 
-            aspect_ratio=0.4, xtick_rot=0, label_redu=None, grid_width=3, **kwargs):
+             cbar_kw={}, cbarlabel="", 
+             aspect_ratio=0.4, xtick_rot=0, label_redu=None, grid_width=3, **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -634,3 +634,80 @@ def dict_format_lfms_to_ms2Dlf(stat_data_dict):
         stat_data_metric_dict[mtrc]=sdmd_tmp
         
     return stat_data_metric_dict,fr_list
+
+
+def collect_metric_PE(file_name):
+    """ Collect PE array fault simulation result from file.
+
+    Parameters
+    ----------
+    file_name : String
+        The directory to PE array fault simulation result file.
+
+    Returns
+    -------
+    report : Dictionary
+        The collected metrics keys are metric name, values are 1D array of metric data from each iteration.
+    """
+    with open(file_name, 'r', newline='') as result_file:
+        csvdata=csv.DictReader(result_file)
+        metrics=csvdata.fieldnames
+        
+        report=dict()
+        for metric in metrics:
+            if metric in ['PE y','PE x','SA bit','num psidx']:
+                report[metric]=np.array([],dtype=np.int32)
+            elif metric in ['param','SA type']:
+                report[metric]=np.array([],dtype=np.str)
+            else:
+                report[metric]=np.array([],dtype=np.float32)
+        for row in csvdata:
+            for metric in metrics:
+                if metric in ['PE y','PE x','SA bit','num psidx']:
+                    report[metric]=np.append(report[metric],np.int32(row[metric]))
+                elif metric in ['param','SA type']:
+                    report[metric]=np.append(report[metric],np.str(row[metric]))
+                else:
+                    report[metric]=np.append(report[metric],np.float32(row[metric]))
+        
+    return report
+            
+def dict_format_mfv_to_b2Dm(data_dict,n_PEy,n_PEx):
+    """ 
+    Convert FT data dictionay from format: 
+        data_dict[metric & fault_info][value]
+    to format:
+        data_dict[fault_bit][metric][ 2D_array[ PE_y : PE_x ] ]
+    """
+    sorter=np.argsort(data_dict['SA bit'])
+    SA_bits,cnt_idx=np.unique(data_dict['SA bit'],return_counts=True)
+    cnt_idx=np.cumsum(cnt_idx)[:-1]
+    for metric in data_dict:
+        data_dict[metric]=np.split(data_dict[metric][sorter],cnt_idx)
+    # [metric][fault_bit][value]            
+    new_data_dict=dict()
+    for bit in SA_bits:
+        metric_tmp=dict()
+        for metric in data_dict:
+            metric_tmp[metric]=data_dict[metric][bit]
+        new_data_dict[bit]=metric_tmp
+    # [fault_bit][metric][value]
+    for segment in new_data_dict:
+        heatframe=dict()
+        coorlist=np.stack([new_data_dict[segment]['PE y'],new_data_dict[segment]['PE x']],axis=1)
+        heatframe['coor_list']=coorlist
+        heatframe['param']=new_data_dict[segment]['param']
+        heatframe['SA type']=new_data_dict[segment]['SA type']
+        for metric in new_data_dict[segment]:
+            if metric in ['PE y','PE x','SA bit','param','SA type']:
+                continue
+            maptmp=np.zeros([n_PEy,n_PEx],new_data_dict[segment][metric].dtype)
+            for i,coor in enumerate(coorlist):
+                maptmp[coor[0],coor[1]]=new_data_dict[segment][metric][i]
+            heatframe[metric]=maptmp
+            
+        new_data_dict[segment]=heatframe
+    #[fault_bit][metric][ 2D_array[ PE_y : PE_x ] ]
+    return new_data_dict
+
+    

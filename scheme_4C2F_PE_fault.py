@@ -34,7 +34,7 @@ model_word_length=16
 model_fractional_bit=12
 rounding_method=['down','nearest','down']
 quant_mode='hybrid'
-batch_size=20
+batch_size=10
 # PE array fault simulation parameter
 config_dir=os.path.join('..','pe_mapping_config')
 network_dir='4C2F'

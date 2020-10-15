@@ -137,7 +137,7 @@ class mac_unit:
     """
     def __init__(self, quantizers, quant_mode='hybrid', 
                  ifmap_io=None, wght_io=None, psum_io=None, 
-                 noise_inject=True, sim_truncarry=False, psumfault_handle=None, fast_gen=True,
+                 noise_inject=False, sim_truncarry=False, psumfault_handle=None, fast_gen=True,
                  amp_factor_fmap=1.0, amp_factor_wght=1.0):
         """ Class initialization """
         if not isinstance(quantizers,str):
@@ -808,6 +808,7 @@ class mac_unit:
         # data allocation
         # (coor idx, num of psidx, psum idx)
         psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
+        psum_idx_list=psum_idx_list.astype(np.int32)
         psum_idx_ofmap=psum_idx_list[:,:,order_get_psidx_o]
     
         fault_param=fd_value[0]['param']

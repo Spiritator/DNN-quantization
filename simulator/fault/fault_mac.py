@@ -391,7 +391,7 @@ class mac_fault_injector:
                 if self.psumfault_handle=='single':
                     psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
                 elif self.psumfault_handle=='rand_sum':
-                    randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=1, dtype=tf.int32)
+                    randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=2, dtype=tf.int32)
                     polarity=tf.multiply(polarity,randpolar)
                     psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
                     psum_alter=tf.reduce_sum(psum_alter, axis=1)
@@ -472,7 +472,7 @@ class mac_fault_injector:
                 if self.psumfault_handle=='single':
                     psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
                 elif self.psumfault_handle=='rand_sum':
-                    randpolar=tf.random.uniform(polarity_ofmap.shape, minval=0, maxval=1, dtype=tf.int32)
+                    randpolar=tf.random.uniform(polarity_ofmap.shape, minval=0, maxval=2, dtype=tf.int32)
                     polarity_ofmap=tf.multiply(polarity_ofmap,randpolar)
                     psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
                     psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
@@ -687,7 +687,7 @@ class mac_fault_injector:
             if self.psumfault_handle=='single':
                 psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
             elif self.psumfault_handle=='rand_sum':
-                randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=1, dtype=tf.int32)
+                randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=2, dtype=tf.int32)
                 polarity=tf.multiply(polarity,randpolar)
                 psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
                 psum_alter=tf.reduce_sum(psum_alter, axis=1)
@@ -875,7 +875,7 @@ class mac_fault_injector:
             if self.psumfault_handle=='single':
                 psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
             elif self.psumfault_handle=='rand_sum':
-                randpolar=tf.random.uniform(polarity_ofmap.shape, minval=0, maxval=1, dtype=tf.int32)
+                randpolar=tf.random.uniform(polarity_ofmap.shape, minval=0, maxval=2, dtype=tf.int32)
                 polarity_ofmap=tf.multiply(polarity_ofmap,randpolar)
                 psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
                 psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)

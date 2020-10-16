@@ -9,6 +9,9 @@ Code for fault tolerance metrics plotting
 
 import os,csv
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+from matplotlib import cm
+from matplotlib.colors import ListedColormap
 from matplotlib.ticker import StrMethodFormatter
 import numpy as np
 
@@ -116,7 +119,7 @@ def make_FT_report(stat_dir,report_csv_filename=None):
             
     return stat_data
 
-def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_size=None,save_plot_format='png'):
+def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_size=None,save_plot_format='png',dpi=250):
     """
     Make the fault tolerance report into line chart with statistic result
 
@@ -132,6 +135,8 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_si
         Size of plot legend. The default is None.
     save_plot_format : String, optional. one of 'png', 'jpg', 'eps'
         The image format of plot saving. The default is 'png'.
+    dpi: Integer
+        The image defination (digit per inch).
 
     Returns
     -------
@@ -154,6 +159,8 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_si
         |   ...}
 
     """
+    mpl.rcParams['figure.dpi']=dpi
+    
     if stat_dir is None and report_filename is None:
         raise ValueError('Both argument stat_dir and report_filename are None! Choose one of them as data to draw analysis plot.')
         
@@ -238,11 +245,11 @@ def plot_FT_analysis(stat_dir=None,report_filename=None,font_size=None,legend_si
         if save_plot_format=='eps':
             plt.savefig(pic_path, format='eps')
         else:
-            plt.savefig(pic_path,dpi=250)
+            plt.savefig(pic_path,dpi=dpi)
     
     return stat_data
 
-def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label_list,font_size=None,legend_size=None,save_plot_format='png'):
+def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label_list,font_size=None,legend_size=None,save_plot_format='png',dpi=250):
     """
     Make multiple fault tolerance report into one line chart with statistic result.
     Each metric plot a figure contains multiple report sources.
@@ -291,6 +298,8 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         Size of plot legend. The default is None.
     save_plot_format : String, optional. one of 'png', 'jpg', 'eps'
         The image format of plot saving. The default is 'png'.
+    dpi: Integer
+        The image defination (digit per inch).
 
     Returns
     -------
@@ -298,6 +307,8 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         Plot multiple report sources fault tolerance report
 
     """
+    mpl.rcParams['figure.dpi']=dpi
+    
     if not isinstance(stat_data_list,list):
         raise TypeError('argument stat_data_list should be type list consist of dictionary of stat_data of a FT analysis.')
     if not isinstance(plot_color_list,list):
@@ -360,10 +371,10 @@ def plot_FT_analysis_multiple(stat_data_list,plot_save_dir,plot_color_list,label
         if save_plot_format=='eps':
             plt.savefig(pic_path, format='eps')
         else:
-            plt.savefig(pic_path,dpi=250)
+            plt.savefig(pic_path,dpi=dpi)
     
-def _heatmap(data, row_labels, col_labels, ax=None,
-             cbar_kw={}, cbarlabel="", 
+def _heatmap(data, row_labels, col_labels,
+             ax=None, cbar_kw={}, cbarlabel="", 
              aspect_ratio=0.4, xtick_rot=0, label_redu=None, grid_width=3, **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
@@ -392,7 +403,7 @@ def _heatmap(data, row_labels, col_labels, ax=None,
 
     # Plot the heatmap
     im = ax.imshow(data, aspect=aspect_ratio, **kwargs)
-    
+            
     # Create colorbar
     cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
     cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
@@ -430,7 +441,7 @@ def _heatmap(data, row_labels, col_labels, ax=None,
     return im, cbar
 
 
-def _annotate_heatmap(im, data=None, valfmt="{x:.2f}",
+def _annotate_heatmap(im, data=None, text=None, valfmt="{x:.2f}",
                      textcolors=["black", "white"],
                      threshold=None, **textkw):
     """
@@ -442,6 +453,8 @@ def _annotate_heatmap(im, data=None, valfmt="{x:.2f}",
         The AxesImage to be labeled.
     data
         Data used to annotate.  If None, the image's data is used.  Optional.
+    text
+        Text used to annotate.  If None, the image's data is used.  Optional.
     valfmt
         The format of the annotations inside the heatmap.  This should either
         use the string format method, e.g. "$ {x:.2f}", or be a
@@ -460,6 +473,10 @@ def _annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
     if not isinstance(data, (list, np.ndarray)):
         data = im.get_array()
+    if text is None:
+        dataprint=data
+    else:
+        dataprint=text
 
     # Normalize the threshold to the images color range.
     if threshold is not None:
@@ -485,16 +502,16 @@ def _annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
             kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold[1] or im.norm(data[i, j]) < threshold[0])])
-            text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+            text = im.axes.text(j, i, valfmt(dataprint[i, j], None), **kw)
             texts.append(text)
 
     return texts
 
 def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels, 
-                       xlabel, ylabel,
-                       aspect_ratio=0.3, valfmt="{x:.3f}", annotate=True, 
-                       xtick_rot=0, label_redu=None, grid_width=3,
-                       save_plot_format='png'):
+                       xlabel, ylabel, sparse=False, aspect_ratio=0.3, 
+                       vmax_dict=None, annotate=True, text_data=None, valfmt="{x:.3f}", 
+                       xtick_rot=0, label_redu=None, grid_width=3, text_size=12, cbar_ref_level=0,
+                       save_plot_format='png',dpi=250):
     """
     Plot fault tolerance report in 2D heatmap. For the data report contain 2 experiment variables.
     Each experiment variable represent in a dimension of plot.
@@ -524,9 +541,16 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
         The name of x axis.
     ylabel : String
         The name of y axis
+    sparse: Bool
+        Plot sparse heatmap or not.
     aspect_ratio : Float, optional
         The aspect ratio of heatmap. The default is 0.3.
-    valfmt : Dictionary, optional
+    vmax_dict: Dictionary
+        The maximun for color reference need one for each heatmap.
+        The dictionary structure and max value must align with stat_data_dict.
+        The format of Dictionary is:
+            | text_dict[fault_bit][metric][vmax]
+    valfmt : String, optional
         The format of the annotations inside the heatmap.  This should either
         use the string format method, e.g. "$ {x:.2f}", or be a
         `matplotlib.ticker.Formatter`. The default is "{x:.3f}".
@@ -534,6 +558,11 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
         Show the annotaion in heatmap or not. For heatmap with huge amount of blocks, 
         annotate may set to False for prevent chaotic layout of plot. 
         Let the metric value only represent by color. The default is True.
+    text_data : Dictionary.
+        The text are being append to next line of a data point.
+        The dictionary structure and array of text must align with stat_data_dict.
+        The format of Dictionary is:
+            | text_dict[FT_metric][ 1D_List_Tuple:[coor...], 1D_array:[text...] ]
     xtick_rot : Float, optional
         Rotate the xtick label text, for preventing text overlap. The default is 0.
     label_redu : Integer, optional
@@ -541,8 +570,14 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
         The label_redu value the interval of each label precence. The default is None.
     grid_width : Float, optional
         The width of heatmap block, for adjust the visual presentation. The default is 3.
+    text_size: Integer. default 12
+        The text font size of pixel annotation.
+    cbar_ref_level: Integer. default 0
+        The metric for colorbar reference. cbar_ref_level is the level of stat_data_dict keys that are being set as refernce.
     save_plot_format : String, optional. one of 'png', 'jpg', 'eps'
         The image format of plot saving. The default is 'png'.
+    dpi: Integer
+        The image defination (digit per inch).
 
     Returns
     -------
@@ -550,6 +585,8 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
         Plot multiple report sources fault tolerance report
 
     """
+    mpl.rcParams['figure.dpi']=dpi
+
     if not os.path.isdir(plot_save_dir+'/plot'):
         os.mkdir(plot_save_dir+'/plot')
     
@@ -562,21 +599,43 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
             
             fig, ax = plt.subplots()
             
-            if 'acc' in mtrc and 'loss' not in mtrc:   
+            if cbar_ref_level==0:
+                cbarref=mtrc
+            else:
+                cbarref=mtrcstat
+                
+            if 'acc' in cbarref and 'loss' not in cbarref:   
                 if mtrcstat=='std_dev':
                     colorbar='RdYlGn_r'
                 else:
                     colorbar='RdYlGn'
             else:
                 colorbar='RdYlGn_r'
+            
+            if sparse:
+                colorbar=sparse_colormap(colorbar)
                 
-            im, cbar = _heatmap(FT_arr, row_labels, col_labels, ax=ax,
-                                cmap=colorbar, cbarlabel=mtrc, 
-                                aspect_ratio=aspect_ratio, xtick_rot=xtick_rot, 
+            if vmax_dict is None:
+                maxmtrc=None
+            else:
+                maxmtrc=vmax_dict[mtrc][mtrcstat]
+                
+            im, cbar = _heatmap(FT_arr, row_labels, col_labels,
+                                ax=ax, cmap=colorbar, cbarlabel=mtrc, 
+                                aspect_ratio=aspect_ratio, vmax=maxmtrc, xtick_rot=xtick_rot, 
                                 label_redu=label_redu, grid_width=grid_width)
             
             if annotate:
-                texts = _annotate_heatmap(im, valfmt=valfmt)
+                if text_data is None:
+                    texts = _annotate_heatmap(im, valfmt=valfmt, fontsize=text_size)
+                else:
+                    textarr=text_data[mtrc]
+                    if maxmtrc>99:
+                        imfmt='{x:.2E}'
+                    else:
+                        imfmt=valfmt
+                    imtext,imfmt=concate_value2text(FT_arr,textarr,imfmt)
+                    texts = _annotate_heatmap(im, text=imtext, valfmt=imfmt, fontsize=text_size)
             
             plt.title(mtrc+'  '+mtrcstat)
             plt.ylabel(ylabel)
@@ -591,11 +650,24 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
             if save_plot_format=='eps':
                 plt.savefig(pic_path, format='eps',bbox_inches='tight')
             else:
-                plt.savefig(pic_path,dpi=250,bbox_inches='tight')
+                plt.savefig(pic_path,dpi=dpi,bbox_inches='tight')
                 
             plt.show()
 
-                
+def concate_value2text(value,text,fmt_orig):
+    concattext=np.empty(value.shape, dtype=str).astype(np.object)
+    for i,idx in enumerate(text['coor_list']):
+        concattext[idx]=fmt_orig.format(x=value[idx])+'\n'+text['param'][i]
+    fmt_new='{x}'
+    return concattext,fmt_new
+
+def sparse_colormap(cmap):
+    newcolors= cm.get_cmap(cmap, 256)
+    newcolors = newcolors(np.linspace(0, 1, 256))
+    blank = np.array([1.0, 1.0, 1.0, 0.0])
+    newcolors[0] = blank
+    newcmp = ListedColormap(newcolors)
+    return newcmp
     
 def dict_format_lfms_to_ms2Dlf(stat_data_dict):
     """ 
@@ -678,36 +750,47 @@ def dict_format_mfv_to_b2Dm(data_dict,n_PEy,n_PEx):
         data_dict[metric & fault_info][value]
     to format:
         data_dict[fault_bit][metric][ 2D_array[ PE_y : PE_x ] ]
+        text_dict[FT_metric][ 1D_List_Tuple:[coor...], 1D_array:[text...] ]
     """
     sorter=np.argsort(data_dict['SA bit'])
     SA_bits,cnt_idx=np.unique(data_dict['SA bit'],return_counts=True)
     cnt_idx=np.cumsum(cnt_idx)[:-1]
+    vmax_dict=dict()
     for metric in data_dict:
+        if metric not in ['PE y','PE x','SA bit','param','SA type']:
+            vmax_dict[metric]=np.max(data_dict[metric])
         data_dict[metric]=np.split(data_dict[metric][sorter],cnt_idx)
     # [metric][fault_bit][value]            
     new_data_dict=dict()
+    new_text_dict=dict()
+    new_vmax_dict=dict()
     for bit in SA_bits:
         metric_tmp=dict()
+        vmax_tmp=dict()
         for metric in data_dict:
             metric_tmp[metric]=data_dict[metric][bit]
-        new_data_dict[bit]=metric_tmp
+            if metric not in ['PE y','PE x','SA bit','param','SA type']:
+                vmax_tmp[metric]=vmax_dict[metric]
+        new_vmax_dict['bit-%d'%bit]=vmax_tmp
+        new_data_dict['bit-%d'%bit]=metric_tmp
+        new_text_dict['bit-%d'%bit]=dict()
     # [fault_bit][metric][value]
     for segment in new_data_dict:
         heatframe=dict()
-        coorlist=np.stack([new_data_dict[segment]['PE y'],new_data_dict[segment]['PE x']],axis=1)
-        heatframe['coor_list']=coorlist
-        heatframe['param']=new_data_dict[segment]['param']
-        heatframe['SA type']=new_data_dict[segment]['SA type']
+        coorlist=list(zip(new_data_dict[segment]['PE y'],new_data_dict[segment]['PE x']))
+        new_text_dict[segment]['coor_list']=coorlist
+        new_text_dict[segment]['param']=new_data_dict[segment]['param']
+        #heatframe['SA type']=new_data_dict[segment]['SA type']
         for metric in new_data_dict[segment]:
             if metric in ['PE y','PE x','SA bit','param','SA type']:
                 continue
             maptmp=np.zeros([n_PEy,n_PEx],new_data_dict[segment][metric].dtype)
             for i,coor in enumerate(coorlist):
-                maptmp[coor[0],coor[1]]=new_data_dict[segment][metric][i]
+                maptmp[coor]=new_data_dict[segment][metric][i]
             heatframe[metric]=maptmp
             
         new_data_dict[segment]=heatframe
     #[fault_bit][metric][ 2D_array[ PE_y : PE_x ] ]
-    return new_data_dict
+    return new_data_dict, new_text_dict, new_vmax_dict
 
     

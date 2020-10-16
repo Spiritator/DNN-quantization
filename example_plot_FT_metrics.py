@@ -9,7 +9,6 @@ Plot FT metrics and make FT stastistic report
 
 from simulator.utils_tool.plot import make_FT_report,plot_FT_analysis,plot_FT_analysis_multiple,plot_FT_2D_heatmap,dict_format_lfms_to_ms2Dlf
 import os
-import numpy as np
 
 #%% plot single data line
 
@@ -111,12 +110,28 @@ plot_FT_2D_heatmap(stat_data_metric_dict,relative_dir+stat_folder_dir,fr_list,va
 
 #%% import for PE array fault simulation result
 
-from simulator.utils_tool.plot import collect_metric_PE,dict_format_mfv_to_b2Dm
+import numpy as np
+from simulator.utils_tool.plot import collect_metric_PE,dict_format_mfv_to_b2Dm,plot_FT_2D_heatmap
 
 #%% plot 2D heat map for PE array fault simulation result
 
-result_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88.csv'
-pe_sim_stat=collect_metric_PE(result_pe_sim)
-pe_sim_stat=dict_format_mfv_to_b2Dm(pe_sim_stat,8,8)
+result_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/metric_math_1616.csv'
+plot_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/'
+PEy=16
+PEx=16
 
+pe_sim_stat=collect_metric_PE(result_pe_sim)
+pe_sim_stat,pe_sim_text,pe_sim_vmax=dict_format_mfv_to_b2Dm(pe_sim_stat,PEy,PEx)
+
+# plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
+#                    sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
+#                    annotate=True,text_data=pe_sim_text,valfmt='{x:.4f}',
+#                    grid_width=1, text_size=6, cbar_ref_level=1,
+#                    save_plot_format='png')
+
+plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
+                   sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
+                   annotate=True,text_data=pe_sim_text,valfmt='{x:.3f}',
+                   grid_width=1, text_size=3, cbar_ref_level=1,
+                   save_plot_format='png',dpi=300)
 

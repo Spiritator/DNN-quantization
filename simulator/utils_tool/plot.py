@@ -443,7 +443,7 @@ def _heatmap(data, row_labels, col_labels,
 
 def _annotate_heatmap(im, data=None, text=None, valfmt="{x:.2f}",
                      textcolors=["black", "white"],
-                     threshold=None, **textkw):
+                     threshold=None, vmax=None, **textkw):
     """
     A function to annotate a heatmap.
 
@@ -466,6 +466,8 @@ def _annotate_heatmap(im, data=None, text=None, valfmt="{x:.2f}",
         Value in data units according to which the colors from textcolors are
         applied.  If None (the default) uses the middle of the colormap as
         separation.  Optional.
+    vmax
+        Value in data unit set as the max of color bar.
     **kwargs
         All other arguments are forwarded to each call to `text` used to create
         the text labels.
@@ -635,7 +637,7 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
                     else:
                         imfmt=valfmt
                     imtext,imfmt=concate_value2text(FT_arr,textarr,imfmt)
-                    texts = _annotate_heatmap(im, text=imtext, valfmt=imfmt, fontsize=text_size)
+                    texts = _annotate_heatmap(im, text=imtext, valfmt=imfmt, fontsize=text_size, threshold=[maxmtrc*0.2,maxmtrc*0.8])
             
             plt.title(mtrc+'  '+mtrcstat)
             plt.ylabel(ylabel)

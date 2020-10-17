@@ -21,18 +21,21 @@ stat_data=plot_FT_analysis(stat_dir='../test_result/'+stat_folder_dir)
 relative_dir='../test_result/'
 stat_data_list=list()
 stat_vs_folders=['mnist_lenet5_model_fault_rate','cifar10_4C2F_model_fault_rate','imagenet_mobilenet_model_fault_rate','imagenet_resnet_model_fault_rate']
+#stat_vs_folders=['imagenet_mobilenet_model_fault_rate_wght','imagenet_resnet_model_fault_rate_wght']
 
 for dirr in stat_vs_folders:
     stat_data_list.append(make_FT_report(relative_dir+dirr))
 
 pic_save_dir='vs_model_fault_rate_4net'
+#pic_save_dir='vs_imagenet_fault_rate_mobilenet_vs_resnet_wght'
 
 color_dict_list=[{'max':'lightblue','min':'lightblue','avg':'blue','var':'darkgray'},
                  {'max':'peachpuff','min':'peachpuff','avg':'red','var':'darkgray'},
-                 {'max':'lightgreen','min':'lightgreen','avg':'green','var':'darkgray'},
-                 {'max':'thistle','min':'thistle','avg':'purple','var':'darkgray'}]
+                  {'max':'lightgreen','min':'lightgreen','avg':'green','var':'darkgray'},
+                  {'max':'thistle','min':'thistle','avg':'purple','var':'darkgray'}]
 
 label_list=['lenet (S,8,3)','4C2F (S,10,6)','mobilenet (S,16,9)','resnet (S,16,12-8)']
+#label_list=['mobilenet (S,16,9)','resnet (S,16,12-8)']
 
 plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list)
 #plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list,font_size=14,legend_size=10,save_plot_format='eps')
@@ -115,23 +118,23 @@ from simulator.utils_tool.plot import collect_metric_PE,dict_format_mfv_to_b2Dm,
 
 #%% plot 2D heat map for PE array fault simulation result
 
-result_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/metric_math_1616.csv'
+result_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88.csv'
 plot_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/'
-PEy=16
-PEx=16
+PEy=8
+PEx=8
 
 pe_sim_stat=collect_metric_PE(result_pe_sim)
 pe_sim_stat,pe_sim_text,pe_sim_vmax=dict_format_mfv_to_b2Dm(pe_sim_stat,PEy,PEx)
 
-# plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
-#                    sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
-#                    annotate=True,text_data=pe_sim_text,valfmt='{x:.4f}',
-#                    grid_width=1, text_size=6, cbar_ref_level=1,
-#                    save_plot_format='png')
-
 plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
-                   sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
-                   annotate=True,text_data=pe_sim_text,valfmt='{x:.3f}',
-                   grid_width=1, text_size=3, cbar_ref_level=1,
-                   save_plot_format='png',dpi=300)
+                    sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
+                    annotate=True,text_data=pe_sim_text,valfmt='{x:.4f}',
+                    grid_width=1, text_size=6, cbar_ref_level=1,
+                    save_plot_format='png',dpi=300)
+
+# plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
+#                     sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
+#                     annotate=True,text_data=pe_sim_text,valfmt='{x:.3f}',
+#                     grid_width=1, text_size=3, cbar_ref_level=1,
+#                     save_plot_format='png',dpi=300)
 

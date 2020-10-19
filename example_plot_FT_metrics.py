@@ -138,3 +138,17 @@ plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y',
 #                     grid_width=1, text_size=3, cbar_ref_level=1,
 #                     save_plot_format='png',dpi=300)
 
+#%% make GIF of PE fault simulation result heatmap
+
+import os, tqdm
+from simulator.utils_tool.plot import make_GIF
+
+result_heatmap_dir='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88_plot/'
+
+metric_dirs=os.listdir(result_heatmap_dir)
+
+for metric in tqdm.tqdm(metric_dirs):
+    gif_metric_dir=os.path.join(result_heatmap_dir,metric)+'/'
+    make_GIF(gif_metric_dir,metric,file_ext='png',duration=2000)
+
+

@@ -157,10 +157,11 @@ class mac_unit:
         self.amp_factor_fmap=amp_factor_fmap
         self.amp_factor_wght=amp_factor_wght
         if psumfault_handle is None:
-            if self.psum_io['type']=='io_pair':
-                self.psumfault_handle='rand_sum'
-            else:
-                self.psumfault_handle='single'
+            self.psumfault_handle='rand_sum'
+            # if self.psum_io['type']=='io_pair':
+            #     self.psumfault_handle='rand_sum'
+            # else:
+            #     self.psumfault_handle='single'
         else:
             if psumfault_handle not in ['single','direct_sum','rand_sum']:
                 raise ValueError('The psumfault_handle must be one of \'single\',\'direct_sum\',\'rand_sum\'. ')

@@ -7,12 +7,13 @@ Created on Wed May 22 16:59:00 2019
 Code for fault tolerance metrics plotting
 """
 
-import os,csv
+import os,csv,glob
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 from matplotlib.ticker import StrMethodFormatter
+from PIL import Image,ImagePalette
 import numpy as np
 
 def _preprocess_float_fault_rate_text(fl_fr_text):
@@ -795,4 +796,32 @@ def dict_format_mfv_to_b2Dm(data_dict,n_PEy,n_PEx):
     #[fault_bit][metric][ 2D_array[ PE_y : PE_x ] ]
     return new_data_dict, new_text_dict, new_vmax_dict
 
+
+def make_GIF(filepath,save_GIF_name,file_ext=None,duration=200,loop=0):
+    """ Collect images from given file path and cram images into GIF motion picture
+
+    Parameters
+    ----------
+    filepath : String
+        The file path to images. Could include the common part of filenames start.
+    save_GIF_name : String
+        The filename for output GIF under filepath.
+    file_ext : String, optional
+        File extention of input filepath images. If None, collect all files under filepath.
+    duration : Integer
+        The duration of each images in ms. The default is 200.
+    loop : Integer, optional
+        Number of times the GIF should loop. 0 means that it will loop forever.. The default is 0.
+
+    """
+    if file_ext is None:
+        fp_in = filepath+'*'
+    else:
+        fp_in = filepath+'*.'+file_ext
+    fp_out = filepath+save_GIF_name+'.gif'
     
+    img, *imgs = [Image.open(f) for f in sorted(glob.glob(fp_in))]
+    img.save(fp=fp_out, format='GIF', append_images=imgs,
+             save_all=True, duration=duration, loop=loop)
+
+

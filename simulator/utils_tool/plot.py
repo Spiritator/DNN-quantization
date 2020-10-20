@@ -624,7 +624,7 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
                 maxmtrc=vmax_dict[mtrc][mtrcstat]
                 
             im, cbar = _heatmap(FT_arr, row_labels, col_labels,
-                                ax=ax, cmap=colorbar, cbarlabel=mtrc, 
+                                ax=ax, cmap=colorbar, cbarlabel=cbarref, 
                                 aspect_ratio=aspect_ratio, vmax=maxmtrc, xtick_rot=xtick_rot, 
                                 label_redu=label_redu, grid_width=grid_width)
             

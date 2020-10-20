@@ -137,10 +137,10 @@ def inference_scheme(model_func,
             modelaug_tmp['weight_fault_dict_list']=model_weight_fdl
 
         if multi_gpu_num is None:
+            t = time.time()
             if verbose>6:
                 print('Building model...')
             model=model_func(verbose=verbose>4, **modelaug_tmp)
-            t = time.time()
             
             if weight_load_name is not None:
                 model.load_weights(weight_load_name)

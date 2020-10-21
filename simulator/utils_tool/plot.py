@@ -767,6 +767,10 @@ def dict_format_mfv_to_b2Dm(data_dict,n_PEy,n_PEx):
     new_data_dict=dict()
     new_text_dict=dict()
     new_vmax_dict=dict()
+    if np.max(SA_bits)<10:
+        formater='bit-%d'
+    else:
+        formater='bit-%2d'
     for bit in SA_bits:
         metric_tmp=dict()
         vmax_tmp=dict()
@@ -774,9 +778,9 @@ def dict_format_mfv_to_b2Dm(data_dict,n_PEy,n_PEx):
             metric_tmp[metric]=data_dict[metric][bit]
             if metric not in ['PE y','PE x','SA bit','param','SA type']:
                 vmax_tmp[metric]=vmax_dict[metric]
-        new_vmax_dict['bit-%d'%bit]=vmax_tmp
-        new_data_dict['bit-%d'%bit]=metric_tmp
-        new_text_dict['bit-%d'%bit]=dict()
+        new_vmax_dict[formater%bit]=vmax_tmp
+        new_data_dict[formater%bit]=metric_tmp
+        new_text_dict[formater%bit]=dict()
     # [fault_bit][metric][value]
     for segment in new_data_dict:
         heatframe=dict()

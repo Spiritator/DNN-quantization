@@ -256,6 +256,30 @@ class PEarray:
     mac_config: Class. 
         The class of MAC unit configurations.
         
+    Fault Dictioanry
+    ----------------
+    | There are two types of fault dictionary structure.
+    | 'coor_base': The key of dictionary is the fault coordinate ex: (0,2,2,5). 
+    |              Value is the fault information sub-dictionary.
+    >>> fault_dict={(0,2,2,5): {'SA_type': 'flip', 'SA_bit': 4, 'param','ifmap_in', 'id':[1,3,5,7,9]},
+    ...             (0,1,1,8): {'SA_type': '1', 'SA_bit': 7, 'param','wght_out', 'id':[0,2,4,6,8]},
+    ...             ...
+    ...            }
+    
+    | 'info_base': The key of dictionary is the fault information ex: 'coor','SA_type','SA_bit','param','id'. 
+    |              Value is the fault information sub-dictionary.
+    >>> fault_dict={'coor': [[0,2,2,5],
+    ...                      [0,1,1,8],
+    ...                      ...],
+    ...             'SA_type': ['1','flip',...],
+    ...             'SA_bit':  [7,5,...],
+    ...             'param':   ['ifmap_in','psum_in','wght_out',...]
+    ...             'id': [[1,3,5,7,9],
+    ...                    [0,2,4,6,8],
+    ...                    ...]
+    ...            }
+    
+    | !! Only 'info_base' are capable of PE dataflow mapping
 
     """
     def __init__(self, n_x, n_y, n_clk=None, ofmap_tile=None, wght_tile=None, ifmap_tile=None, mac_config=None):
@@ -276,12 +300,59 @@ class PEarray:
         self.fast_gen=False
         self.mac_config=mac_config
         
-    def load_tile(self, ifmap_tile, wght_tile, ofmap_tile):
-        """ Load in tile to PEarray """
-        self.clear_tile()
-        self.ifmap_tile=ifmap_tile
-        self.wght_tile=wght_tile
-        self.ofmap_tile=ofmap_tile
+    def fd2coorbase(self):
+        """ Transform info-based fault dictionary to coor-based fault dictionary """
+        if len(self.fault_dict)==0 or ('coor' not in self.fault_dict):
+            pass
+        else:
+            new_fault_dict=dict()
+            coor=self.fault_dict['coor']
+            for i,coortmp in enumerate(coor):
+                infotmp=dict()
+                for info in self.fault_dict.keys():
+                    if info!='coor':
+                        if isinstance(self.fault_dict[info],(list,np.ndarray)):
+                            infotmp[info]=self.fault_dict[info][i]
+                        else:
+                            infotmp[info]=self.fault_dict[info]
+                new_fault_dict[tuple(coortmp)]=infotmp
+            self.fault_dict=new_fault_dict
+    
+    def fd2infobase(self):
+        """ Transform coor-based fault dictionary to info-based fault dictionary """
+        if len(self.fault_dict)==0 or ('coor' in self.fault_dict):
+            pass
+        else:
+            new_fault_dict=dict()
+            coors=np.array(list(self.fault_dict.keys()))
+            new_fault_dict['coor']=coors
+            fault_info=list(self.fault_dict.values())
+            for info in fault_info[0].keys():
+                new_fault_dict[info]=np.array([value[info] for value in fault_info])
+            self.fault_dict=new_fault_dict
+        
+    def _reduce_fault_value(self, fault_dict, cond, reduce_coor=False):
+        """ Reduction on fault dictionary informations """
+        #fault_value=fault_value[cond]
+        if not reduce_coor:
+            for info in fault_dict.keys():
+                if info!='coor' and isinstance(info,(list,np.ndarray)):
+                    fault_dict[info]=fault_dict[info][cond]
+        else:
+            for info in fault_dict.keys():
+                if isinstance(info,(list,np.ndarray)):
+                    fault_dict[info]=fault_dict[info][cond]
+    
+    def _dupe_fault_value(self, fault_dict, dispach, dupe_coor=False):
+        """ Duplication on fault dictionary informations """
+        #[fault_value[i] for i in dispach]
+        if not dupe_coor:
+            for info in fault_dict.keys():
+                if info!='coor':
+                    fault_dict[info]=fault_dict[info][dispach]
+        else:
+            for info in fault_dict.keys():
+                fault_dict[info]=fault_dict[info][dispach]
         
     def setup_dataflow(self, 
                        o_permute_info=None, o_fixed_info=None, o_broadcast_info=None, o_streaming_info=None, o_repeat=0, o_duplicate=0, o_pack_size=1, o_stall_latency=0, o_dummy_pack_insert=None, o_dummy_pack_n=0,
@@ -1223,8 +1294,8 @@ class PEarray:
         
         """
         if not dataflow_pre_plan:
-            index=np.array(list(fault_dict.keys()))
-            fault_value=list(fault_dict.values())
+            index=fault_dict['coor']
+            fault_value=fault_dict
             
             if len(index)==0:
                 dataflow_pre_plan=True
@@ -1265,8 +1336,8 @@ class PEarray:
             mapping_shape.append(slice_n_clk*slice_num)
         
         if not dataflow_pre_plan:
-            index_fd=list(zip(*new_index.T))
-            new_fault_dict=dict(zip(index_fd,fault_value))
+            fault_value['coor']=new_index
+            new_fault_dict=fault_value
         else:
             new_fault_dict=dict()
             
@@ -1281,8 +1352,8 @@ class PEarray:
             ...     #split t_clk dimension into new slice dimension
 
         """
-        index=np.array(list(fault_dict.keys()))
-        fault_value=list(fault_dict.values())
+        index=fault_dict['coor']
+        fault_value=fault_dict
         
         if t_clk_dims is None:
             if pack_size>1:
@@ -1338,8 +1409,8 @@ class PEarray:
             mapping_shape.append(slice_n_clk)
             mapping_shape.append(slice_num)
         
-        index_fd=list(zip(*new_index.T))
-        new_fault_dict=dict(zip(index_fd,fault_value))
+        fault_value['coor']=new_index
+        new_fault_dict=fault_value
             
         return new_fault_dict,mapping_shape
     
@@ -1351,13 +1422,13 @@ class PEarray:
             dataflow_pre_plan=True
             
         if not dataflow_pre_plan:
-            index=np.array(list(fault_dict.keys()))
-            fault_value=list(fault_dict.values())
+            index=fault_dict['coor']
+            fault_value=fault_dict
 
             index[:,t_clk_dims]=np.add(index[:,t_clk_dims],stalllatency)
             
-            index_fd=list(zip(*index.T))
-            new_fault_dict=dict(zip(index_fd,fault_value))
+            fault_value['coor']=index
+            new_fault_dict=fault_value
         else:
             new_fault_dict=dict()
         
@@ -1369,13 +1440,13 @@ class PEarray:
         """ Remove stall and latency of fault dictionary t_clk axis.
         
         """
-        index=np.array(list(fault_dict.keys()))
-        fault_value=list(fault_dict.values())
+        index=fault_dict['coor']
+        fault_value=fault_dict
 
         index[:,t_clk_dims]=np.subtract(index[:,t_clk_dims],stalllatency)
         
-        index_fd=list(zip(*index.T))
-        new_fault_dict=dict(zip(index_fd,fault_value))
+        fault_value['coor']=index
+        new_fault_dict=fault_value
         
         mapping_shape[t_clk_dims]-=stalllatency
 
@@ -1390,8 +1461,8 @@ class PEarray:
             dataflow_pre_plan=True
             
         if not dataflow_pre_plan:
-            index=np.array(list(fault_dict.keys()))
-            fault_value=list(fault_dict.values())
+            index=fault_dict['coor']
+            fault_value=fault_dict
             
             slice_idx=index[:,slice_dims]
         
@@ -1400,8 +1471,8 @@ class PEarray:
                 slice_idx+=dummy_pack_n
                 index[:,slice_dims]=slice_idx
                 
-                index_fd=list(zip(*index.T))
-                new_fault_dict=dict(zip(index_fd,fault_value))
+                fault_value['coor']=index
+                new_fault_dict=fault_value
             else:
                 new_fault_dict=dict()
                 
@@ -1411,8 +1482,8 @@ class PEarray:
             if not dataflow_pre_plan:
                 # no change                
                 
-                index_fd=list(zip(*index.T))
-                new_fault_dict=dict(zip(index_fd,fault_value))
+                fault_value['coor']=index
+                new_fault_dict=fault_value
             else:
                 new_fault_dict=dict()
                 
@@ -1423,8 +1494,8 @@ class PEarray:
                 slice_idx=np.multiply(slice_idx,dummy_pack_n+1)+dummy_pack_n
                 index[:,slice_dims]=slice_idx
                 
-                index_fd=list(zip(*index.T))
-                new_fault_dict=dict(zip(index_fd,fault_value))
+                fault_value['coor']=index
+                new_fault_dict=fault_value
             else:
                 new_fault_dict=dict()
                 
@@ -1435,8 +1506,8 @@ class PEarray:
                 slice_idx=np.multiply(slice_idx,dummy_pack_n+1)
                 index[:,slice_dims]=slice_idx
                 
-                index_fd=list(zip(*index.T))
-                new_fault_dict=dict(zip(index_fd,fault_value))
+                fault_value['coor']=index
+                new_fault_dict=fault_value
             else:
                 new_fault_dict=dict()
                 
@@ -1452,8 +1523,8 @@ class PEarray:
             Dummy pack is for a parameter doesn't exist in certain peroid of computation time.
         
         """
-        index=np.array(list(fault_dict.keys()))
-        fault_value=np.array(list(fault_dict.values()))
+        index=fault_dict['coor']
+        fault_value=fault_dict
         
         slice_idx=index[:,slice_dims]
         
@@ -1461,25 +1532,25 @@ class PEarray:
             cond_idx=slice_idx>dummy_pack_n
             slice_idx=slice_idx[cond_idx]
             index=index[cond_idx]
-            fault_value=fault_value[cond_idx]
+            self._reduce_fault_value(fault_value, cond_idx)
             
             slice_idx-=dummy_pack_n
             index[:,slice_dims]=slice_idx
             
-            index_fd=list(zip(*index.T))
-            new_fault_dict=dict(zip(index_fd,fault_value))
+            fault_value['coor']=index
+            new_fault_dict=fault_value
                 
             mapping_shape[slice_dims]-=dummy_pack_n
                 
         elif dummy_pack_insert=='post_all':
             cond_idx=slice_idx<(mapping_shape[slice_dims]-dummy_pack_n)
             index=index[cond_idx]
-            fault_value=fault_value[cond_idx]
+            self._reduce_fault_value(fault_value, cond_idx)
 
             # slice_idx no change                
             
-            index_fd=list(zip(*index.T))
-            new_fault_dict=dict(zip(index_fd,fault_value))
+            fault_value['coor']=index
+            new_fault_dict=fault_value
                 
             mapping_shape[slice_dims]-=dummy_pack_n
                 
@@ -1487,13 +1558,13 @@ class PEarray:
             cond_idx=np.remainder(slice_idx,dummy_pack_n+1)==dummy_pack_n
             slice_idx=slice_idx[cond_idx]
             index=index[cond_idx]
-            fault_value=fault_value[cond_idx]
+            self._reduce_fault_value(fault_value, cond_idx)
             
             slice_idx=np.floor_divide(slice_idx,dummy_pack_n+1)
             index[:,slice_dims]=slice_idx
             
-            index_fd=list(zip(*index.T))
-            new_fault_dict=dict(zip(index_fd,fault_value))
+            fault_value['coor']=index
+            new_fault_dict=fault_value
                 
             mapping_shape[slice_dims]=mapping_shape[slice_dims]//(dummy_pack_n+1)
                 
@@ -1501,13 +1572,13 @@ class PEarray:
             cond_idx=np.remainder(slice_idx,dummy_pack_n+1)==0
             slice_idx=slice_idx[cond_idx]
             index=index[cond_idx]
-            fault_value=fault_value[cond_idx]
+            self._reduce_fault_value(fault_value, cond_idx)
             
             slice_idx=np.floor_divide(slice_idx,dummy_pack_n+1)
             index[:,slice_dims]=slice_idx
             
-            index_fd=list(zip(*index.T))
-            new_fault_dict=dict(zip(index_fd,fault_value))
+            fault_value['coor']=index
+            new_fault_dict=fault_value
                 
             mapping_shape[slice_dims]=mapping_shape[slice_dims]//(dummy_pack_n+1)
                 
@@ -1575,37 +1646,36 @@ class PEarray:
         
         if not dataflow_pre_plan:
             if tile.expansion:
-                mapped_coors=np.array(list(tile.fault_dict_expand.keys()))
-                fault_value=np.array(list(tile.fault_dict_expand.values()))
+                fault_value=copy.deepcopy(tile.fault_dict_expand)
+                mapped_coors=fault_value['coor']
             else:
-                mapped_coors=np.array(list(tile.fault_dict.keys()))
+                fault_value=copy.deepcopy(tile.fault_dict)
+                mapped_coors=fault_value['coor']
                 mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=np.int32),axis=1)
-                fault_value=np.array(list(tile.fault_dict.values()))
             
             if parameter=='bias':
                 if tile.expansion:
-                    mapped_coors=np.array(list(tile.bias_fault_dict_expand.keys()))
-                    fault_value=np.array(list(tile.bias_fault_dict_expand.values()))
+                    fault_value=copy.deepcopy(tile.bias_fault_dict_expand)
+                    mapped_coors=fault_value['coor']
                 else:
-                    mapped_coors=np.array(list(tile.bias_fault_dict.keys()))
-                    fault_value=np.array(list(tile.bias_fault_dict.values()))
+                    fault_value=copy.deepcopy(tile.bias_fault_dict)
+                    mapped_coors=fault_value['coor']
                 
             if len(mapped_coors)==0:
                 dataflow_pre_plan=True
                 
             if parameter=='ofmap':
-                PEparam={'param':'psum_out'}
+                PEparam={'param':np.array(['psum_out' for _ in range(len(mapped_coors))])}
             elif parameter=='ifmap':
-                PEparam={'param':'ifmap_in'}
+                PEparam={'param':np.array(['ifmap_in' for _ in range(len(mapped_coors))])}
             elif parameter=='wght':
-                PEparam={'param':'wght_in'}
+                PEparam={'param':np.array(['wght_in' for _ in range(len(mapped_coors))])}
             elif parameter=='bias':
-                PEparam={'param':'psum_in'}
+                PEparam={'param':np.array(['psum_in' for _ in range(len(mapped_coors))])}
             elif parameter=='psum':
-                PEparam={'param':'psum_out'}
+                PEparam={'param':np.array(['psum_out' for _ in range(len(mapped_coors))])}
             
-            for value in fault_value:
-                value.update(PEparam)
+            fault_value.update(PEparam)
                
         self.used_axes=list()
         self.tmp_clk=None
@@ -1651,7 +1721,7 @@ class PEarray:
                                                          axis_arange=map_arange, 
                                                          get_cond_idx=True)
                 
-                fault_value=fault_value[cond_idx]
+                self._dupe_fault_value(fault_value, cond_idx)
           
         # streaming
         if flow.streaming_info is not None:
@@ -1673,14 +1743,14 @@ class PEarray:
                                                               axis_arange=map_arange, 
                                                               get_cond_idx=True)
     
-                fault_value=fault_value[cond_idx]
+                self._dupe_fault_value(fault_value, cond_idx)
         
         flow.tmp_clk=self.tmp_clk
         flow.using_axes=self.used_axes.copy()
         
         if not dataflow_pre_plan:
-            mapped_coors_fd=list(zip(*mapped_coors.T))
-            new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
+            fault_value['coor']=mapped_coors
+            new_fault_dict=fault_value
         else:
             new_fault_dict=dict()
 
@@ -1765,8 +1835,8 @@ class PEarray:
         if len(fault_dict)==0:
             return dict()
         
-        mapped_coors=np.array(list(fault_dict.keys()))
-        fault_value=np.array(list(fault_dict.values()))
+        fault_value=copy.deepcopy(fault_dict)
+        mapped_coors=fault_value['coor']
                                
         self.solving_axes=flow.using_axes.copy()
         self.tmp_clk=flow.tmp_clk
@@ -1820,10 +1890,10 @@ class PEarray:
                                                  target_shape=map_shape_pe, 
                                                  axis_arange=map_arange, 
                                                  get_cond_idx=True)
-            
-            # pop outlier coordinates
+            # unfix_idx only retract fixed dimension, doesnt filt data outside fixed area away
+            # pop coordinates outside fixed area
             mapped_coors=mapped_coors[cond_idx]
-            fault_value=fault_value[cond_idx]        
+            self._reduce_fault_value(fault_value, cond_idx)
             
         # permute
         if flow.permute_info is not None:
@@ -1837,7 +1907,7 @@ class PEarray:
             # pop outlier coordinates
             cond_idx=self.get_outlier_cond_args(mapped_coors,map_shape_pe)
             mapped_coors=mapped_coors[cond_idx]
-            fault_value=fault_value[cond_idx]
+            self._reduce_fault_value(fault_value, cond_idx)
 
             mapped_coors=self.permute_ravel_idx(mapped_coors,
                                                 source_shape=map_shape_pe,
@@ -1850,9 +1920,9 @@ class PEarray:
             mapped_coors,fault_value=self.collapse_repetitive_coors(mapped_coors,fault_value)
         
         if tile.expansion:
-            mapped_coors_fd=list(zip(*mapped_coors.T))
-            new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
-            
+            fault_value['coor']=mapped_coors
+            new_fault_dict=fault_value
+
             if parameter in ['ofmap','ifmap','wght']:
                 tile.fault_dict_expand=new_fault_dict
             elif parameter=='psum':
@@ -1862,9 +1932,9 @@ class PEarray:
         
         else:
             mapped_coors=mapped_coors[:,:-1]
-            mapped_coors_fd=list(zip(*mapped_coors.T))
-            new_fault_dict=dict(zip(mapped_coors_fd,fault_value))
-            
+            fault_value['coor']=mapped_coors
+            new_fault_dict=fault_value
+
             if parameter in ['ofmap','ifmap','wght']:
                 tile.fault_dict=new_fault_dict
             elif parameter=='psum':
@@ -1922,8 +1992,8 @@ class PEarray:
             raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\', \'bias\', \'psum\'.')
 
         if not dataflow_pre_plan:
-            duped_coors=np.array(list(fault_dict.keys()))
-            fault_value=np.array(list(fault_dict.values()))
+            duped_coors=fault_dict['coor']
+            fault_value=fault_dict
             
             if len(duped_coors)==0:
                 dataflow_pre_plan=True
@@ -1933,8 +2003,9 @@ class PEarray:
             if not dataflow_pre_plan:
                 slices_mod=np.tile(np.arange(flow.repeat),len(duped_coors))
                 
+                cond_idx=np.repeat(np.arange(len(duped_coors)),flow.repeat)
                 duped_coors=np.repeat(duped_coors,flow.repeat,0)
-                fault_value=np.repeat(fault_value,flow.repeat,0)
+                self._dupe_fault_value(fault_value, cond_idx)
                 
                 slices_idx=duped_coors[:,-1]
                 slices_idx=np.add(np.multiply(slices_idx,flow.repeat),slices_mod)
@@ -1948,8 +2019,9 @@ class PEarray:
             if not dataflow_pre_plan:
                 slices_mod=np.repeat(np.arange(flow.duplicate),len(duped_coors))
                 
+                cond_idx=np.tile(np.arange(len(duped_coors)),flow.duplicate)
                 duped_coors=np.tile(duped_coors,[flow.duplicate,1])
-                fault_value=np.tile(fault_value,flow.duplicate)
+                self._dupe_fault_value(fault_value, cond_idx)
                 
                 slices_idx=duped_coors[:,-1]
                 slices_idx=np.add(np.multiply(slices_mod,cutset_num),slices_idx)
@@ -1959,8 +2031,8 @@ class PEarray:
             cutset_num*=flow.duplicate
         
         if not dataflow_pre_plan:
-            duped_coors_fd=list(zip(*duped_coors.T))
-            new_fault_dict=dict(zip(duped_coors_fd,fault_value))
+            fault_value['coor']=duped_coors
+            new_fault_dict=fault_value
         else:
             new_fault_dict=dict()
         
@@ -2027,8 +2099,8 @@ class PEarray:
         if len(fault_dict)==0:
             return dict()
         
-        reduced_coors=np.array(list(fault_dict.keys()))
-        fault_value=np.array(list(fault_dict.values()))
+        reduced_coors=fault_dict['coor']
+        fault_value=fault_dict
         
         # reverse duplicate
         if flow.duplicate>0:
@@ -2052,8 +2124,8 @@ class PEarray:
             
             reduced_coors,fault_value=self.collapse_repetitive_coors(reduced_coors,fault_value)
             
-        reduced_coors_fd=list(zip(*reduced_coors.T))
-        new_fault_dict=dict(zip(reduced_coors_fd,fault_value))
+        fault_value['coor']=reduced_coors
+        new_fault_dict=fault_value
         
         if parameter=='ofmap':
             self.ofmap_map_fd=new_fault_dict
@@ -2228,14 +2300,17 @@ class PEarray:
         self.n_clk=self.pack_clk*self.pack_num
         
         if not dataflow_pre_plan:
-            self.fault_dict.update(self.serialize_slices(self.ofmap_map_fd,self.shape_ofmap_mapping,slice_n_clk=self.pack_clk)[0])
-            self.fault_dict.update(self.serialize_slices(self.wght_map_fd,self.shape_wght_mapping,slice_n_clk=self.pack_clk)[0])
-            self.fault_dict.update(self.serialize_slices(self.ifmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=self.pack_clk)[0])
+            fd_sink=list()
+            fd_sink.append(self.serialize_slices(self.ofmap_map_fd,self.shape_ofmap_mapping,slice_n_clk=self.pack_clk)[0])
+            fd_sink.append(self.serialize_slices(self.wght_map_fd,self.shape_wght_mapping,slice_n_clk=self.pack_clk)[0])
+            fd_sink.append(self.serialize_slices(self.ifmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=self.pack_clk)[0])
             if self.use_bias:
-                self.fault_dict.update(self.serialize_slices(self.bias_map_fd,self.shape_bias_mapping,slice_n_clk=self.pack_clk)[0])
+                fd_sink.append(self.serialize_slices(self.bias_map_fd,self.shape_bias_mapping,slice_n_clk=self.pack_clk)[0])
             if self.use_psum:
-                self.fault_dict.update(self.serialize_slices(self.psum_map_fd,self.shape_psum_mapping,slice_n_clk=self.pack_clk)[0])
-            self.fault_num=len(self.fault_dict)
+                fd_sink.append(self.serialize_slices(self.psum_map_fd,self.shape_psum_mapping,slice_n_clk=self.pack_clk)[0])
+            for info in fd_sink[0].keys():
+                self.fault_dict[info]=np.concatenate([subfd[info] for subfd in fd_sink])
+            self.fault_num=len(self.fault_dict['coor'])
         
             return self.fault_dict
         
@@ -2269,7 +2344,7 @@ class PEarray:
                 ntask+=4
             if self.use_psum:
                 ntask+=4
-            pbar=tqdm.tqdm(desc='    Sub-tasks', total=ntask, leave=False)
+            pbar=tqdm.tqdm(desc='    PE-fault-dict-decompose', total=ntask, leave=False)
             
         # decompose clock cycle
         self.ofmap_map_fd=copy.deepcopy(self.fault_dict)
@@ -2448,8 +2523,7 @@ class PEarray:
             For popping outlier faults because we need to save the order of original fault
         
         """
-        for i,coor in enumerate(fault_dict):
-            fault_dict[coor].update({'id':i})
+        fault_dict['id']=np.arange(len(fault_dict['coor']))
         return fault_dict
     
     def get_neighboring_axis(self, flow):
@@ -2485,19 +2559,18 @@ class PEarray:
         """
         if not self.setup_ready:
             raise AttributeError('Dataflow set up not ready! Can\'t find neighbor PE index.')
-        index=np.array(list(fault_dict.keys()))
-        fault_value=np.array(list(fault_dict.values()))
+        index=fault_dict['coor']
         
         iout=list()
         wout=list()
         psin=list()
         
-        for i,info in enumerate(fault_value):
-            if info['param']=='ifmap_out':
+        for i,info in enumerate(fault_dict['param']):
+            if info=='ifmap_out':
                 iout.append(i)
-            elif info['param']=='wght_out':
+            elif info=='wght_out':
                 wout.append(i)
-            elif info['param']=='psum_in':
+            elif info=='psum_in':
                 psin.append(i)
                 
         if len(iout)>0:
@@ -2604,7 +2677,7 @@ class PEarray:
 
         edge_arg=self.get_outlier_cond_args(index,[self.n_y,self.n_x,self.n_clk])
         index=index[edge_arg]
-        fault_value=fault_value[edge_arg]
+        self._reduce_fault_value(fault_dict, edge_arg)
 #        if not edge_arg.all():
 #            edge_arg=np.bitwise_not(edge_arg)
 #            
@@ -2614,10 +2687,9 @@ class PEarray:
 #            for i in edge_idx:
 #                fault_value[i].update({'edge':True})
                     
-        index_fd=list(zip(*index.T))
-        new_fault_dict=dict(zip(index_fd,fault_value))
+        fault_dict['coor']=index
 
-        return new_fault_dict
+        return fault_dict
     
     def propagate_interconnect_fd(self, fault_loc, fault_param, mac_config):
         """ Data contamination by propagate the faulty data through the interconnection between PEs
@@ -2724,12 +2796,13 @@ class PEarray:
         fault_coors=np.concatenate(fault_coors,axis=1)
         fault_bit=np.random.randint(n_bit,size=fault_num)
         fault_param=param_list[np.random.randint(len(param_list),size=fault_num)]
-        fault_info=[{'SA_type':fault_type,'SA_bit':fault_bit[i],'param':str(fault_param[i])} for i in range(fault_num)]
         
-        fault_coors=list(zip(*fault_coors.T))
-        self.fault_dict=dict(zip(fault_coors,fault_info))        
+        self.fault_dict={'coor':fault_coors,
+                         'SA_type':fault_type,
+                         'SA_bit':fault_bit,
+                         'param':fault_param}
         
-        self.fault_num=len(self.fault_dict)
+        self.fault_num=len(fault_coors)
 
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict)
@@ -2770,7 +2843,7 @@ class PEarray:
         fault_loc=np.array([[np.random.randint(self.n_y),np.random.randint(self.n_x)]])
         fault_bit=np.random.randint(n_bit)
         fault_param=param_list[np.random.randint(len(param_list))]
-        fault_info={'SA_type':fault_type,'SA_bit':fault_bit,'param':fault_param}
+        
         
         if mac_config is not False:
             if isinstance(mac_config,bool):
@@ -2786,10 +2859,12 @@ class PEarray:
         fault_clks=np.reshape(np.repeat(np.arange(self.n_clk),n_proped),[-1,1])
         fault_coors=np.concatenate([fault_coors,fault_clks],1)
         
-        fault_coors=list(zip(*fault_coors.T))
-        self.fault_dict=dict(zip(fault_coors,[fault_info.copy() for _ in range(self.n_clk*n_proped)]))        
+        self.fault_dict={'coor':fault_coors,
+                         'SA_type':fault_type,
+                         'SA_bit':fault_bit,
+                         'param':fault_param}
         
-        self.fault_num=len(self.fault_dict)
+        self.fault_num=len(fault_coors)
 
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict, mac_config=mac_config)
@@ -2842,10 +2917,10 @@ class PEarray:
         fault_clks=np.reshape(np.repeat(np.arange(self.n_clk),n_proped),[-1,1])
         fault_coors=np.concatenate([fault_coors,fault_clks],1)
         
-        fault_coors=list(zip(*fault_coors.T))
-        self.fault_dict=dict(zip(fault_coors,[fault_info.copy() for _ in range(self.n_clk*n_proped)]))        
+        fault_info.update({'coor':fault_coors})
+        self.fault_dict=fault_info
         
-        self.fault_num=len(self.fault_dict)
+        self.fault_num=len(fault_coors)
 
         self.fault_dict=self.assign_id(self.fault_dict)
         self.fault_dict=self.neighbor_io_fault_dict_coors(self.fault_dict, mac_config=mac_config)
@@ -2866,16 +2941,16 @@ class PEarray:
             In Tile to PEarray mapping, coordinates outside current shape might be invalid configuration.
         
         """
-        index=np.array(list(fault_dict.keys()))
-        fault_value=np.array(list(fault_dict.values()))
+        index=fault_dict['coor']
+        fault_value=fault_dict
         
         cond_arg=self.get_outlier_cond_args(index,mapping_shape)
         
         index=index[cond_arg]
-        fault_value=fault_value[cond_arg].tolist()
+        self._reduce_fault_value(fault_value, cond_arg)
         
-        index_fd=list(zip(*index.T))
-        new_fault_dict=dict(zip(index_fd,fault_value))
+        fault_value['coor']=index
+        new_fault_dict=fault_value
 
         return new_fault_dict
     
@@ -2945,18 +3020,23 @@ class PEarray:
         coors,uni_idx,rep_idx,cnt_idx=np.unique(coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
         
         if len(uni_idx)==len(rep_idx):
-            fault_value=fault_value[uni_idx]
+            self._reduce_fault_value(fault_value, uni_idx)
         else:
             if self.fast_gen:
-                id_list=np.array([value['id'] for value in fault_value])
+                id_list=fault_value['id']
                 
                 id_list=id_list[np.argsort(rep_idx)]
                 cnt_idx=np.cumsum(cnt_idx)[:-1]
                 id_list=np.split(id_list,cnt_idx)
                 
-                fault_value=fault_value[uni_idx]
+                self._reduce_fault_value(fault_value, uni_idx)
                 for i in range(len(uni_idx)):
-                    fault_value[i]['id']=id_list[i].flatten()
+                    id_list[i]=id_list[i].flatten()
+                idl_cnt=np.array([len(i) for i in id_list])
+                if np.min(idl_cnt)==np.max(idl_cnt):
+                    fault_value['id']=np.array(id_list)
+                else:
+                    fault_value['id']=np.array(id_list,dtype=np.object)
             else:
                 id_list_rep=[list() for _ in range(len(uni_idx))]
                 type_list_rep=[list() for _ in range(len(uni_idx))]
@@ -2964,32 +3044,30 @@ class PEarray:
                 param_list_rep=[list() for _ in range(len(uni_idx))]
                 
                 for i,repid in enumerate(rep_idx):
-                    if isinstance(fault_value[i]['id'],int):
-                        id_list_rep[repid].append(fault_value[i]['id'])
+                    if isinstance(fault_value['id'][i],int):
+                        id_list_rep[repid].append(fault_value['id'][i])
                     else:
-                        id_list_rep[repid]+=fault_value[i]['id']
+                        id_list_rep[repid]+=fault_value['id'][i]
                         
-                    if isinstance(fault_value[i]['SA_type'],int):
-                        type_list_rep[repid].append(fault_value[i]['SA_type'])
+                    if isinstance(fault_value['SA_type'][i],int):
+                        type_list_rep[repid].append(fault_value['SA_type'][i])
                     else:
-                        type_list_rep[repid]+=fault_value[i]['SA_type']
+                        type_list_rep[repid]+=fault_value['SA_type'][i]
                         
-                    if isinstance(fault_value[i]['SA_bit'],int):
-                        bit_list_rep[repid].append(fault_value[i]['SA_bit'])
+                    if isinstance(fault_value['SA_bit'][i],int):
+                        bit_list_rep[repid].append(fault_value['SA_bit'][i])
                     else:
-                        bit_list_rep[repid]+=fault_value[i]['SA_bit']
+                        bit_list_rep[repid]+=fault_value['SA_bit'][i]
                         
-                    if isinstance(fault_value[i]['param'],str):
-                        param_list_rep[repid].append(fault_value[i]['param'])
+                    if isinstance(fault_value['param'][i],str):
+                        param_list_rep[repid].append(fault_value['param'][i])
                     else:
-                        param_list_rep[repid]+=fault_value[i]['param']
+                        param_list_rep[repid]+=fault_value['param'][i]
                 
-                fault_value=fault_value[uni_idx]
-                for i in range(len(uni_idx)):
-                    fault_value[i]['id']=id_list_rep[i]
-                    fault_value[i]['SA_type']=type_list_rep[i]
-                    fault_value[i]['SA_bit']=bit_list_rep[i]
-                    fault_value[i]['param']=param_list_rep[i]
+                fault_value['id']=id_list_rep
+                fault_value['SA_type']=type_list_rep
+                fault_value['SA_bit']=bit_list_rep
+                fault_value['param']=param_list_rep
             
         return coors, fault_value
     
@@ -3058,10 +3136,10 @@ class PEarray:
         self.pack_clk=None
         
     def clear_all(self):
-        self.clear_flow
-        self.clear_tile
-        self.clear_fd
-        self.clear_mapping
+        self.clear_flow()
+        self.clear_tile()
+        self.clear_fd()
+        self.clear_mapping()
 
         
 

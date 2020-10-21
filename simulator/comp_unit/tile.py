@@ -7,6 +7,7 @@ Created on Fri Dec 27 16:22:01 2019
 DNN tiling for computation unit fault mapping
 """
 
+import copy
 import numpy as np
 import tqdm as tqdm
 
@@ -33,7 +34,28 @@ class tile_PE(tile):
         The size of tile on the kernel column dimension or feature map column dimention.
     is_fmap: Bool. 
         The tile is feature map tile or weight tile.
-
+    
+    Fault Dictioanry
+    ----------------
+    | There are two types of fault dictionary structure.
+    | 'coor_base': The key of dictionary is the fault coordinate ex: (0,2,2,5). 
+    |              Value is the fault information sub-dictionary.
+    >>> fault_dict={(0,2,2,5): {'SA_type': 'flip', 'SA_bit': 4},
+    ...             (0,1,1,8): {'SA_type': '1', 'SA_bit': 7},
+    ...             ...
+    ...            }
+    
+    | 'info_base': The key of dictionary is the fault information ex: 'coor','SA_type','SA_bit'. 
+    |              Value is the fault information sub-dictionary.
+    >>> fault_dict={'coor': [[0,2,2,5],
+    ...                      [0,1,1,8],
+    ...                      ...],
+    ...             'SA_type': ['1','flip',...],
+    ...             'SA_bit':  [7,5,...]
+    ...            }
+    
+    | !! Only 'info_base' are capable of PE dataflow mapping
+    
     """
     def __init__(self, tile_shape, is_fmap, **kwargs):
         """The tile of a DNN feature map or weights """
@@ -52,7 +74,7 @@ class tile_PE(tile):
         self.tilting=False
         self.tilted_slice_shape=None
         self.reshape_patches=False
-        self.fault_dict_rehsaped=dict()
+        self.fault_dict=dict()
         self.fault_dict_expand=dict()
         
         if is_fmap:
@@ -62,6 +84,60 @@ class tile_PE(tile):
             self.bias_fault_dict=dict()
             self.bias_fault_dict_expand=dict()
                                     
+    def fd2coorbase(self,fault_dict):
+        """ Transform info-based fault dictionary to coor-based fault dictionary """
+        if len(fault_dict)==0 or ('coor' not in fault_dict):
+            return fault_dict
+        else:
+            new_fault_dict=dict()
+            coor=fault_dict['coor']
+            for i,coortmp in enumerate(coor):
+                infotmp=dict()
+                for info in self.fault_dict.keys():
+                    if info!='coor':
+                        if isinstance(fault_dict[info],(list,np.ndarray)):
+                            infotmp[info]=fault_dict[info][i]
+                        else:
+                            infotmp[info]=fault_dict[info]
+                new_fault_dict[tuple(coortmp)]=infotmp
+            return new_fault_dict
+    
+    def fd2infobase(self,fault_dict):
+        """ Transform coor-based fault dictionary to info-based fault dictionary """
+        if len(fault_dict)==0 or ('coor' in fault_dict):
+            return fault_dict
+        else:
+            new_fault_dict=dict()
+            coors=np.array(list(fault_dict.keys()))
+            new_fault_dict['coor']=coors
+            fault_info=list(fault_dict.values())
+            for info in fault_info[0].keys():
+                new_fault_dict[info]=np.array([value[info] for value in fault_info])
+            return new_fault_dict
+        
+    def _reduce_fault_info(self, fault_dict, cond, reduce_coor=False):
+        """ Reduction on fault dictionary informations """
+        #fault_info=fault_info[cond]
+        if reduce_coor:
+            for info in fault_dict.keys():
+                if isinstance(info,(list,np.ndarray)):
+                    fault_dict[info]=fault_dict[info][cond]
+        else:
+            for info in fault_dict.keys():
+                if info!='coor' and isinstance(info,(list,np.ndarray)):
+                    fault_dict[info]=fault_dict[info][cond]
+    
+    def _dupe_fault_info(self, fault_dict, dispach, dupe_coor=False):
+        """ Duplication on fault dictionary informations """
+        #[fault_info[i] for i in dispach]
+        if dupe_coor:
+            for info in fault_dict.keys():
+                fault_dict[info]=fault_dict[info][dispach]
+        else:
+            for info in fault_dict.keys():
+                if info!='coor':
+                    fault_dict[info]=fault_dict[info][dispach]
+    
     def conv_output_length(self, input_length, filter_size, padding, stride, dilation=1, edge_fill=False):
         """Determines output length of a convolution given input length.
     
@@ -667,17 +743,14 @@ class tile_PE(tile):
         self.slices_permute=slices_permute
         
         if not dataflow_pre_plan:
-            orig_coors=np.array(list(self.fault_dict.keys()))
+            self.fault_dict=self.fd2infobase(self.fault_dict)
+            orig_coors=self.fault_dict['coor'].copy()
             reshaped_coors=self.reshape_ravel_idx(orig_coors,
                                                   source_shape=self.tile_shape,
                                                   source_prior=self.expand_prior_orig,
                                                   target_shape=self.expand_shape,
                                                   target_prior=self.expand_prior_targ)
-            
-            reshaped_coors_fd=list(zip(*reshaped_coors.T))
-            fault_info=list(self.fault_dict.values())
-            self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
-        
+                    
             permuted_coors=self.slice_permute_idx(reshaped_coors,
                                                   orig_shape=self.expand_shape,
                                                   slicing_dims=self.slicing_dims,
@@ -703,9 +776,9 @@ class tile_PE(tile):
                                                         self.tilt_shift)
                     
         if not dataflow_pre_plan:
-            permuted_coor_fd=list(zip(*permuted_coors.T))
-            self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
-        
+            self.fault_dict_expand=copy.deepcopy(self.fault_dict)
+            self.fault_dict_expand['coor']=permuted_coors
+
             return self.fault_dict_expand
         
         else:
@@ -726,16 +799,17 @@ class tile_PE(tile):
         Converted fault dictionary.
 
         """
+        self.fault_dict_expand=self.fd2infobase(self.fault_dict_expand)
         if not psum:
             if len(self.fault_dict_expand)==0:
                 return dict()
-            permuted_coors=np.array(list(self.fault_dict_expand.keys()))
-            fault_info=np.array(list(self.fault_dict_expand.values()))
+            permuted_coors=self.fault_dict_expand['coor'].copy()
+            fault_info=copy.deepcopy(self.fault_dict_expand)
         else:
             if len(self.psum_fault_dict_expand)==0:
                 return dict()
-            permuted_coors=np.array(list(self.psum_fault_dict_expand.keys()))
-            fault_info=np.array(list(self.psum_fault_dict_expand.values()))
+            permuted_coors=self.psum_fault_dict_expand['coor'].copy()
+            fault_info=copy.deepcopy(self.psum_fault_dict_expand)
         
         if self.tilting:            
             permuted_coors,_=self.untilt_idx(permuted_coors,
@@ -745,7 +819,7 @@ class tile_PE(tile):
                                              self.tilt_shift)
             # pop inalid t_clk
             permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
-            fault_info=fault_info[cond_idx]
+            self._reduce_fault_info(fault_info, cond_idx, reduce_coor=False)
         
         reshaped_coors=self.assemble_slice_idx(permuted_coors,
                                                orig_shape=self.expand_shape,
@@ -753,26 +827,22 @@ class tile_PE(tile):
                                                slices_permute=self.slices_permute)
         # pop under-utilized area on PE
         reshaped_coors,cond_idx=self.pop_outlier_idx(reshaped_coors,self.expand_shape,get_cond_idx=True)
-        fault_info=fault_info[cond_idx]
+        self._reduce_fault_info(fault_info, cond_idx, reduce_coor=False)
         
-        if not psum:
-            reshaped_coors_fd=list(zip(*reshaped_coors.T))
-            self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
-
         orig_coors=self.reshape_ravel_idx(reshaped_coors,
                                           source_shape=self.expand_shape,
                                           source_prior=self.expand_prior_targ,
                                           target_shape=self.tile_shape,
                                           target_prior=self.expand_prior_orig)
                     
-        orig_coor_fd=list(zip(*orig_coors.T))
-        new_fault_dict=dict(zip(orig_coor_fd,fault_info))
+        fault_info['coor']=orig_coors
+        
         if not psum:
-            self.fault_dict=new_fault_dict
+            self.fault_dict=fault_info
         else:
-            self.psum_fault_dict=new_fault_dict
+            self.psum_fault_dict=fault_info
     
-        return new_fault_dict
+        return fault_info
             
     def expand_extract_patches(self, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, patches_unravel=[0,1,2],
             reshape_patches=False, patches_prior=None, expect_shape=None, reshape_prior=None, slicing_dims=None, slices_permute=None,
@@ -897,8 +967,9 @@ class tile_PE(tile):
         self.slices_permute=slices_permute
         
         if not dataflow_pre_plan:
-            orig_coors=np.array(list(self.fault_dict.keys()))
-            fault_info=list(self.fault_dict.values())
+            self.fault_dict=self.fd2infobase(self.fault_dict)
+            orig_coors=self.fault_dict['coor'].copy()
+            fault_info=copy.deepcopy(self.fault_dict)
             
             extracted_coors,cond_idx=self.extract_patches_idx(orig_coors,
                                                               fmap_shape=self.tile_shape,
@@ -909,7 +980,7 @@ class tile_PE(tile):
                                                               edge_fill=edge_fill,
                                                               patches_unravel=patches_unravel,
                                                               get_cond_idx=True)
-            fault_info=[fault_info[i] for i in cond_idx[:,0]]
+            self._dupe_fault_info(fault_info, cond_idx[:,0], dupe_coor=False)
             
             if reshape_patches:
                 reshaped_coors=self.reshape_ravel_idx(extracted_coors,
@@ -917,12 +988,6 @@ class tile_PE(tile):
                                                       source_prior=self.expand_prior_orig,
                                                       target_shape=self.expand_shape,
                                                       target_prior=self.expand_prior_targ)
-                
-                reshaped_coors_fd=list(zip(*reshaped_coors.T))
-            else:
-                reshaped_coors_fd=list(zip(*extracted_coors.T))
-            
-            self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
             
             permuted_coors=self.slice_permute_idx(reshaped_coors,
                                                   orig_shape=self.expand_shape,
@@ -950,8 +1015,8 @@ class tile_PE(tile):
 
         
         if not dataflow_pre_plan:
-            permuted_coor_fd=list(zip(*permuted_coors.T))
-            self.fault_dict_expand=dict(zip(permuted_coor_fd,fault_info))
+            fault_info['coor']=permuted_coors
+            self.fault_dict_expand=fault_info
             
             return self.fault_dict_expand
         
@@ -974,12 +1039,13 @@ class tile_PE(tile):
         -------
         Converted fault dictionary.
         """  
+        self.fault_dict_expand=self.fd2infobase(self.fault_dict_expand)
         if not psum:
-            permuted_coors=np.array(list(self.fault_dict_expand.keys()))
-            fault_info=np.array(list(self.fault_dict_expand.values()))
+            permuted_coors=self.fault_dict_expand['coor'].copy()
+            fault_info=copy.deepcopy(self.fault_dict_expand)
         else:
-            permuted_coors=np.array(list(self.psum_fault_dict_expand.keys()))
-            fault_info=np.array(list(self.psum_fault_dict_expand.values()))
+            permuted_coors=self.psum_fault_dict_expand['coor'].copy()
+            fault_info=copy.deepcopy(self.psum_fault_dict_expand)
         
         if self.tilting:
             permuted_coors,_=self.untilt_idx(permuted_coors,
@@ -990,7 +1056,7 @@ class tile_PE(tile):
             
             # pop inalid t_clk
             permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
-            fault_info=fault_info[cond_idx]
+            self._reduce_fault_info(fault_info, cond_idx, reduce_coor=False)
             
         reshaped_coors=self.assemble_slice_idx(permuted_coors,
                                                orig_shape=self.expand_shape,
@@ -999,12 +1065,8 @@ class tile_PE(tile):
         
         # pop under-utilized area on PE
         reshaped_coors,cond_idx=self.pop_outlier_idx(reshaped_coors,self.expand_shape,get_cond_idx=True)
-        fault_info=fault_info[cond_idx]
-        
-        if not psum:
-            reshaped_coors_fd=list(zip(*reshaped_coors.T))
-            self.fault_dict_rehsaped=dict(zip(reshaped_coors_fd,fault_info))
-        
+        self._reduce_fault_info(fault_info, cond_idx, reduce_coor=False)
+                
         if self.reshape_patches:
             extracted_coors=self.reshape_ravel_idx(reshaped_coors,
                                                    source_shape=self.expand_shape,
@@ -1032,18 +1094,23 @@ class tile_PE(tile):
         orig_coors,uni_idx,rep_idx,cnt_idx=np.unique(orig_coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
         
         if len(uni_idx)==len(rep_idx):
-            fault_info=fault_info[uni_idx]
+            self._reduce_fault_info(fault_info, uni_idx, reduce_coor=False)
         else:
             if fast_gen:
-                id_list=np.array([value['id'] for value in fault_info])
+                id_list=fault_info['id']
                 
                 id_list=id_list[np.argsort(rep_idx)]
                 cnt_idx=np.cumsum(cnt_idx)[:-1]
                 id_list=np.split(id_list,cnt_idx)
                 
-                fault_info=fault_info[uni_idx]
+                self._reduce_fault_info(fault_info, uni_idx, reduce_coor=False)
                 for i in range(len(uni_idx)):
-                    fault_info[i]['id']=id_list[i].flatten()
+                    id_list[i]=id_list[i].flatten()
+                idl_cnt=np.array([len(i) for i in id_list])
+                if np.min(idl_cnt)==np.max(idl_cnt):
+                    fault_info['id']=np.array(id_list)
+                else:
+                    fault_info['id']=np.array(id_list,dtype=np.object)
             else:
                 id_list_rep=[list() for _ in range(len(uni_idx))]
                 type_list_rep=[list() for _ in range(len(uni_idx))]
@@ -1051,41 +1118,39 @@ class tile_PE(tile):
                 param_list_rep=[list() for _ in range(len(uni_idx))]
                 
                 for i,repid in enumerate(rep_idx):
-                    if isinstance(fault_info[i]['id'],int):
-                        id_list_rep[repid].append(fault_info[i]['id'])
+                    if isinstance(fault_info['id'][i],int):
+                        id_list_rep[repid].append(fault_info['id'][i])
                     else:
-                        id_list_rep[repid]+=fault_info[i]['id']
+                        id_list_rep[repid]+=fault_info['id'][i]
                         
-                    if isinstance(fault_info[i]['SA_type'],str):
-                        type_list_rep[repid].append(fault_info[i]['SA_type'])
+                    if isinstance(fault_info['SA_type'][i],str):
+                        type_list_rep[repid].append(fault_info['SA_type'][i])
                     else:
-                        type_list_rep[repid]+=fault_info[i]['SA_type']
+                        type_list_rep[repid]+=fault_info['SA_type'][i]
                         
-                    if isinstance(fault_info[i]['SA_bit'],int):
-                        bit_list_rep[repid].append(fault_info[i]['SA_bit'])
+                    if isinstance(fault_info['SA_bit'][i],int):
+                        bit_list_rep[repid].append(fault_info['SA_bit'][i])
                     else:
-                        bit_list_rep[repid]+=fault_info[i]['SA_bit']
+                        bit_list_rep[repid]+=fault_info['SA_bit'][i]
                         
-                    if isinstance(fault_info[i]['param'],str):
-                        param_list_rep[repid].append(fault_info[i]['param'])
+                    if isinstance(fault_info['param'][i],str):
+                        param_list_rep[repid].append(fault_info['param'][i])
                     else:
-                        param_list_rep[repid]+=fault_info[i]['param']
+                        param_list_rep[repid]+=fault_info['param'][i]
             
-                fault_info=fault_info[uni_idx]
-                for i in range(len(uni_idx)):
-                    fault_info[i]['id']=id_list_rep[i]
-                    fault_info[i]['SA_type']=type_list_rep[i]
-                    fault_info[i]['SA_bit']=bit_list_rep[i]
-                    fault_info[i]['param']=param_list_rep[i]
+                fault_info['id']=id_list_rep
+                fault_info['SA_type']=type_list_rep
+                fault_info['SA_bit']=bit_list_rep
+                fault_info['param']=param_list_rep
 
-        orig_coor_fd=list(zip(*orig_coors.T))
-        new_fault_dict=dict(zip(orig_coor_fd,fault_info))
-        if not psum:
-            self.fault_dict=new_fault_dict
-        else:
-            self.psum_fault_dict=new_fault_dict
+        fault_info['coor']=orig_coors
         
-        return new_fault_dict
+        if not psum:
+            self.fault_dict=fault_info
+        else:
+            self.psum_fault_dict=fault_info
+        
+        return fault_info
             
     def expand_slice_bias(self, bias_slice_width, dataflow_pre_plan=False):
         """ Data expansion before put into PE array. 
@@ -1113,16 +1178,17 @@ class tile_PE(tile):
         self.bias_slice_shape=(bias_slice_width, int(np.ceil(self.Tn/bias_slice_width)))
         
         if not dataflow_pre_plan:
+            self.bias_fault_dict=self.fd2infobase(self.bias_fault_dict)
             if len(self.bias_fault_dict)==0:
                 return dict()
             
-            orig_coors=np.array(list(self.bias_fault_dict.keys()))
-            fault_info=list(self.bias_fault_dict.values())
+            orig_coors=self.bias_fault_dict['coor'].copy()
+            fault_info=copy.deepcopy(self.bias_fault_dict)
             
             sliced_coors=np.concatenate([np.remainder(orig_coors,bias_slice_width),np.floor_divide(orig_coors,bias_slice_width)],axis=1)
             
-            sliced_coors_fd=list(zip(*sliced_coors.T))
-            self.bias_fault_dict_expand=dict(zip(sliced_coors_fd,fault_info))
+            fault_info['coor']=sliced_coors
+            self.bias_fault_dict_expand=fault_info
             
             return self.bias_fault_dict_expand
         
@@ -1142,6 +1208,8 @@ class tile_PE(tile):
         Converted fault dictionary.
 
         """
+        self.fault_dict_expand=self.fd2infobase(self.fault_dict_expand)
+
         if self.is_fmap:
             raise TypeError('This is feature maps tile, no bias!')           
         
@@ -1151,15 +1219,15 @@ class tile_PE(tile):
         if len(self.bias_fault_dict_expand)==0:
             return dict()
         
-        sliced_coors=np.array(list(self.bias_fault_dict_expand.keys()))
-        fault_info=list(self.bias_fault_dict_expand.values())
+        sliced_coors=self.bias_fault_dict_expand['coor'].copy()
+        fault_info=copy.deepcopy(self.bias_fault_dict_expand)
         
         bias_idx=sliced_coors[:,0]
         slice_idx=sliced_coors[:,1]
         orig_coors=np.add(np.multiply(slice_idx,self.bias_slice_shape[0]),bias_idx)
         
-        orig_coors_fd=list(zip(*np.expand_dims(orig_coors,0)))
-        self.bias_fault_dict=dict(zip(orig_coors_fd,fault_info))
+        fault_info['coor']=orig_coors
+        self.bias_fault_dict=fault_info
         
         return self.bias_fault_dict
         

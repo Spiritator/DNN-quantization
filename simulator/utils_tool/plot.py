@@ -13,7 +13,7 @@ import matplotlib as mpl
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 from matplotlib.ticker import StrMethodFormatter
-from PIL import Image,ImagePalette
+from PIL import Image
 import numpy as np
 
 def _preprocess_float_fault_rate_text(fl_fr_text):
@@ -656,6 +656,8 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
                 plt.savefig(pic_path,dpi=dpi,bbox_inches='tight')
                 
             plt.show()
+            # pevent memory spikes
+            plt.clf()
 
 def concate_value2text(value,text,fmt_orig):
     concattext=np.empty(value.shape, dtype=str).astype(np.object)

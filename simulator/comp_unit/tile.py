@@ -118,25 +118,25 @@ class tile_PE(tile):
     def _reduce_fault_info(self, fault_dict, cond, reduce_coor=False):
         """ Reduction on fault dictionary informations """
         #fault_info=fault_info[cond]
-        if reduce_coor:
+        if not reduce_coor:
             for info in fault_dict.keys():
-                if isinstance(info,(list,np.ndarray)):
+                if info!='coor' and isinstance(fault_dict[info],(list,np.ndarray)):
                     fault_dict[info]=fault_dict[info][cond]
         else:
             for info in fault_dict.keys():
-                if info!='coor' and isinstance(info,(list,np.ndarray)):
+                if isinstance(fault_dict[info],(list,np.ndarray)):
                     fault_dict[info]=fault_dict[info][cond]
     
     def _dupe_fault_info(self, fault_dict, dispach, dupe_coor=False):
         """ Duplication on fault dictionary informations """
         #[fault_info[i] for i in dispach]
-        if dupe_coor:
-            for info in fault_dict.keys():
-                fault_dict[info]=fault_dict[info][dispach]
-        else:
+        if not dupe_coor:
             for info in fault_dict.keys():
                 if info!='coor':
                     fault_dict[info]=fault_dict[info][dispach]
+        else:
+            for info in fault_dict.keys():
+                fault_dict[info]=fault_dict[info][dispach]
     
     def conv_output_length(self, input_length, filter_size, padding, stride, dilation=1, edge_fill=False):
         """Determines output length of a convolution given input length.
@@ -819,7 +819,7 @@ class tile_PE(tile):
                                              self.tilt_shift)
             # pop inalid t_clk
             permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
-            self._reduce_fault_info(fault_info, cond_idx, reduce_coor=False)
+            self._reduce_fault_info(fault_info, cond_idx)
         
         reshaped_coors=self.assemble_slice_idx(permuted_coors,
                                                orig_shape=self.expand_shape,
@@ -827,7 +827,7 @@ class tile_PE(tile):
                                                slices_permute=self.slices_permute)
         # pop under-utilized area on PE
         reshaped_coors,cond_idx=self.pop_outlier_idx(reshaped_coors,self.expand_shape,get_cond_idx=True)
-        self._reduce_fault_info(fault_info, cond_idx, reduce_coor=False)
+        self._reduce_fault_info(fault_info, cond_idx)
         
         orig_coors=self.reshape_ravel_idx(reshaped_coors,
                                           source_shape=self.expand_shape,
@@ -980,7 +980,7 @@ class tile_PE(tile):
                                                               edge_fill=edge_fill,
                                                               patches_unravel=patches_unravel,
                                                               get_cond_idx=True)
-            self._dupe_fault_info(fault_info, cond_idx[:,0], dupe_coor=False)
+            self._dupe_fault_info(fault_info, cond_idx[:,0])
             
             if reshape_patches:
                 reshaped_coors=self.reshape_ravel_idx(extracted_coors,
@@ -1056,7 +1056,7 @@ class tile_PE(tile):
             
             # pop inalid t_clk
             permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
-            self._reduce_fault_info(fault_info, cond_idx, reduce_coor=False)
+            self._reduce_fault_info(fault_info, cond_idx)
             
         reshaped_coors=self.assemble_slice_idx(permuted_coors,
                                                orig_shape=self.expand_shape,
@@ -1065,7 +1065,7 @@ class tile_PE(tile):
         
         # pop under-utilized area on PE
         reshaped_coors,cond_idx=self.pop_outlier_idx(reshaped_coors,self.expand_shape,get_cond_idx=True)
-        self._reduce_fault_info(fault_info, cond_idx, reduce_coor=False)
+        self._reduce_fault_info(fault_info, cond_idx)
                 
         if self.reshape_patches:
             extracted_coors=self.reshape_ravel_idx(reshaped_coors,
@@ -1094,20 +1094,20 @@ class tile_PE(tile):
         orig_coors,uni_idx,rep_idx,cnt_idx=np.unique(orig_coors,return_index=True,return_inverse=True,return_counts=True,axis=0)
         
         if len(uni_idx)==len(rep_idx):
-            self._reduce_fault_info(fault_info, uni_idx, reduce_coor=False)
+            self._reduce_fault_info(fault_info, uni_idx)
         else:
             if fast_gen:
                 id_list=fault_info['id']
                 
                 id_list=id_list[np.argsort(rep_idx)]
+                even=np.min(cnt_idx)==np.max(cnt_idx)
                 cnt_idx=np.cumsum(cnt_idx)[:-1]
                 id_list=np.split(id_list,cnt_idx)
                 
-                self._reduce_fault_info(fault_info, uni_idx, reduce_coor=False)
+                self._reduce_fault_info(fault_info, uni_idx)
                 for i in range(len(uni_idx)):
                     id_list[i]=id_list[i].flatten()
-                idl_cnt=np.array([len(i) for i in id_list])
-                if np.min(idl_cnt)==np.max(idl_cnt):
+                if even:
                     fault_info['id']=np.array(id_list)
                 else:
                     fault_info['id']=np.array(id_list,dtype=np.object)
@@ -1381,27 +1381,25 @@ class io_data_solver:
         """
         Distinguish and set the state of an data type
         """
-        if len(faultvalue)>0:
-            if isinstance(faultvalue[0]['id'],np.ndarray):
-                state='fastgen'
-                idlist=[info['id'] for info in faultvalue]
-                idl_cnt=np.array([len(i) for i in idlist])
-                if np.min(idl_cnt)==np.max(idl_cnt):
-                    idlist=np.array(idlist)
+        idlist=faultvalue['id']
+        if len(idlist)>0:
+            if isinstance(idlist,np.ndarray):
+                if len(idlist.shape)>1:
+                    state='fastgen'
                     maxx=np.max(np.concatenate(idlist))
                 else:
-                    idlist=np.array(idlist,dtype=np.object)
-                    maxx=np.max(np.concatenate(idlist))
-                    idl_cnt=np.cumsum(idl_cnt)-1
-                    idlist=np.concatenate(idlist)
-                    idlist=(idlist,idl_cnt)
-            elif isinstance(faultvalue[0]['id'],int):
-                state='normal'
-                idlist=[info['id'] for info in faultvalue]
-                maxx=max(idlist)
-            elif isinstance(faultvalue[0]['id'],list):
+                    if idlist.dtype==np.object:
+                        state='fastgen'
+                        idl_cnt=np.array([len(i) for i in idlist])
+                        idl_cnt=np.cumsum(idl_cnt)-1
+                        idlist=np.concatenate(idlist)
+                        maxx=np.max(idlist)
+                        idlist=(idlist,idl_cnt)
+                    else:
+                        state='normal'
+                        maxx=np.max(idlist)
+            elif isinstance(idlist,list):
                 state='repetitive'
-                idlist=[info['id'] for info in faultvalue]
                 maxx=max([max(idl) for idl in idlist])
         else:
             idlist=list()
@@ -1428,7 +1426,7 @@ class io_data_solver:
                     faultindex=None
                 else:
                     idx=idx[0][0]
-                    param=faultvalue[idx]['param']
+                    param=faultvalue['param']
                     faultindex=faultcoors[idx]
                     
             elif isinstance(idlist,tuple):
@@ -1443,18 +1441,18 @@ class io_data_solver:
                 else:
                     idx=idx[0][0]
                     idx=np.searchsorted(idl_cnt,idx)
-                    param=faultvalue[idx]['param']
+                    param=faultvalue['param']
                     faultindex=faultcoors[idx]
             
         elif state=='normal':
-            try:
-                idx=idlist.index(faultid)
-                param=faultvalue[idx]['param']
-                faultindex=faultcoors[idx]
-            except ValueError:
+            idx=np.argwhere(idlist==faultid)
+            if len(idx)==0:
                 idx=None
                 param=None
                 faultindex=None
+            else:
+                param=faultvalue['param'][idx]
+                faultindex=faultcoors[idx]
                 
         elif state=='repetitive':
             idx=None
@@ -1464,7 +1462,7 @@ class io_data_solver:
                 if faultid in idl:
                     ii2=idl.index(faultid)
                     idx=[ii,ii2]
-                    param=faultvalue[ii]['param'][ii2]
+                    param=faultvalue['param'][ii][ii2]
                     faultindex=faultcoors[ii]
         
         if paramin is not None:
@@ -1486,31 +1484,33 @@ class io_data_solver:
                 pass
             elif state=='fastgen':
                 try:
-                    newfv=newfd[tuple(opindex)]
-                    newfv['psum_idx'].append(psidx)
-                except KeyError:
-                    newfv=faultvalue[idx].copy()
-                    newfv.update({'psum_idx':[psidx]})
-                    newfd[tuple(opindex)]=newfv
+                    cooridx=newfd['coor'].index(opindex)
+                    newfd['psum_idx'][cooridx].append(psidx)
+                except ValueError:
+                    newfd['coor'].append(opindex)
+                    newfd['psum_idx'].append([psidx])
             elif state=='normal':
-                newfv=faultvalue[idx].copy()
-                newfv.update({'psum_idx':psidx})
-                newfd[tuple(opindex)]=newfv
+                newfd['coor'].append(opindex)
+                newfd['SA_bit'].append(faultvalue['SA_bit'][idx])
+                newfd['SA_type'].append(faultvalue['SA_type'][idx])
+                newfd['param'].append(paramin)
+                newfd['psum_idx'].append(psidx)
+                newfd['id'].append(faultid)
             elif state=='repetitive':
                 try:
-                    newfv=newfd[tuple(opindex)]
-                    newfv['SA_bit'].append(faultvalue[idx[0]]['SA_bit'][idx[1]])
-                    newfv['SA_type'].append(faultvalue[idx[0]]['SA_type'][idx[1]])
-                    newfv['param'].append(paramin)
-                    newfv['psum_idx'].append(psidx)
-                    newfv['id'].append(faultid)
-                except KeyError:
-                    newfv={'SA_bit':[faultvalue[idx[0]]['SA_bit'][idx[1]]],
-                           'SA_type':[faultvalue[idx[0]]['SA_type'][idx[1]]],
-                           'param':[paramin],
-                           'psum_idx':[psidx],
-                           'id':[faultid]}
-                    newfd[tuple(opindex)]=newfv
+                    cooridx=newfd['coor'].index(opindex)
+                    newfd['SA_bit'][cooridx].append(faultvalue['SA_bit'][idx[0]][idx[1]])
+                    newfd['SA_type'][cooridx].append(faultvalue['SA_type'][idx[0]][idx[1]])
+                    newfd['param'][cooridx].append(paramin)
+                    newfd['psum_idx'][cooridx].append(psidx)
+                    newfd['id'][cooridx].append(faultid)
+                except ValueError:
+                    newfd['coor'].append(opindex)
+                    newfd['SA_bit'].append([faultvalue['SA_bit'][idx[0]][idx[1]]])
+                    newfd['SA_type'].append([faultvalue['SA_type'][idx[0]][idx[1]]])
+                    newfd['param'].append([paramin])
+                    newfd['psum_idx'].append([psidx])
+                    newfd['id'].append([faultid])
         except TypeError:
             pass
         
@@ -1594,9 +1594,7 @@ class io_data_solver:
         """
         if self.pstate!='fastgen' or self.wstate!='fastgen' or self.istate!='fastgen':
             raise ValueError('All psum_state, wght_state, ifmap_state are must be \'fast_gen\' to run fast generation method.')        
-            
-        new_solved_fd=dict()
-            
+                        
         if not save2tile:
             if print_detail:
                 print('\r    GenFD (1/5): Solve Partial Sum Coordinates...',end=' ')     
@@ -1672,6 +1670,8 @@ class io_data_solver:
             elif param=='psum_in' or param=='psum_out':
                 based_coors=self.psum_coors
                 based_vl=self.psum_vl
+                
+        new_solved_fd=copy.deepcopy(based_vl)
             
         if isinstance(shape_cnt,tuple):
             if len(shape_cnt)>1:
@@ -1692,16 +1692,16 @@ class io_data_solver:
             if isinstance(shape_cnt,tuple):
                 if len(shape_cnt)>1:
                     psum_index=np.split(psum_index,shape_cnt[0])
+                    psum_index=np.stack(psum_index)
             elif isinstance(shape_cnt,np.ndarray):
                 psum_index=np.split(psum_index,np.add(shape_cnt,1)[:-1])
+                psum_index=np.array(psum_index,dtype=np.object)
 
             if print_detail:
                 print('\r    GenFD (5/5): Make Solved Fault Dictionary...                ',end=' ')         
     
-            for i,opidx in enumerate(based_coors):
-                newfv=based_vl[i].copy()
-                newfv.update({'psum_idx':psum_index[i]})
-                new_solved_fd[tuple(opidx)]=newfv
+            new_solved_fd['coor']=based_coors
+            new_solved_fd['psum_idx']=psum_index
         
         else: # search_id incomplete
             psum_index=psum_index[search_cond]
@@ -1722,15 +1722,13 @@ class io_data_solver:
                 idlrep[search_cond[0]]=np.subtract(idlrep[search_cond[0]],search_cond[1])
                 idlrep=np.cumsum(idlrep)[:-1]
                 psum_index=np.split(psum_index,idlrep)
+                psum_index=np.array(psum_index,dtype=np.object)
 
             if print_detail:
                 print('\r    GenFD (5/5): Make Solved Fault Dictionary...                ',end=' ')         
     
-            for i,opidx in enumerate(based_coors):
-                if len(psum_index[i])>0:
-                    newfv=based_vl[i].copy()
-                    newfv.update({'psum_idx':psum_index[i]})
-                    new_solved_fd[tuple(opidx)]=newfv
+            new_solved_fd['coor']=based_coors
+            new_solved_fd['psum_idx']=psum_index
 
             
         if not save2tile:
@@ -1753,12 +1751,41 @@ class io_data_solver:
         For loop generation (slower version, for user raw input PE fault dictionary)
         """
         if not save2tile:
-            new_solved_fd=dict()
+            if self.pstate=='fastgen':
+                new_solved_fd={'coor':list(),
+                               'psum_idx':list(),
+                               'SA_bit':self.psum_vl['SA_bit'],
+                               'SA_type':self.psum_vl['SA_type'],
+                               'param':self.psum_vl['param'],
+                               'id':self.psum_vl['id']}
+            elif self.pstate=='normal' or self.pstate=='repetitive':
+                new_solved_fd={'coor':list(),
+                               'psum_idx':list(),
+                               'SA_bit':list(),
+                               'SA_type':list(),
+                               'param':list(),
+                               'id':list()}
+        
         else:
-            new_ifmap_fd=dict()
-            new_wght_fd=dict()
-            new_ofmap_fd=dict()
-            new_bias_fd=dict()
+            if self.istate=='fastgen':
+                new_ifmap_fd={'coor':list(),'psum_idx':list(),'SA_bit':self.ifmap_vl['SA_bit'],'SA_type':self.ifmap_vl['SA_type'],'param':self.ifmap_vl['param'],'id':self.ifmap_vl['id']}
+            elif self.istate=='normal' or self.istate=='repetitive':
+                new_ifmap_fd={'coor':list(),'psum_idx':list(),'SA_bit':list(),'SA_type':list(),'param':list(),'id':list()}
+            
+            if self.wstate=='fastgen':
+                new_wght_fd={'coor':list(),'psum_idx':list(),'SA_bit':self.wght_vl['SA_bit'],'SA_type':self.wght_vl['SA_type'],'param':self.wght_vl['param'],'id':self.wght_vl['id']}
+            elif self.wstate=='normal' or self.wstate=='repetitive':
+                new_wght_fd={'coor':list(),'psum_idx':list(),'SA_bit':list(),'SA_type':list(),'param':list(),'id':list()}
+
+            if self.ostate=='fastgen':
+                new_ofmap_fd={'coor':list(),'psum_idx':list(),'ofmap':list(),'SA_bit':self.psum_vl['SA_bit'],'SA_type':self.psum_vl['SA_type'],'param':self.psum_vl['param'],'id':self.psum_vl['id']}
+            elif self.ostate=='normal' or self.ostate=='repetitive':
+                new_ofmap_fd={'coor':list(),'psum_idx':list(),'ofmap':list(),'SA_bit':list(),'SA_type':list(),'param':list(),'id':list()}
+
+            if self.bstate=='fastgen':
+                new_bias_fd={'coor':list(),'psum_idx':list(),'SA_bit':self.bias_vl['SA_bit'],'SA_type':self.bias_vl['SA_type'],'param':self.bias_vl['param'],'id':self.bias_vl['id']}
+            elif self.bstate=='normal' or self.bstate=='repetitive':
+                new_bias_fd={'coor':list(),'psum_idx':list(),'SA_bit':list(),'SA_type':list(),'param':list(),'id':list()}
         
         if print_detail:
             pbar=tqdm.tqdm(desc='\tSolved Fault', total=self.fault_num, leave=False)
@@ -1793,10 +1820,10 @@ class io_data_solver:
                     elif param=='psum_out' and pidx is not None:
                         if oidx is None:
                             self._state_make_new_fd(self.pstate,i,param,psum_index,wght_index,ifmap_index,self.psum_vl,pidx,new_ofmap_fd)
-                            new_ofmap_fd[tuple(psum_index)].update({'ofmap':False})
+                            new_ofmap_fd['ofmap'].append(False)
                         else:
                             self._state_make_new_fd(self.ostate,i,param,ofmap_index,wght_index,ifmap_index,self.ofmap_vl,oidx,new_ofmap_fd)                   
-                            new_ofmap_fd[tuple(ofmap_index)].update({'ofmap':True})
+                            new_ofmap_fd['ofmap'].append(True)
                         
             if print_detail:
                 pbar.update()
@@ -1805,8 +1832,40 @@ class io_data_solver:
             pbar.close()
             
         if not save2tile:
+            if self.pstate=='fastgen' or self.pstate=='normal':
+                new_solved_fd['coor']=np.array(new_solved_fd['coor'])
+                new_solved_fd['psum_idx']=np.array(new_solved_fd['psum_idx'])
+            elif self.pstate=='repetitive':
+                new_solved_fd['coor']=np.array(new_solved_fd['coor'])
+
             return new_solved_fd
         else:
+            if self.ostate=='fastgen' or self.ostate=='normal':
+                new_ofmap_fd['coor']=np.array(new_ofmap_fd['coor'])
+                new_ofmap_fd['psum_idx']=np.array(new_ofmap_fd['psum_idx'])
+                new_ofmap_fd['ofmap']=np.array(new_ofmap_fd['ofmap'])
+            elif self.ostate=='repetitive':
+                new_ofmap_fd['coor']=np.array(new_ofmap_fd['coor'])
+                new_ofmap_fd['ofmap']=np.array(new_ofmap_fd['ofmap'])
+                
+            if self.istate=='fastgen' or self.istate=='normal':
+                new_ifmap_fd['coor']=np.array(new_ifmap_fd['coor'])
+                new_ifmap_fd['psum_idx']=np.array(new_ifmap_fd['psum_idx'])
+            elif self.istate=='repetitive':
+                new_ifmap_fd['coor']=np.array(new_ifmap_fd['coor'])
+                
+            if self.wstate=='fastgen' or self.wstate=='normal':
+                new_wght_fd['coor']=np.array(new_wght_fd['coor'])
+                new_wght_fd['psum_idx']=np.array(new_wght_fd['psum_idx'])
+            elif self.wstate=='repetitive':
+                new_wght_fd['coor']=np.array(new_wght_fd['coor'])
+                
+            if self.bstate=='fastgen' or self.bstate=='normal':
+                new_bias_fd['coor']=np.array(new_bias_fd['coor'])
+                new_bias_fd['psum_idx']=np.array(new_bias_fd['psum_idx'])
+            elif self.bstate=='repetitive':
+                new_bias_fd['coor']=np.array(new_bias_fd['coor'])
+
             self.ofmap_tile.fault_dict=new_ofmap_fd
             self.ifmap_tile.fault_dict=new_ifmap_fd
             self.wght_tile.fault_dict=new_wght_fd
@@ -1838,18 +1897,18 @@ class io_data_solver:
         psum_fd=self.ofmap_tile.psum_fault_dict
         
         if save2tile:
-            self.ofmap_coors=np.array(list(ofmap_fd.keys()))
-            self.bias_coors =np.array(list(bias_fd.keys()))
-        self.ifmap_coors=np.array(list(ifmap_fd.keys()))
-        self.wght_coors =np.array(list(wght_fd.keys()))
-        self.psum_coors =np.array(list(psum_fd.keys()))
+            self.ofmap_coors=ofmap_fd['coor']
+            self.bias_coors =bias_fd['coor']
+        self.ifmap_coors=ifmap_fd['coor']
+        self.wght_coors =wght_fd['coor']
+        self.psum_coors =psum_fd['coor']
  
         if save2tile:       
-            self.ofmap_vl=np.array(list(ofmap_fd.values()))
-            self.bias_vl =np.array(list(bias_fd.values()))
-        self.ifmap_vl=np.array(list(ifmap_fd.values()))
-        self.wght_vl =np.array(list(wght_fd.values()))
-        self.psum_vl =np.array(list(psum_fd.values()))
+            self.ofmap_vl=ofmap_fd
+            self.bias_vl =bias_fd
+        self.ifmap_vl=ifmap_fd
+        self.wght_vl =wght_fd
+        self.psum_vl =psum_fd
        
         if save2tile:       
             self.ofmap_id,self.ostate,maxo=self._state_setting(self.ofmap_vl)
@@ -1978,6 +2037,13 @@ class io_data_solver:
                         
         return base_coor, restore_multiple
     
+    def _reduce_fault_dict(self, fault_dict, cond):
+        """ Reduction on fault dictionary informations """
+        for info in fault_dict.keys():
+            if isinstance(fault_dict[info],(list,np.ndarray)):
+                fault_dict[info]=fault_dict[info][cond]
+
+    
     def tile2layer(self, fault_dict=None, based_tile='ofmap', layer=None, layer_input_shape=None, layer_weight_shape=None, layer_output_shape=None, print_detail=False):
         """ Restore the fault dictionary from tile to entire layer
             This tile2layer combines all ifmap, weight, ofmap tile.
@@ -2023,21 +2089,23 @@ class io_data_solver:
         if print_detail:
             print('\r    Tile2Layer (1/9): Unpack Partial Sum Indexes...',end=' ')
         # unpack partial sum index
-        fd_coor=np.array(list(fault_dict.keys()))
-        fd_value=np.array(list(fault_dict.values()))
-        psum_idx=np.array([info['psum_idx'] for info in fd_value])
+        fd_coor=fault_dict['coor']
+        psum_idx=fault_dict['psum_idx']
+        fault_dict.pop('coor')
+        fault_dict.pop('psum_idx')
         
-        if isinstance(fd_value[0]['id'],np.ndarray):
-            state='fastgen'
-            if psum_idx.dtype!=np.object:
+        if isinstance(psum_idx,np.ndarray):
+            if len(psum_idx.shape)>1:
+                state='fastgen'
                 psidx_cnt=psum_idx.shape
                 psum_idx=np.concatenate(psum_idx)
             else:
-                psidx_cnt=np.array([len(i) for i in psum_idx])
-                psum_idx=np.concatenate(psum_idx)
-        elif isinstance(fd_value[0]['id'],int):
-            state='normal'
-        elif isinstance(fd_value[0]['id'],list):
+                if psum_idx.dtype==np.object:
+                    psidx_cnt=np.array([len(i) for i in psum_idx])
+                    psum_idx=np.concatenate(psum_idx)
+                else:                    
+                    state='normal'
+        elif isinstance(psum_idx,list):
             state='repetitive'
             psidx_cnt=np.array([len(i) for i in psum_idx])
             psum_idx=np.concatenate(psum_idx)
@@ -2230,22 +2298,26 @@ class io_data_solver:
 
         # collapse duplicate coors
         if len(uni_idx)==len(rep_idx):
-            new_fd_value=fd_value[np.remainder(uni_idx,self.num_fault_coor)]
+            self._reduce_fault_dict(fault_dict, np.remainder(uni_idx,self.num_fault_coor))
         else:
             if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
                 sorter=np.argsort(rep_idx)
+                even=np.min(cnt_idx)==np.max(cnt_idx)
                 cnt_idx=np.cumsum(cnt_idx)[:-1]
                 
                 layer_psum_idx=layer_psum_idx[sorter]
                 layer_psum_idx=np.split(layer_psum_idx,cnt_idx)
+                if even:
+                    layer_psum_idx=np.array(layer_psum_idx)
+                    layer_psum_idx=np.reshape(layer_psum_idx,[len(layer_psum_idx),-1,9])
+                else:
+                    for psidx in layer_psum_idx:
+                        psidx=np.concatenate(psidx)
+                    layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
+                    
+                self._reduce_fault_dict(fault_dict, np.remainder(uni_idx,self.num_fault_coor))
+                fault_dict['psum_idx']=layer_psum_idx
                 
-                #fd_value=fd_value[np.remainder(uni_idx,self.num_base_coor)]
-                
-                new_fd_value=list()
-                for i,uidx in enumerate(uni_idx):
-                    new_fv=fd_value[np.remainder(uidx,self.num_fault_coor)].copy()
-                    new_fv['psum_idx']=np.concatenate(layer_psum_idx[i])
-                    new_fd_value.append(new_fv)
             else:
                 if state=='normal':
                     sorter=np.argsort(rep_idx)
@@ -2253,12 +2325,10 @@ class io_data_solver:
                     
                     layer_psum_idx=layer_psum_idx[sorter]
                     layer_psum_idx=np.split(layer_psum_idx,cnt_idx)
+                    layer_psum_idx=np.stack(layer_psum_idx)
                                       
-                    new_fd_value=list()
-                    for i,uidx in enumerate(uni_idx):
-                        new_fv=fd_value[np.remainder(uidx,self.num_fault_coor)].copy() 
-                        new_fv['psum_idx']=layer_psum_idx[i]
-                        new_fd_value.append(new_fv)
+                    self._reduce_fault_dict(fault_dict, np.remainder(uni_idx,self.num_fault_coor))
+                    fault_dict['psum_idx']=layer_psum_idx
 
                 else:
                     psum_idx_rep=[list() for _ in range(len(uni_idx))]
@@ -2272,41 +2342,37 @@ class io_data_solver:
                         
                         psum_idx_rep[repid].append(layer_psum_idx[i])
     
-                        if isinstance(fd_value[orig_i]['id'],int):
-                            id_list_rep[repid].append(fd_value[orig_i]['id'])
+                        if isinstance(fault_dict['id'][orig_i],int):
+                            id_list_rep[repid].append(fault_dict['id'][orig_i])
                         else:
-                            id_list_rep[repid]+=fd_value[orig_i]['id']
+                            id_list_rep[repid]+=fault_dict['id'][orig_i]
                         
-                        if isinstance(fd_value[orig_i]['SA_type'],str):
-                            type_list_rep[repid].append(fd_value[orig_i]['SA_type'])
+                        if isinstance(fault_dict['SA_type'][orig_i],str):
+                            type_list_rep[repid].append(fault_dict['SA_type'][orig_i])
                         else:
-                            type_list_rep[repid]+=fd_value[orig_i]['SA_type']
+                            type_list_rep[repid]+=fault_dict['SA_type'][orig_i]
                         
-                        if isinstance(fd_value[orig_i]['SA_bit'],int):
-                            bit_list_rep[repid].append(fd_value[orig_i]['SA_bit'])
+                        if isinstance(fault_dict['SA_bit'][orig_i],int):
+                            bit_list_rep[repid].append(fault_dict['SA_bit'][orig_i])
                         else:
-                            bit_list_rep[repid]+=fd_value[orig_i]['SA_bit']
+                            bit_list_rep[repid]+=fault_dict['SA_bit'][orig_i]
                             
-                        if isinstance(fd_value[orig_i]['param'],str):
-                            param_list_rep[repid].append(fd_value[orig_i]['param'])
+                        if isinstance(fault_dict['param'][orig_i],str):
+                            param_list_rep[repid].append(fault_dict['param'][orig_i])
                         else:
-                            param_list_rep[repid]+=fd_value[orig_i]['param']
+                            param_list_rep[repid]+=fault_dict['param'][orig_i]
                 
-                    new_fd_value=list()
-                    for i,uidx in enumerate(uni_idx):
-                        new_fv={'psum_idx':psum_idx_rep[i],
-                                'id':id_list_rep[i],
-                                'SA_type':type_list_rep[i],
-                                'SA_bit':bit_list_rep[i],
-                                'param':param_list_rep[i]}
-                        new_fd_value.append(new_fv)
+                    fault_dict['psum_idx']=psum_idx_rep
+                    fault_dict['id']=id_list_rep
+                    fault_dict['SA_type']=type_list_rep
+                    fault_dict['SA_bit']=bit_list_rep
+                    fault_dict['param']=param_list_rep
 
         if print_detail:
             print('\r    Tile2Layer (9/9): Make Mapped Fault Dictionary...               ',end=' ')
-        layer_fault_coor_fd=list(zip(*layer_fault_coor.T))
-        layer_fault_dict=dict(zip(layer_fault_coor_fd,new_fd_value))
+        fault_dict['coor']=layer_fault_coor
         
-        return layer_fault_dict
+        return fault_dict
     
     def report_layer_map(self):
         return {'num_base_coor':self.num_base_coor,

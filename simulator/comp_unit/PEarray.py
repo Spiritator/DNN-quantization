@@ -336,11 +336,11 @@ class PEarray:
         #fault_value=fault_value[cond]
         if not reduce_coor:
             for info in fault_dict.keys():
-                if info!='coor' and isinstance(info,(list,np.ndarray)):
+                if info!='coor' and isinstance(fault_dict[info],(list,np.ndarray)):
                     fault_dict[info]=fault_dict[info][cond]
         else:
             for info in fault_dict.keys():
-                if isinstance(info,(list,np.ndarray)):
+                if isinstance(fault_dict[info],(list,np.ndarray)):
                     fault_dict[info]=fault_dict[info][cond]
     
     def _dupe_fault_value(self, fault_dict, dispach, dupe_coor=False):

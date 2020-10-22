@@ -118,8 +118,8 @@ from simulator.utils_tool.plot import collect_metric_PE,dict_format_mfv_to_b2Dm,
 
 #%% plot 2D heat map for PE array fault simulation result
 
-result_pe_sim='../test_result/cifar10_4C2F_PE_fault/ws/metric_88.csv'
-plot_pe_sim='../test_result/cifar10_4C2F_PE_fault/ws/'
+result_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88.csv'
+plot_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/'
 PEy=8
 PEx=8
 
@@ -143,16 +143,16 @@ plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y',
 import os, tqdm
 from simulator.utils_tool.plot import make_GIF
 
-result_heatmap_dir='../test_result/cifar10_4C2F_PE_fault/ws/metric_88_plot/'
+result_heatmap_dir='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88/'
 
 metric_dirs=os.listdir(result_heatmap_dir)
 
-# for metric in tqdm.tqdm(metric_dirs):
-#     gif_metric_dir=os.path.join(result_heatmap_dir,metric)+'/'
-#     make_GIF(gif_metric_dir,metric,file_ext='png',duration=2000)
-    
 for metric in tqdm.tqdm(metric_dirs):
     gif_metric_dir=os.path.join(result_heatmap_dir,metric)+'/'
-    make_GIF(gif_metric_dir,metric,file_ext='png',duration=1000)
+    make_GIF(gif_metric_dir,metric,file_ext='png',duration=2000)
+    
+# for metric in tqdm.tqdm(metric_dirs):
+#     gif_metric_dir=os.path.join(result_heatmap_dir,metric)+'/'
+#     make_GIF(gif_metric_dir,metric,file_ext='png',duration=1000)
 
 

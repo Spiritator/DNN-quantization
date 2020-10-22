@@ -375,7 +375,7 @@ from simulator.layers.quantized_layers import QuantizedConv2D, quantizer
 #%% test io_data_solver
 
 # organize fault dict and give partial sum index
-solver=io_data_solver(ofmap_tile,wght_tile,ifmap_tile)
+solver=io_data_solver(ofmap_tile,wght_tile,ifmap_tile,layer_type='Conv2D')
 fault_dict_solved=solver.solve_correspond_io(print_detail=True)
 
 # create test model

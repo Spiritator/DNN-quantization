@@ -1714,6 +1714,7 @@ class io_data_solver:
                     shape_cnt=np.subtract(shape_cnt,search_cond)
                     shape_cnt=np.cumsum(shape_cnt)[:-1]
                     psum_index=np.split(psum_index,shape_cnt)
+                    psum_index=np.stack(psum_index)
             elif isinstance(shape_cnt,np.ndarray):
                 search_cond=np.argwhere(search_cond)
                 search_cond=np.searchsorted(shape_cnt,search_cond)
@@ -2223,16 +2224,19 @@ class io_data_solver:
             if state=='fastgen':
                 if isinstance(psidx_cnt,tuple):
                     layer_psum_idx=np.split(layer_psum_idx,psidx_cnt[0]*self.num_base_coor)
+                    layer_psum_idx=np.stack(layer_psum_idx)
                 else:
                     psidx_cnt=np.tile(psidx_cnt,self.num_base_coor)
                     psidx_cnt=np.cumsum(psidx_cnt)[:-1]
                     layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
+                    layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
             elif state=='normal':
                 pass
             elif state=='repetitive':
                 psidx_cnt=np.tile(psidx_cnt,self.num_base_coor)
                 psidx_cnt=np.cumsum(psidx_cnt)[:-1]
                 layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
+                layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
         else:
             psidx_cond=np.bitwise_not(psidx_cond)
             if state=='fastgen':
@@ -2264,8 +2268,8 @@ class io_data_solver:
                 psidx_cnt[psidx_cond[0]]=np.subtract(psidx_cnt[psidx_cond[0]],psidx_cond[1])
                 psidx_cnt=np.cumsum(psidx_cnt)[:-1]
                 layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
-
-        layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
+            
+            layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
         
         if print_detail:
             print('\r    Tile2Layer (7/9): Remove Outlier Fault Coordinates...          ',end=' ')
@@ -2274,6 +2278,10 @@ class io_data_solver:
         if not np.all(fc_cond):
             if state=='fastgen' or state=='repetitive':
                 layer_psum_idx=layer_psum_idx[fc_cond]
+                if layer_psum_idx.dtype==np.object:
+                    psidx_cnt=np.array([len(psidx) for psidx in layer_psum_idx])
+                    if np.max(psidx_cnt)==np.min(psidx_cnt):
+                        layer_psum_idx=np.stack(layer_psum_idx)
             elif state=='normal':
                 if len(layer_psum_idx)==len(layer_fault_coor):
                     empty_fc_cond=None
@@ -2300,6 +2308,7 @@ class io_data_solver:
         # collapse duplicate coors
         if len(uni_idx)==len(rep_idx):
             self._reduce_fault_dict(fault_dict, np.remainder(uni_idx,self.num_fault_coor))
+            fault_dict['psum_idx']=layer_psum_idx
         else:
             if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
                 sorter=np.argsort(rep_idx)

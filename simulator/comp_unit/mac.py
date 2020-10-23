@@ -307,8 +307,8 @@ class mac_unit:
             The fault value is in np.array(list(fault_dict.values())) format
             This is only for slow loop generation
         """
-        psum_idx_list=list()
-        fault_bit=list()
+        psum_idx_list=fault_value['psum_idx']
+        fault_bit=fault_value['SA_bit']
         param_ifmap=list()
         param_wght=list()
         param_ofmap=list()
@@ -317,11 +317,9 @@ class mac_unit:
         typef=list()
         
         if not repetitive:
-            for i,info in enumerate(fault_value):
-                psum_idx_list.append(info['psum_idx'])
-                fault_bit.append(info['SA_bit'])
+            for i in range(len(fault_bit['param'])):
                 
-                param=info['param']
+                param=fault_value['param'][i]
                 if param=='ifmap_in' or param=='ifmap_out':
                     param_ifmap.append(i)
                 elif param=='wght_in' or param=='wght_out':
@@ -329,7 +327,7 @@ class mac_unit:
                 elif param=='psum_in' or param=='psum_out':
                     param_ofmap.append(i)
                     
-                typee=info['SA_type']
+                typee=fault_value['SA_type'][i]
                 if typee=='0':
                     type0.append(i)
                 elif typee=='1':
@@ -338,8 +336,7 @@ class mac_unit:
                     typef.append(i)
                 
             # (coor idx, num of psidx, psum idx)
-            psum_idx_list=np.array(psum_idx_list)
-            fault_bit=np.array(fault_bit)
+            psum_idx_list=psum_idx_list.astype(np.int32)
             param_ifmap=np.array(param_ifmap)
             param_wght=np.array(param_wght)
             param_ofmap=np.array(param_ofmap)
@@ -352,22 +349,21 @@ class mac_unit:
             cnt_psidx=list()
             fault_param=list()
             fault_type=list()
-            for info in fault_value:
-                cnt_psidx.append(len(info['psum_idx']))
-                psum_idx_list.append(info['psum_idx'])
-                fault_bit.append(info['SA_bit'])
-                fault_param.append(info['param'])
-                fault_type.append(info['SA_type'])
+            for i,info in enumerate(fault_value['psum_idx']):
+                cnt_psidx.append(len(info))
+                fault_bit.append(fault_value['SA_bit'][i])
+                fault_param.append(fault_value['param'][i])
+                fault_type.append(fault_value['SA_type'][i])
             
             cnt_psidx=np.cumsum(cnt_psidx)[:-1]
             # (coor idx, num of fault, num of psidx, psum idx)
-            psum_idx_list=np.array(psum_idx_list)
+            psum_idx_list=np.array(psum_idx_list,dtype=np.object)
             # (coor idx * num of fault, num of psidx, psum idx)
             psum_idx_list=np.concatenate(psum_idx_list)
 
-            fault_param=np.array(fault_param)
-            fault_type=np.array(fault_type)
-            fault_bit=np.array(fault_bit)
+            fault_param=np.array(fault_param,dtype=np.object)
+            fault_type=np.array(fault_type,dtype=np.object)
+            fault_bit=np.array(fault_bit,dtype=np.object)
             fault_param=np.concatenate(fault_param)
             fault_type=np.concatenate(fault_type)
             fault_bit=np.concatenate(fault_bit)
@@ -554,19 +550,19 @@ class mac_unit:
             
         order_get_psidx_o,order_get_psidx_w,order_get_psidx_i=self._layer_coor_order(layer_type)
         
-        fd_coor=np.array(list(fault_dict.keys()))
-        fd_value=np.array(list(fault_dict.values()))
+        fd_coor=fault_dict['coor']
         preprocess_data['fd_coor']=fd_coor
         
         if self.fast_gen:
             # data allocation
             # (coor idx, num of psidx, psum idx)
-            psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
+            psum_idx_list=fault_dict['psum_idx']
+            psum_idx_list=psum_idx_list.astype(np.int32)
             psum_idx_ofmap=psum_idx_list[:,:,order_get_psidx_o]
         
-            fault_param=fd_value[0]['param']
-            fault_type=fd_value[0]['SA_type']
-            fault_bit=fd_value[0]['SA_bit']
+            fault_param=fault_dict['param']
+            fault_type=fault_dict['SA_type']
+            fault_bit=fault_dict['SA_bit']
             
             preprocess_data['fault_param']=fault_param
             preprocess_data['fault_type']=fault_type
@@ -607,11 +603,11 @@ class mac_unit:
             
         else: # slow loop gen
             # loop data extraction
-            if isinstance(fd_value[0]['id'],int):
-                psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fd_value, repetitive=False)
+            if isinstance(fault_dict['psum_idx'],np.ndarray):
+                psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fault_dict, repetitive=False)
             
-            elif isinstance(fd_value[0]['id'],list):
-                psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fd_value, repetitive=True)
+            elif isinstance(fault_dict['psum_idx'],list):
+                psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fault_dict, repetitive=True)
             
             FI_ofmap=len(param_ofmap)>0
             FI_ifmap=len(param_ifmap)>0
@@ -802,19 +798,18 @@ class mac_unit:
             
         order_get_psidx_o,order_get_psidx_w,order_get_psidx_i=self._layer_coor_order(layer_type)
         
-        fd_coor=np.array(list(fault_dict.keys()))
-        fd_value=np.array(list(fault_dict.values()))
+        fd_coor=fault_dict['coor']
         preprocess_data['fd_coor']=fd_coor
         
         # data allocation
         # (coor idx, num of psidx, psum idx)
-        psum_idx_list=np.array([info['psum_idx'] for info in fd_value])
+        psum_idx_list=fault_dict['psum_idx']
         psum_idx_list=psum_idx_list.astype(np.int32)
         psum_idx_ofmap=psum_idx_list[:,:,order_get_psidx_o]
     
-        fault_param=fd_value[0]['param']
-        fault_type=fd_value[0]['SA_type']
-        fault_bit=fd_value[0]['SA_bit']
+        fault_param=fault_dict['param']
+        fault_type=fault_dict['SA_type']
+        fault_bit=fault_dict['SA_bit']
         
         preprocess_data['fault_param']=fault_param
         preprocess_data['fault_type']=fault_type
@@ -938,16 +933,15 @@ class mac_unit:
             
         order_get_psidx_o,order_get_psidx_w,order_get_psidx_i=self._layer_coor_order(layer_type)
         
-        fd_coor=np.array(list(fault_dict.keys()))
-        fd_value=np.array(list(fault_dict.values()))
+        fd_coor=fault_dict['coor']
         preprocess_data['fd_coor']=fd_coor
         
         # loop data extraction
-        if isinstance(fd_value[0]['id'],int):
-            psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fd_value, repetitive=False)
+        if isinstance(fault_dict['psum_idx'],np.ndarray):
+            psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fault_dict, repetitive=False)
         
-        elif isinstance(fd_value[0]['id'],list):
-            psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fd_value, repetitive=True)
+        elif isinstance(fault_dict['psum_idx'],list):
+            psum_idx_list,cnt_psidx,fault_bit,param_ifmap,param_wght,param_ofmap,type0,type1,typef=self._fault_value_extract_loop(fault_dict, repetitive=True)
         
         FI_ofmap=len(param_ofmap)>0
         FI_ifmap=len(param_ifmap)>0

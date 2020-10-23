@@ -2093,6 +2093,7 @@ class io_data_solver:
         psum_idx=fault_dict['psum_idx']
         fault_dict.pop('coor')
         fault_dict.pop('psum_idx')
+        fault_dict.pop('id')
         
         if isinstance(psum_idx,np.ndarray):
             if len(psum_idx.shape)>1:
@@ -2332,7 +2333,6 @@ class io_data_solver:
 
                 else:
                     psum_idx_rep=[list() for _ in range(len(uni_idx))]
-                    id_list_rep=[list() for _ in range(len(uni_idx))]
                     type_list_rep=[list() for _ in range(len(uni_idx))]
                     bit_list_rep=[list() for _ in range(len(uni_idx))]
                     param_list_rep=[list() for _ in range(len(uni_idx))]
@@ -2341,12 +2341,7 @@ class io_data_solver:
                         orig_i=np.remainder(i,self.num_fault_coor)
                         
                         psum_idx_rep[repid].append(layer_psum_idx[i])
-    
-                        if isinstance(fault_dict['id'][orig_i],int):
-                            id_list_rep[repid].append(fault_dict['id'][orig_i])
-                        else:
-                            id_list_rep[repid]+=fault_dict['id'][orig_i]
-                        
+                            
                         if isinstance(fault_dict['SA_type'][orig_i],str):
                             type_list_rep[repid].append(fault_dict['SA_type'][orig_i])
                         else:
@@ -2363,7 +2358,6 @@ class io_data_solver:
                             param_list_rep[repid]+=fault_dict['param'][orig_i]
                 
                     fault_dict['psum_idx']=psum_idx_rep
-                    fault_dict['id']=id_list_rep
                     fault_dict['SA_type']=type_list_rep
                     fault_dict['SA_bit']=bit_list_rep
                     fault_dict['param']=param_list_rep

@@ -58,7 +58,7 @@ weightT=tf.Variable(weight)
 ofmap=np.zeros([4,56,56,64],dtype='float32')
 
 # load fault dictionary 
-with open('../test_fault_dictionary_stuff/fault_dict_solved_layer_psumout.pickle', 'rb') as fdfile:
+with open('../test_fault_dictionary_stuff/fault_dict_solved_layer_psumout_rework.pickle', 'rb') as fdfile:
     fault_dict_solved_layer = pickle.load(fdfile)
 
 

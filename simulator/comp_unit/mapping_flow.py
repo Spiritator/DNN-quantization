@@ -382,11 +382,11 @@ def PE_mapping2tile(PEarray, fault_dict=None, print_detail=True):
     PEarray.mapping_shape_load()
         
     if print_detail:
-        print('    Task (1/4): Decompose Slice Pack ...',end=' ') 
+        print('    Task (1/4): Decompose Slice Pack...  ',end=' ') 
     PEarray.decompose_slice_pack(print_detail=print_detail)
 
     if print_detail:
-        print('\r    Task (2/4): Reduce Mapping ...\t\t',end=' ') 
+        print('\r    Task (2/4): Reduce Mapping...      ',end=' ') 
     PEarray.reduce_mapping('ofmap')
     PEarray.reduce_mapping('wght')
     PEarray.reduce_mapping('ifmap')
@@ -394,7 +394,7 @@ def PE_mapping2tile(PEarray, fault_dict=None, print_detail=True):
     PEarray.reduce_mapping('psum')
     
     if print_detail:
-        print('\r    Task (3/4): Tile Demapping...\t',end=' ') 
+        print('\r    Task (3/4): Tile Demapping...       ',end=' ') 
     PEarray.demapping_tile('ofmap')
     PEarray.demapping_tile('wght')
     PEarray.demapping_tile('ifmap')
@@ -402,7 +402,7 @@ def PE_mapping2tile(PEarray, fault_dict=None, print_detail=True):
     PEarray.demapping_tile('psum')
     
     if print_detail:
-        print('\r    Task (4/4): Tile Shrinking...',end=' ') 
+        print('\r    Task (4/4): Tile Shrinking...      ',end=' ') 
     if PEarray.ofmap_tile.expand_method=='reshape':
         PEarray.ofmap_tile.shrink_reshape_data()
         PEarray.ofmap_tile.shrink_reshape_data(psum=True)
@@ -430,7 +430,7 @@ def PE_mapping2tile(PEarray, fault_dict=None, print_detail=True):
         raise ValueError('expand_method must be either \'reshape\' or \'extract_patches\'.')
                  
     if print_detail:
-        print('\r    Task (4/4): All Done.\t\t\t\t')
+        print('\r    Task (4/4): All Done.             ')
 
 
 def mapping_valid_checker(ifmap_tile,
@@ -488,31 +488,30 @@ def mapping_valid_checker(ifmap_tile,
         print('\nDataflow mapping feasblility check...')
     
     # Generate test fault
-    fault_loc_i=tuple()
+    fault_loc_i=list()
     for i in range(ifmap_tile.shape_len):
-        fault_loc_i+=(np.random.randint(ifmap_tile.tile_shape[i]),)
+        fault_loc_i+=[np.random.randint(ifmap_tile.tile_shape[i]),]
     fault_bit_i=np.random.randint(ifmap_tile.wl)
-    ifmap_tile.fault_dict={fault_loc_i:{'SA_type':'flip','SA_bit':fault_bit_i}}
+    ifmap_tile.fault_dict={'coor':np.array([fault_loc_i]),'SA_type':np.array(['flip']),'SA_bit':np.array([fault_bit_i])}
     
-    fault_loc_w=tuple()
+    fault_loc_w=list()
     for i in range(wght_tile.shape_len):
-        fault_loc_w+=(np.random.randint(wght_tile.tile_shape[i]),)
+        fault_loc_w+=[np.random.randint(wght_tile.tile_shape[i]),]
     fault_bit_w=np.random.randint(wght_tile.wl)
-    wght_tile.fault_dict={fault_loc_w:{'SA_type':'flip','SA_bit':fault_bit_w}}
+    wght_tile.fault_dict={'coor':np.array([fault_loc_w]),'SA_type':np.array(['flip']),'SA_bit':np.array([fault_bit_w])}
     
-    fault_loc_o=tuple()
+    fault_loc_o=list()
     for i in range(ofmap_tile.shape_len):
-        fault_loc_o+=(np.random.randint(ofmap_tile.tile_shape[i]),)
+        fault_loc_o+=[np.random.randint(ofmap_tile.tile_shape[i]),]
     fault_bit_o=np.random.randint(ofmap_tile.wl)
-    ofmap_tile.fault_dict={fault_loc_o:{'SA_type':'flip','SA_bit':fault_bit_o}}
+    ofmap_tile.fault_dict={'coor':np.array([fault_loc_o]),'SA_type':np.array(['flip']),'SA_bit':np.array([fault_bit_o])}
     
     # Forward mapping
     PE_fault_dict=PE_mapping_forward(ifmap_tile,wght_tile,ofmap_tile,PEarray,ifmap_expand_config,wght_expand_config,ofmap_expand_config,PEarray_setup_config,verbose=5)
 
     # Sampple fault list
-    forward_fault_num=len(PE_fault_dict)
-    forward_fault_coors=np.array(list(PE_fault_dict.keys()))
-    forward_fault_vl=np.array(list(PE_fault_dict.values()))
+    forward_fault_coors=PE_fault_dict['coor']
+    forward_fault_num=len(forward_fault_coors)
     
     sample_ifmap_coor=None
     sample_wght_coor=None
@@ -521,37 +520,42 @@ def mapping_valid_checker(ifmap_tile,
     while(sample_ifmap_coor is None or sample_wght_coor is None or sample_ofmap_coor is None):
         sample_idx=np.random.randint(forward_fault_num)
         sample_coor=forward_fault_coors[sample_idx]
-        sample_info=forward_fault_vl[sample_idx]
-        if sample_info['param']=='ifmap_in':
+        sample_param=PE_fault_dict['param'][sample_idx]
+        sample_SA_bit=PE_fault_dict['SA_bit'][sample_idx]
+        sample_SA_type=PE_fault_dict['SA_type'][sample_idx]
+        if sample_param=='ifmap_in':
             sample_ifmap_coor=sample_coor
-            sample_ifmap_info=sample_info
-        elif sample_info['param']=='wght_in':
+            sample_ifmap_param=sample_param
+            sample_ifmap_SA_bit=sample_SA_bit
+            sample_ifmap_SA_type=sample_SA_type
+        elif sample_param=='wght_in':
             sample_wght_coor=sample_coor
-            sample_wght_info=sample_info
-        elif sample_info['param']=='psum_out':
+            sample_wght_param=sample_param
+            sample_wght_SA_bit=sample_SA_bit
+            sample_wght_SA_type=sample_SA_type
+        elif sample_param=='psum_out':
             sample_ofmap_coor=sample_coor
-            sample_ofmap_info=sample_info
+            sample_ofmap_param=sample_param
+            sample_ofmap_SA_bit=sample_SA_bit
+            sample_ofmap_SA_type=sample_SA_type
         cnt+=1
         if print_detail:
             print('\r sample iteration %d '%cnt,end=' ')
-    
-    sample_ifmap_info.update({'id':0})
-    sample_wght_info.update({'id':1})
-    sample_ofmap_info.update({'id':2})
-    
-    sample_coor=np.stack([sample_ifmap_coor,sample_wght_coor,sample_ofmap_coor])
-    sample_info=[sample_ifmap_info,sample_wght_info,sample_ofmap_info]
-    
-    sample_coor=list(zip(*sample_coor.T))
-    sample_fault_dict=dict(zip(sample_coor,sample_info))
+        
+    sample_fault_dict={'coor':np.stack([sample_ifmap_coor,sample_wght_coor,sample_ofmap_coor]),
+                       'param':np.array([sample_ifmap_param,sample_wght_param,sample_ofmap_param]),
+                       'SA_bit':np.array([sample_ifmap_SA_bit,sample_wght_SA_bit,sample_ofmap_SA_bit]),
+                       'SA_type':np.array([sample_ifmap_SA_type,sample_wght_SA_type,sample_ofmap_SA_type]),
+                       'id':np.array([0,1,2])
+                       }
     
     # Backward mapping sample
     PE_mapping2tile(PEarray,sample_fault_dict,print_detail=print_detail)
     
     # Compare Forward and Backward mapping
-    check_i=fault_loc_i in list(PEarray.ifmap_tile.fault_dict.keys())
-    check_w=fault_loc_w in list(PEarray.wght_tile.fault_dict.keys())
-    check_o=fault_loc_o in list(PEarray.ofmap_tile.fault_dict.keys())+list(PEarray.ofmap_tile.psum_fault_dict.keys())
+    check_i=tuple(fault_loc_i)in list(zip(*PEarray.ifmap_tile.fault_dict['coor'].T))
+    check_w=tuple(fault_loc_w) in list(zip(*PEarray.wght_tile.fault_dict['coor'].T))
+    check_o=tuple(fault_loc_o) in list(zip(*PEarray.ofmap_tile.fault_dict['coor'].T))+list(zip(*PEarray.ofmap_tile.psum_fault_dict['coor'].T))
 
     check_pass=all([check_i,check_w,check_o])
     
@@ -564,17 +568,17 @@ def mapping_valid_checker(ifmap_tile,
         print('fault location ifmap',end=' ')
         print(fault_loc_i)
         print('mapped fault location ifmap',end=' ')
-        print(list(PEarray.ifmap_tile.fault_dict.keys()))
+        print(list(zip(*PEarray.ifmap_tile.fault_dict['coor'].T)))
         
         print('fault location weight',end=' ')
         print(fault_loc_w)
         print('mapped fault location weight',end=' ')
-        print(list(PEarray.wght_tile.fault_dict.keys()))
+        print(list(zip(*PEarray.wght_tile.fault_dict['coor'].T)))
 
         print('fault location ofmap',end=' ')
         print(fault_loc_o)
         print('mapped fault location ofmap',end=' ')
-        print(list(PEarray.ofmap_tile.fault_dict.keys())+list(PEarray.ofmap_tile.psum_fault_dict.keys()))
+        print(list(zip(*PEarray.ofmap_tile.fault_dict['coor'].T))+list(zip(*PEarray.ofmap_tile.psum_fault_dict['coor'].T)))
         
         print(' ')
 

@@ -143,7 +143,7 @@ plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y',
 import os, tqdm
 from simulator.utils_tool.plot import make_GIF
 
-result_heatmap_dir='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88/'
+result_heatmap_dir='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88_plot/'
 
 metric_dirs=os.listdir(result_heatmap_dir)
 

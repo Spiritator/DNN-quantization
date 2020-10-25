@@ -1294,11 +1294,11 @@ class PEarray:
         
         """
         if not dataflow_pre_plan:
-            index=fault_dict['coor']
-            fault_value=fault_dict
-            
-            if len(index)==0:
+            if len(fault_dict)==0:
                 dataflow_pre_plan=True
+            else:
+                index=fault_dict['coor']
+                fault_value=fault_dict
         
         if t_clk_dims<0:
             t_clk_dims=len(mapping_shape)+t_clk_dims
@@ -1647,22 +1647,36 @@ class PEarray:
         if not dataflow_pre_plan:
             if tile.expansion:
                 fault_value=copy.deepcopy(tile.fault_dict_expand)
-                mapped_coors=fault_value['coor']
+                if len(fault_value)==0:
+                    dataflow_pre_plan=True
+                    mapped_coors=list()
+                else:
+                    mapped_coors=fault_value['coor']
             else:
                 fault_value=copy.deepcopy(tile.fault_dict)
-                mapped_coors=fault_value['coor']
-                mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=np.int32),axis=1)
+                if len(fault_value)==0:
+                    dataflow_pre_plan=True
+                    mapped_coors=list()
+                else:
+                    mapped_coors=fault_value['coor']
+                    mapped_coors=np.append(mapped_coors,np.zeros([len(mapped_coors),1],dtype=np.int32),axis=1)
             
             if parameter=='bias':
                 if tile.expansion:
                     fault_value=copy.deepcopy(tile.bias_fault_dict_expand)
-                    mapped_coors=fault_value['coor']
+                    if len(fault_value)==0:
+                        dataflow_pre_plan=True
+                        mapped_coors=list()
+                    else:
+                        mapped_coors=fault_value['coor']
                 else:
                     fault_value=copy.deepcopy(tile.bias_fault_dict)
-                    mapped_coors=fault_value['coor']
-                
-            if len(mapped_coors)==0:
-                dataflow_pre_plan=True
+                    if len(fault_value)==0:
+                        dataflow_pre_plan=True
+                        mapped_coors=list()
+                    else:
+                        mapped_coors=fault_value['coor']
+            
                 
             if parameter=='ofmap':
                 PEparam={'param':np.array(['psum_out' for _ in range(len(mapped_coors))])}
@@ -1992,11 +2006,11 @@ class PEarray:
             raise ValueError('parameter should be one of \'ifmap\', \'wght\', \'ofmap\', \'bias\', \'psum\'.')
 
         if not dataflow_pre_plan:
-            duped_coors=fault_dict['coor']
-            fault_value=fault_dict
-            
-            if len(duped_coors)==0:
+            if len(fault_dict)==0:
                 dataflow_pre_plan=True
+            else:
+                duped_coors=fault_dict['coor']
+                fault_value=fault_dict
         
         # repeat
         if flow.repeat>0:
@@ -2304,9 +2318,9 @@ class PEarray:
             fd_sink.append(self.serialize_slices(self.ofmap_map_fd,self.shape_ofmap_mapping,slice_n_clk=self.pack_clk)[0])
             fd_sink.append(self.serialize_slices(self.wght_map_fd,self.shape_wght_mapping,slice_n_clk=self.pack_clk)[0])
             fd_sink.append(self.serialize_slices(self.ifmap_map_fd,self.shape_ifmap_mapping,slice_n_clk=self.pack_clk)[0])
-            if self.use_bias:
+            if self.use_bias and len(self.bias_map_fd)>0:
                 fd_sink.append(self.serialize_slices(self.bias_map_fd,self.shape_bias_mapping,slice_n_clk=self.pack_clk)[0])
-            if self.use_psum:
+            if self.use_psum and len(self.bias_map_fd)>0:
                 fd_sink.append(self.serialize_slices(self.psum_map_fd,self.shape_psum_mapping,slice_n_clk=self.pack_clk)[0])
             for info in fd_sink[0].keys():
                 self.fault_dict[info]=np.concatenate([subfd[info] for subfd in fd_sink])

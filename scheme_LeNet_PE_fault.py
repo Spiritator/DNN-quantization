@@ -8,7 +8,7 @@ An example of using inference scheme to arange analysis and save result.
 evaluate PE array fault injection testing result of LeNet-5
 """
 
-import os,csv,pickle
+import os,csv,pickle,time
 import tensorflow.keras.backend as K
 
 from simulator.inference.scheme import inference_scheme
@@ -165,6 +165,7 @@ MXU_config_conv2  =os.path.join(config_dir,'MXU_config_conv2.json')
 #%% fault generation
 
 def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,verbose):
+    t=time.time()
     model_mac_fault_dict_list=[None for i in range(8)] 
     psidx_cnt=0
     
@@ -219,7 +220,10 @@ def gen_model_PE_fault_dict(ref_model,faultloc,faultinfo,verbose):
     model_mac_fault_dict_list=preprocess_model_mac_fault(ref_model, PE, model_mac_fault_dict_list,
                                                          model_fmap_dist_stat_list=lenet_ifmap_distribution_info,
                                                          model_wght_dist_stat_list=lenet_wght_distribution_info)
-    
+    t=time.time()-t
+    if verbose>0:
+        print('mapping time : %f s'%t)
+        
     return model_mac_fault_dict_list, psidx_cnt
 
 #%% test run

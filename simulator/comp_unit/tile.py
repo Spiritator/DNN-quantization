@@ -1105,11 +1105,12 @@ class tile_PE(tile):
                 id_list=np.split(id_list,cnt_idx)
                 
                 self._reduce_fault_info(fault_info, uni_idx)
-                for i in range(len(uni_idx)):
-                    id_list[i]=id_list[i].flatten()
                 if even:
-                    fault_info['id']=np.array(id_list)
+                    id_list=np.stack(id_list)
+                    fault_info['id']=np.reshape(id_list,[id_list.shape[0],-1])
                 else:
+                    for i in range(len(uni_idx)):
+                        id_list[i]=id_list[i].flatten()
                     fault_info['id']=np.array(id_list,dtype=np.object)
             else:
                 id_list_rep=[list() for _ in range(len(uni_idx))]
@@ -1522,6 +1523,8 @@ class io_data_solver:
             shape_cnt=data_id.shape
             if len(shape_cnt)>1:
                 data_idf=data_id.flatten()
+            else:
+                data_idf=data_id
         elif isinstance(data_id,tuple):
             shape_cnt=data_id[1]
             data_idf=data_id[0]
@@ -1575,7 +1578,7 @@ class io_data_solver:
                 search=np.floor_divide(search,datashape[1])
                 found_index=data_coors[search]
             else:
-                search,search_id=self._unique_searchsort(data_idf,search_id)
+                search,search_id=self._unique_searchsort(data_id,search_id)
                 found_index=data_coors[search]
         elif isinstance(data_id,tuple):
             data_idl_cnt=data_id[1]
@@ -1592,7 +1595,7 @@ class io_data_solver:
         Add new fault information to new fault dict
         Numpy generation (fast version)
         """
-        if self.pstate!='fastgen' or self.wstate!='fastgen' or self.istate!='fastgen':
+        if self.pstate not in ['fastgen','normal'] or self.wstate not in ['fastgen','normal'] or self.istate not in ['fastgen','normal']:
             raise ValueError('All psum_state, wght_state, ifmap_state are must be \'fast_gen\' to run fast generation method.')        
                         
         if not save2tile:
@@ -1676,6 +1679,8 @@ class io_data_solver:
         if isinstance(shape_cnt,tuple):
             if len(shape_cnt)>1:
                 outpsum_index=np.repeat(based_coors,shape_cnt[1],axis=0)
+            else:
+                outpsum_index=based_coors
         elif isinstance(shape_cnt,np.ndarray):
             cnt0=shape_cnt[0]+1
             idlrep=shape_cnt[1:]-shape_cnt[:-1]
@@ -1925,8 +1930,10 @@ class io_data_solver:
                 self.fault_num=max([maxo,maxi,maxw,maxp,maxb])+1
             
         # solving by fast gen method
-        if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
+        if self.pstate in ['fastgen','normal'] and self.wstate in ['fastgen','normal'] and self.istate in ['fastgen','normal']:
             fault_dict_solved=self.fast_gen_new_fd(save2tile,print_detail)
+        elif self.pstate is None or self.wstate is None or self.istate is None:
+            fault_dict_solved=dict()
         else:
             fault_dict_solved=self.loop_gen_new_fd(save2tile,print_detail)
             
@@ -2080,6 +2087,11 @@ class io_data_solver:
             fault_dict=self.fault_dict_solved
             
         if len(fault_dict)==0:
+            self.num_base_coor=0
+            self.num_fault_coor=0
+            self.num_psum_idx=0
+            self.num_layer_fault_coor=0
+            self.num_layer_psum_idx=0
             return dict()
         
         if layer is not None:
@@ -2097,16 +2109,18 @@ class io_data_solver:
         fault_dict.pop('id')
         
         if isinstance(psum_idx,np.ndarray):
-            if len(psum_idx.shape)>1:
+            if len(psum_idx.shape)>2:
                 state='fastgen'
                 psidx_cnt=psum_idx.shape
                 psum_idx=np.concatenate(psum_idx)
+            elif len(psum_idx.shape)==2:
+                state='normal'
             else:
                 if psum_idx.dtype==np.object:
                     psidx_cnt=np.array([len(i) for i in psum_idx])
                     psum_idx=np.concatenate(psum_idx)
                 else:                    
-                    state='normal'
+                    raise TypeError('psum_idx with shape length 1 should be np.object type, or it might be wrong.')
         elif isinstance(psum_idx,list):
             state='repetitive'
             psidx_cnt=np.array([len(i) for i in psum_idx])
@@ -2256,7 +2270,7 @@ class io_data_solver:
                     psidx_cnt[psidx_cond[0]]=np.subtract(psidx_cnt[psidx_cond[0]],psidx_cond[1])
                     psidx_cnt=np.cumsum(psidx_cnt)[:-1]
                     layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
-                    
+                layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
             elif state=='normal':
                 pass
             elif state=='repetitive':
@@ -2268,8 +2282,7 @@ class io_data_solver:
                 psidx_cnt[psidx_cond[0]]=np.subtract(psidx_cnt[psidx_cond[0]],psidx_cond[1])
                 psidx_cnt=np.cumsum(psidx_cnt)[:-1]
                 layer_psum_idx=np.split(layer_psum_idx,psidx_cnt)
-            
-            layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
+                layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
         
         if print_detail:
             print('\r    Tile2Layer (7/9): Remove Outlier Fault Coordinates...          ',end=' ')
@@ -2309,6 +2322,8 @@ class io_data_solver:
         if len(uni_idx)==len(rep_idx):
             self._reduce_fault_dict(fault_dict, np.remainder(uni_idx,self.num_fault_coor))
             fault_dict['psum_idx']=layer_psum_idx
+            if state=='normal':
+                fault_dict['psum_idx']=np.expand_dims(layer_psum_idx,1)
         else:
             if self.pstate=='fastgen' and self.wstate=='fastgen' and self.istate=='fastgen':
                 sorter=np.argsort(rep_idx)
@@ -2331,11 +2346,15 @@ class io_data_solver:
             else:
                 if state=='normal':
                     sorter=np.argsort(rep_idx)
+                    even=np.min(cnt_idx)==np.max(cnt_idx)
                     cnt_idx=np.cumsum(cnt_idx)[:-1]
                     
                     layer_psum_idx=layer_psum_idx[sorter]
                     layer_psum_idx=np.split(layer_psum_idx,cnt_idx)
-                    layer_psum_idx=np.stack(layer_psum_idx)
+                    if even:
+                        layer_psum_idx=np.stack(layer_psum_idx)
+                    else:
+                        layer_psum_idx=np.array(layer_psum_idx,dtype=np.object)
                                       
                     self._reduce_fault_dict(fault_dict, np.remainder(uni_idx,self.num_fault_coor))
                     fault_dict['psum_idx']=layer_psum_idx

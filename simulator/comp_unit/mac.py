@@ -518,6 +518,8 @@ class mac_unit:
             The tile setting must be padding='valid' which means no padding.
             Or else there might be fault.
         """
+        if len(fault_dict)==0:
+            return None
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
                 quantizer_input =self.quantizer[0]
@@ -768,6 +770,8 @@ class mac_unit:
             The tile setting must be padding='valid' which means no padding.
             Or else there might be fault.
         """
+        if len(fault_dict)==0:
+            return None
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
                 quantizer_input =self.quantizer[0]
@@ -903,6 +907,8 @@ class mac_unit:
             The tile setting must be padding='valid' which means no padding.
             Or else there might be fault.
         """
+        if len(fault_dict)==0:
+            return None
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
                 quantizer_input =self.quantizer[0]
@@ -1194,6 +1200,8 @@ class mac_unit:
             The Dictionary contains the configuration and data for Tensor operation part.
         
         """
+        if len(fault_dict)==0:
+            return None
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
                 quantizer_output =self.quantizer[2]
@@ -1389,6 +1397,8 @@ class mac_unit:
             The Dictionary contains the configuration and data for Tensor operation part.
         
         """
+        if len(fault_dict)==0:
+            return None
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
                 quantizer_output =self.quantizer[2]
@@ -1521,6 +1531,8 @@ class mac_unit:
             The Dictionary contains the configuration and data for Tensor operation part.
         
         """
+        if len(fault_dict)==0:
+            return None
         if quantizer is None:
             if isinstance(self.quantizer,list) and len(self.quantizer)==3:
                 quantizer_output =self.quantizer[2]
@@ -1686,6 +1698,8 @@ class mac_unit:
             The tile setting must be padding='valid' which means no padding.
             Or else there might be fault.
         """
+        if len(fault_dict)==0:
+            return None
         if noise_inject is None:
             noise_inject=self.noise_inject
         if fast_gen is None:

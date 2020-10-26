@@ -765,7 +765,7 @@ class PEarray:
             numtag=np.ravel_multi_index(np.array(index)[source_prior],np.array(source_shape)[source_prior])
             
             coor=np.unravel_index(numtag,np.array(target_shape)[target_prior])
-            coor=np.array(coor)[restore_index]
+            coor=np.array(coor,dtype=np.int32)[restore_index]
             
             return tuple(coor)
                         
@@ -776,7 +776,7 @@ class PEarray:
             numtag=np.ravel_multi_index(index.T[source_prior],np.array(source_shape)[source_prior])
                     
             coor=np.unravel_index(numtag,np.array(target_shape)[target_prior])
-            coor=np.array(coor)[restore_index]
+            coor=np.array(coor,dtype=np.int32)[restore_index]
 
             return coor.T
         
@@ -2909,6 +2909,7 @@ class PEarray:
         Fault dictionary. 
             Keys are PE dataflow model coordinates. Items are fault info dictionarys.
         """
+        fault_info=fault_info.copy()
         if self.n_clk is None:
             raise ValueError('n_clk not set, dataflow pre-plan not ready.')
         if not self.setup_ready:

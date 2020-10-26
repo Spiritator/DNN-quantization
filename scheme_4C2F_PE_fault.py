@@ -382,4 +382,6 @@ for round_id in range(test_rounds):
                      FT_evaluate_argument=FT_argument,
                      save_file_add_on=info_add_on,
                      verbose=4)
+    
+    del model_mac_math_fdl
 

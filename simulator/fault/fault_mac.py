@@ -159,6 +159,13 @@ class mac_fault_injector:
             
         return polarity    
     
+    def _rand_sum_polarity_mod(self, polarity):
+        """ Polarity modify for rand_sum psum_handler. Half of the polarities are inverted. """
+        randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=2, dtype=tf.int32)
+        randpolar=tf.math.subtract(tf.multiply(randpolar,tf.constant(2)),tf.constant(1))
+        polarity=tf.multiply(polarity,randpolar)
+        return polarity
+    
     def mac_math_alter_make(self, psum_alter, polarity, quantizer_output, sim_truncarry=False, ifmap_alloc=None, wght_alloc=None):
         """ The core funciton of create mac math fault injection alteration Tensor
             This alteration will be later add onto ofmap tensor
@@ -391,8 +398,7 @@ class mac_fault_injector:
                 if self.psumfault_handle=='single':
                     psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
                 elif self.psumfault_handle=='rand_sum':
-                    randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=2, dtype=tf.int32)
-                    polarity=tf.multiply(polarity,randpolar)
+                    polarity=self._rand_sum_polarity_mod(polarity)
                     psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
                     psum_alter=tf.reduce_sum(psum_alter, axis=1)
                 elif self.psumfault_handle=='direct_sum':
@@ -471,8 +477,7 @@ class mac_fault_injector:
                 if self.psumfault_handle=='single':
                     psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
                 elif self.psumfault_handle=='rand_sum':
-                    randpolar=tf.random.uniform(polarity_ofmap.shape, minval=0, maxval=2, dtype=tf.int32)
-                    polarity_ofmap=tf.multiply(polarity_ofmap,randpolar)
+                    psum_alter_ofmap=self._rand_sum_polarity_mod(psum_alter_ofmap)
                     psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
                     psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
                 elif self.psumfault_handle=='direct_sum':
@@ -685,8 +690,7 @@ class mac_fault_injector:
             if self.psumfault_handle=='single':
                 psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
             elif self.psumfault_handle=='rand_sum':
-                randpolar=tf.random.uniform(polarity.shape, minval=0, maxval=2, dtype=tf.int32)
-                polarity=tf.multiply(polarity,randpolar)
+                polarity=self._rand_sum_polarity_mod(polarity)
                 psum_alter=tf.multiply(polarity,tf.constant(2**fault_bit))
                 psum_alter=tf.reduce_sum(psum_alter, axis=1)
             elif self.psumfault_handle=='direct_sum':
@@ -872,8 +876,7 @@ class mac_fault_injector:
             if self.psumfault_handle=='single':
                 psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
             elif self.psumfault_handle=='rand_sum':
-                randpolar=tf.random.uniform(polarity_ofmap.shape, minval=0, maxval=2, dtype=tf.int32)
-                polarity_ofmap=tf.multiply(polarity_ofmap,randpolar)
+                psum_alter_ofmap=self._rand_sum_polarity_mod(psum_alter_ofmap)
                 psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
                 psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
             elif self.psumfault_handle=='direct_sum':

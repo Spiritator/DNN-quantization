@@ -106,12 +106,14 @@ def inference_scheme(model_func,
             if multi_gpu_num>num_gpus:
                 raise ValueError('System have %d GPUs, but require %d GPUs.'%(num_gpus,multi_gpu_num))
             gpu_device=['/gpu:%d'%i for i in range(multi_gpu_num)]
-            dataset_argument['batch_size']*=multi_gpu_num
+            if 'batch_size' in dataset_argument:
+                dataset_argument['batch_size']=dataset_argument['batch_size']*multi_gpu_num
         elif isinstance(multi_gpu_num,list):
             if len(multi_gpu_num)>num_gpus:
                 raise ValueError('System have %d GPUs, but require %d GPUs.'%(num_gpus,len(multi_gpu_num)))
             gpu_device=multi_gpu_num
-            dataset_argument['batch_size']*=len(multi_gpu_num)
+            if 'batch_size' in dataset_argument:
+                dataset_argument['batch_size']=dataset_argument['batch_size']*len(multi_gpu_num)
         else:
             raise TypeError('multi_gpu_num must be either number of GPUs (Integer) or the List of GPU device names.')
             
@@ -171,7 +173,7 @@ def inference_scheme(model_func,
                     model.summary()
             t = time.time()-t
             if verbose>2:
-                print('/rmulti GPU model build time: %f s'%t)            
+                print('multi GPU model build time: %f s'%t)            
             
         
         t = time.time()
@@ -184,7 +186,11 @@ def inference_scheme(model_func,
             
         if FT_evaluate_argument is not None:
             if datagen is None:
-                prediction = model.predict(x_test, verbose=infverbose,batch_size=model_argument[scheme_num]['batch_size'])
+                if multi_gpu_num is None:
+                    batch_size=model_argument[scheme_num]['batch_size']
+                else:
+                    batch_size=model_argument[scheme_num]['batch_size']*len(gpu_device)
+                prediction = model.predict(x_test, verbose=infverbose,batch_size=batch_size)
             else:
                 prediction = model.predict(datagen, verbose=infverbose,steps=len(datagen))
             FT_evaluate_argument['prediction']=prediction
@@ -192,7 +198,11 @@ def inference_scheme(model_func,
             test_result = evaluate_FT( **FT_evaluate_argument)
         else:
             if datagen is None:
-                test_result = model.evaluate(x_test, y_test, verbose=infverbose, batch_size=model_argument[scheme_num]['batch_size'])
+                if multi_gpu_num is None:
+                    batch_size=model_argument[scheme_num]['batch_size']
+                else:
+                    batch_size=model_argument[scheme_num]['batch_size']*len(gpu_device)
+                test_result = model.evaluate(x_test, y_test, verbose=infverbose, batch_size=batch_size)
             else:
                 test_result = model.evaluate(datagen, verbose=infverbose, steps=len(datagen))
         

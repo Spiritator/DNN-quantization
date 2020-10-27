@@ -400,7 +400,6 @@ class mac_fault_injector:
                     psum_alter=tf.reduce_sum(psum_alter, axis=1)
                     
                 psum_alter=quantizer_output.right_shift_back(psum_alter)
-                psum_alter=quantizer_output.right_shift_back(psum_alter)
 
             # add psum_alter back to ofmap
             output=tf.add(fdoutput_alloc, psum_alter)
@@ -480,7 +479,6 @@ class mac_fault_injector:
                     psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
                     psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
 
-                psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
                 psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
                 
             # ifmap fault injection
@@ -696,7 +694,6 @@ class mac_fault_injector:
                 psum_alter=tf.reduce_sum(psum_alter, axis=1)
                 
             psum_alter=quantizer_output.right_shift_back(psum_alter)
-            psum_alter=quantizer_output.right_shift_back(psum_alter)
 
         # add psum_alter back to ofmap
         output=tf.add(fdoutput_alloc, psum_alter)
@@ -883,7 +880,6 @@ class mac_fault_injector:
                 psum_alter_ofmap=tf.multiply(polarity_ofmap,faultbit_ofmap)
                 psum_alter_ofmap=tf.reduce_sum(psum_alter_ofmap, axis=1)
             
-            psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
             psum_alter_ofmap=quantizer_output.right_shift_back(psum_alter_ofmap)
             
         # ifmap fault injection

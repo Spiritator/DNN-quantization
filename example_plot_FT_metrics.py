@@ -118,41 +118,53 @@ from simulator.utils_tool.plot import collect_metric_PE,dict_format_mfv_to_b2Dm,
 
 #%% plot 2D heat map for PE array fault simulation result
 
-result_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88.csv'
-plot_pe_sim='../test_result/mnist_lenet5_PE_fault/ws/'
-PEy=8
-PEx=8
+result_pe_sim='../test_result/cifar10_4C2F_PE_fault/os/metric_3232.csv'
+plot_pe_sim='../test_result/cifar10_4C2F_PE_fault/os/'
 
 pe_sim_stat=collect_metric_PE(result_pe_sim)
-pe_sim_stat,pe_sim_text,pe_sim_vmax=dict_format_mfv_to_b2Dm(pe_sim_stat,PEy,PEx)
 
-plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
-                    sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
-                    annotate=True,text_data=pe_sim_text,valfmt='{x:.4f}',
-                    grid_width=1, text_size=6, cbar_ref_level=1,
-                    save_plot_format='png',dpi=300)
+# PEy=8
+# PEx=8
+# pe_sim_stat,pe_sim_text,pe_sim_vmax=dict_format_mfv_to_b2Dm(pe_sim_stat,PEy,PEx)
+# plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
+#                     sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
+#                     annotate=True,text_data=pe_sim_text,valfmt='{x:.4f}',
+#                     grid_width=1, text_size=6, cbar_ref_level=1,
+#                     save_plot_format='png',dpi=300)
 
+# PEy=16
+# PEx=16
+# pe_sim_stat,pe_sim_text,pe_sim_vmax=dict_format_mfv_to_b2Dm(pe_sim_stat,PEy,PEx)
 # plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
 #                     sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
 #                     annotate=True,text_data=pe_sim_text,valfmt='{x:.3f}',
 #                     grid_width=1, text_size=3, cbar_ref_level=1,
 #                     save_plot_format='png',dpi=300)
 
+PEy=32
+PEx=32
+pe_sim_stat,pe_sim_text,pe_sim_vmax=dict_format_mfv_to_b2Dm(pe_sim_stat,PEy,PEx,datatextslice=slice(1))
+plot_FT_2D_heatmap(pe_sim_stat,plot_pe_sim,np.arange(PEy),np.arange(PEx),'PE y','PE x',
+                    sparse=True,aspect_ratio=1,vmax_dict=pe_sim_vmax,
+                    annotate=False,text_data=pe_sim_text,valfmt='{x}',
+                    label_redu=3, grid_width=0.5, text_size=6, cbar_ref_level=1,
+                    save_plot_format='png',dpi=300)
+
 #%% make GIF of PE fault simulation result heatmap
 
 import os, tqdm
 from simulator.utils_tool.plot import make_GIF
 
-result_heatmap_dir='../test_result/mnist_lenet5_PE_fault/ws/metric_math_88_plot/'
+result_heatmap_dir='../test_result/cifar10_4C2F_PE_fault/os/metric_3232_plot/'
 
 metric_dirs=os.listdir(result_heatmap_dir)
 
-for metric in tqdm.tqdm(metric_dirs):
-    gif_metric_dir=os.path.join(result_heatmap_dir,metric)+'/'
-    make_GIF(gif_metric_dir,metric,file_ext='png',duration=2000)
-    
 # for metric in tqdm.tqdm(metric_dirs):
 #     gif_metric_dir=os.path.join(result_heatmap_dir,metric)+'/'
-#     make_GIF(gif_metric_dir,metric,file_ext='png',duration=1000)
+#     make_GIF(gif_metric_dir,metric,file_ext='png',duration=2000)
+    
+for metric in tqdm.tqdm(metric_dirs):
+    gif_metric_dir=os.path.join(result_heatmap_dir,metric)+'/'
+    make_GIF(gif_metric_dir,metric,file_ext='png',duration=1000)
 
 

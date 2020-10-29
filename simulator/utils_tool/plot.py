@@ -639,6 +639,11 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
                         imfmt=valfmt
                     imtext,imfmt=concate_value2text(FT_arr,textarr,imfmt)
                     texts = _annotate_heatmap(im, text=imtext, valfmt=imfmt, fontsize=text_size, threshold=[maxmtrc*0.2,maxmtrc*0.8])
+            else:
+                if text_data is not None:
+                    textarr=text_data[mtrc]
+                    imtext,imfmt=concate_value2text(FT_arr.shape,textarr,valfmt)
+                    texts = _annotate_heatmap(im, text=imtext, valfmt=imfmt, fontsize=text_size, threshold=[maxmtrc*0.2,maxmtrc*0.8])
             
             plt.title(mtrc+'  '+mtrcstat)
             plt.ylabel(ylabel)
@@ -660,9 +665,14 @@ def plot_FT_2D_heatmap(stat_data_dict, plot_save_dir, row_labels, col_labels,
             plt.clf()
 
 def concate_value2text(value,text,fmt_orig):
-    concattext=np.empty(value.shape, dtype=str).astype(np.object)
-    for i,idx in enumerate(text['coor_list']):
-        concattext[idx]=fmt_orig.format(x=value[idx])+'\n'+text['param'][i]
+    if not isinstance(value,tuple):
+        concattext=np.empty(value.shape, dtype=str).astype(np.object)
+        for i,idx in enumerate(text['coor_list']):
+            concattext[idx]=fmt_orig.format(x=value[idx])+'\n'+text['param'][i]
+    else:
+        concattext=np.empty(value, dtype=str).astype(np.object)
+        for i,idx in enumerate(text['coor_list']):
+            concattext[idx]=text['param'][i]
     fmt_new='{x}'
     return concattext,fmt_new
 
@@ -749,7 +759,7 @@ def collect_metric_PE(file_name):
         
     return report
             
-def dict_format_mfv_to_b2Dm(data_dict,n_PEy,n_PEx):
+def dict_format_mfv_to_b2Dm(data_dict,n_PEy,n_PEx,datatextslice=None):
     """ 
     Convert FT data dictionay from format: 
         data_dict[metric & fault_info][value]
@@ -764,6 +774,9 @@ def dict_format_mfv_to_b2Dm(data_dict,n_PEy,n_PEx):
     for metric in data_dict:
         if metric not in ['PE y','PE x','SA bit','param','SA type']:
             vmax_dict[metric]=np.max(data_dict[metric])
+        elif metric=='param' and datatextslice is not None:
+            for i in range(len(data_dict[metric])):
+                data_dict[metric][i]=data_dict[metric][i][datatextslice]
         data_dict[metric]=np.split(data_dict[metric][sorter],cnt_idx)
     # [metric][fault_bit][value]            
     new_data_dict=dict()

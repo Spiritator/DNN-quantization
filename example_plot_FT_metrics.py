@@ -31,8 +31,8 @@ pic_save_dir='vs_model_fault_rate_4net'
 
 color_dict_list=[{'max':'lightblue','min':'lightblue','avg':'blue','var':'darkgray'},
                  {'max':'peachpuff','min':'peachpuff','avg':'red','var':'darkgray'},
-                  {'max':'lightgreen','min':'lightgreen','avg':'green','var':'darkgray'},
-                  {'max':'thistle','min':'thistle','avg':'purple','var':'darkgray'}]
+                 {'max':'lightgreen','min':'lightgreen','avg':'green','var':'darkgray'},
+                 {'max':'thistle','min':'thistle','avg':'purple','var':'darkgray'}]
 
 label_list=['lenet (S,8,3)','4C2F (S,10,6)','mobilenet (S,16,9)','resnet (S,16,12-8)']
 #label_list=['mobilenet (S,16,9)','resnet (S,16,12-8)']
@@ -50,19 +50,25 @@ stat_data=plot_FT_analysis(stat_dir='../test_result/'+stat_folder_dir,font_size=
 
 relative_dir='../test_result/'
 stat_data_list=list()
-stat_vs_folders=['imagenet_mobilenet_model_fault_rate_wght','imagenet_mobilenet_model_fault_rate_fmap']
-
+#stat_vs_folders=['imagenet_mobilenet_model_fault_rate_wght','imagenet_mobilenet_model_fault_rate_fmap']
+stat_vs_folders=['mnist_lenet5_memory_fault_rate_wght','cifar10_4C2F_memory_fault_rate_small_wght','imagenet_mobilenet_memory_fault_rate_wght','imagenet_resnet_memory_fault_rate_wght']
+                 
 for dirr in stat_vs_folders:
     stat_data_list.append(make_FT_report(relative_dir+dirr))
 
-pic_save_dir='vs_imagenet_mobilenet_model_fault_rate_fvw'
+#pic_save_dir='vs_imagenet_mobilenet_model_fault_rate_fvw'
+pic_save_dir='vs_memory_fault_rate_4net_wght'
 
 color_dict_list=[{'max':'lightblue','min':'lightblue','avg':'blue','var':'darkgray'},
-                 {'max':'peachpuff','min':'peachpuff','avg':'red','var':'darkgray'},]
+                 {'max':'peachpuff','min':'peachpuff','avg':'red','var':'darkgray'},
+                 {'max':'lightgreen','min':'lightgreen','avg':'green','var':'darkgray'},
+                 {'max':'thistle','min':'thistle','avg':'purple','var':'darkgray'}]
 
-label_list=['weights','feature map']
+#label_list=['weights','feature map']
+label_list=['lenet 6.25KB','4C2F 25.6KB','mobilenet 260KB','resnet 260KB']
 
-plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list,font_size=14,save_plot_format='eps')
+plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list,font_size=14,legend_size=10,save_plot_format='eps')
+#plot_FT_analysis_multiple(stat_data_list,relative_dir+pic_save_dir,color_dict_list,label_list)
 
 
 #%% plot 2D heat map for layer by layer FT or feature map center FT

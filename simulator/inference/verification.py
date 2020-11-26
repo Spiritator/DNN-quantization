@@ -15,7 +15,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import tqdm as tqdm
 
-def view_intermediate(model,input_x):
+def view_intermediate(model,input_x,eager_mode=False):
     """View all the intermediate output of a DNN model
 
     Arguments
@@ -24,6 +24,9 @@ def view_intermediate(model,input_x):
         The model wanted to test.
     input_x: Ndarray. 
         The preprocessed numpy array as the test input for DNN.
+    eager_mode: Bool. Default is False
+        Execute verification eagerly or not. The eager mode and graph mode of TensorFlow may got different result.
+        Eager mode got the same result as RTL verilog implementation.
 
     Returns
     -------
@@ -47,7 +50,11 @@ def view_intermediate(model,input_x):
     intermediate_model=Model(inputs=model.input,outputs=output_list)
     
     print('predicting...')
-    intermediate_output=intermediate_model.predict(input_x,verbose=True)
+    if eager_mode:
+        intermediate_output=intermediate_model(input_x)
+        intermediate_output=[output.numpy() for output in intermediate_output]
+    else:
+        intermediate_output=intermediate_model.predict(input_x,verbose=True)
     
     intermediate_output=[input_x]+intermediate_output
     

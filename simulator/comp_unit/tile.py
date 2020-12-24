@@ -666,7 +666,7 @@ class tile_PE(tile):
         return new_index,tuple(new_shape)
 
     def expand_reshape_data(self, orig_prior, expect_shape, reshape_prior, slicing_dims, slices_permute,
-                            tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1,
+                            slice_PEin=None, tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1,
                             dataflow_pre_plan=False):
         """ Data expansion before put into PE array. 
             The data may be cut into many pieces then fit into PE. Different slices calculate in different clock cycle.
@@ -692,6 +692,12 @@ class tile_PE(tile):
         slices_permute: Tuple. 
             Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
             the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+        
+        slice_PEin: Tuple. optional.
+            In case of purposed making under-utilized slice in PE array. The slice_PEin must be the 
+            same length as slicing_dims where the zero and non-zero part also has to match. The slice 
+            dimensions have to be bigger/equal than slicing_dims that is making the slice_shape an 
+            under-uitilized data slice.
         
         tilting: Bool. 
             Tilt the index or not. For PE systolic array input.
@@ -733,10 +739,20 @@ class tile_PE(tile):
         if len(slicing_dims)!=len(self.expand_shape):
             raise TypeError('slicing_dims must be in length %d, but get length %d'%(len(self.expand_shape),len(slicing_dims)))
         self.slicing_dims=slicing_dims
+        self.slices_cutset,_=self.get_slices_cutset(self.expand_shape, self.slicing_dims)
+        
         self.slice_shape=np.array(slicing_dims)
         self.slice_shape=tuple(self.slice_shape[self.slice_shape>0])
-        self.slices_cutset,_=self.get_slices_cutset(self.expand_shape, self.slicing_dims)
+        self.slice_underutilized=None
+        if slice_PEin is not None:
+            slice_PEin=np.array(slice_PEin)
+            slice_PEin=tuple(slice_PEin[slice_PEin>0])
+            if len(slice_PEin)!=len(self.slice_shape):
+                raise TypeError('slice_PEin must be in length %d, but get length %d'%(len(slice_PEin),len(self.slice_shape)))
+            self.slice_underutilized=self.slice_shape+(np.prod(self.slices_cutset),)
+            self.slice_shape=slice_PEin
         self.slice_shape=self.slice_shape+(np.prod(self.slices_cutset),)
+                
         
         if len(slices_permute)!=len(self.expand_shape):
             raise TypeError('slices_permute must be in length %d, but get length %d'%(len(self.expand_shape),len(slices_permute)))
@@ -818,7 +834,10 @@ class tile_PE(tile):
                                              self.tilted_slice_shape,
                                              self.tilt_shift)
             # pop inalid t_clk
-            permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
+            if self.slice_underutilized is None:
+                permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
+            else:
+                permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_underutilized,get_cond_idx=True)
             self._reduce_fault_info(fault_info, cond_idx)
         
         reshaped_coors=self.assemble_slice_idx(permuted_coors,
@@ -845,7 +864,7 @@ class tile_PE(tile):
         return fault_info
             
     def expand_extract_patches(self, ksizes, strides=(1,1,1,1), dilation_rates=(1,1,1,1), padding='valid', edge_fill=False, patches_unravel=[0,1,2],
-            reshape_patches=False, patches_prior=None, expect_shape=None, reshape_prior=None, slicing_dims=None, slices_permute=None,
+            reshape_patches=False, patches_prior=None, expect_shape=None, reshape_prior=None, slicing_dims=None, slices_permute=None, slice_PEin=None,
             tilting=False, tilt_axis=None, tilt_direction=None, tilt_shift=1,
             dataflow_pre_plan=False):
         """ Data expansion before put into PE array. Usually used for ifmap reuse. 
@@ -897,6 +916,12 @@ class tile_PE(tile):
         slices_permute: Tuple. 
             Indicates how to permute the time multiplexed part of expect_shape. Tuple (a,b,c,d) means
             the order of time multiplexed part dimension to permute. Variable a,b,c,d are the axis index of expect_shape.
+            
+        slice_PEin: Tuple. optional.
+            In case of purposed making under-utilized slice in PE array. The slice_PEin must be the 
+            same length as slicing_dims where the zero and non-zero part also has to match. The slice 
+            dimensions have to be bigger/equal than slicing_dims that is making the slice_shape an 
+            under-uitilized data slice.            
             
         tilting: Bool. 
             Tilt the index or not. For PE systolic array input.
@@ -957,9 +982,17 @@ class tile_PE(tile):
         if len(slicing_dims)!=len(self.expand_shape):
             raise TypeError('slicing_dims must be in length %d, but get length %d'%(len(self.expand_shape),len(slicing_dims)))
         self.slicing_dims=slicing_dims
+        self.slices_cutset,_=self.get_slices_cutset(self.expand_shape, self.slicing_dims)
         self.slice_shape=np.array(slicing_dims)
         self.slice_shape=tuple(self.slice_shape[self.slice_shape>0])
-        self.slices_cutset,_=self.get_slices_cutset(self.expand_shape, self.slicing_dims)
+        self.slice_underutilized=None
+        if slice_PEin is not None:
+            slice_PEin=np.array(slice_PEin)
+            slice_PEin=tuple(slice_PEin[slice_PEin>0])
+            if len(slice_PEin)!=len(self.slice_shape):
+                raise TypeError('slice_PEin must be in length %d, but get length %d'%(len(slice_PEin),len(self.slice_shape)))
+            self.slice_underutilized=self.slice_shape+(np.prod(self.slices_cutset),)
+            self.slice_shape=slice_PEin
         self.slice_shape=self.slice_shape+(np.prod(self.slices_cutset),)
         
         if len(slices_permute)!=len(self.expand_shape):
@@ -1055,7 +1088,10 @@ class tile_PE(tile):
                                              self.tilt_shift)
             
             # pop inalid t_clk
-            permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
+            if self.slice_underutilized is None:
+                permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_shape,get_cond_idx=True)
+            else:
+                permuted_coors,cond_idx=self.pop_outlier_idx(permuted_coors,self.slice_underutilized,get_cond_idx=True)
             self._reduce_fault_info(fault_info, cond_idx)
             
         reshaped_coors=self.assemble_slice_idx(permuted_coors,

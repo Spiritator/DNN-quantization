@@ -746,11 +746,13 @@ class tile_PE(tile):
         self.slice_underutilized=None
         if slice_PEin is not None:
             slice_PEin=np.array(slice_PEin)
-            slice_PEin=tuple(slice_PEin[slice_PEin>0])
+            slice_PEin=slice_PEin[slice_PEin>0]
             if len(slice_PEin)!=len(self.slice_shape):
                 raise TypeError('slice_PEin must be in length %d, but get length %d'%(len(slice_PEin),len(self.slice_shape)))
+            if not np.all(np.greater_equal(slice_PEin, list(self.slice_shape))):
+                raise ValueError('slice_PEin must be greater equal than slicing_dims, but get length %s and %s'%(str(slice_PEin),str(self.slicing_dims)))
             self.slice_underutilized=self.slice_shape+(np.prod(self.slices_cutset),)
-            self.slice_shape=slice_PEin
+            self.slice_shape=tuple(slice_PEin)
         self.slice_shape=self.slice_shape+(np.prod(self.slices_cutset),)
                 
         
@@ -988,11 +990,13 @@ class tile_PE(tile):
         self.slice_underutilized=None
         if slice_PEin is not None:
             slice_PEin=np.array(slice_PEin)
-            slice_PEin=tuple(slice_PEin[slice_PEin>0])
+            slice_PEin=slice_PEin[slice_PEin>0]
             if len(slice_PEin)!=len(self.slice_shape):
                 raise TypeError('slice_PEin must be in length %d, but get length %d'%(len(slice_PEin),len(self.slice_shape)))
+            if not np.all(np.greater_equal(slice_PEin, list(self.slice_shape))):
+                raise ValueError('slice_PEin must be greater equal than slicing_dims, but get length %s and %s'%(str(slice_PEin),str(self.slicing_dims)))
             self.slice_underutilized=self.slice_shape+(np.prod(self.slices_cutset),)
-            self.slice_shape=slice_PEin
+            self.slice_shape=tuple(slice_PEin)
         self.slice_shape=self.slice_shape+(np.prod(self.slices_cutset),)
         
         if len(slices_permute)!=len(self.expand_shape):

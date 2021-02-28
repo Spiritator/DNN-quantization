@@ -188,7 +188,7 @@ def PE_mapping_forward(ifmap_tile,
         return PEarray.fault_dict
     
     
-def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, verbose=4, return_detail=False):
+def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, verbose=4, return_detail=False, layer_type=None):
     """ Data mapping high level control
         Mapping the PE dataflow model fault dictionay to layer.
         
@@ -314,7 +314,17 @@ def PE_mapping_backward(layer, PEarray, fault_dict=None, save2tile=False, verbos
     if verbose>2:
         print('\r    Task (5/6): Solve Fault I/O ...                                     ',end=' ') 
     # organize fault dict and give partial sum index
-    solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,fault_num=PEarray.fault_num)
+    if layer_type is None:
+        layer_name=layer.name
+        layer_name=layer_name.lower()
+        if 'dense' in layer_name:
+            layer_type='Dense'
+        elif 'conv' in layer_name and 'depth' not in layer_name:
+            layer_type='Conv2D'
+        elif 'conv' in layer_name and 'depth' in layer_name:
+            layer_type='DepthwiseConv2D'
+        
+    solver=io_data_solver(PEarray.ofmap_tile,PEarray.wght_tile,PEarray.ifmap_tile,fault_num=PEarray.fault_num,layer_type=layer_type)
     PE_mac_fault_dict=solver.solve_correspond_io(save2tile,verbose>3)
     
     if verbose>2:

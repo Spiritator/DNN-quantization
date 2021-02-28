@@ -2174,7 +2174,10 @@ class io_data_solver:
         # get base coors
         base_coor_o, restore_multiple_o=self._gen_base_coor(self.ofmap_tile.tile_shape, layer_output_shape, is_fmap=True)
         base_coor_w, restore_multiple_w=self._gen_base_coor(self.wght_tile.tile_shape, layer_weight_shape[0], is_fmap=False)
-        base_coor_i, restore_multiple_i=self._gen_base_coor(self.ifmap_tile.tile_shape, layer_input_shape, is_fmap=True, padding=self.ifmap_tile.padding, ksizes=self.ifmap_tile.ksizes, dilation_rates=self.ifmap_tile.dilation_rates)
+        if self.layer_type!='Dense':
+            base_coor_i, restore_multiple_i=self._gen_base_coor(self.ifmap_tile.tile_shape, layer_input_shape, is_fmap=True, padding=self.ifmap_tile.padding, ksizes=self.ifmap_tile.ksizes, dilation_rates=self.ifmap_tile.dilation_rates)
+        else:
+            base_coor_i, restore_multiple_i=self._gen_base_coor(self.ifmap_tile.tile_shape, layer_input_shape, is_fmap=True, padding=None, ksizes=None, dilation_rates=None)
         
         # consistency check
         self._check_tile_consistency(restore_multiple_i,restore_multiple_w,restore_multiple_o,layer)

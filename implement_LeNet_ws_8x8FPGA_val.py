@@ -4,7 +4,7 @@ Created on Thu Dec 24 22:17:00 2020
 
 @author: Yung-Yu Tsai
 
-The test, verification and analysis for LeNet-5 inference on FPGA with weight stationary 8x8 systolic PE array.
+The dataflow validation for LeNet-5 inference on FPGA with weight stationary 8x8 systolic PE array.
 """
 
 from tensorflow.keras.models import Model
